@@ -1,6 +1,8 @@
 VULKAN_SDK = os.getenv("VULKAN_SDK")
 DIRECTX_SDK = os.getenv("DXSDK_DIR")
 
+QT_SDK = os.getenv("QT_SDK")
+
 IncludeDir = {}
 IncludeDir["QE_Core"] = "%{wks.location}/QE_Core/src"
 IncludeDir["QE_Vulkan_API"] = "%{wks.location}/QE_Vulkan_API/src"
@@ -23,10 +25,12 @@ IncludeDir["entt"] = "%{wks.location}/vendor/entt"
 IncludeDir["tinygltf"] = "%{wks.location}/vendor/TinyGLTF"
 IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/Include"
 IncludeDir["DirectXSDK"] = "%{DIRECTX_SDK}/Include"
+IncludeDir["QT_SDK"] = "%{QT_SDK}/include"
 
 LibraryDir = {}
 LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/Lib"
-LibraryDir["DirectXSDK"] = "%{DIRECTX_SDK}/Lib\x64"
+LibraryDir["DirectXSDK"] = "%{DIRECTX_SDK}/Lib/x64"
+LibraryDir["QT_SDK"] = "%{QT_SDK}/lib"
 
 Library = {}
 Library["Vulkan"] = "%{LibraryDir.VulkanSDK}/vulkan-1.lib"
