@@ -54,7 +54,7 @@ The project aims to create an open-source game engine that can handle large proj
 ## Install
 
 ```bash
-$ git clone https://github.com/Ultiris-Studio/QuasarEngine/
+$ git clone https://github.com/ultirisstudio/QuasarEngine/
 $ cd QuasarEngine
-$ ./scripts/Win_Setup.bat
-$ ./scripts/Win-GenProjects.bat
+$ ./Win_Setup.bat
+$ ./Win-GenProjects.bat
