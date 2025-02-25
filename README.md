@@ -57,4 +57,4 @@ The project aims to create an open-source game engine that can handle large proj
 $ git clone https://github.com/ultirisstudio/QuasarEngine/
 $ cd QuasarEngine
 $ ./Win_Setup.bat
-$ ./Win-GenProjects.bat
+$ ./Win_GenerateFiles.bat
