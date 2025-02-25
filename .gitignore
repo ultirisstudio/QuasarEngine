@@ -1,0 +1,17 @@
+**.vs/
+**.vscode/
+
+**/bin/
+**/bin-int/
+
+**.user
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+**.csproj
+**.sln
+**.ini
+**.exe
+**.ultconf
+
+**/Makefile
