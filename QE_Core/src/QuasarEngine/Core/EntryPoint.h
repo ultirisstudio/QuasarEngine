@@ -2,6 +2,8 @@
 
 #include <QuasarEngine/Core/Core.h>
 
+#include <QuasarEngine/Core/Application.h>
+
 extern Application* CreateApplication(ApplicationCommandLineArgs args);
 
 int main(int argc, char** argv)

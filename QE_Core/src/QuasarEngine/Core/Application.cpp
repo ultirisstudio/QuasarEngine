@@ -13,7 +13,11 @@ Application::Application(const ApplicationSpecification& specification) : m_Spec
 {
 	s_Instance = this;
 
-	m_Window = EngineFactory::Instance().CreateWindow(specification.WindowAPI);
+	m_Window = EngineFactory::Instance().CreateWindow(specification.windowAPI);
+	m_Renderer = EngineFactory::Instance().CreateRenderer(specification.rendererAPI);
+
+	m_Window->Initialize();
+	m_Renderer->Initialize();
 }
 
 Application::~Application()
@@ -40,19 +44,26 @@ void Application::Close()
 
 void Application::Run()
 {
-	while (m_Running)
+	if (m_Specification.windowAPI == WindowAPI::GLFW)
 	{
-		if (!m_Minimized)
+		while (m_Running)
 		{
-			for (Layer* layer : m_LayerManager)
+			if (!m_Minimized)
 			{
-				layer->OnUpdate(0.0);
+				for (Layer* layer : m_LayerManager)
+				{
+					layer->OnUpdate(0.0);
+				}
 			}
-		}
 
-		if (m_Specification.EnableImGui)
-		{
-			
+			m_Window->PollEvents();
+			m_Renderer->Render();
+			m_Window->SwapBuffers();
 		}
+	}
+
+	if (m_Specification.windowAPI == WindowAPI::Qt)
+	{
+		m_Window->Run();
 	}
 }

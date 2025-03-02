@@ -5,7 +5,6 @@
 #include "QuasarEngine/Core/Layer.h"
 
 #include "QuasarEngine/EngineFactory.h"
-#include "QuasarEngine/Window/IWindow.h"
 
 int main(int argc, char** argv);
 
@@ -27,18 +26,11 @@ struct ApplicationSpecification
 {
 	std::string Name = "Quasar Application";
 	std::string WorkingDirectory;
-	bool EnableImGui = true;
 
-	WindowAPI WindowAPI = WindowAPI::GLFW;
+	WindowAPI windowAPI = WindowAPI::GLFW;
+	RendererAPI rendererAPI = RendererAPI::OpenGL;
 
 	ApplicationCommandLineArgs CommandLineArgs;
-};
-
-struct ApplicationInfos
-{
-	int app_nb_frame = 0;
-	int app_fps = 0;
-	int app_latency = 0;
 };
 
 class Application
@@ -57,8 +49,6 @@ public:
 
 	const ApplicationSpecification& GetSpecification() const { return m_Specification; }
 
-	const ApplicationInfos& GetAppInfos() const { return m_appInfos; }
-
 	void Close();
 
 private:
@@ -67,9 +57,9 @@ private:
 	bool m_Running = true;
 	bool m_Minimized = false;
 
-	ApplicationInfos m_appInfos;
-
 	std::unique_ptr<IWindow> m_Window;
+	std::unique_ptr<IRenderer> m_Renderer;
+
 	LayerManager m_LayerManager;
 
 	static Application* s_Instance;

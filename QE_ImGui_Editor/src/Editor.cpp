@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
 		renderer->Render();
 		gui->Render();
 
-		window->Show();
+		//window->Show();
 	}
 
 	renderer->Shutdown();
