@@ -1,1 +1,0 @@
-#include <QuasarEngine.h>

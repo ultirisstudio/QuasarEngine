@@ -1,4 +1,4 @@
-project "QE_OpenGL_API"
+project "QE_ImGui_GUI"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
@@ -17,7 +17,7 @@ project "QE_OpenGL_API"
 	includedirs
 	{
 		"%{IncludeDir.QE_Core}",
-		"%{IncludeDir.QE_OpenGL_API}"
+		"%{IncludeDir.QE_ImGui_GUI}"
 	}
 
 	links

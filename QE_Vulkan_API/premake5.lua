@@ -15,10 +15,9 @@ project "QE_Vulkan_API"
 	}
 
 	includedirs
-	{
-		"src",
-		
+	{		
 		"%{IncludeDir.QE_Core}",
+		"%{IncludeDir.QE_Vulkan_API}"
 	}
 
 	links

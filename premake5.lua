@@ -2,7 +2,7 @@ include "Dependencies.lua"
 
 workspace "QuasarEngine"
 	architecture "x86_64"
-    startproject "QE_Editor_ImGui"
+    startproject "QE_ImGui_Editor"
 
 	configurations
 	{
@@ -17,7 +17,7 @@ workspace "QuasarEngine"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-group "Dependance"
+group "DEPENDANCE"
 	include "vendor/GLFW"
 	include "vendor/Glad"
 	include "vendor/assimp"
@@ -41,11 +41,21 @@ group "API"
 	include "QE_DirectX_API"
 group ""
 
-group "EDITOR"
-	include "QE_Editor_ImGui"
-	include "QE_Editor_Qt"
+group "GUI"
+	include "QE_ImGui_GUI"
+	include "QE_Qt_GUI"
 group ""
 
-group "Runtime"
+group "WINDOW"
+	include "QE_GLFW_Window"
+	include "QE_Qt_Window"
+group ""
+
+group "EDITOR"
+	include "QE_ImGui_Editor"
+	include "QE_Qt_Editor"
+group ""
+
+group "RUNTIME"
 	include "QE_Runtime"
 group ""

@@ -1,4 +1,4 @@
-project "QE_OpenGL_API"
+project "QE_GLFW_Window"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
@@ -17,12 +17,15 @@ project "QE_OpenGL_API"
 	includedirs
 	{
 		"%{IncludeDir.QE_Core}",
-		"%{IncludeDir.QE_OpenGL_API}"
+		
+		"%{IncludeDir.GLFW}"
 	}
 
 	links
 	{
-		"QE_Core"
+		"QE_Core",
+		
+		"GLFW"
 	}
 
 	filter "system:windows"

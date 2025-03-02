@@ -15,10 +15,9 @@ project "QE_DirectX_API"
 	}
 
 	includedirs
-	{
-		"src",
-		
+	{		
 		"%{IncludeDir.QE_Core}",
+		"%{IncludeDir.QE_DirectX_API}"
 	}
 
 	links

@@ -1,4 +1,4 @@
-project "QE_Editor_Qt"
+project "QE_ImGui_Editor"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"
@@ -19,19 +19,22 @@ project "QE_Editor_Qt"
 
 	includedirs
 	{
-		"src",
+		"%{IncludeDir.QE_ImGui_Editor}",
 		
 		"%{IncludeDir.QE_Core}",
 		"%{IncludeDir.QE_Vulkan_API}",
 		"%{IncludeDir.QE_OpenGL_API}",
 		"%{IncludeDir.QE_DirectX_API}",
 		
-		"%{IncludeDir.QT_SDK}"
-	}
-	
-	libdirs
-	{
-		"%{LibraryDir.QT_SDK}"
+		"%{IncludeDir.QE_ImGui_GUI}",
+		"%{IncludeDir.QE_Qt_GUI}",
+		
+		"%{IncludeDir.QE_GLFW_Window}",
+		"%{IncludeDir.QE_Qt_Window}",
+		
+		"%{IncludeDir.QT_SDK}",
+		
+		"%{IncludeDir.glm}"
 	}
 
 	links
@@ -40,7 +43,13 @@ project "QE_Editor_Qt"
 		
 		"QE_Vulkan_API",
 		"QE_OpenGL_API",
-		"QE_DirectX_API"
+		"QE_DirectX_API",
+		
+		"QE_ImGui_GUI",
+		"QE_Qt_GUI",
+		
+		"QE_GLFW_Window",
+		"QE_Qt_Window"
 	}
 	
 	filter "system:windows"
@@ -50,22 +59,8 @@ project "QE_Editor_Qt"
 		defines "DEBUG"
 		runtime "Debug"
 		symbols "on"
-		
-		links
-		{
-			"Qt6Cored.lib",
-			"Qt6Guid.lib",
-			"Qt6Widgetsd.lib"
-		}
 
 	filter "configurations:Release"
 		defines "RELEASE"
 		runtime "Release"
 		optimize "on"
-		
-		links
-		{
-			"Qt6Core.lib",
-			"Qt6Gui.lib",
-			"Qt6Widgets.lib"
-		}

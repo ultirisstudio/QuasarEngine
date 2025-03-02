@@ -4,10 +4,22 @@ DIRECTX_SDK = os.getenv("DXSDK_DIR")
 QT_SDK = os.getenv("QT_SDK")
 
 IncludeDir = {}
+
 IncludeDir["QE_Core"] = "%{wks.location}/QE_Core/src"
+
 IncludeDir["QE_Vulkan_API"] = "%{wks.location}/QE_Vulkan_API/src"
 IncludeDir["QE_OpenGL_API"] = "%{wks.location}/QE_OpenGL_API/src"
 IncludeDir["QE_DirectX_API"] = "%{wks.location}/QE_DirectX_API/src"
+
+IncludeDir["QE_Qt_GUI"] = "%{wks.location}/QE_Qt_GUI/src"
+IncludeDir["QE_ImGui_GUI"] = "%{wks.location}/QE_ImGui_GUI/src"
+
+IncludeDir["QE_GLFW_Window"] = "%{wks.location}/QE_GLFW_Window/src"
+IncludeDir["QE_Qt_Window"] = "%{wks.location}/QE_Qt_Window/src"
+
+IncludeDir["QE_Qt_Editor"] = "%{wks.location}/QE_Qt_Editor/src"
+IncludeDir["QE_ImGui_Editor"] = "%{wks.location}/QE_ImGui_Editor/src"
+
 IncludeDir["GLFW"] = "%{wks.location}/vendor/GLFW/include"
 IncludeDir["Glad"] = "%{wks.location}/vendor/Glad/include"
 IncludeDir["glm"] = "%{wks.location}/vendor/glm"

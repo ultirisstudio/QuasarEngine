@@ -6,6 +6,9 @@ project "QE_Core"
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+	
+	filter "action:vs*"
+		buildoptions { "/Zc:__cplusplus", "/permissive-" }
 
 	files
 	{
@@ -16,7 +19,11 @@ project "QE_Core"
 
 	includedirs
 	{
-		"src"
+		"%{IncludeDir.QE_Core}",
+		
+		"%{IncludeDir.glm}",
+		
+		"%{IncludeDir.QT_SDK}"
 	}
 	
 	libdirs
@@ -26,7 +33,7 @@ project "QE_Core"
 	
 	defines
 	{
-		
+		"GLFW_INCLUDE_NONE"
 	}
 
 	links
