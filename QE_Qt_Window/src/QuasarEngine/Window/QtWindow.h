@@ -7,7 +7,7 @@ class QWidget;
 
 class QtWindow : public IWindow {
 public:
-    QtWindow(int width, int height, const char* title, int argc, char* argv[]);
+    QtWindow(int width, int height, const char* title);
     ~QtWindow();
 
     void Initialize() override;
@@ -16,7 +16,7 @@ public:
     void Run() override;
     void Close() override;
 
-    static void Register(int argc, char* argv[]);
+    static void Register();
 
 private:
     //QApplication* app;

@@ -27,8 +27,8 @@ struct ApplicationSpecification
 	std::string Name = "Quasar Application";
 	std::string WorkingDirectory;
 
-	WindowAPI windowAPI = WindowAPI::GLFW;
-	RendererAPI rendererAPI = RendererAPI::OpenGL;
+	WindowAPI WindowAPI = WindowAPI::GLFW;
+	RendererAPI RendererAPI = RendererAPI::OpenGL;
 
 	ApplicationCommandLineArgs CommandLineArgs;
 };
@@ -37,9 +37,7 @@ class Application
 {
 public:
 	Application(const ApplicationSpecification& specification);
-	virtual ~Application();
-
-	void Run();
+	~Application() = default;
 
 	void PushLayer(Layer* layer);
 	void PushOverlay(Layer* overlay);
@@ -49,13 +47,11 @@ public:
 
 	const ApplicationSpecification& GetSpecification() const { return m_Specification; }
 
-	void Close();
+	virtual void Run() = 0;
+	virtual void Close() = 0;
 
-private:
+protected:
 	ApplicationSpecification m_Specification;
-
-	bool m_Running = true;
-	bool m_Minimized = false;
 
 	std::unique_ptr<IWindow> m_Window;
 	std::unique_ptr<IRenderer> m_Renderer;
