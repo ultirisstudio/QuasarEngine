@@ -34,7 +34,8 @@ project "QE_Qt_Editor"
 		
 		"%{IncludeDir.QT_SDK}",
 		
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.stb_image}"
 	}
 	
 	libdirs
@@ -54,7 +55,9 @@ project "QE_Qt_Editor"
 		"QE_Qt_GUI",
 		
 		"QE_GLFW_Window",
-		"QE_Qt_Window"
+		"QE_Qt_Window",
+		
+		"stb_image"
 	}
 	
 	filter "system:windows"

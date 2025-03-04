@@ -8,6 +8,8 @@
 
 #include <QuasarEngine/Core/Application.h>
 
+#include <QuasarEngine/Window/QtWindow.h>
+
 class QWidget;
 
 class QtApplication : public Application
@@ -28,6 +30,8 @@ public:
 
 protected:
 	QtApplicationData m_ApplicationData;
+
+	QtWindow* m_QtWindow;
 };
 
 Application* CreateApplication(ApplicationCommandLineArgs args);

@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include <QuasarEngine/Core/QtApplication.h>
 
 #include <QtWidgets/QWidget>
@@ -28,4 +28,4 @@ public:
 	{
 
 	}
-};
+};*/

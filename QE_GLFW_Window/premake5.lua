@@ -17,6 +17,7 @@ project "QE_GLFW_Window"
 	includedirs
 	{
 		"%{IncludeDir.QE_Core}",
+		"%{IncludeDir.QE_GLFW_Window}",
 		
 		"%{IncludeDir.GLFW}"
 	}

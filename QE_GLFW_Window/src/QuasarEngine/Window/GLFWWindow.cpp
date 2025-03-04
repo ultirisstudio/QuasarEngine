@@ -1,4 +1,4 @@
-#include "GLFWWindow.h"
+#include "GlfwWindow.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -7,17 +7,17 @@
 
 #include <GLFW/glfw3.h>
 
-GLFWWindow::GLFWWindow(int width, int height, const std::string& title)
-    : width(width), height(height), title(title), window(nullptr) {}
+GlfwWindow::GlfwWindow()
+    : window(nullptr) {}
 
-GLFWWindow::~GLFWWindow() {
+GlfwWindow::~GlfwWindow() {
     if (window) {
         glfwDestroyWindow(window);
     }
     glfwTerminate();
 }
 
-void GLFWWindow::Initialize() {
+void GlfwWindow::Initialize(unsigned int width, unsigned int height, const std::string& title) {
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW");
     }
@@ -36,34 +36,34 @@ void GLFWWindow::Initialize() {
     std::cout << "GLFW Window initialized successfully!" << std::endl;
 }
 
-void GLFWWindow::SwapBuffers() {
+void GlfwWindow::SwapBuffers() {
     if (window) {
         glfwSwapBuffers(window);
     }
 }
 
-void GLFWWindow::PollEvents() {
+void GlfwWindow::PollEvents() {
     glfwPollEvents();
 }
 
-void GLFWWindow::Run()
+void GlfwWindow::Run()
 {
 
 }
 
-void GLFWWindow::Close() {
+void GlfwWindow::Close() {
     if (window) {
         glfwSetWindowShouldClose(window, true);
     }
 }
 
-bool GLFWWindow::ShouldClose() const {
+bool GlfwWindow::ShouldClose() const {
     return window && glfwWindowShouldClose(window);
 }
 
-void GLFWWindow::Register()
+void GlfwWindow::Register()
 {
     EngineFactory::Instance().RegisterWindow(WindowAPI::GLFW, [] {
-        return std::make_unique<GLFWWindow>(800, 600, "GLFW Window");
+        return std::make_unique<GlfwWindow>();
     });
 }

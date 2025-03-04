@@ -5,12 +5,12 @@
 #include <QuasarEngine/Renderer/DirectXRenderer.h>
 
 #include <QuasarEngine/Window/GLFWWindow.h>
-#include <QuasarEngine/Window/QtWindow.h>
+//#include <QuasarEngine/Window/QtWindow.h>
 
 #include <QuasarEngine/Core/EntryPoint.h>
 
 #include <QuasarEngine/GlfwEditor/GlfwQuasarEditor.h>
-#include <QuasarEngine/QtEditor/QtQuasarEditor.h>
+//#include <QuasarEngine/QtEditor/QtQuasarEditor.h>
 
 Application* CreateApplication(ApplicationCommandLineArgs args)
 {
@@ -18,8 +18,8 @@ Application* CreateApplication(ApplicationCommandLineArgs args)
 	spec.Name = "Quasar Editor";
 	spec.CommandLineArgs = args;
 
-	GLFWWindow::Register();
-	QtWindow::Register();
+	GlfwWindow::Register();
+	//QtWindow::Register();
 
 	OpenGLRenderer::Register();
 	VulkanRenderer::Register();
@@ -60,7 +60,7 @@ Application* CreateApplication(ApplicationCommandLineArgs args)
 
 	if (spec.WindowAPI == WindowAPI::Qt)
 	{
-		return new QtQuasarEditor(spec);
+		//return new QtQuasarEditor(spec);
 	}
 
 	return nullptr;

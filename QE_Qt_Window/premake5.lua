@@ -20,6 +20,7 @@ project "QE_Qt_Window"
 	includedirs
 	{
 		"%{IncludeDir.QE_Core}",
+		"%{IncludeDir.QE_Qt_Window}",
 		
 		"%{IncludeDir.QT_SDK}"
 	}

@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include <QuasarEngine/Core/QtApplication.h>
 #include <QuasarEngine/QtEditor/QtEditorLayer.h>
 
@@ -36,4 +36,4 @@ public:
 	{
 
 	}
-};
+};*/

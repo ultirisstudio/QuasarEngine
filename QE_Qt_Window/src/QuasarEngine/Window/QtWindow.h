@@ -7,18 +7,14 @@ class QWidget;
 
 class QtWindow : public IWindow {
 public:
-    QtWindow(int width, int height, const char* title);
+    QtWindow();
     ~QtWindow();
 
-    void Initialize() override;
+    void Initialize(unsigned int width, unsigned int height, const std::string& title) override;
     void SwapBuffers() override;
     void PollEvents() override;
     void Run() override;
     void Close() override;
 
     static void Register();
-
-private:
-    //QApplication* app;
-    //QWidget* window;
 };

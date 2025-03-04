@@ -8,6 +8,8 @@
 
 #include <QuasarEngine/Core/Application.h>
 
+#include <QuasarEngine/Window/GLFWWindow.h>
+
 class GlfwApplication : public Application
 {
 public:
@@ -26,6 +28,8 @@ public:
 
 protected:
 	GlfwApplicationData m_ApplicationData;
+
+	GlfwWindow* m_GlfwWindow;
 };
 
 Application* CreateApplication(ApplicationCommandLineArgs args);

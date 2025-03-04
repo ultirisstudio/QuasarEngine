@@ -6,12 +6,12 @@
 
 struct GLFWwindow;
 
-class GLFWWindow : public IWindow {
+class GlfwWindow : public IWindow {
 public:
-    GLFWWindow(int width, int height, const std::string& title);
-    ~GLFWWindow();
+    GlfwWindow();
+    ~GlfwWindow();
 
-    void Initialize() override;
+    void Initialize(unsigned int width, unsigned int height, const std::string& title) override;
     void SwapBuffers() override;
     void PollEvents() override;
     void Run() override;
@@ -23,8 +23,5 @@ public:
     static void Register();
 
 private:
-    int width;
-    int height;
-    std::string title;
     GLFWwindow* window = nullptr;
 };
