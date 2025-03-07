@@ -3,18 +3,18 @@
 #include <string>
 #include <vector>
 
-#include <QuasarEngine/Blockchain/ItemEvent.h>
+#include <QuasarEngine/Blockchain/BlockEvent.h>
 #include <QuasarEngine/Blockchain/Hasher.h>
 
 class Block {
 public:
     int index;
     std::string previousHash;
-    std::vector<ItemEvent> events;
+    std::vector<BlockEvent> events;
     std::string blockHash;
     std::string timestamp;
 
-    Block(int idx, const std::string& prevHash, std::vector<ItemEvent> evts)
+    Block(int idx, const std::string& prevHash, std::vector<BlockEvent> evts)
         : index(idx), previousHash(prevHash), events(evts) {
         time_t now = time(0);
         timestamp = std::to_string(now);

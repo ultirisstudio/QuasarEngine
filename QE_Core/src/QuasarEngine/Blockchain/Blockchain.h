@@ -19,7 +19,7 @@ public:
         chain.push_back(createGenesisBlock());
     }
 
-    void addBlock(const std::vector<ItemEvent>& events) {
+    void addBlock(const std::vector<BlockEvent>& events) {
         int index = chain.size();
         std::string prevHash = chain.back().blockHash;
         Block newBlock(index, prevHash, events);
@@ -30,8 +30,7 @@ public:
         for (const auto& block : chain) {
             std::cout << "Block #" << block.index << " | Hash: " << block.blockHash << "\n";
             for (const auto& event : block.events) {
-                std::cout << "  -> Item: " << event.itemID << " | Action: " << event.action
-                    << " | Value: " << event.value << " | Time: " << event.timestamp << "\n";
+                std::cout << event.printInfos() << std::endl;
             }
             std::cout << "------------------------\n";
         }

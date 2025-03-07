@@ -5,10 +5,16 @@
 
 #include <QuasarEngine/Core/Logger.h>
 
-#include <QuasarEngine/Random/PerlinNoise.h>
+//#include <QuasarEngine/Random/PerlinNoise.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
+//#include <stb_image_write.h>
+
+#include <QuasarEngine/Blockchain/BlockchainManager.h>
+
+#include <QuasarEngine/Crypto/CryptoManager.h>
+
+#include "ItemBlockEvent.h"
 
 class GlfwEditorLayer : public Layer
 {
@@ -87,16 +93,33 @@ public:
 
         std::cout << "Image generee et sauvegardee sous 'perlin_noise_stb.png'" << std::endl;*/
 
-        BlockchainManager manager;
+        CryptoManager::instance().Init_SHA256();
+
+        std::array<uint8_t, 16> key = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x97, 0x75, 0x46, 0x40, 0x09, 0x6c };
+        CryptoManager::instance().Init_AES(key);
+
+        /*BlockchainManager manager;
         manager.addBlockchain();
 
         Blockchain& playerBlockchain = manager.getBlockchain(0);
 
-        playerBlockchain.addBlock({ ItemEvent("Sword", "UPGRADE", 1) });
-        playerBlockchain.addBlock({ ItemEvent("Armor", "DAMAGE_TAKEN", 20) });
-        playerBlockchain.addBlock({ ItemEvent("Monster", "KILL_MOB", 100) });
+        playerBlockchain.addBlock({ ItemBlockEvent("Sword", "UPGRADE", 5) });
+        playerBlockchain.addBlock({ ItemBlockEvent("Armor", "DAMAGE_TAKEN", 20) });
+        playerBlockchain.addBlock({ ItemBlockEvent("Monster", "KILL_MOB", 100) });
+        playerBlockchain.addBlock({ ItemBlockEvent("Potion", "DRINK_POTION", 20) });
+        playerBlockchain.addBlock({ ItemBlockEvent("Coin", "EARN_COIN", 1) });
 
-        playerBlockchain.printBlockchain();
+        playerBlockchain.printBlockchain();*/
+
+        /*std::string message = "Hello, AES-256-CBC!";
+        std::vector<uint8_t> plaintext(message.begin(), message.end());
+
+        std::vector<uint8_t> encrypted = CryptoManager::instance().AES_Encrypt(plaintext);
+        CryptoManager::PrintHex("Encrypted", encrypted);
+
+        std::vector<uint8_t> decrypted = CryptoManager::instance().AES_Decrypt(encrypted);
+        std::string decryptedMessage(decrypted.begin(), decrypted.end());
+        std::cout << "Decrypted: " << decryptedMessage << std::endl;*/
 	}
 
 	~GlfwEditorLayer() = default;

@@ -35,6 +35,7 @@ project "QE_Qt_Editor"
 		"%{IncludeDir.QT_SDK}",
 		
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.mbedtls}",
 		"%{IncludeDir.stb_image}"
 	}
 	
@@ -57,6 +58,7 @@ project "QE_Qt_Editor"
 		"QE_GLFW_Window",
 		"QE_Qt_Window",
 		
+		"mbedtls",
 		"stb_image"
 	}
 	

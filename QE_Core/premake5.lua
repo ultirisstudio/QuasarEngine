@@ -22,7 +22,7 @@ project "QE_Core"
 		"%{IncludeDir.QE_Core}",
 		
 		"%{IncludeDir.glm}",
-		"%{IncludeDir.OpenSSL}",
+		"%{IncludeDir.mbedtls}",
 		
 		"%{IncludeDir.QT_SDK}"
 	}
@@ -39,7 +39,7 @@ project "QE_Core"
 
 	links
 	{
-		"OpenSSL"
+		"mbedtls"
 	}
 
 	filter "system:windows"

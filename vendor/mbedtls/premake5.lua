@@ -11,13 +11,12 @@ project "mbedtls"
 	files
 	{
 		"include/**.h",
-		"library/**.c"
+		"src/**.c"
 	}
 	
 	includedirs
 	{
-		"include",
-		"library"
+		"include"
 	}
 
 	filter "system:windows"
