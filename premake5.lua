@@ -28,6 +28,7 @@ group "DEPENDANCE"
 	include "vendor/tinyfiledialogs"
 	include "vendor/rp3d"
 	include "vendor/mbedtls"
+	include "vendor/OpenSSL"
 	include "vendor/zlib"
 
 group ""

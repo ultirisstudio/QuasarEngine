@@ -86,6 +86,17 @@ public:
         stbi_write_png("perlin_noise_stb.png", width, height, 3, image.data(), width * 3);
 
         std::cout << "Image generee et sauvegardee sous 'perlin_noise_stb.png'" << std::endl;*/
+
+        BlockchainManager manager;
+        manager.addBlockchain();
+
+        Blockchain& playerBlockchain = manager.getBlockchain(0);
+
+        playerBlockchain.addBlock({ ItemEvent("Sword", "UPGRADE", 1) });
+        playerBlockchain.addBlock({ ItemEvent("Armor", "DAMAGE_TAKEN", 20) });
+        playerBlockchain.addBlock({ ItemEvent("Monster", "KILL_MOB", 100) });
+
+        playerBlockchain.printBlockchain();
 	}
 
 	~GlfwEditorLayer() = default;

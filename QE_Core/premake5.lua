@@ -22,6 +22,7 @@ project "QE_Core"
 		"%{IncludeDir.QE_Core}",
 		
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.OpenSSL}",
 		
 		"%{IncludeDir.QT_SDK}"
 	}
@@ -38,7 +39,7 @@ project "QE_Core"
 
 	links
 	{
-		
+		"OpenSSL"
 	}
 
 	filter "system:windows"
