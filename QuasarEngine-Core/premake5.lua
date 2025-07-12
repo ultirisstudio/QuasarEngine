@@ -24,6 +24,7 @@ project "QuasarEngine-Core"
 	{
 		"src",
 		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.Glad}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.assimp}",
@@ -47,6 +48,7 @@ project "QuasarEngine-Core"
 	links
 	{
 		"GLFW",
+		"Glad",
 		"assimp",
 		"ImGui",
 		"ImGuizmo",

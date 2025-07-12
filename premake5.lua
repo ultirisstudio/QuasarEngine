@@ -19,6 +19,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 group "Dependance"
 	include "vendor/GLFW"
+	include "vendor/Glad"
 	include "vendor/assimp"
 	include "vendor/ImGui"
 	include "vendor/ImGuizmo"

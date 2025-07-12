@@ -3,6 +3,7 @@
 #include "QuasarEngine/Renderer/Renderer.h"
 
 #include "Platform/Vulkan/VulkanBuffer.h"
+#include "Platform/OpenGL/OpenGLBuffer.h"
 
 namespace QuasarEngine
 {
@@ -12,6 +13,7 @@ namespace QuasarEngine
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>();
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLVertexBuffer>();
 		}
 
 		return nullptr;
@@ -23,6 +25,7 @@ namespace QuasarEngine
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>(vertices);
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLVertexBuffer>(vertices);
 		}
 
 		return nullptr;
@@ -34,6 +37,7 @@ namespace QuasarEngine
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>();
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLIndexBuffer>();
 		}
 
 		return nullptr;
@@ -45,6 +49,7 @@ namespace QuasarEngine
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>(indices);
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLIndexBuffer>(indices);
 		}
 
 		return nullptr;

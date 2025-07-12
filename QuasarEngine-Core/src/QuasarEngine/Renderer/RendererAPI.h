@@ -13,7 +13,8 @@ namespace QuasarEngine {
 		enum class API
 		{
 			None = 0,
-			Vulkan
+			Vulkan,
+			OpenGL
 		};
 	public:
 		virtual ~RendererAPI() = default;

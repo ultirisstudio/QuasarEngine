@@ -2,10 +2,11 @@
 
 #include "QuasarEngine/Renderer/RendererAPI.h"
 #include "Platform/Vulkan/VulkanRendererAPI.h"
+#include "Platform/OpenGL/OpenGLRendererAPI.h"
 
 namespace QuasarEngine {
 
-	RendererAPI::API RendererAPI::s_API = RendererAPI::API::Vulkan;
+	RendererAPI::API RendererAPI::s_API = RendererAPI::API::OpenGL;
 
 	std::unique_ptr<RendererAPI> RendererAPI::Create()
 	{
@@ -13,6 +14,7 @@ namespace QuasarEngine {
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_unique<VulkanRendererAPI>();
+		case RendererAPI::API::OpenGL:  return std::make_unique<OpenGLRendererAPI>();
 		}
 
 		return nullptr;

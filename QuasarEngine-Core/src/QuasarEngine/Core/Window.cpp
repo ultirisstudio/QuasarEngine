@@ -8,6 +8,7 @@
 #include "QuasarEngine/Renderer/Renderer.h"
 
 #include <GLFW/glfw3.h>
+#include "Logger.h"
 
 namespace QuasarEngine {
 
@@ -27,7 +28,20 @@ namespace QuasarEngine {
 			s_GLFWInitialized = true;
 		}
 
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		switch (RendererAPI::GetAPI())
+		{
+		case RendererAPI::API::OpenGL:
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+			break;
+
+		case RendererAPI::API::Vulkan:
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+			break;
+
+		default:
+			Q_ERROR("Unsupported RendererAPI selected!");
+			break;
+		}
 
 		m_Window = glfwCreateWindow((int)m_Data.Width, (int)m_Data.Height, m_Data.Title.c_str(), nullptr, nullptr);
 
