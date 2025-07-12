@@ -20,13 +20,9 @@
 - [Run](#run)
 - [License](#license)
 
-# Un _peu_ d'histoire
-
-L'idée m'est venue en créant mon premier logiciel qui était un éditeur de courbes utilisant l'interpolation et le bruit de Perlin pour générer des heightmaps. Cet outil servait ensuite pour mon premier moteur de jeu capable de générer des mondes voxels. Insatisfait des limitations de mon premier moteur, j'ai entrepris de développer un moteur de jeu générique doté d'une interface graphique. Ce moteur permettra aux utilisateurs de créer leurs propres jeux vidéo sans contraintes techniques complexes.
-
 ## Le `Projet`
 
-Le projet était donc de créer un moteur de jeu OpenSource pouvant gérer de gros projets et dont les développeurs pourraient ajouter les fonctionnalités dont ils auraient besoin d'une manière simple dont même les débutants pourraient se servir comme base.
+Le projet est donc de créer un moteur de jeu opensource pouvant gérer de gros projets et dont les développeurs pourraient ajouter les fonctionnalités dont ils auraient besoin d'une manière simple dont même les débutants pourraient se servir comme base.
 
 # Requirements
 
@@ -36,7 +32,7 @@ Le projet était donc de créer un moteur de jeu OpenSource pouvant gérer de gr
 ## Install
 
 ```bash
-$ git clone https://github.com/Kurogenshi/VulkanEngine/
+$ git clone https://github.com/ultirisstudio/QuasarEngine/
 $ cd OpenGLEngine
 $ ./scripts/Win_Setup.bat
 $ ./scripts/Win-GenProjects.bat
