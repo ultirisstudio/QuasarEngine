@@ -27,6 +27,7 @@ namespace QuasarEngine
 		spec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
 
 		m_EditorFrameBuffer = Framebuffer::Create(spec);
+        m_EditorFrameBuffer->Invalidate();
 	}
 
 	void EditorViewport::Render(Scene& scene, EditorCamera& camera)

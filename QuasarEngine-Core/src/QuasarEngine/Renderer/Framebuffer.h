@@ -32,7 +32,7 @@ namespace QuasarEngine
 
     struct FramebufferSpecification
     {
-        uint32_t Width = 0, Height = 0;
+        uint32_t Width = 1280, Height = 720;
         FramebufferAttachmentSpecification Attachments;
         uint32_t Samples = 1;
     };
@@ -40,7 +40,7 @@ namespace QuasarEngine
     class Framebuffer
     {
     public:
-        Framebuffer(const FramebufferSpecification& specification) : m_Specification(specification) {}
+        Framebuffer(const FramebufferSpecification& specification);
         virtual ~Framebuffer() = default;
 
         virtual void Bind() const = 0;

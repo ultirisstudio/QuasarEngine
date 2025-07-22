@@ -82,11 +82,14 @@ namespace QuasarEngine
             case FramebufferTextureFormat::RGBA8:			return GL_RGBA8;
             case FramebufferTextureFormat::RED_INTEGER:		return GL_RED_INTEGER;
             case FramebufferTextureFormat::DEPTH24STENCIL8:	return GL_DEPTH24_STENCIL8;
+            default:
+                std::cerr << "Unknown texture format" << std::endl;
+                return 0;
             }
         }
     }
 
-    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& spec) : Framebuffer(spec)
+    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& spec) : Framebuffer(spec), m_ID(0)
     {
         for (auto format : spec.Attachments.Attachments)
         {
@@ -95,8 +98,6 @@ namespace QuasarEngine
             else
                 m_DepthAttachmentSpecification = format;
         }
-
-        Invalidate();
     }
 
     OpenGLFramebuffer::~OpenGLFramebuffer()
@@ -108,6 +109,7 @@ namespace QuasarEngine
 
     void* OpenGLFramebuffer::GetColorAttachment(uint32_t index) const
     {
+        //if (index >= m_ColorAttachments.size()) return nullptr;
         return reinterpret_cast<void*>(static_cast<uintptr_t>(m_ColorAttachments[index]));
     }
 
@@ -149,6 +151,12 @@ namespace QuasarEngine
 
     void OpenGLFramebuffer::Invalidate()
     {
+        if (m_Specification.Width == 0 && m_Specification.Height == 0)
+        {
+            std::cerr << "Width or height equal 0 !" << std::endl;
+            return;
+        }
+
         if (m_ID)
         {
             glDeleteFramebuffers(1, &m_ID);
@@ -210,8 +218,22 @@ namespace QuasarEngine
             glDrawBuffer(GL_NONE);
         }
 
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            std::cout << "framebuffer incomplete" << std::endl;
+        GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE)
+        {
+            std::cerr << "[Framebuffer] Incomplete! Status = 0x" << std::hex << status << std::dec << std::endl;
+            switch (status)
+            {
+            case GL_FRAMEBUFFER_UNDEFINED: std::cerr << "GL_FRAMEBUFFER_UNDEFINED\n"; break;
+            case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n"; break;
+            case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n"; break;
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n"; break;
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n"; break;
+            case GL_FRAMEBUFFER_UNSUPPORTED: std::cerr << "GL_FRAMEBUFFER_UNSUPPORTED\n"; break;
+            case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n"; break;
+            default: std::cerr << "Unknown error\n"; break;
+            }
+        }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }

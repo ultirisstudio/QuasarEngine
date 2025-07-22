@@ -18,5 +18,7 @@ namespace QuasarEngine
 
 		void Bind(int index) const override;
 		void Unbind() const override;
+
+		uint32_t m_ID;
 	};
 }

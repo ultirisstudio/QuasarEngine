@@ -7,9 +7,7 @@
 
 namespace QuasarEngine
 {
-	static uint32_t TEXTURE_COUNT = 0;
-
-	Texture::Texture(const TextureSpecification& specification) : m_ID(TEXTURE_COUNT++), m_Specification(specification)
+	Texture::Texture(const TextureSpecification& specification) : m_Specification(specification)
 	{
 		
 	}

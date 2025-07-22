@@ -76,6 +76,8 @@ namespace QuasarEngine
 			glGetActiveUniform(m_ID, i, sizeof(name), &length, &size, &type, name);
 			int location = glGetUniformLocation(m_ID, name);
 			m_UniformLocations[name] = location;
+
+			std::cout << name << "\n";
 		}
 	}
 
@@ -106,8 +108,15 @@ namespace QuasarEngine
 			default: continue;
 			}
 
-			uint32_t shader = CompileShader(source, glStage);
-			compiledShaders.push_back(shader);
+			try
+			{
+				uint32_t shader = CompileShader(source, glStage);
+				compiledShaders.push_back(shader);
+			}
+			catch (const std::exception& e)
+			{
+				std::cerr << e.what() << std::endl << std::flush;
+			}
 		}
 
 		LinkProgram(compiledShaders);
@@ -139,7 +148,7 @@ namespace QuasarEngine
 		auto it = m_UniformLocations.find(name);
 		if (it == m_UniformLocations.end())
 		{
-			Q_WARNING("Uniform '%s' not found in active shader program", name.c_str());
+			Q_WARNING("Uniform " + name + " not found in active shader program");
 			return;
 		}
 
@@ -158,13 +167,13 @@ namespace QuasarEngine
 
 		if (!desc)
 		{
-			Q_ERROR("Uniform '%s' is not described in shader description", name.c_str());
+			Q_ERROR("Uniform " + name + " is not described in shader description");
 			return;
 		}
 
 		if (desc->size != size)
 		{
-			Q_ERROR("Uniform '%s' size mismatch (expected %zu, got %zu)", name.c_str(), desc->size, size);
+			Q_ERROR("Uniform " + name + " size mismatch (expected " + std::to_string(desc->size) + ", got " + std::to_string(size) + ")");
 			return;
 		}
 

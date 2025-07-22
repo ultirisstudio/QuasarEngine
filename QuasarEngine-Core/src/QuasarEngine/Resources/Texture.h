@@ -68,13 +68,10 @@ namespace QuasarEngine
 	class Texture : public Asset
 	{
 	protected:
-		uint32_t m_ID;
 		TextureSpecification m_Specification;
 	public:
 		explicit Texture(const TextureSpecification& specification);
 		virtual ~Texture() = default;
-
-		unsigned int GetID() const { return m_ID; }
 
 		virtual void* GetHandle() const = 0;
 

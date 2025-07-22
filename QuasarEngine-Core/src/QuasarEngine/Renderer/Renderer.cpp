@@ -28,10 +28,13 @@ namespace QuasarEngine
 
 		Shader::ShaderDescription desc;
 
+		std::string vertPath = "Assets/Shaders/basic.vert." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+		std::string fragPath = "Assets/Shaders/basic.frag." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+
 		desc.modules = {
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
-				"Assets/Shaders/basic.vert.spv",
+				vertPath,
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
@@ -40,7 +43,7 @@ namespace QuasarEngine
 			},
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Fragment,
-				"Assets/Shaders/basic.frag.spv",
+				fragPath,
 				{}
 			}
 		};
@@ -196,8 +199,8 @@ namespace QuasarEngine
 		int point_lights_count = static_cast<int>(point_lights.size());
 		int directional_lights_count = static_cast<int>(directional_lights.size());
 
-		m_SceneData.m_Shader->SetUniform("usePointLight", &point_lights_count, sizeof(int));
-		m_SceneData.m_Shader->SetUniform("useDirLight", &directional_lights_count, sizeof(int));
+		//m_SceneData.m_Shader->SetUniform("usePointLight", &point_lights_count, sizeof(int));
+		//m_SceneData.m_Shader->SetUniform("useDirLight", &directional_lights_count, sizeof(int));
 
 		std::array<PointLight, 4> points_buffer{};
 		for (size_t i = 0; i < point_lights_count; ++i)
@@ -207,8 +210,8 @@ namespace QuasarEngine
 		for (size_t i = 0; i < directional_lights_count; ++i)
 			directionals_buffer[i] = directional_lights[i];
 
-		m_SceneData.m_Shader->SetUniform("pointLights", points_buffer.data(), sizeof(PointLight) * 4);
-		m_SceneData.m_Shader->SetUniform("dirLights", directionals_buffer.data(), sizeof(DirectionalLight) * 4);
+		//m_SceneData.m_Shader->SetUniform("pointLights", points_buffer.data(), sizeof(PointLight) * 4);
+		//m_SceneData.m_Shader->SetUniform("dirLights", directionals_buffer.data(), sizeof(DirectionalLight) * 4);
 
 		if (!m_SceneData.m_Shader->UpdateGlobalState())
 		{
@@ -297,9 +300,6 @@ namespace QuasarEngine
 		m_SceneData.m_Skybox->GetShader()->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
 
 		m_SceneData.m_Skybox->GetShader()->UpdateGlobalState();
-
-		glm::mat4 model = glm::mat4(1.0f);
-		m_SceneData.m_Skybox->GetShader()->SetUniform("model", &model, sizeof(glm::mat4));
 
 		m_SceneData.m_Skybox->GetShader()->SetTexture("skybox", m_SceneData.m_Skybox->GetMaterial()->GetTexture(Albedo));
 

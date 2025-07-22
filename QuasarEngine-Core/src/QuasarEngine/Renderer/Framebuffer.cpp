@@ -18,4 +18,9 @@ namespace QuasarEngine
 
 		return nullptr;
 	}
+
+	Framebuffer::Framebuffer(const FramebufferSpecification& specification) : m_Specification(specification)
+	{
+		
+	}
 }

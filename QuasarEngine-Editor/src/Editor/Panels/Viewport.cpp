@@ -10,6 +10,7 @@ QuasarEngine::Viewport::Viewport()
 	spec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
 
 	m_ViewportFrameBuffer = Framebuffer::Create(spec);
+	m_ViewportFrameBuffer->Invalidate();
 }
 
 void QuasarEngine::Viewport::Render(Scene& scene)

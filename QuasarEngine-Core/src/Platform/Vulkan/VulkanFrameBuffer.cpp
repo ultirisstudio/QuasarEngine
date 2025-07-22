@@ -17,7 +17,7 @@ namespace QuasarEngine
     VulkanFramebuffer::VulkanFramebuffer(const FramebufferSpecification& spec)
         : Framebuffer(spec)
     {
-        Invalidate();
+        
     }
 
     VulkanFramebuffer::~VulkanFramebuffer()
