@@ -23,10 +23,13 @@ namespace QuasarEngine
         void Resize(uint32_t width, uint32_t height) override;
         void Invalidate() override;
 
+        void Resolve() override;
+
         void Bind() const override;
         void Unbind() const override;
 
         void BindColorAttachment(uint32_t index = 0) const override;
+
     private:
         uint32_t m_ID;
         FramebufferSpecification m_Specification;
@@ -36,5 +39,8 @@ namespace QuasarEngine
 
         std::vector<uint32_t> m_ColorAttachments;
         uint32_t m_DepthAttachment = 0;
+        
+        uint32_t m_ResolveFBO = 0;
+        uint32_t m_ResolvedColorTexture = 0;
 	};
 }

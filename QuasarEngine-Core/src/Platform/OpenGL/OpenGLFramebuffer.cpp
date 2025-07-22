@@ -3,6 +3,8 @@
 
 #include <glad/glad.h>
 
+#include "QuasarEngine/Renderer/RenderCommand.h"
+
 namespace QuasarEngine
 {
     namespace Utils
@@ -109,7 +111,7 @@ namespace QuasarEngine
 
     void* OpenGLFramebuffer::GetColorAttachment(uint32_t index) const
     {
-        //if (index >= m_ColorAttachments.size()) return nullptr;
+        if (index >= m_ColorAttachments.size()) return nullptr;
         return reinterpret_cast<void*>(static_cast<uintptr_t>(m_ColorAttachments[index]));
     }
 
@@ -210,8 +212,10 @@ namespace QuasarEngine
             if (m_ColorAttachments.size() > 4)
                 std::cout << "Framebuffer has more than 4 attachments!" << std::endl;
 
-            GLenum buffers[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
-            glDrawBuffers((GLsizei)m_ColorAttachments.size(), buffers);
+            std::vector<GLenum> buffers(m_ColorAttachments.size());
+            for (size_t i = 0; i < buffers.size(); ++i)
+                buffers[i] = GL_COLOR_ATTACHMENT0 + i;
+            glDrawBuffers((GLsizei)buffers.size(), buffers.data());
         }
         else if (m_ColorAttachments.empty())
         {
@@ -236,12 +240,51 @@ namespace QuasarEngine
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        if (multisample)
+        {
+            if (m_ResolveFBO)
+            {
+                glDeleteFramebuffers(1, &m_ResolveFBO);
+                glDeleteTextures(1, &m_ResolvedColorTexture);
+            }
+
+            glGenTextures(1, &m_ResolvedColorTexture);
+            glBindTexture(GL_TEXTURE_2D, m_ResolvedColorTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_Specification.Width, m_Specification.Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            glGenFramebuffers(1, &m_ResolveFBO);
+            glBindFramebuffer(GL_FRAMEBUFFER, m_ResolveFBO);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ResolvedColorTexture, 0);
+
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                std::cerr << "[Resolve FBO] Incomplete!" << std::endl;
+        }
+
+    }
+
+    void OpenGLFramebuffer::Resolve()
+    {
+        if (m_Specification.Samples <= 1) return;
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, m_ID);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_ResolveFBO);
+
+        glBlitFramebuffer(
+            0, 0, m_Specification.Width, m_Specification.Height,
+            0, 0, m_Specification.Width, m_Specification.Height,
+            GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     void OpenGLFramebuffer::Bind() const
     {
         glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
-        //glViewport(0, 0, m_Specification.Width, m_Specification.Height);
+        
+        RenderCommand::SetViewport(0, 0, m_Specification.Width, m_Specification.Height);
     }
 
     void OpenGLFramebuffer::Unbind() const

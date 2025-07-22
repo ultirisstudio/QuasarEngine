@@ -27,7 +27,7 @@ namespace QuasarEngine {
 			s_RendererAPI->Clear();
 		}
 
-		static void SetDepthText(bool enabled)
+		static void SetDepthTest(bool enabled)
 		{
 			s_RendererAPI->SetDepthTest(enabled);
 		}

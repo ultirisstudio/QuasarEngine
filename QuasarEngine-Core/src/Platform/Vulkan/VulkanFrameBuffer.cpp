@@ -41,6 +41,11 @@ namespace QuasarEngine
         CreateDescriptorSets();
     }
 
+    void VulkanFramebuffer::Resolve()
+    {
+
+    }
+
     void VulkanFramebuffer::CreateAttachments()
     {
         const auto& device = VulkanContext::Context.device->device;

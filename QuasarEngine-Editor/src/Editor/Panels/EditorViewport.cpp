@@ -33,16 +33,16 @@ namespace QuasarEngine
 	void EditorViewport::Render(Scene& scene, EditorCamera& camera)
 	{
 		m_EditorFrameBuffer->Bind();
-
-		//RenderCommand::Clear();
-		//RenderCommand::ClearColor(glm::vec4(0.5f, 0.5f, .5f, 1.0f));
+        
+		RenderCommand::Clear();
+		RenderCommand::ClearColor(glm::vec4(0.5f, 0.5f, .5f, 1.0f));
 
 		//m_EditorFrameBuffer->ClearAttachment(1, -1);
 
 		Renderer::BeginScene(scene);
 
 		Renderer::Render(camera);
-		Renderer::RenderSkybox(camera);
+		//Renderer::RenderSkybox(camera);
 
 		/*auto [mx, my] = ImGui::GetMousePos();
 		mx -= m_EditorViewportBounds[0].x;
@@ -110,7 +110,7 @@ namespace QuasarEngine
             void* handle = m_EditorFrameBuffer->GetColorAttachment(0);
             if (handle)
             {
-                ImGui::Image((ImTextureID)handle, ImVec2{ m_EditorViewportSize.x, m_EditorViewportSize.y }, ImVec2{ 0, 0 }, ImVec2{ 1, 1 });
+                ImGui::Image((ImTextureID)handle, ImVec2{ m_EditorViewportSize.x, m_EditorViewportSize.y }, RendererAPI::GetAPI() == RendererAPI::API::OpenGL ? ImVec2{ 0, 1 } : ImVec2{ 0, 0 }, RendererAPI::GetAPI() == RendererAPI::API::OpenGL ? ImVec2{ 1, 0 } : ImVec2{ 1, 1 });
             }
         }
 
@@ -225,5 +225,4 @@ namespace QuasarEngine
         ImGui::End();
         */
     }
-
 }

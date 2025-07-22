@@ -21,6 +21,8 @@ namespace QuasarEngine
         void Resize(uint32_t width, uint32_t height) override;
         void Invalidate() override;
 
+        void Resolve() override;
+
         void Bind() const override;
         void Unbind() const override;
 

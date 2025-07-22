@@ -50,6 +50,8 @@ namespace QuasarEngine
 
         virtual void Invalidate() = 0;
 
+        virtual void Resolve() = 0;
+
         virtual int ReadPixel(uint32_t attachmentIndex, int x, int y) = 0;
         virtual void ClearAttachment(uint32_t attachmentIndex, int value) = 0;
 

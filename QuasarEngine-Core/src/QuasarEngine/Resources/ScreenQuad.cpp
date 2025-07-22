@@ -39,7 +39,7 @@ namespace QuasarEngine
 
     void ScreenQuad::Draw() const
     {
-        RenderCommand::SetDepthText(false);
+        RenderCommand::SetDepthTest(false);
 
         RenderCommand::ClearColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         RenderCommand::Clear();
@@ -50,6 +50,6 @@ namespace QuasarEngine
 
         RenderCommand::DrawElements(DrawMode::TRIANGLES, count);
 
-        RenderCommand::SetDepthText(true);
+        RenderCommand::SetDepthTest(true);
     }
 }

@@ -49,7 +49,7 @@ namespace QuasarEngine {
 
 		m_Context = GraphicsContext::Create(m_Window);
 
-		SetVSync(true);
+		SetVSync(false);
 
 		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
 		{
