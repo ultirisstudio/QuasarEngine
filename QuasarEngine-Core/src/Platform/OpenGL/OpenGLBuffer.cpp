@@ -23,10 +23,16 @@ namespace QuasarEngine
 	void OpenGLUniformBuffer::SetData(const void* data, size_t size)
 	{
 		if (size > m_Size)
-			throw std::runtime_error("Uniform buffer size exceeded");
+			throw std::runtime_error("Uniform buffer size exceeded: requested " + std::to_string(size) + " bytes, but buffer size is " + std::to_string(m_Size) + " bytes.");
+
+		if (size != m_Size)
+		{
+			std::cerr << "[Warning] Uniform buffer size mismatch: expected " << m_Size << " bytes but got " << size << " bytes." << std::endl;
+		}
 
 		glBindBuffer(GL_UNIFORM_BUFFER, m_ID);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, size, data);
+		glBindBufferBase(GL_UNIFORM_BUFFER, m_Binding, m_ID);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 

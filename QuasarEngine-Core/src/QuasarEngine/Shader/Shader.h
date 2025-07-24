@@ -66,6 +66,11 @@ namespace QuasarEngine
             Unknown
         };
 
+        enum class SamplerType {
+            Sampler2D,
+            SamplerCube
+        };
+
         struct ShaderUniformDesc {
             std::string      name;
             ShaderUniformType type;
@@ -145,11 +150,13 @@ namespace QuasarEngine
 
 		virtual void SetUniform(const std::string& name, void* data, size_t size) = 0;
 
-        virtual void SetTexture(const std::string& name, Texture* texture) = 0;
+        virtual void SetTexture(const std::string& name, Texture* texture, SamplerType type = SamplerType::Sampler2D) = 0;
 
 		virtual void Use() = 0;
 		virtual void Unuse() = 0;
 
 		virtual void Reset() = 0;
+
+        virtual void ApplyPipelineStates() = 0;
 	};
 }

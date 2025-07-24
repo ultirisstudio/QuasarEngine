@@ -40,6 +40,7 @@ namespace QuasarEngine
 		};
 
 		desc.objectUniforms = {
+			{"model", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), 0, 1, 0, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
 		};
 
 		desc.samplers = {

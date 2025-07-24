@@ -6,7 +6,7 @@
 
 namespace QuasarEngine {
 
-	RendererAPI::API RendererAPI::s_API = RendererAPI::API::OpenGL;
+	RendererAPI::API RendererAPI::s_API = RendererAPI::API::Vulkan;
 
 	std::unique_ptr<RendererAPI> RendererAPI::Create()
 	{

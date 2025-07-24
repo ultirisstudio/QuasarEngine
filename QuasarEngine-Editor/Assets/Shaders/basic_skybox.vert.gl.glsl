@@ -1,18 +1,19 @@
-#version 330 core
+#version 450 core
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 
-out vec3 TexCoords;
+layout(location = 0) out vec3 outTexCoord;
 
-uniform mat4 view;
-uniform mat4 projection;
+layout(std140, binding = 0) uniform global_uniform_object {
+	mat4 view;
+	mat4 projection;
+} global_ubo;
 
 void main()
 {
-    mat4 rotView = mat4(mat3(view));
-
-    gl_Position = projection * rotView * vec4(inPosition, 1.0);
-    TexCoords = inPosition;
+    outTexCoord = inPosition;
+    mat4 rotView = mat4(mat3(global_ubo.view));
+    gl_Position = global_ubo.projection * rotView * vec4(inPosition, 1.0);
 }

@@ -46,6 +46,8 @@ namespace QuasarEngine
 		bool AcquireResources(Material* material) override;
 		void ReleaseResources(Material* material) override;
 
+		void ApplyPipelineStates() override {}
+
 		std::vector<VulkanShaderStage> CreateShaderStages(VkDevice device);
 		VkShaderModule CreateVkShaderModule(VkDevice device, const std::vector<uint32_t>& code);
 
@@ -79,6 +81,7 @@ namespace QuasarEngine
 		ShaderDescription m_Description;
 
 		std::unordered_map<std::string, VulkanTexture2D*> m_ObjectTextures;
+		std::unordered_map<std::string, Shader::SamplerType> m_ObjectTextureTypes;
 
 		std::unordered_map<std::string, const ShaderUniformDesc*> m_GlobalUniformMap;
 		std::unordered_map<std::string, const ShaderUniformDesc*> m_ObjectUniformMap;
@@ -90,6 +93,6 @@ namespace QuasarEngine
 
 		void SetUniform(const std::string& name, void* data, size_t size) override;
 
-		void SetTexture(const std::string& name, Texture* texture) override;
+		void SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
 	};
 }

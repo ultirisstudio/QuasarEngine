@@ -175,10 +175,17 @@ namespace QuasarEngine {
 
 	void Window::SetVSync(bool enabled)
 	{
-		//if (enabled)
-			//glfwSwapInterval(1);
-		//else
-			//glfwSwapInterval(0);
+		if (RendererAPI::GetAPI() == RendererAPI::API::OpenGL)
+		{
+			if (enabled)
+			{
+				glfwSwapInterval(1);
+			}
+			else
+			{
+				glfwSwapInterval(0);
+			}
+		}
 
 		m_Data.VSync = enabled;
 	}

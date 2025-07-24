@@ -1,12 +1,16 @@
-#version 330 core
+#version 450 core
 
-in vec3 TexCoords;
-out vec4 FragColor;
+layout(location = 0) out vec4 outColor;
+
+layout(location = 0) in vec3 inTexCoord;
+
+layout(std140, binding = 0) uniform local_uniform_object {
+    mat4 model;
+} object_ubo;
 
 uniform samplerCube skybox;
 
 void main()
 {
-    //FragColor = texture(skybox, TexCoords);
-	FragColor = vec4(TexCoords * 0.5 + 0.5, 1.0);
+    outColor = texture(skybox, inTexCoord);
 }

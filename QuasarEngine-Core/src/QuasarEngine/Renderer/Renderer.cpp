@@ -201,8 +201,8 @@ namespace QuasarEngine
 		int point_lights_count = static_cast<int>(point_lights.size());
 		int directional_lights_count = static_cast<int>(directional_lights.size());
 
-		//m_SceneData.m_Shader->SetUniform("usePointLight", &point_lights_count, sizeof(int));
-		//m_SceneData.m_Shader->SetUniform("useDirLight", &directional_lights_count, sizeof(int));
+		m_SceneData.m_Shader->SetUniform("usePointLight", &point_lights_count, sizeof(int));
+		m_SceneData.m_Shader->SetUniform("useDirLight", &directional_lights_count, sizeof(int));
 
 		std::array<PointLight, 4> points_buffer{};
 		for (size_t i = 0; i < point_lights_count; ++i)
@@ -212,8 +212,8 @@ namespace QuasarEngine
 		for (size_t i = 0; i < directional_lights_count; ++i)
 			directionals_buffer[i] = directional_lights[i];
 
-		//m_SceneData.m_Shader->SetUniform("pointLights", points_buffer.data(), sizeof(PointLight) * 4);
-		//m_SceneData.m_Shader->SetUniform("dirLights", directionals_buffer.data(), sizeof(DirectionalLight) * 4);
+		m_SceneData.m_Shader->SetUniform("pointLights", points_buffer.data(), sizeof(PointLight) * 4);
+		m_SceneData.m_Shader->SetUniform("dirLights", directionals_buffer.data(), sizeof(DirectionalLight) * 4);
 
 		if (!m_SceneData.m_Shader->UpdateGlobalState())
 		{
@@ -293,8 +293,6 @@ namespace QuasarEngine
 
 	void Renderer::RenderSkybox(BaseCamera& camera)
 	{
-		//glDepthMask(GL_FALSE);
-
 		m_SceneData.m_Skybox->Bind();
 
 		glm::mat4 viewMatrix = camera.getViewMatrix();
@@ -305,15 +303,13 @@ namespace QuasarEngine
 
 		m_SceneData.m_Skybox->GetShader()->UpdateGlobalState();
 
-		m_SceneData.m_Skybox->GetShader()->SetTexture("skybox", m_SceneData.m_Skybox->GetMaterial()->GetTexture(Albedo));
+		m_SceneData.m_Skybox->GetShader()->SetTexture("skybox", m_SceneData.m_Skybox->GetMaterial()->GetTexture(Albedo), Shader::SamplerType::SamplerCube);
 
 		m_SceneData.m_Skybox->GetShader()->UpdateObject(m_SceneData.m_Skybox->GetMaterial());
 
 		m_SceneData.m_Skybox->Draw();
 
 		m_SceneData.m_Skybox->Unbind();
-
-		//glDepthMask(GL_TRUE);
 	}
 
 	void Renderer::EndScene()

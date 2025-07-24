@@ -41,8 +41,8 @@ namespace QuasarEngine
 
 		Renderer::BeginScene(scene);
 
+        Renderer::RenderSkybox(camera);
 		Renderer::Render(camera);
-		//Renderer::RenderSkybox(camera);
 
 		/*auto [mx, my] = ImGui::GetMousePos();
 		mx -= m_EditorViewportBounds[0].x;

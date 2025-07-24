@@ -25,6 +25,16 @@ namespace QuasarEngine
 		}
 	}
 
+	static GLenum SamplerTypeToGL(Shader::SamplerType type)
+	{
+		switch (type)
+		{
+		case Shader::SamplerType::Sampler2D:        return GL_TEXTURE_2D;
+		case Shader::SamplerType::SamplerCube:		return GL_TEXTURE_CUBE_MAP;
+		default:                      return GL_TEXTURE_2D;
+		}
+	}
+
 	std::string OpenGLShader::ReadFile(const std::string& path)
 	{
 		std::ifstream file(path);
@@ -95,11 +105,34 @@ namespace QuasarEngine
 
 			std::cout << name << "\n";
 		}
+
+		GLint numBlocks = 0;
+		glGetProgramiv(m_ID, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
+		char bname[128];
+
+		for (int i = 0; i < numBlocks; ++i)
+		{
+			GLsizei len = 0;
+			glGetActiveUniformBlockName(m_ID, i, sizeof(bname), &len, bname);
+			std::cout << "Uniform Block #" << i << ": " << bname << std::endl;
+		}
 	}
 
 	OpenGLShader::OpenGLShader(const ShaderDescription& desc)
 		: m_Description(desc)
 	{
+		size_t globalSize = 0;
+		for (const auto& uniform : m_Description.globalUniforms)
+			globalSize = std::max(globalSize, uniform.offset + uniform.size);
+		m_GlobalUniformData.resize(globalSize);
+		m_GlobalUBO = std::make_unique<OpenGLUniformBuffer>(globalSize, 0);
+
+		size_t objectSize = 0;
+		for (const auto& uniform : m_Description.objectUniforms)
+			objectSize = std::max(objectSize, uniform.offset + uniform.size);
+		m_ObjectUniformData.resize(objectSize);
+		m_ObjectUBO = std::make_unique<OpenGLUniformBuffer>(objectSize, 1);
+
 		for (const auto& uniform : m_Description.globalUniforms)
 			m_GlobalUniformMap[uniform.name] = &uniform;
 
@@ -135,8 +168,41 @@ namespace QuasarEngine
 			}
 		}
 
-		LinkProgram(compiledShaders);
+		try
+		{
+			LinkProgram(compiledShaders);
+		}
+		catch (const std::exception& e)
+		{
+			Q_ERROR("Erreur lors du linkage du shader : " + std::string(e.what()));
+			throw;
+		}
+
 		ExtractUniformLocations();
+
+		TextureSpecification spec;
+		spec.width = 2;
+		spec.height = 2;
+		spec.format = TextureFormat::RGBA;
+		spec.internal_format = TextureFormat::RGBA;
+		spec.compressed = false;
+		spec.alpha = true;
+		spec.flip = false;
+		spec.wrap_s = TextureWrap::REPEAT;
+		spec.wrap_t = TextureWrap::REPEAT;
+		spec.wrap_r = TextureWrap::REPEAT;
+		spec.min_filter_param = TextureFilter::NEAREST;
+		spec.mag_filter_param = TextureFilter::NEAREST;
+
+		std::vector<unsigned char> bluePixels(4 * spec.width * spec.height, 0);
+		for (int i = 0; i < spec.width * spec.height; ++i) {
+			bluePixels[i * 4 + 0] = 255;
+			bluePixels[i * 4 + 1] = 0;
+			bluePixels[i * 4 + 2] = 0;
+			bluePixels[i * 4 + 3] = 255;
+		}
+		defaultBlueTexture = new OpenGLTexture2D(spec);
+		defaultBlueTexture->LoadFromData(bluePixels.data(), bluePixels.size());
 	}
 
 	OpenGLShader::~OpenGLShader()
@@ -161,70 +227,87 @@ namespace QuasarEngine
 		
 	}
 
+	bool OpenGLShader::UpdateGlobalState()
+	{
+		m_GlobalUBO->SetData(m_GlobalUniformData.data(), m_GlobalUniformData.size());
+		m_GlobalUBO->BindToShader(m_ID, "global_uniform_object");
+
+		return true;
+	}
+
+	bool OpenGLShader::UpdateObject(Material* material)
+	{
+		m_ObjectUBO->SetData(m_ObjectUniformData.data(), m_ObjectUniformData.size());
+		m_ObjectUBO->BindToShader(m_ID, "local_uniform_object");
+
+		for (const auto& samplerDesc : m_Description.samplers)
+		{
+			OpenGLTexture2D* tex = defaultBlueTexture;
+
+			auto it = m_ObjectTextures.find(samplerDesc.name);
+			if (it != m_ObjectTextures.end() && it->second)
+				tex = it->second;
+
+			if (!tex || tex->GetHandle() == 0)
+			{
+				Q_ERROR("Invalid texture for sampler " + samplerDesc.name);
+				continue;
+			}
+
+			GLenum type = GL_TEXTURE_2D;
+
+			auto it2 = m_ObjectTextureTypes.find(samplerDesc.name);
+			if (it2 != m_ObjectTextureTypes.end())
+				type = SamplerTypeToGL(it2->second);
+
+			glActiveTexture(GL_TEXTURE0 + samplerDesc.binding);
+			glBindTexture(type, reinterpret_cast<GLuint>(tex->GetHandle()));
+
+			auto loc = m_UniformLocations.find(samplerDesc.name);
+			if (loc != m_UniformLocations.end())
+				glUniform1i(loc->second, samplerDesc.binding);
+		}
+
+		return true;
+	}
+
 	void OpenGLShader::SetUniform(const std::string& name, void* data, size_t size)
 	{
-		auto it = m_UniformLocations.find(name);
-		if (it == m_UniformLocations.end())
+		auto gIt = m_GlobalUniformMap.find(name);
+		if (gIt != m_GlobalUniformMap.end())
 		{
-			Q_WARNING("Uniform " + name + " not found in active shader program");
+			const auto* desc = gIt->second;
+			if (desc->offset + desc->size <= m_GlobalUniformData.size())
+				std::memcpy(m_GlobalUniformData.data() + desc->offset, data, desc->size);
 			return;
 		}
 
-		int location = it->second;
-
-		const ShaderUniformDesc* desc = nullptr;
-		auto globalIt = m_GlobalUniformMap.find(name);
-		if (globalIt != m_GlobalUniformMap.end())
-			desc = globalIt->second;
-		else
+		auto oIt = m_ObjectUniformMap.find(name);
+		if (oIt != m_ObjectUniformMap.end())
 		{
-			auto objectIt = m_ObjectUniformMap.find(name);
-			if (objectIt != m_ObjectUniformMap.end())
-				desc = objectIt->second;
-		}
-
-		if (!desc)
-		{
-			Q_ERROR("Uniform " + name + " is not described in shader description");
+			const auto* desc = oIt->second;
+			if (desc->offset + desc->size <= m_ObjectUniformData.size())
+				std::memcpy(m_ObjectUniformData.data() + desc->offset, data, desc->size);
 			return;
 		}
 
-		if (desc->size != size)
+		Q_WARNING("Uniform non trouvé : " + name);
+	}
+
+	void OpenGLShader::SetTexture(const std::string& name, Texture* texture, SamplerType type)
+	{
+		auto it = std::find_if(
+			m_Description.samplers.begin(), m_Description.samplers.end(),
+			[&](const ShaderSamplerDesc& desc) { return desc.name == name; });
+
+		if (it == m_Description.samplers.end())
 		{
-			Q_ERROR("Uniform " + name + " size mismatch (expected " + std::to_string(desc->size) + ", got " + std::to_string(size) + ")");
+			Q_ERROR("Sampler '%s' not found in shader description!", name.c_str());
 			return;
 		}
 
-		switch (desc->type)
-		{
-		case ShaderUniformType::Float:
-			glUniform1f(location, *reinterpret_cast<float*>(data));
-			break;
-		case ShaderUniformType::Vec2:
-			glUniform2fv(location, 1, glm::value_ptr(*reinterpret_cast<glm::vec2*>(data)));
-			break;
-		case ShaderUniformType::Vec3:
-			glUniform3fv(location, 1, glm::value_ptr(*reinterpret_cast<glm::vec3*>(data)));
-			break;
-		case ShaderUniformType::Vec4:
-			glUniform4fv(location, 1, glm::value_ptr(*reinterpret_cast<glm::vec4*>(data)));
-			break;
-		case ShaderUniformType::Int:
-			glUniform1i(location, *reinterpret_cast<int*>(data));
-			break;
-		case ShaderUniformType::UInt:
-			glUniform1ui(location, *reinterpret_cast<uint32_t*>(data));
-			break;
-		case ShaderUniformType::Mat3:
-			glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(*reinterpret_cast<glm::mat3*>(data)));
-			break;
-		case ShaderUniformType::Mat4:
-			glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(*reinterpret_cast<glm::mat4*>(data)));
-			break;
-		default:
-			Q_ERROR("Unsupported uniform type for '%s'", name.c_str());
-			break;
-		}
+		m_ObjectTextures[name] = texture ? dynamic_cast<OpenGLTexture2D*>(texture) : defaultBlueTexture;
+		m_ObjectTextureTypes[name] = type;
 	}
 
 	void OpenGLShader::ApplyPipelineStates()

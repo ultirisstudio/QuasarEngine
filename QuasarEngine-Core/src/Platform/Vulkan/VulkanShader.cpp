@@ -828,7 +828,7 @@ namespace QuasarEngine
 		Q_ERROR("Uniform '%s' not found", name.c_str());
 	}
 
-	void VulkanShader::SetTexture(const std::string& name, Texture* texture)
+	void VulkanShader::SetTexture(const std::string& name, Texture* texture, SamplerType type)
 	{
 		auto it = std::find_if(
 			m_Description.samplers.begin(), m_Description.samplers.end(),

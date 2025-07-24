@@ -1,8 +1,8 @@
-#version 330 core
+#version 450 core
 
-in vec2 inTexCoord;
-in vec3 inWorldPos;
-in vec3 inNormal;
+layout(location = 0) in vec2 inTexCoord;
+layout(location = 1) in vec3 inWorldPos;
+layout(location = 2) in vec3 inNormal;
 
 out vec4 outColor;
 
@@ -22,25 +22,32 @@ struct DirLight {
 #define NR_POINT_LIGHTS 4
 #define NR_DIR_LIGHTS 4
 
-uniform vec3 camera_position;
+layout(std140, binding = 0) uniform global_uniform_object  {
+    mat4 view;
+	mat4 projection;
+	vec3 camera_position;
+	
+	int usePointLight;
+	int useDirLight;
+	
+	PointLight pointLights[NR_POINT_LIGHTS];
+	DirLight dirLights[NR_DIR_LIGHTS];
+} global_ubo;
 
-uniform int usePointLight;
-uniform int useDirLight;
-
-uniform PointLight pointLights[NR_POINT_LIGHTS];
-uniform DirLight dirLights[NR_DIR_LIGHTS];
-
-uniform mat4 model;
-uniform vec4 albedo;
-uniform float roughness;
-uniform float metallic;
-uniform float ao;
-
-uniform int has_albedo_texture;
-uniform int has_normal_texture;
-uniform int has_roughness_texture;
-uniform int has_metallic_texture;
-uniform int has_ao_texture;
+layout(std140, binding = 1) uniform local_uniform_object  {
+    mat4 model;
+	
+    vec4 albedo;
+    float roughness;
+    float metallic;
+    float ao;
+	
+    int has_albedo_texture;
+    int has_normal_texture;
+    int has_roughness_texture;
+    int has_metallic_texture;
+    int has_ao_texture;
+} object_ubo;
 
 uniform sampler2D albedo_texture;
 uniform sampler2D normal_texture;
@@ -49,6 +56,15 @@ uniform sampler2D metallic_texture;
 uniform sampler2D ao_texture;
 
 const float PI = 3.14159265359;
+
+void _ensureSamplersUsed()
+{
+    vec4 dummy = texture(normal_texture, vec2(0.0))
+               + texture(roughness_texture, vec2(0.0))
+               + texture(metallic_texture, vec2(0.0))
+               + texture(ao_texture, vec2(0.0));
+    if (dummy.r < 0.0) discard; // Jamais exécuté mais empêche l'optimisation
+}
 
 vec3 getNormalFromMap()
 {
@@ -70,7 +86,7 @@ vec3 getNormalFromMap()
 vec3 getNormal()
 {
     vec3 n = normalize(inNormal);
-    if (has_normal_texture != 0) {
+    if (object_ubo.has_normal_texture != 0) {
         n = getNormalFromMap();
     }
     return n;
@@ -78,30 +94,30 @@ vec3 getNormal()
 
 float getRoughness()
 {
-    if (has_roughness_texture != 0)
+    if (object_ubo.has_roughness_texture != 0)
         return texture(roughness_texture, inTexCoord).r;
-    return roughness;
+    return object_ubo.roughness;
 }
 
 float getMetallic()
 {
-    if (has_metallic_texture != 0)
+    if (object_ubo.has_metallic_texture != 0)
         return texture(metallic_texture, inTexCoord).r;
-    return metallic;
+    return object_ubo.metallic;
 }
 
 float getAO()
 {
-    if (has_ao_texture != 0)
+    if (object_ubo.has_ao_texture != 0)
         return texture(ao_texture, inTexCoord).r;
-    return ao;
+    return object_ubo.ao;
 }
 
 vec4 getAlbedo()
 {
-    if (has_albedo_texture != 0)
+    if (object_ubo.has_albedo_texture != 0)
         return texture(albedo_texture, inTexCoord);
-    return albedo;
+    return object_ubo.albedo;
 }
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -198,6 +214,8 @@ vec3 calculateDirLightReflectance(DirLight light, vec3 V, vec3 N, vec3 F0, vec3 
 
 void main()
 {
+	_ensureSamplersUsed();
+
     vec4 f_albedo = getAlbedo();
 	
 	if (f_albedo.a < 0.5)
@@ -209,19 +227,19 @@ void main()
     float f_ao = getAO();
 
     vec3 N = getNormal();
-    vec3 V = normalize(camera_position - inWorldPos);
+    vec3 V = normalize(global_ubo.camera_position - inWorldPos);
     vec3 R = reflect(-V, N); 
 	
     vec3 F0 = mix(vec3(0.04), baseColor, f_metallic);
 	
 	vec3 Lo = vec3(0.0);
-    for(int i = 0; i < usePointLight; ++i)
+    for(int i = 0; i < global_ubo.usePointLight; ++i)
     {
-        Lo += calculatePointLightReflectance(pointLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
+        Lo += calculatePointLightReflectance(global_ubo.pointLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
     }
-    for(int i = 0; i < useDirLight; ++i)
+    for(int i = 0; i < global_ubo.useDirLight; ++i)
     {
-        Lo += calculateDirLightReflectance(dirLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
+        Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
     }
 	
 	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, f_roughness);
@@ -237,8 +255,7 @@ void main()
 	
 	vec3 ambient = (kD * diffuse + specular) * f_ao;
 	
-	//vec3 result = ambient + Lo;
-	vec3 result = diffuse;
+	vec3 result = ambient + Lo;
 	
 	// HDR tonemapping
 	result = result / (result + vec3(1.0));
