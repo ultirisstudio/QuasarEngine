@@ -156,7 +156,5 @@ namespace QuasarEngine
 		virtual void Unuse() = 0;
 
 		virtual void Reset() = 0;
-
-        virtual void ApplyPipelineStates() = 0;
 	};
 }

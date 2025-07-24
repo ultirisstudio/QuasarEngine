@@ -103,10 +103,10 @@ namespace QuasarEngine
 			int location = glGetUniformLocation(m_ID, name);
 			m_UniformLocations[name] = location;
 
-			std::cout << name << "\n";
+			//std::cout << name << "\n";
 		}
 
-		GLint numBlocks = 0;
+		/*GLint numBlocks = 0;
 		glGetProgramiv(m_ID, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
 		char bname[128];
 
@@ -115,7 +115,7 @@ namespace QuasarEngine
 			GLsizei len = 0;
 			glGetActiveUniformBlockName(m_ID, i, sizeof(bname), &len, bname);
 			std::cout << "Uniform Block #" << i << ": " << bname << std::endl;
-		}
+		}*/
 	}
 
 	OpenGLShader::OpenGLShader(const ShaderDescription& desc)

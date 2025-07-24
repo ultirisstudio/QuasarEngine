@@ -46,8 +46,6 @@ namespace QuasarEngine
 		bool AcquireResources(Material* material) override;
 		void ReleaseResources(Material* material) override;
 
-		void ApplyPipelineStates() override {}
-
 		std::vector<VulkanShaderStage> CreateShaderStages(VkDevice device);
 		VkShaderModule CreateVkShaderModule(VkDevice device, const std::vector<uint32_t>& code);
 

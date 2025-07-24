@@ -32,7 +32,12 @@ namespace QuasarEngine
 		void SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
 
 	private:
-		void ApplyPipelineStates() override;
+		void ApplyPipelineStates();
+		void LinkProgram(const std::vector<uint32_t>& shaders);
+		void ExtractUniformLocations();
+
+		std::string ReadFile(const std::string& path);
+		uint32_t CompileShader(const std::string& source, uint32_t type);
 
 		uint32_t m_ID = 0;
 		std::unordered_map<std::string, int> m_UniformLocations;
@@ -51,10 +56,5 @@ namespace QuasarEngine
 		OpenGLTexture2D* defaultBlueTexture;
 
 		ShaderDescription m_Description;
-
-		std::string ReadFile(const std::string& path);
-		uint32_t CompileShader(const std::string& source, uint32_t type);
-		void LinkProgram(const std::vector<uint32_t>& shaders);
-		void ExtractUniformLocations();
 	};
 }

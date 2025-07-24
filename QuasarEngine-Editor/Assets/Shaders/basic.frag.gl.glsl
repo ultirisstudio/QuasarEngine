@@ -57,15 +57,6 @@ uniform sampler2D ao_texture;
 
 const float PI = 3.14159265359;
 
-void _ensureSamplersUsed()
-{
-    vec4 dummy = texture(normal_texture, vec2(0.0))
-               + texture(roughness_texture, vec2(0.0))
-               + texture(metallic_texture, vec2(0.0))
-               + texture(ao_texture, vec2(0.0));
-    if (dummy.r < 0.0) discard; // Jamais exécuté mais empêche l'optimisation
-}
-
 vec3 getNormalFromMap()
 {
     vec3 tangentNormal = texture(normal_texture, inTexCoord).xyz * 2.0 - 1.0;
@@ -214,46 +205,44 @@ vec3 calculateDirLightReflectance(DirLight light, vec3 V, vec3 N, vec3 F0, vec3 
 
 void main()
 {
-	_ensureSamplersUsed();
-
-    vec4 f_albedo = getAlbedo();
+	vec4 albedo = getAlbedo();
 	
-	if (f_albedo.a < 0.5)
+	if (albedo.a < 0.5)
 		discard;
 	
-	vec3 baseColor = f_albedo.rgb;
-    float f_metallic = getMetallic();
-    float f_roughness = clamp(getRoughness(), 0.05, 1.0);
-    float f_ao = getAO();
+	vec3 baseColor = albedo.rgb;
+    float metallic = getMetallic();
+    float roughness = clamp(getRoughness(), 0.05, 1.0);
+    float ao = getAO();
 
     vec3 N = getNormal();
     vec3 V = normalize(global_ubo.camera_position - inWorldPos);
     vec3 R = reflect(-V, N); 
 	
-    vec3 F0 = mix(vec3(0.04), baseColor, f_metallic);
+    vec3 F0 = mix(vec3(0.04), baseColor, metallic);
 	
 	vec3 Lo = vec3(0.0);
     for(int i = 0; i < global_ubo.usePointLight; ++i)
     {
-        Lo += calculatePointLightReflectance(global_ubo.pointLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
+        Lo += calculatePointLightReflectance(global_ubo.pointLights[i], V, N, F0, baseColor, roughness, metallic);
     }
     for(int i = 0; i < global_ubo.useDirLight; ++i)
     {
-        Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
+        Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, baseColor, roughness, metallic);
     }
 	
-	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, f_roughness);
+	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 	
 	vec3 kS = F; 
     vec3 kD = 1.0 - kS;
-    kD *= 1.0 - f_metallic;
+    kD *= 1.0 - metallic;
 	
 	vec3 ambientColor = vec3(0.25, 0.26, 0.29);
-	vec3 diffuse = baseColor;
+	vec3 diffuse = ambientColor * baseColor;
 	
 	vec3 specular = vec3(0.0);
 	
-	vec3 ambient = (kD * diffuse + specular) * f_ao;
+	vec3 ambient = (kD * diffuse + specular) * ao;
 	
 	vec3 result = ambient + Lo;
 	
@@ -262,5 +251,5 @@ void main()
 	// gamma correct
 	// result = pow(result, vec3(1.0/2.2)); 
 
-	outColor = vec4(result, 1.0);
+	outColor = vec4(result, 1.0); //albedo.a
 }
