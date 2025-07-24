@@ -105,6 +105,34 @@ namespace QuasarEngine
 					foutConfig << config;
 					foutConfig.close();
 
+					STARTUPINFOA si = { sizeof(si) };
+					PROCESS_INFORMATION pi;
+
+					std::string cmdLine = "\"QuasarEngine-Editor.exe\" --project=\"" + fullPath + "\"";
+
+					BOOL success = CreateProcessA(
+						NULL,
+						cmdLine.data(),
+						NULL, NULL,
+						FALSE,
+						DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+						NULL,
+						NULL,
+						&si,
+						&pi
+					);
+
+					if (success)
+					{
+						CloseHandle(pi.hProcess);
+						CloseHandle(pi.hThread);
+						
+						//ExitProcess(0);
+					}
+					else
+					{
+						MessageBoxA(NULL, "Échec du lancement de l'éditeur", "Erreur", MB_ICONERROR);
+					}
 				}
 
 				m_CreateNewProjectDialog = false;
