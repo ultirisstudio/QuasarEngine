@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include <memory>
+#include <optional>
 
 namespace QuasarEngine
 {
@@ -18,21 +21,23 @@ namespace QuasarEngine
 
 		void CreateNewProject();
 		void OpenProject();
-
 		void OpenProjectFromPath(const std::string& projectPath);
+		void CreateProjectFromPath(const std::string& projectName, const std::string& projectPath);
 
-		ProjectProperties* GetProjectProperties() { return m_Properties; }
+		ProjectProperties* GetProjectProperties() { return m_Properties.get(); }
 
 		void OnImGuiRender();
+
 	private:
-		void CreateProjectFiles(const std::string& projectName, const std::string& projectPath);
+		std::string GetDefaultProjectPath() const;
+
 	private:
-		ProjectProperties* m_Properties;
+		std::unique_ptr<ProjectProperties> m_Properties;
 
 		std::string tempProjectName = "";
-		std::string tempProjectPath = std::string(getenv("USERPROFILE")) + "\\Documents\\Ultiris Projects";
+		std::string tempProjectPath;
 
-		bool m_CreateNewProjectDialog;
-		bool m_OpenProjectDialog;
+		bool m_CreateNewProjectDialog = false;
+		bool m_OpenProjectDialog = false;
 	};
 }
