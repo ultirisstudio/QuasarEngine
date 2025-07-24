@@ -18,6 +18,8 @@
 
 #include "QuasarEngine/Core/Logger.h"
 
+#include <glad/glad.h>
+
 namespace QuasarEngine
 {
 	Renderer::SceneData Renderer::m_SceneData = Renderer::SceneData();
@@ -88,7 +90,7 @@ namespace QuasarEngine
 			int has_ao_texture;
 		};
 
-		Shader::ShaderStageFlags objectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+		constexpr Shader::ShaderStageFlags objectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		desc.objectUniforms = {
 			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(ObjectUniforms, model), 1, 0, objectUniformsFlags},
@@ -291,6 +293,8 @@ namespace QuasarEngine
 
 	void Renderer::RenderSkybox(BaseCamera& camera)
 	{
+		//glDepthMask(GL_FALSE);
+
 		m_SceneData.m_Skybox->Bind();
 
 		glm::mat4 viewMatrix = camera.getViewMatrix();
@@ -308,6 +312,8 @@ namespace QuasarEngine
 		m_SceneData.m_Skybox->Draw();
 
 		m_SceneData.m_Skybox->Unbind();
+
+		//glDepthMask(GL_TRUE);
 	}
 
 	void Renderer::EndScene()

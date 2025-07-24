@@ -29,6 +29,8 @@ namespace QuasarEngine
 		void SetTexture(const std::string& name, Texture* texture) override {}
 
 	private:
+		void ApplyPipelineStates();
+
 		uint32_t m_ID = 0;
 		std::unordered_map<std::string, int> m_UniformLocations;
 		std::unordered_map<std::string, const ShaderUniformDesc*> m_GlobalUniformMap;

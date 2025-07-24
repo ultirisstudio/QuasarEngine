@@ -39,8 +39,6 @@ namespace QuasarEngine
 
     void ScreenQuad::Draw() const
     {
-        RenderCommand::SetDepthTest(false);
-
         RenderCommand::ClearColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         RenderCommand::Clear();
 
@@ -49,7 +47,5 @@ namespace QuasarEngine
         uint32_t count = m_vertexArray->GetIndexBuffer()->GetCount();
 
         RenderCommand::DrawElements(DrawMode::TRIANGLES, count);
-
-        RenderCommand::SetDepthTest(true);
     }
 }

@@ -9,6 +9,22 @@
 
 namespace QuasarEngine
 {
+	static GLenum DepthFuncToGL(Shader::DepthFunc func)
+	{
+		switch (func)
+		{
+		case Shader::DepthFunc::Never:        return GL_NEVER;
+		case Shader::DepthFunc::Less:         return GL_LESS;
+		case Shader::DepthFunc::Equal:        return GL_EQUAL;
+		case Shader::DepthFunc::LessOrEqual:    return GL_LEQUAL;
+		case Shader::DepthFunc::Greater:      return GL_GREATER;
+		case Shader::DepthFunc::NotEqual:     return GL_NOTEQUAL;
+		case Shader::DepthFunc::GreaterOrEqual: return GL_GEQUAL;
+		case Shader::DepthFunc::Always:       return GL_ALWAYS;
+		default:                      return GL_LESS;
+		}
+	}
+
 	std::string OpenGLShader::ReadFile(const std::string& path)
 	{
 		std::ifstream file(path);
@@ -131,6 +147,8 @@ namespace QuasarEngine
 	void OpenGLShader::Use()
 	{
 		glUseProgram(m_ID);
+
+		ApplyPipelineStates();
 	}
 
 	void OpenGLShader::Unuse()
@@ -206,6 +224,50 @@ namespace QuasarEngine
 		default:
 			Q_ERROR("Unsupported uniform type for '%s'", name.c_str());
 			break;
+		}
+	}
+
+	void OpenGLShader::ApplyPipelineStates()
+	{
+		if (m_Description.depthTestEnable)
+			glEnable(GL_DEPTH_TEST);
+		else
+			glDisable(GL_DEPTH_TEST);
+
+		glDepthMask(m_Description.depthWriteEnable ? GL_TRUE : GL_FALSE);
+		glDepthFunc(DepthFuncToGL(m_Description.depthFunc));
+
+		if (m_Description.cullMode == CullMode::None)
+			glDisable(GL_CULL_FACE);
+		else
+		{
+			glEnable(GL_CULL_FACE);
+			glCullFace(m_Description.cullMode == CullMode::Back ? GL_BACK : GL_FRONT);
+		}
+
+		glPolygonMode(GL_FRONT_AND_BACK, m_Description.fillMode == FillMode::Wireframe ? GL_LINE : GL_FILL);
+
+		if (m_Description.blendMode != BlendMode::None)
+		{
+			glEnable(GL_BLEND);
+			switch (m_Description.blendMode)
+			{
+			case BlendMode::AlphaBlend:
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				break;
+			case BlendMode::Additive:
+				glBlendFunc(GL_ONE, GL_ONE);
+				break;
+			case BlendMode::Multiply:
+				glBlendFunc(GL_DST_COLOR, GL_ZERO);
+				break;
+			default:
+				break;
+			}
+		}
+		else
+		{
+			glDisable(GL_BLEND);
 		}
 	}
 }

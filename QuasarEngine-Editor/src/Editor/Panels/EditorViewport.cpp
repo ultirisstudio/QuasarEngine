@@ -35,7 +35,7 @@ namespace QuasarEngine
 		m_EditorFrameBuffer->Bind();
         
 		RenderCommand::Clear();
-		RenderCommand::ClearColor(glm::vec4(0.5f, 0.5f, .5f, 1.0f));
+		RenderCommand::ClearColor(glm::vec4(0.2f, 0.2f, .2f, 1.0f));
 
 		//m_EditorFrameBuffer->ClearAttachment(1, -1);
 

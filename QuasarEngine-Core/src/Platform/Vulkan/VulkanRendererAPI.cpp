@@ -71,11 +71,6 @@ namespace QuasarEngine
 		
 	}
 
-	void VulkanRendererAPI::SetDepthTest(bool enabled)
-	{
-
-	}
-
 	void VulkanRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)
 	{
 		

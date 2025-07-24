@@ -81,7 +81,9 @@ namespace QuasarEngine
 		{
 			m_vertexBuffer = VertexBuffer::Create(vertices);
 			m_vertexBuffer->SetLayout({
-				{ ShaderDataType::Vec3, "vPosition" }
+				{ ShaderDataType::Vec3, "inPosition" },
+				{ ShaderDataType::Vec3, "inNormal" },
+				{ ShaderDataType::Vec2, "inTexCoord" }
 			});
 		}		
 		m_vertexArray->AddVertexBuffer(m_vertexBuffer);

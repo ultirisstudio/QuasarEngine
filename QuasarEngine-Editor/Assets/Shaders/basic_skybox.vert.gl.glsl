@@ -1,6 +1,8 @@
 #version 330 core
 
 layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec3 inNormal;
+layout(location = 2) in vec2 inTexCoord;
 
 out vec3 TexCoords;
 
@@ -10,8 +12,7 @@ uniform mat4 projection;
 void main()
 {
     mat4 rotView = mat4(mat3(view));
-    vec4 pos = projection * rotView * vec4(inPosition, 1.0);
 
-    gl_Position = pos.xyww;
+    gl_Position = projection * rotView * vec4(inPosition, 1.0);
     TexCoords = inPosition;
 }

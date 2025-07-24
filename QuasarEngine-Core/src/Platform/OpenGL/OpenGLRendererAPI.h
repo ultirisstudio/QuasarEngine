@@ -13,8 +13,6 @@ namespace QuasarEngine {
 		void ClearColor(const glm::vec4& color) override;
 		void Clear() override;
 
-		void SetDepthTest(bool enabled) override;
-
 		void DrawArrays(DrawMode drawMode, uint32_t size) override;
 		void DrawElements(DrawMode drawMode, uint32_t count) override;
 	};

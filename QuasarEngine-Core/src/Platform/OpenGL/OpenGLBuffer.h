@@ -4,6 +4,23 @@
 
 namespace QuasarEngine
 {
+	class OpenGLUniformBuffer
+	{
+	public:
+		OpenGLUniformBuffer(size_t size, uint32_t binding);
+		~OpenGLUniformBuffer();
+
+		void SetData(const void* data, size_t size);
+		void BindToShader(uint32_t programID, const std::string& blockName);
+
+		uint32_t GetID() const;
+
+	private:
+		uint32_t m_ID = 0;
+		size_t m_Size = 0;
+		uint32_t m_Binding = 0;
+	};
+
 	class OpenGLVertexBuffer : public VertexBuffer
 	{
 	public:

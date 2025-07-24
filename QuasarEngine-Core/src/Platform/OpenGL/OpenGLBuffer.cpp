@@ -5,6 +5,48 @@
 
 namespace QuasarEngine
 {
+	OpenGLUniformBuffer::OpenGLUniformBuffer(size_t size, uint32_t binding)
+		: m_Size(size), m_Binding(binding)
+	{
+		glGenBuffers(1, &m_ID);
+		glBindBuffer(GL_UNIFORM_BUFFER, m_ID);
+		glBufferData(GL_UNIFORM_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+		glBindBufferBase(GL_UNIFORM_BUFFER, binding, m_ID);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
+	OpenGLUniformBuffer::~OpenGLUniformBuffer()
+	{
+		glDeleteBuffers(1, &m_ID);
+	}
+
+	void OpenGLUniformBuffer::SetData(const void* data, size_t size)
+	{
+		if (size > m_Size)
+			throw std::runtime_error("Uniform buffer size exceeded");
+
+		glBindBuffer(GL_UNIFORM_BUFFER, m_ID);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, size, data);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
+	void OpenGLUniformBuffer::BindToShader(uint32_t programID, const std::string& blockName)
+	{
+		GLuint index = glGetUniformBlockIndex(programID, blockName.c_str());
+		if (index == GL_INVALID_INDEX)
+		{
+			std::cerr << "Uniform block '" << blockName << "' not found in shader." << std::endl;
+			return;
+		}
+
+		glUniformBlockBinding(programID, index, m_Binding);
+	}
+
+	GLuint OpenGLUniformBuffer::GetID() const
+	{
+		return m_ID;
+	}
+
 	OpenGLVertexBuffer::OpenGLVertexBuffer()
 	{
 	}

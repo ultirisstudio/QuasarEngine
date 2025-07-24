@@ -198,40 +198,52 @@ vec3 calculateDirLightReflectance(DirLight light, vec3 V, vec3 N, vec3 F0, vec3 
 
 void main()
 {
-    vec4 texAlbedo = getAlbedo();
-    if (texAlbedo.a < 0.5)
-        discard;
-
-    vec3 baseColor = texAlbedo.rgb;
-    float metal = getMetallic();
-    float rough = clamp(getRoughness(), 0.05, 1.0);
-    float ambientOcclusion = getAO();
+    vec4 f_albedo = getAlbedo();
+	
+	if (f_albedo.a < 0.5)
+		discard;
+	
+	vec3 baseColor = f_albedo.rgb;
+    float f_metallic = getMetallic();
+    float f_roughness = clamp(getRoughness(), 0.05, 1.0);
+    float f_ao = getAO();
 
     vec3 N = getNormal();
     vec3 V = normalize(camera_position - inWorldPos);
     vec3 R = reflect(-V, N); 
-
-    vec3 F0 = mix(vec3(0.04), baseColor, metal);
-
-    vec3 Lo = vec3(0.0);
+	
+    vec3 F0 = mix(vec3(0.04), baseColor, f_metallic);
+	
+	vec3 Lo = vec3(0.0);
     for(int i = 0; i < usePointLight; ++i)
-        Lo += calculatePointLightReflectance(pointLights[i], V, N, F0, baseColor, rough, metal);
+    {
+        Lo += calculatePointLightReflectance(pointLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
+    }
     for(int i = 0; i < useDirLight; ++i)
-        Lo += calculateDirLightReflectance(dirLights[i], V, N, F0, baseColor, rough, metal);
+    {
+        Lo += calculateDirLightReflectance(dirLights[i], V, N, F0, baseColor, f_roughness, f_metallic);
+    }
+	
+	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, f_roughness);
+	
+	vec3 kS = F; 
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - f_metallic;
+	
+	vec3 ambientColor = vec3(0.25, 0.26, 0.29);
+	vec3 diffuse = baseColor;
+	
+	vec3 specular = vec3(0.0);
+	
+	vec3 ambient = (kD * diffuse + specular) * f_ao;
+	
+	//vec3 result = ambient + Lo;
+	vec3 result = diffuse;
+	
+	// HDR tonemapping
+	result = result / (result + vec3(1.0));
+	// gamma correct
+	// result = pow(result, vec3(1.0/2.2)); 
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, rough);
-    vec3 kS = F;
-    vec3 kD = (1.0 - kS) * (1.0 - metal);
-
-    vec3 ambientLight = vec3(0.25, 0.26, 0.29);
-    vec3 diffuse = ambientLight * baseColor;
-    vec3 specular = vec3(0.0); // No IBL yet
-
-    vec3 ambient = (kD * diffuse + specular) * ambientOcclusion;
-    vec3 result = ambient + Lo;
-
-    result = result / (result + vec3(1.0)); // HDR tonemapping
-    // result = pow(result, vec3(1.0 / 2.2)); // Optional gamma correction
-
-    outColor = vec4(result, 1.0);
+	outColor = vec4(result, 1.0);
 }

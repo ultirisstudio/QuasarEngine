@@ -40,7 +40,6 @@ namespace QuasarEngine
 		};
 
 		desc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), 0, 1, 0, Shader::StageToBit(Shader::ShaderStageType::Fragment) }
 		};
 
 		desc.samplers = {
@@ -135,13 +134,11 @@ namespace QuasarEngine
 	void OpenGLBasicSkybox::Bind()
 	{
 		shader->Use();
-		glDepthFunc(GL_LEQUAL);
 	}
 
 	void OpenGLBasicSkybox::Unbind()
 	{
 		shader->Unuse();
-		glDepthFunc(GL_LESS);
 	}
 
 	void OpenGLBasicSkybox::Draw()

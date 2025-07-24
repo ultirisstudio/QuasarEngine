@@ -7,6 +7,7 @@
 #include <GLFW/glfw3.h>
 
 #include "QuasarEngine/Renderer/DrawMode.h"
+#include "QuasarEngine/Renderer/RendererAPI.h"
 
 namespace QuasarEngine {
 
@@ -79,14 +80,6 @@ namespace QuasarEngine {
 	void OpenGLRendererAPI::Clear()
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	}
-
-	void OpenGLRendererAPI::SetDepthTest(bool enabled)
-	{
-		if (enabled)
-			glEnable(GL_DEPTH_TEST);
-		else
-			glDisable(GL_DEPTH_TEST);
 	}
 
 	void OpenGLRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)

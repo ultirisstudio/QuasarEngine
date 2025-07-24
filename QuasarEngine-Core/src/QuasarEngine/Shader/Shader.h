@@ -103,7 +103,7 @@ namespace QuasarEngine
         };
 
         enum class BlendMode {
-            None, AlphaBlend, Additive
+            None, AlphaBlend, Additive, Multiply
         };
 
         enum class PrimitiveTopology {
