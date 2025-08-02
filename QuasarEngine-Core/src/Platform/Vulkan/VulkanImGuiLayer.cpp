@@ -50,9 +50,9 @@ namespace QuasarEngine
         io.Fonts->Build();
 
         //ImGui::StyleColorsDark();
-        //ImGui::StyleColorsRealDark();
+        ImGui::StyleColorsRealDark();
         //ImGui::StyleColorsModernDark();
-        ImGui::StyleColorsModernDarkBis();
+        //ImGui::StyleColorsModernDarkBis();
         //ImGui::StyleColorsModernLight();
         //ImGui::StyleColorsLight();
 

@@ -70,10 +70,10 @@ namespace QuasarEngine
 		m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Specification.ProjectPath, m_AssetImporter.get());
 		m_EditorViewport = std::make_unique<EditorViewport>();
 		m_Viewport = std::make_unique<Viewport>();
-		//m_NodeEditor = std::make_unique<NodeEditor>();
-		//m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
-		//m_CodeEditor = std::make_unique<CodeEditor>();
-		//m_HeightMapEditor = std::make_unique<HeightMapEditor>();
+		m_NodeEditor = std::make_unique<NodeEditor>();
+		m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
+		m_CodeEditor = std::make_unique<CodeEditor>();
+		m_HeightMapEditor = std::make_unique<HeightMapEditor>();
 
 		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
 		m_SceneManager->createNewScene();
@@ -118,10 +118,10 @@ namespace QuasarEngine
 		m_ContentBrowserPanel.reset();
 		m_EditorViewport.reset();
 		m_Viewport.reset();
-		//m_NodeEditor.reset();
-		//m_AnimationEditorPanel.reset();
-		//m_CodeEditor.reset();
-		//m_HeightMapEditor.reset();
+		m_NodeEditor.reset();
+		m_AnimationEditorPanel.reset();
+		m_CodeEditor.reset();
+		m_HeightMapEditor.reset();
 	}
 
 	void Editor::OnUpdate(double dt)
@@ -133,8 +133,8 @@ namespace QuasarEngine
 		m_SceneManager->Update(dt);
 		m_EditorViewport->Update(*m_EditorCamera);
 		m_Viewport->Update(m_SceneManager->GetActiveScene());
-		//m_AnimationEditorPanel->Update(dt);
-		//m_HeightMapEditor->Update();
+		m_AnimationEditorPanel->Update(dt);
+		m_HeightMapEditor->Update();
 
 		if (Input::IsKeyPressed(Key::LeftControl))
 		{
@@ -447,14 +447,24 @@ namespace QuasarEngine
 		m_EntityPropertiePanel->OnImGuiRender(m_SceneManager->GetActiveScene(), *m_SceneHierarchy);
 		m_SceneHierarchy->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_ContentBrowserPanel->OnImGuiRender();
-		//m_CodeEditor->OnImGuiRender();
-		//m_AnimationEditorPanel->OnImGuiRender();
-		//m_NodeEditor->OnImGuiRender();
-		//m_HeightMapEditor->OnImGuiRender();
+		m_CodeEditor->OnImGuiRender();
+		m_AnimationEditorPanel->OnImGuiRender();
+		m_NodeEditor->OnImGuiRender();
+		m_HeightMapEditor->OnImGuiRender();
 
 		OptionMenu();
 
 		DrawStatsWindow();
+
+		ImGui::Begin("Latences");
+
+		ImGui::Text(std::string("Update: " + std::to_string(Application::Get().GetAppInfos().update_latency)).c_str());
+		ImGui::Text(std::string("Render: " + std::to_string(Application::Get().GetAppInfos().render_latency)).c_str());
+		ImGui::Text(std::string("Event: " + std::to_string(Application::Get().GetAppInfos().event_latency)).c_str());
+		ImGui::Text(std::string("Asset: " + std::to_string(Application::Get().GetAppInfos().asset_latency)).c_str());
+		ImGui::Text(std::string("ImGui: " + std::to_string(Application::Get().GetAppInfos().imgui_latency)).c_str());
+
+		ImGui::End();
 
 		ImGui::End();
 	}

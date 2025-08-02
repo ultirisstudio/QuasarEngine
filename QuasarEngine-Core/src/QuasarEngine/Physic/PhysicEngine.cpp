@@ -12,15 +12,12 @@
 #include "Jolt&Constraint/HingeJoint.h"
 #include "Jolt&Constraint/SliderJoint.h"
 
-
 namespace QuasarEngine {
-
 	struct PhysicEngineData {
 		glm::vec3 gravity = glm::vec3(0.0f, -9.81f, 0.0f);
 		std::vector<RigidBody*> bodies;
 		std::vector<ContactManifold> contacts;
 		std::vector<Joint*> joints;
-
 	};
 
 	static PhysicEngineData* s_Data = nullptr;
@@ -42,67 +39,7 @@ namespace QuasarEngine {
 		}
 	}
 
-
-	/*
-	void PhysicEngine::Update(double dt) {
-		if (!s_Data) return;
-
-		std::vector<ContactManifold> contacts;
-
-		for (RigidBody* body : s_Data->bodies) {
-			if (!body || !body->IsDynamic() || !body->UsesGravity()) continue;
-
-			glm::vec3 gravityForce = s_Data->gravity * body->mass;
-			body->ApplyForce(gravityForce);
-		}
-
-		for (size_t i = 0; i < s_Data->bodies.size(); ++i) {
-			for (size_t j = i + 1; j < s_Data->bodies.size(); ++j) {
-				RigidBody* A = s_Data->bodies[i];
-				RigidBody* B = s_Data->bodies[j];
-				if (!A || !B) continue;
-
-				if (A->type == RigidBodyType::Static && B->type == RigidBodyType::Static)
-					continue;
-
-				for (auto& colA : A->colliders) {
-					for (auto& colB : B->colliders) {
-						Collider* colliderA = colA;
-						Collider* colliderB = colB;
-
-						if (!colliderA || !colliderB) continue;
-
-						ContactManifold manifold;
-						if (CollisionDetection::CheckCollision(colliderA, colliderB, manifold)) {
-							std::cout << "Collision" << std::endl;
-
-							contacts.push_back(manifold);
-
-							std::cout << "[COLLISION] Contact entre " << colliderA << " et " << colliderB << "\n";
-							std::cout << "penetration: " << manifold.penetrationDepth << "\n";
-							for (const auto& pt : manifold.contactPoints) {
-								std::cout << "contact point: (" << pt.x << ", " << pt.y << ", " << pt.z << ")\n";
-							}
-						}
-					}
-				}
-			}
-		}
-
-		for (int k = 0; k < 8; ++k) {
-			for (const auto& contact : contacts) {
-				ResolveCollision(contact);
-			}
-		}
-
-		for (RigidBody* body : s_Data->bodies) {
-			if (body)
-				body->Integrate(static_cast<float>(dt));
-		}
-	}*/
-
-	/*
-	void PhysicEngine::Update(double dt) {
+	/*void PhysicEngine::Update(double dt) {
 		if (!s_Data) return;
 
 		std::vector<ContactManifold> contacts;
@@ -160,6 +97,63 @@ namespace QuasarEngine {
 	}*/
 
 	void PhysicEngine::Update(double dt) {
+		if (!s_Data) return;
+
+		std::vector<ContactManifold> contacts;
+
+		for (RigidBody* body : s_Data->bodies) {
+			if (!body || !body->IsDynamic() || !body->UsesGravity()) continue;
+
+			glm::vec3 gravityForce = s_Data->gravity * body->mass;
+			body->ApplyForce(gravityForce);
+		}
+
+		for (size_t i = 0; i < s_Data->bodies.size(); ++i) {
+			for (size_t j = i + 1; j < s_Data->bodies.size(); ++j) {
+				RigidBody* A = s_Data->bodies[i];
+				RigidBody* B = s_Data->bodies[j];
+				if (!A || !B) continue;
+
+				if (A->type == RigidBodyType::Static && B->type == RigidBodyType::Static)
+					continue;
+
+				for (auto& colA : A->colliders) {
+					for (auto& colB : B->colliders) {
+						Collider* colliderA = colA;
+						Collider* colliderB = colB;
+
+						if (!colliderA || !colliderB) continue;
+
+						ContactManifold manifold;
+						if (CollisionDetection::CheckCollision(colliderA, colliderB, manifold)) {
+							std::cout << "Collision" << std::endl;
+
+							contacts.push_back(manifold);
+
+							std::cout << "[COLLISION] Contact entre " << colliderA << " et " << colliderB << "\n";
+							std::cout << "penetration: " << manifold.penetrationDepth << "\n";
+							for (const auto& pt : manifold.contactPoints) {
+								std::cout << "contact point: (" << pt.x << ", " << pt.y << ", " << pt.z << ")\n";
+							}
+						}
+					}
+				}
+			}
+		}
+
+		for (int k = 0; k < 8; ++k) {
+			for (const auto& contact : contacts) {
+				ResolveCollision(contact);
+			}
+		}
+
+		for (RigidBody* body : s_Data->bodies) {
+			if (body)
+				body->Integrate(static_cast<float>(dt));
+		}
+	}
+
+	/*void PhysicEngine::Update(double dt) {
 		if (!s_Data) return;
 
 		// ----------------------
@@ -238,7 +232,7 @@ namespace QuasarEngine {
 		// ----------------------
 		for (Joint* joint : s_Data->joints)
 			joint->PostSolve();
-	}
+	}*/
 
 
 	void PhysicEngine::Reload() {
