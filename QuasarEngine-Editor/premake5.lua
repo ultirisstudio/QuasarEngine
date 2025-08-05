@@ -26,7 +26,9 @@ project "QuasarEngine-Editor"
 		"%{IncludeDir.mbedtls}",
 		"%{IncludeDir.zlib}",
 		"%{IncludeDir.entt}",
-		"%{IncludeDir.TextEditor}"
+		"%{IncludeDir.TextEditor}",
+		"%{IncludeDir.sol2}",
+		"%{IncludeDir.lua}"
 	}
 
 	links
@@ -38,7 +40,8 @@ project "QuasarEngine-Editor"
 		"yaml-cpp",
 		"mbedtls",
 		"zlib",
-		"TextEditor"
+		"TextEditor",
+		"lua"
 	}
 	
 	defines

@@ -28,6 +28,7 @@ group "Dependance"
 	include "vendor/mbedtls"
 	include "vendor/zlib"
 	include "vendor/TextEditor"
+	include "vendor/lua"
 
 group ""
 

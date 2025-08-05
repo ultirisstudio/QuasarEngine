@@ -32,6 +32,8 @@
 
 #include "Export.h"
 
+#include <sol/sol.hpp>
+
 namespace QuasarEngine
 {
 	Editor::Editor(const EditorSpecification& spec)
@@ -89,6 +91,11 @@ namespace QuasarEngine
 
 		std::filesystem::path base_path = m_Specification.ProjectPath + "\\Assets";
 		SetupAssets(base_path);
+
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script("function update() print('Update via sol2') end");
+		lua["update"]();
 	}
 
 	void Editor::SetupAssets(const std::filesystem::path& chemin) {

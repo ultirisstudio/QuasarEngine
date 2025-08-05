@@ -65,6 +65,18 @@ namespace QuasarEngine
 			default: return 0;
 			}
 		}
+
+		static uint32_t BytesPerPixel(GLenum format) {
+			switch (format)
+			{
+			case GL_RGB:          return 3;
+			case GL_RGBA:         return 4;
+			case GL_SRGB:         return 3;
+			case GL_SRGB_ALPHA:   return 4;
+			case GL_RED:          return 1;
+			default:              return 0;
+			}
+		}
 	}
 
 	OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification)
@@ -99,39 +111,50 @@ namespace QuasarEngine
 
 	void OpenGLTexture2D::LoadFromMemory(unsigned char* image_data, size_t size)
 	{
-		if (m_Specification.flip)
-			stbi_set_flip_vertically_on_load(true);
-		else
-			stbi_set_flip_vertically_on_load(false);
-
-		if (m_Specification.alpha)
+		if (m_Specification.compressed)
 		{
-			m_Specification.format = TextureFormat::RGBA;
-			m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGBA : TextureFormat::RGBA;
+			if (m_Specification.flip)
+			{
+				stbi_set_flip_vertically_on_load(true);
+			}
+			else
+			{
+				stbi_set_flip_vertically_on_load(false);
+			}
+
+			if (m_Specification.alpha)
+			{
+				m_Specification.format = TextureFormat::RGBA;
+				m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGBA : TextureFormat::RGBA;
+			}
+			else
+			{
+				m_Specification.format = TextureFormat::RGB;
+				m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB : TextureFormat::RGB;
+			}
+
+			int width, height, channels;
+			unsigned char* data = stbi_load_from_memory(image_data, static_cast<int>(size), &width, &height, &channels,
+				Utils::DesiredChannelFromTextureFormat(m_Specification.format));
+
+			if (!data)
+			{
+				Q_ERROR(std::string("Failed to decode image from memory: ") + stbi_failure_reason());
+				return;
+			}
+
+			m_Specification.width = width;
+			m_Specification.height = height;
+			m_Specification.channels = channels;
+
+			LoadFromData(data, width * height * Utils::DesiredChannelFromTextureFormat(m_Specification.format));
+
+			stbi_image_free(data);
 		}
 		else
 		{
-			m_Specification.format = TextureFormat::RGB;
-			m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB : TextureFormat::RGB;
+			LoadFromData(image_data, m_Specification.width * m_Specification.height * Utils::BytesPerPixel(Utils::TextureFormatToGL(m_Specification.internal_format)));
 		}
-
-		int width, height, channels;
-		unsigned char* data = stbi_load_from_memory(image_data, static_cast<int>(size), &width, &height, &channels,
-			Utils::DesiredChannelFromTextureFormat(m_Specification.format));
-
-		if (!data)
-		{
-			Q_ERROR(std::string("Failed to decode image from memory: ") + stbi_failure_reason());
-			return;
-		}
-
-		m_Specification.width = width;
-		m_Specification.height = height;
-		m_Specification.channels = channels;
-
-		LoadFromData(data, width * height * Utils::DesiredChannelFromTextureFormat(m_Specification.format));
-
-		stbi_image_free(data);
 	}
 
 	void OpenGLTexture2D::LoadFromData(unsigned char* data, size_t)

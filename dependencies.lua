@@ -15,6 +15,8 @@ IncludeDir["mbedtls"] = "%{wks.location}/vendor/mbedtls/include"
 IncludeDir["zlib"] = "%{wks.location}/vendor/zlib/include"
 IncludeDir["entt"] = "%{wks.location}/vendor/entt"
 IncludeDir["TextEditor"] = "%{wks.location}/vendor/TextEditor"
+IncludeDir["sol2"] = "%{wks.location}/vendor/sol2/include"
+IncludeDir["lua"] = "%{wks.location}/vendor/lua/include"
 IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/Include"
 
 LibraryDir = {}
