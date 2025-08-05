@@ -15,3 +15,4 @@
 #include <QuasarEngine/Entity/Components/Physics/MeshColliderComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/CapsuleColliderComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/SphereColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>

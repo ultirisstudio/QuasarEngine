@@ -32,7 +32,9 @@ project "QuasarEngine-Core"
 		"%{IncludeDir.ImGuizmo}",
 		"%{IncludeDir.mbedtls}",
 		"%{IncludeDir.entt}",
-		"%{IncludeDir.VulkanSDK}"
+		"%{IncludeDir.VulkanSDK}",
+		"%{IncludeDir.sol2}",
+		"%{IncludeDir.lua}"
 	}
 	
 	libdirs
@@ -53,6 +55,7 @@ project "QuasarEngine-Core"
 		"ImGui",
 		"ImGuizmo",
 		"mbedtls",
+		"lua",
 		
 		"%{Library.Vulkan}" --,
 		-- "%{Library.VulkanUtils}"

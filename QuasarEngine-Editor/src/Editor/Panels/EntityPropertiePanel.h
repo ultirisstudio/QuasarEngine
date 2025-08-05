@@ -16,6 +16,7 @@
 #include "ComponentPanels/Physics/MeshColliderComponentPanel.h"
 #include "ComponentPanels/Physics/CapsuleColliderComponentPanel.h"
 #include "ComponentPanels/Physics/SphereColliderComponentPanel.h"
+#include "ComponentPanels/Scripting/ScriptComponentPanel.h"
 
 namespace QuasarEngine
 {
@@ -39,5 +40,6 @@ namespace QuasarEngine
 		std::unique_ptr<MeshColliderComponentPanel> m_MeshColliderComponentPanel;
 		std::unique_ptr<CapsuleColliderComponentPanel> m_CapsuleColliderComponentPanel;
 		std::unique_ptr<SphereColliderComponentPanel> m_SphereColliderComponentPanel;
+		std::unique_ptr<ScriptComponentPanel> m_ScriptComponentPanel;
 	};
 }

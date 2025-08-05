@@ -34,6 +34,8 @@
 
 #include <sol/sol.hpp>
 
+#include <QuasarEngine/Scripting/ScriptSystem.h>
+
 namespace QuasarEngine
 {
 	Editor::Editor(const EditorSpecification& spec)
@@ -91,11 +93,6 @@ namespace QuasarEngine
 
 		std::filesystem::path base_path = m_Specification.ProjectPath + "\\Assets";
 		SetupAssets(base_path);
-
-		sol::state lua;
-		lua.open_libraries(sol::lib::base);
-		lua.script("function update() print('Update via sol2') end");
-		lua["update"]();
 	}
 
 	void Editor::SetupAssets(const std::filesystem::path& chemin) {
@@ -134,6 +131,8 @@ namespace QuasarEngine
 	void Editor::OnUpdate(double dt)
 	{
 		Input::Update();
+
+		Renderer::m_SceneData.m_ScriptSystem->Update(dt);
 
 		m_ContentBrowserPanel->Update();
 		m_EditorCamera->Update();

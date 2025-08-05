@@ -7,6 +7,7 @@
 #include <QuasarEngine/Scene/BaseCamera.h>
 #include <QuasarEngine/Asset/AssetRegistry.h>
 #include <QuasarEngine/Asset/AssetManager.h>
+#include <QuasarEngine/Scripting/ScriptSystem.h>
 
 #include <QuasarEngine/Renderer/RenderCommand.h>
 
@@ -25,6 +26,8 @@ namespace QuasarEngine
 			std::shared_ptr<Shader> m_Shader;
 
 			std::shared_ptr<BasicSkybox> m_Skybox;
+
+			std::unique_ptr<ScriptSystem> m_ScriptSystem;
 		};
 		static SceneData m_SceneData;
 

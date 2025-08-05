@@ -140,6 +140,9 @@ namespace QuasarEngine
 			"Assets/Textures/Skybox/front.jpg",   // +Z
 			"Assets/Textures/Skybox/back.jpg"     // -Z
 		});
+
+		m_SceneData.m_ScriptSystem = std::make_unique<ScriptSystem>();
+		m_SceneData.m_ScriptSystem->Initialize();
 	}
 
 	void Renderer::Shutdown()

@@ -29,6 +29,7 @@ namespace QuasarEngine
 		m_MeshColliderComponentPanel = std::make_unique<MeshColliderComponentPanel>();
 		m_CapsuleColliderComponentPanel = std::make_unique<CapsuleColliderComponentPanel>();
 		m_SphereColliderComponentPanel = std::make_unique<SphereColliderComponentPanel>();
+		m_ScriptComponentPanel = std::make_unique<ScriptComponentPanel>();
 	}
 
 	EntityPropertiePanel::~EntityPropertiePanel()
@@ -79,6 +80,7 @@ namespace QuasarEngine
 			m_MeshColliderComponentPanel->Render(entity);
 			m_CapsuleColliderComponentPanel->Render(entity);
 			m_SphereColliderComponentPanel->Render(entity);
+			m_ScriptComponentPanel->Render(entity);
 
 			if (ImGui::Button("Add Component")) {
 				ImGui::OpenPopup("AddComponent");
@@ -165,6 +167,12 @@ namespace QuasarEngine
 				if (!entity.HasComponent<CapsuleColliderComponent>()) {
 					if (ImGui::MenuItem("Capsule Collider Component")) {
 						entity.AddComponent<CapsuleColliderComponent>().Init();
+					}
+				}
+
+				if (!entity.HasComponent<ScriptComponent>()) {
+					if (ImGui::MenuItem("Scripting Component")) {
+						entity.AddComponent<ScriptComponent>();
 					}
 				}
 
