@@ -18,10 +18,12 @@ namespace QuasarEngine
         void Destroy();
 
         std::string scriptPath = "Assets/Scripts/player.lua";
+
         sol::environment environment;
 
-        sol::function onStartFunc;
+        sol::function startFunc;
         sol::function updateFunc;
+        sol::function stopFunc;
 
         bool initialized = false;
     };

@@ -87,21 +87,24 @@ namespace QuasarEngine
         try {
             lua.script_file(scriptComponent.scriptPath, env);
 
-            scriptComponent.onStartFunc = env["onStart"];
+            scriptComponent.startFunc = env["start"];
 
-            if (!scriptComponent.onStartFunc.valid()) {
-                std::cerr << "[ScriptSystem] ERROR: 'onStart' function not found in script: "
+            if (!scriptComponent.startFunc.valid()) {
+                std::cerr << "[ScriptSystem] ERROR: 'start' function not found in script: "
                     << scriptComponent.scriptPath << std::endl;
-            }
-
-            if (scriptComponent.onStartFunc.valid()) {
-                scriptComponent.onStartFunc();
             }
 
             scriptComponent.updateFunc = env["update"];
 
             if (!scriptComponent.updateFunc.valid()) {
                 std::cerr << "[ScriptSystem] ERROR: 'update' function not found in script: "
+                    << scriptComponent.scriptPath << std::endl;
+            }
+
+            scriptComponent.stopFunc = env["stop"];
+
+            if (!scriptComponent.stopFunc.valid()) {
+                std::cerr << "[ScriptSystem] ERROR: 'stop' function not found in script: "
                     << scriptComponent.scriptPath << std::endl;
             }
 
@@ -130,7 +133,9 @@ namespace QuasarEngine
 		}
 
 		scriptComponent.initialized = false;
+		scriptComponent.startFunc = sol::nil;
 		scriptComponent.updateFunc = sol::nil;
+		scriptComponent.stopFunc = sol::nil;
 		scriptComponent.environment = sol::nil;
     }
 
@@ -148,6 +153,34 @@ namespace QuasarEngine
                 catch (const sol::error& e) {
                     std::cerr << "[Lua Runtime Error] " << e.what() << std::endl;
                 }
+            }
+        }
+    }
+
+    void ScriptSystem::Start()
+    {
+        auto view = m_Registry->view<ScriptComponent>();
+
+        for (auto e : view) {
+            Entity entity{ e, Renderer::m_SceneData.m_Scene->GetRegistry() };
+            auto& script = entity.GetComponent<ScriptComponent>();
+
+            if (script.startFunc.valid()) {
+                script.startFunc();
+            }
+        }
+    }
+
+    void ScriptSystem::Stop()
+    {
+        auto view = m_Registry->view<ScriptComponent>();
+
+        for (auto e : view) {
+            Entity entity{ e, Renderer::m_SceneData.m_Scene->GetRegistry() };
+            auto& script = entity.GetComponent<ScriptComponent>();
+
+            if (script.stopFunc.valid()) {
+                script.stopFunc();
             }
         }
     }

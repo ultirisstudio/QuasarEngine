@@ -16,6 +16,9 @@ namespace QuasarEngine
         void Initialize();
         void Update(float dt);
 
+        void Start();
+        void Stop();
+
         void RegisterEntityScript(ScriptComponent& scriptComponent);
         void UnregisterEntityScript(ScriptComponent& scriptComponent);
 

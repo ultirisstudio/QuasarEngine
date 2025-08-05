@@ -191,6 +191,8 @@ namespace QuasarEngine
             Entity entity = { e, m_Registry.get() };
             entity.GetComponent<RigidBodyComponent>().Update(deltaTime);
         }
+
+        Renderer::m_SceneData.m_ScriptSystem->Update(deltaTime);
     }
 
     void Scene::OnRuntimeStart()
@@ -198,11 +200,15 @@ namespace QuasarEngine
         m_OnRuntime = true;
 
         UpdatePrimaryCameraCache();
+
+        Renderer::m_SceneData.m_ScriptSystem->Start();
     }
 
     void Scene::OnRuntimeStop()
     {
         m_OnRuntime = false;
+
+        Renderer::m_SceneData.m_ScriptSystem->Stop();
     }
 
     void Scene::ClearEntities()

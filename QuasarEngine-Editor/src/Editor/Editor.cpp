@@ -132,8 +132,6 @@ namespace QuasarEngine
 	{
 		Input::Update();
 
-		Renderer::m_SceneData.m_ScriptSystem->Update(dt);
-
 		m_ContentBrowserPanel->Update();
 		m_EditorCamera->Update();
 		m_SceneManager->Update(dt);
