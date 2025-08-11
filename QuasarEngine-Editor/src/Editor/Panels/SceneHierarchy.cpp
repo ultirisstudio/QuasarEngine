@@ -28,7 +28,8 @@ namespace QuasarEngine
 			for (auto e : scene.GetAllEntitiesWith<IDComponent>())
 			{
 				Entity entity{ e, scene.GetRegistry() };
-				if (entity.GetComponent<HierarchyComponent>().m_Parent != UUID::Null())
+				UUID parentID = entity.HasComponent<HierarchyComponent>() ? entity.GetComponent<HierarchyComponent>().m_Parent : UUID::Null();
+				if (parentID != UUID::Null())
 					continue;
 
 				OnDrawEntityNode(scene, entity);
@@ -55,7 +56,7 @@ namespace QuasarEngine
 		ImGui::PushID((int)entity.GetUUID());
 		bool deleteEntity = false;
 
-		bool hasChildren = !entity.GetComponent<HierarchyComponent>().m_Childrens.empty();
+		bool hasChildren = entity.HasComponent<HierarchyComponent>() ? !entity.GetComponent<HierarchyComponent>().m_Childrens.empty() : false;
 		bool isSelected = m_SelectedEntity == entity;
 
 		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
@@ -80,7 +81,7 @@ namespace QuasarEngine
 		ImGui::TextUnformatted(uuidStr.c_str());
 
 		ImGui::TableSetColumnIndex(2);
-		size_t childrenCount = entity.GetComponent<HierarchyComponent>().m_Childrens.size();
+		size_t childrenCount = entity.HasComponent<HierarchyComponent>() ? entity.GetComponent<HierarchyComponent>().m_Childrens.size() : 0;
 		ImGui::Text("%zu", childrenCount);
 
 		ImGui::TableSetColumnIndex(3);

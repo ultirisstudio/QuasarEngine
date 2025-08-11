@@ -66,7 +66,7 @@ namespace QuasarEngine
 		std::string GetName() { return GetComponent<TagComponent>().Tag; }
 
 		bool Entity::IsValid() const {
-			return m_Registry && m_Registry->IsValid(m_EntityHandle);
+			return m_EntityHandle != entt::null && m_Registry && m_Registry->IsValid(m_EntityHandle);
 		}
 
 		bool operator==(const Entity& other) const

@@ -41,7 +41,7 @@ namespace QuasarEngine
 	{
 		ImGui::Begin("Inspector");
 
-		if (sceneHierarchy.m_SelectedEntity)
+		if (sceneHierarchy.m_SelectedEntity.IsValid())
 		{
 			if (scene.isOnRuntime())
 			{

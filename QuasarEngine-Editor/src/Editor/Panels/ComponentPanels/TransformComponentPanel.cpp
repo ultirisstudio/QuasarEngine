@@ -10,20 +10,23 @@ namespace QuasarEngine
 {
 	void TransformComponentPanel::Render(Entity entity)
 	{
-		if (entity.HasComponent<TransformComponent>())
+		if (!entity || !entity.IsValid())
+			return;
+
+		if (!entity.HasComponent<TransformComponent>())
+			return;
+
+		auto& tc = entity.GetComponent<TransformComponent>();
+
+		if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_DefaultOpen, "Transform"))
 		{
-			auto& tc = entity.GetComponent<TransformComponent>();
+			DrawVec3Control("Translation", tc.Position);
+			glm::vec3 rotation = glm::degrees(tc.Rotation);
+			DrawVec3Control("Rotation", rotation);
+			tc.Rotation = glm::radians(rotation);
+			DrawVec3Control("Scale", tc.Scale, 1.0f);
 
-			if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_DefaultOpen, "Transform"))
-			{
-				DrawVec3Control("Translation", tc.Position);
-				glm::vec3 rotation = glm::degrees(tc.Rotation);
-				DrawVec3Control("Rotation", rotation);
-				tc.Rotation = glm::radians(rotation);
-				DrawVec3Control("Scale", tc.Scale, 1.0f);
-
-				ImGui::TreePop();
-			}
+			ImGui::TreePop();
 		}
 	}
 

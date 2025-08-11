@@ -328,6 +328,60 @@ namespace QuasarEngine
 
         ImGui::Columns(1);
 
+        // Menu contextuel sur fond vide de la fenêtre
+        if (ImGui::BeginPopupContextWindow("ContentBrowserContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+        {
+            if (ImGui::MenuItem("New Folder"))
+            {
+                std::filesystem::path newFolder = m_CurrentDirectory / "New Folder";
+                int counter = 1;
+                while (std::filesystem::exists(newFolder))
+                {
+                    newFolder = m_CurrentDirectory / ("New Folder " + std::to_string(counter++));
+                }
+                std::filesystem::create_directory(newFolder);
+            }
+
+            if (ImGui::BeginMenu("New File"))
+            {
+                if (ImGui::MenuItem("Text File"))
+                {
+                    std::filesystem::path newFile = m_CurrentDirectory / "NewFile.txt";
+                    int counter = 1;
+                    while (std::filesystem::exists(newFile))
+                    {
+                        newFile = m_CurrentDirectory / ("NewFile" + std::to_string(counter++) + ".txt");
+                    }
+                    std::ofstream ofs(newFile);
+                    ofs << ""; // fichier vide
+                    ofs.close();
+                }
+
+                if (ImGui::MenuItem("Lua Script"))
+                {
+                    std::filesystem::path newFile = m_CurrentDirectory / "NewScript.lua";
+                    int counter = 1;
+                    while (std::filesystem::exists(newFile))
+                    {
+                        newFile = m_CurrentDirectory / ("NewScript" + std::to_string(counter++) + ".lua");
+                    }
+                    std::ofstream ofs(newFile);
+                    ofs << "-- Default Lua Script\n"
+                        "function OnStart()\n"
+                        "    print(\"Hello from Lua!\")\n"
+                        "end\n\n"
+                        "function OnUpdate(dt)\n"
+                        "    -- Your update logic here\n"
+                        "end\n";
+                    ofs.close();
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndPopup();
+        }
+
         ImGui::End();
     }
 }

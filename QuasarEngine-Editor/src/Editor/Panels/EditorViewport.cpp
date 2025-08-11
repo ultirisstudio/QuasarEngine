@@ -131,7 +131,7 @@ namespace QuasarEngine
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y,
             (float)ImGui::GetWindowWidth(), (float)ImGui::GetWindowHeight());
 
-        if (sceneHierarchy.m_SelectedEntity && m_GizmoType != -1)
+        if (sceneHierarchy.m_SelectedEntity.IsValid() && m_GizmoType != -1)
         {
             auto& tc = sceneHierarchy.m_SelectedEntity.GetComponent<TransformComponent>();
             glm::mat4 transform = tc.GetGlobalTransform();
@@ -145,7 +145,7 @@ namespace QuasarEngine
                 else
                     camera.unuseGuizmo();
 
-                UUID parentID = sceneHierarchy.m_SelectedEntity.GetComponent<HierarchyComponent>().m_Parent;
+                UUID parentID = sceneHierarchy.m_SelectedEntity.HasComponent<HierarchyComponent>() ? sceneHierarchy.m_SelectedEntity.GetComponent<HierarchyComponent>().m_Parent : UUID::Null();
                 glm::mat4 finalTransform = transform;
 
                 while (parentID != UUID::Null())
@@ -154,8 +154,8 @@ namespace QuasarEngine
                     if (parent.has_value())
                     {
                         glm::mat4 parentTransform = parent.value().GetComponent<TransformComponent>().GetLocalTransform();
-                        finalTransform = finalTransform * glm::inverse(parentTransform); // Attention à l'ordre des multiplications
-                        parentID = parent.value().GetComponent<HierarchyComponent>().m_Parent;
+                        finalTransform = finalTransform * glm::inverse(parentTransform);
+                        parentID = parent.value().HasComponent<HierarchyComponent>() ? parent.value().GetComponent<HierarchyComponent>().m_Parent : UUID::Null();
                     }
                     else
                     {

@@ -25,7 +25,7 @@ namespace QuasarEngine
 		glm::mat4 globalTransform = GetLocalTransform();
 
 		Entity entity{ entt_entity, registry };
-		UUID parentID = entity.GetComponent<HierarchyComponent>().m_Parent;
+		UUID parentID = (entity.HasComponent<HierarchyComponent>()) ? entity.GetComponent<HierarchyComponent>().m_Parent : UUID::Null();
 
 		while (parentID != UUID::Null())
 		{
@@ -33,7 +33,7 @@ namespace QuasarEngine
 			if (parent.has_value())
 			{
 				globalTransform = parent.value().GetComponent<TransformComponent>().GetLocalTransform() * globalTransform;
-				parentID = parent.value().GetComponent<HierarchyComponent>().m_Parent;
+				parentID = (parent.value().HasComponent<HierarchyComponent>()) ? parent.value().GetComponent<HierarchyComponent>().m_Parent : UUID::Null();
 			}
 			else
 			{

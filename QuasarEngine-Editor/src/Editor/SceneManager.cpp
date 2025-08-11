@@ -352,6 +352,7 @@ namespace QuasarEngine
 	void SceneManager::ReloadScene(std::string filePath)
 	{
 		m_SceneObject->GetScene().ClearEntities();
+		//m_SceneObject->CreateScene();
 		m_PendingAction = PendingAction::ReloadScene;
 		m_PendingActionFile = filePath;
 	}

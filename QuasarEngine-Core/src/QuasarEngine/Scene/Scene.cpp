@@ -170,7 +170,11 @@ namespace QuasarEngine
     {
         auto it = m_EntityMap.find(uuid);
         if (it != m_EntityMap.end())
+        {
+            assert(m_Registry && "Registry is nullptr");
+            assert(m_Registry->GetRegistry().valid(it->second) && "Entity is invalid");
             return Entity{ it->second, m_Registry.get() };
+        }
         return std::nullopt;
     }
 

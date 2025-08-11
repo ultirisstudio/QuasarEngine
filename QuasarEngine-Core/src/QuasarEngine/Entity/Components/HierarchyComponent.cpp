@@ -13,7 +13,15 @@ namespace QuasarEngine
 		std::optional<Entity> entity = Renderer::m_SceneData.m_Scene->GetEntityByUUID(child);
 		if (entity.has_value())
 		{
-			entity.value().GetComponent<HierarchyComponent>().m_Parent = parent;
+			if (entity.value().HasComponent<HierarchyComponent>())
+			{
+				entity.value().GetComponent<HierarchyComponent>().m_Parent = parent;
+			}
+			else
+			{
+				//entity.value().AddComponent<HierarchyComponent>();
+				//entity.value().GetComponent<HierarchyComponent>().m_Parent = parent;
+			}
 		}
 	}
 }
