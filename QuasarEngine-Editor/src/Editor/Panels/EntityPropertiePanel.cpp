@@ -15,7 +15,7 @@
 
 namespace QuasarEngine
 {
-	EntityPropertiePanel::EntityPropertiePanel()
+	EntityPropertiePanel::EntityPropertiePanel(const std::string& projectPath)
 	{
 		m_TransformComponentPanel = std::make_unique<TransformComponentPanel>();
 		m_CameraComponentPanel = std::make_unique<CameraComponentPanel>();
@@ -29,7 +29,7 @@ namespace QuasarEngine
 		m_MeshColliderComponentPanel = std::make_unique<MeshColliderComponentPanel>();
 		m_CapsuleColliderComponentPanel = std::make_unique<CapsuleColliderComponentPanel>();
 		m_SphereColliderComponentPanel = std::make_unique<SphereColliderComponentPanel>();
-		m_ScriptComponentPanel = std::make_unique<ScriptComponentPanel>();
+		m_ScriptComponentPanel = std::make_unique<ScriptComponentPanel>(projectPath);
 	}
 
 	EntityPropertiePanel::~EntityPropertiePanel()

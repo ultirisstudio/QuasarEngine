@@ -67,6 +67,11 @@ namespace QuasarEngine
                 m_TextureViewerPanel->OnImGuiRender();
         }
 
+        if (m_CodeEditor)
+        {
+            m_CodeEditor->OnImGuiRender();
+        }
+
         ImGui::Begin("Content Browser");
 
         {
@@ -267,6 +272,15 @@ namespace QuasarEngine
                     }
                     ImGui::Separator();
                 }
+                else if (fileType == AssetType::SCRIPT)
+                {
+                    if (ImGui::MenuItem("Open in Code Editor"))
+                    {
+						m_CodeEditor = std::make_shared<CodeEditor>();
+                        m_CodeEditor->LoadFromFile(relativePath.string());
+					}
+                    ImGui::Separator();
+                }
                 if (ImGui::MenuItem("Delete"))
                 {
                     std::cout << "Delete: " << filenameString << std::endl;
@@ -284,9 +298,18 @@ namespace QuasarEngine
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
                 if (directoryEntry.is_directory())
+                {
                     m_CurrentDirectory /= path.filename();
+                }
                 else if (fileType == AssetType::TEXTURE)
+                {
                     m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(relativePath);
+                }
+                else if (fileType == AssetType::SCRIPT)
+                {
+                    m_CodeEditor = std::make_shared<CodeEditor>();
+                    m_CodeEditor->LoadFromFile(relativePath.string());
+                }
             }
 
             if (!listView)

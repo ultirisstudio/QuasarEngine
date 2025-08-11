@@ -5,7 +5,9 @@
 #include "TextureViewerPanel.h"
 
 #include <QuasarEngine/Resources/Texture2D.h>
+
 #include "Editor/Importer/AssetImporter.h"
+#include "Editor/Panels/CodeEditor.h"
 
 namespace QuasarEngine
 {
@@ -31,6 +33,7 @@ namespace QuasarEngine
 		std::shared_ptr<Texture2D> m_FileOtherIcon;
 
 		std::shared_ptr<TextureViewerPanel> m_TextureViewerPanel;
+		std::shared_ptr<CodeEditor> m_CodeEditor;
 
 		AssetImporter* m_AssetImporter;
 

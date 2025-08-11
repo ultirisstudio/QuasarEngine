@@ -23,7 +23,7 @@ namespace QuasarEngine
 	class EntityPropertiePanel
 	{
 	public:
-		EntityPropertiePanel();
+		EntityPropertiePanel(const std::string& projectPath);
 		~EntityPropertiePanel();
 
 		void OnImGuiRender(Scene& scene, SceneHierarchy& sceneHierarchy);

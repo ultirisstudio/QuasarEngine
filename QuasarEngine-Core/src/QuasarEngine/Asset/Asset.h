@@ -10,7 +10,8 @@ namespace QuasarEngine
 		TEXTURE,
 		MODEL,
 		QASSET,
-		MESH
+		MESH,
+		SCRIPT
 	};
 
 	class Asset

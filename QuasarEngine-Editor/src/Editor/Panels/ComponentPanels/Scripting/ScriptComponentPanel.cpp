@@ -1,5 +1,7 @@
 #include "ScriptComponentPanel.h"
 
+#include <filesystem>
+
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
@@ -8,21 +10,44 @@
 
 namespace QuasarEngine
 {
+	ScriptComponentPanel::ScriptComponentPanel(const std::string& projectPath)
+		: m_ProjectPath(projectPath)
+	{
+		m_LocalBuffer[0] = '\0';
+	}
+
 	void ScriptComponentPanel::Render(Entity entity)
 	{
 		if (entity.HasComponent<ScriptComponent>())
 		{
 			auto& sc = entity.GetComponent<ScriptComponent>();
 
+			if (m_LastEntityID != entity.GetUUID() || sc.scriptPath != m_LastFullPath)
+			{
+				try
+				{
+					std::filesystem::path fullPath(sc.scriptPath);
+					std::filesystem::path relativePath = std::filesystem::relative(fullPath, m_ProjectPath);
+
+					std::strncpy(m_LocalBuffer, relativePath.string().c_str(), sizeof(m_LocalBuffer) - 1);
+					m_LocalBuffer[sizeof(m_LocalBuffer) - 1] = '\0';
+				}
+				catch (...)
+				{
+					std::strncpy(m_LocalBuffer, sc.scriptPath.c_str(), sizeof(m_LocalBuffer) - 1);
+					m_LocalBuffer[sizeof(m_LocalBuffer) - 1] = '\0';
+				}
+
+				m_LastEntityID = entity.GetUUID();
+				m_LastFullPath = sc.scriptPath;
+			}
+
 			if (ImGui::TreeNodeEx("Script", ImGuiTreeNodeFlags_DefaultOpen, "Script"))
 			{
-				char buffer[256];
-				memset(buffer, 0, sizeof(buffer));
-				strncpy(buffer, sc.scriptPath.c_str(), sizeof(buffer) - 1);
-
-				if (ImGui::InputText("Script Path", buffer, sizeof(buffer)))
+				if (ImGui::InputText("Script Path", m_LocalBuffer, sizeof(m_LocalBuffer)))
 				{
-					sc.scriptPath = buffer;
+					sc.scriptPath = (std::filesystem::path(m_ProjectPath) / m_LocalBuffer).string();
+					m_LastFullPath = sc.scriptPath;
 				}
 
 				if (ImGui::Button("Reload Script"))

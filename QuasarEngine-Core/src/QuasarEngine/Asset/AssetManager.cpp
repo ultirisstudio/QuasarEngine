@@ -26,7 +26,8 @@ namespace QuasarEngine
 			".png",
 			".jpg",
 			".jpeg",
-			".qasset"
+			".qasset",
+			".lua"
 		};
 
 		m_ExtentionAssetTypes[m_ValidExtention.at(0)] = AssetType::MESH;
@@ -37,6 +38,7 @@ namespace QuasarEngine
 		m_ExtentionAssetTypes[m_ValidExtention.at(5)] = AssetType::TEXTURE;
 		m_ExtentionAssetTypes[m_ValidExtention.at(6)] = AssetType::TEXTURE;
 		m_ExtentionAssetTypes[m_ValidExtention.at(7)] = AssetType::QASSET;
+		m_ExtentionAssetTypes[m_ValidExtention.at(8)] = AssetType::SCRIPT;
 	}
 
 	AssetManager::~AssetManager()
