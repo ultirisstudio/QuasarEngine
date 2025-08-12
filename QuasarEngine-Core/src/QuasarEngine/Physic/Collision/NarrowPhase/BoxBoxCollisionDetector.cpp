@@ -85,7 +85,7 @@ namespace QuasarEngine {
     }
 
     // ------------------------------------------------
-    // FONCTION 3 : Clipping final et contacts
+    // fonction 3 : Clipping final et contacts
     // ------------------------------------------------
 
     int BoxBoxCollisionDetector::computeContactPoints(const glm::vec3 incidentFace[4],
