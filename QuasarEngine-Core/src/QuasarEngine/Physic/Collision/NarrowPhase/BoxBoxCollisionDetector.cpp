@@ -127,7 +127,7 @@ namespace QuasarEngine {
     }
 
     // ------------------------------------------------
-    // TestCollision : Main SAT + contact point generation
+    // Test_Collision : Main SAT + contact point generation
     // ------------------------------------------------
 
     bool BoxBoxCollisionDetector::TestCollision(Collider* A, Collider* B, ContactManifold& manifold) {
