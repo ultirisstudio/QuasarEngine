@@ -49,7 +49,7 @@ namespace QuasarEngine {
     }
 
     // ------------------------------------------------
-    // FONCTION 2 : Clipping d'une face contre un plan
+    // fonction 2 : Clipping d'une face contre un plan
     // ------------------------------------------------
 
     int BoxBoxCollisionDetector::clipFaceAgainstPlane(const glm::vec3& planeNormal,
