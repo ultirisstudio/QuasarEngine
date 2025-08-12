@@ -13,7 +13,7 @@
 namespace QuasarEngine {
 
     // ------------------------------------------------
-    // FONCTION 1 : Calcul de la face incidente opposée
+    // fonction 1 : Calcul de la face incidente opposée
     // ------------------------------------------------
 
     void BoxBoxCollisionDetector::computeIncidentFace(glm::vec3 out[4],
