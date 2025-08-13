@@ -1,6 +1,7 @@
 #include "SceneHierarchy.h"
 
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include <QuasarEngine/Core/UUID.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
@@ -15,6 +16,40 @@ namespace QuasarEngine
 	void SceneHierarchy::OnImGuiRender(Scene& scene)
 	{
 		ImGui::Begin("Scene Hierarchy");
+
+		ImGuiID windowID = ImGui::GetCurrentWindow()->ID;
+
+		if (ImGui::BeginDragDropTargetCustom(ImGui::GetCurrentWindow()->Rect(), windowID))
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_DRAG_AND_DROP_ENTITY"))
+			{
+				UUID droppedID = *(const UUID*)payload->Data;
+				auto droppedEntity = scene.GetEntityByUUID(droppedID);
+
+				if (droppedEntity)
+				{
+					UUID& droppedParent = droppedEntity->GetComponent<HierarchyComponent>().m_Parent;
+					if (droppedParent != UUID::Null())
+					{
+						auto oldParent = scene.GetEntityByUUID(droppedParent);
+						if (oldParent)
+						{
+							auto& siblings = oldParent->GetComponent<HierarchyComponent>().m_Childrens;
+							siblings.erase(std::remove(siblings.begin(), siblings.end(), droppedID), siblings.end());
+						}
+						droppedParent = UUID::Null();
+					}
+				}
+			}
+
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+			{
+				const wchar_t* path = (const wchar_t*)payload->Data;
+				// AddGameObject(path);
+			}
+
+			ImGui::EndDragDropTarget();
+		}
 
 		if (ImGui::BeginTable("SceneHierarchyTable", 4, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame))
 		{
@@ -35,16 +70,6 @@ namespace QuasarEngine
 			}
 
 			ImGui::EndTable();
-		}
-
-		if (ImGui::BeginDragDropTarget())
-		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-			{
-				const wchar_t* path = (const wchar_t*)payload->Data;
-				// AddGameObject(path);
-			}
-			ImGui::EndDragDropTarget();
 		}
 
 		ImGui::End();
