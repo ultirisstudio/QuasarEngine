@@ -53,18 +53,22 @@ namespace QuasarEngine
 
 			UUID uuid = entity.GetUUID();
 
-			std::string result;
+			ImGui::Text(std::string("UUID: " + std::to_string(uuid)).c_str());
 
-			std::stringstream sstm;
-			sstm << "UUID: " << uuid;
-			result = sstm.str();
-			ImGui::Text(result.c_str());
 			ImGui::Separator();
 
-			std::stringstream sstm2;
-			sstm2 << "##" << uuid;
-			result = sstm2.str();
-			ImGui::InputText(result.c_str(), entity.GetName().data(), 20);
+			char buffer[256];
+			std::strncpy(buffer, entity.GetName().c_str(), sizeof(buffer));
+			buffer[sizeof(buffer) - 1] = '\0';
+
+			if (ImGui::InputText(("##" + std::to_string(uuid)).c_str(), buffer, sizeof(buffer)))
+			{
+				if (entity.HasComponent<TagComponent>())
+				{
+					auto& tag = entity.GetComponent<TagComponent>();
+					tag.Tag = std::string(buffer);
+				}
+			}
 
 			ImGui::Separator();
 

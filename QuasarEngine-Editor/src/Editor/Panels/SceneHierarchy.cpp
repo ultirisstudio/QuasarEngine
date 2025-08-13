@@ -16,12 +16,11 @@ namespace QuasarEngine
 	{
 		ImGui::Begin("Scene Hierarchy");
 
-		if (ImGui::BeginTable("SceneHierarchyTable", 5, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame))
+		if (ImGui::BeginTable("SceneHierarchyTable", 4, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame))
 		{
 			ImGui::TableSetupColumn("Nom", ImGuiTableColumnFlags_WidthFixed, 250.0f);
 			ImGui::TableSetupColumn("UUID");
 			ImGui::TableSetupColumn("Enfants");
-			ImGui::TableSetupColumn("Type");
 			ImGui::TableSetupColumn("Actions");
 			ImGui::TableHeadersRow();
 
@@ -71,6 +70,47 @@ namespace QuasarEngine
 		ImGui::TableSetColumnIndex(0);
 
 		bool open = ImGui::TreeNodeEx((void*)(intptr_t)entity.GetUUID(), treeFlags, "%s", entity.GetName().c_str());
+
+		if (ImGui::BeginPopupContextItem()) {
+			if (ImGui::MenuItem("Supprimer")) {
+				if (m_SelectedEntity == entity)
+					m_SelectedEntity = {};
+				scene.DestroyEntity(entity);
+			}
+			ImGui::EndPopup();
+		}
+
+		if (ImGui::BeginDragDropSource()) {
+			UUID id = entity.GetUUID();
+			ImGui::Text("%s", entity.GetName().c_str());
+			ImGui::SetDragDropPayload("SCENE_DRAG_AND_DROP_ENTITY", &id, sizeof(UUID));
+
+			ImGui::EndDragDropSource();
+		}
+
+		if (ImGui::BeginDragDropTarget()) {
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_DRAG_AND_DROP_ENTITY"))
+			{
+				UUID droppedID = *(const UUID*)payload->Data;
+
+				auto droppedEntity = scene.GetEntityByUUID(droppedID);
+				if (droppedEntity && droppedEntity.value() != entity)
+				{
+					UUID& droppedParent = droppedEntity->GetComponent<HierarchyComponent>().m_Parent;
+					if (droppedParent != UUID::Null()) {
+						auto oldParent = scene.GetEntityByUUID(droppedParent);
+						if (oldParent) {
+							auto& siblings = oldParent->GetComponent<HierarchyComponent>().m_Childrens;
+							siblings.erase(std::remove(siblings.begin(), siblings.end(), droppedID), siblings.end());
+						}
+					}
+					droppedParent = entity.GetUUID();
+					entity.GetComponent<HierarchyComponent>().m_Childrens.push_back(droppedID);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
 		if (ImGui::IsItemClicked())
 			m_SelectedEntity = entity;
 
@@ -84,20 +124,9 @@ namespace QuasarEngine
 		size_t childrenCount = entity.HasComponent<HierarchyComponent>() ? entity.GetComponent<HierarchyComponent>().m_Childrens.size() : 0;
 		ImGui::Text("%zu", childrenCount);
 
-		ImGui::TableSetColumnIndex(3);
-		if (entity.HasComponent<TagComponent>())
-			ImGui::TextUnformatted(entity.GetComponent<TagComponent>().Tag.c_str());
-		else
-			ImGui::TextUnformatted("-");
-
-		ImGui::TableSetColumnIndex(4);
+		ImGui::TableSetColumnIndex(3); // 4
 		float buttonSize = 20.0f;
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
-
-		if (ImGui::Button("V", ImVec2(buttonSize, buttonSize))) {
-			
-		}
-		ImGui::SameLine();
 
 		if (ImGui::Button("+", ImVec2(buttonSize, buttonSize))) {
 			Entity child = scene.CreateEntity("Nouveau");
@@ -112,50 +141,6 @@ namespace QuasarEngine
 			deleteEntity = true;
 		}
 		ImGui::PopStyleVar();
-
-		if (ImGui::BeginPopupContextItem()) {
-			if (ImGui::MenuItem("Supprimer")) {
-				if (m_SelectedEntity == entity)
-					m_SelectedEntity = {};
-				scene.DestroyEntity(entity);
-			}
-			ImGui::EndPopup();
-		}
-
-		if (ImGui::BeginDragDropSource()) {
-			std::wstring wideStr = std::wstring(std::to_string(entity.GetUUID()).begin(), std::to_string(entity.GetUUID()).end());
-			const wchar_t* uuid = wideStr.c_str();
-			ImGui::Text("%s", entity.GetName().c_str());
-			ImGui::SetDragDropPayload("SCENE_DRAG_AND_DROP_ENTITY", uuid, (wcslen(uuid) + 1) * sizeof(wchar_t));
-			ImGui::EndDragDropSource();
-		}
-
-		if (ImGui::BeginDragDropTarget()) {
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_DRAG_AND_DROP_ENTITY")) {
-				const wchar_t* data = (const wchar_t*)payload->Data;
-				UUID droppedID = std::stoull(std::string(data, data + wcslen(data)));
-				std::optional<Entity> droppedEntity = scene.GetEntityByUUID(droppedID);
-
-				if (droppedEntity.has_value())
-				{
-					if (droppedEntity.value() != entity)
-					{
-						UUID& droppedParent = droppedEntity.value().GetComponent<HierarchyComponent>().m_Parent;
-						if (droppedParent != UUID::Null()) {
-							std::optional<Entity> oldParent = scene.GetEntityByUUID(droppedParent);
-							if (oldParent.has_value())
-							{
-								auto& siblings = oldParent.value().GetComponent<HierarchyComponent>().m_Childrens;
-								siblings.erase(std::remove(siblings.begin(), siblings.end(), droppedEntity.value().GetUUID()), siblings.end());
-							}
-						}
-						droppedParent = entity.GetUUID();
-						entity.GetComponent<HierarchyComponent>().m_Childrens.push_back(droppedEntity.value().GetUUID());
-					}
-				}
-			}
-			ImGui::EndDragDropTarget();
-		}
 
 		if (open) {
 			for (UUID childID : entity.GetComponent<HierarchyComponent>().m_Childrens) {

@@ -9,7 +9,7 @@ namespace QuasarEngine
     CodeEditor::CodeEditor()
     {
         editor.SetShowWhitespaces(false);
-        editor.SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
+        editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
         editor.SetPalette(editor.GetDarkPalette());
         editor.SetTabSize(4);
         font = nullptr;
