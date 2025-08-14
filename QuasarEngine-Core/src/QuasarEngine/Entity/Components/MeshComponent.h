@@ -10,6 +10,7 @@ namespace QuasarEngine
 	public:
 		MeshComponent();
 		MeshComponent(std::string name, Mesh* mesh, std::string modelPath);
+		MeshComponent(std::string name);
 		~MeshComponent() override;
 
 		Mesh& GetMesh() const { return *m_Mesh; }

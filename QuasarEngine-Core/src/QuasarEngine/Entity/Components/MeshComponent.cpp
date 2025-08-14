@@ -16,6 +16,10 @@ namespace QuasarEngine
 		
 	}
 
+	MeshComponent::MeshComponent(std::string name) : m_Mesh(nullptr), m_Name(name), m_ModelPath("")
+	{
+	}
+
 	MeshComponent::~MeshComponent()
 	{
 		
