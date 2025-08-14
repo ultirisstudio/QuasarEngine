@@ -1,16 +1,16 @@
 #include "qepch.h"
 
-#include <stack>
 #include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Core/Application.h>
-#include <GLFW/glfw3.h>
+#include <QuasarEngine/Core/Window.h>
 #include <QuasarEngine/Core/UUID.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Entity/Components/CameraComponent.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 #include <QuasarEngine/Entity/Components/TagComponent.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
+#include <QuasarEngine/Core/Input.h>
 
 #include "QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h"
 
@@ -178,6 +178,18 @@ namespace QuasarEngine
         return std::nullopt;
     }
 
+    std::optional<Entity> Scene::GetEntityByName(const std::string& name) const
+    {
+        auto it = m_NameMap.find(name);
+        if (it != m_NameMap.end())
+        {
+            assert(m_Registry && "Registry is nullptr");
+            assert(m_Registry->GetRegistry().valid(it->second) && "Entity is invalid");
+            return Entity{ it->second, m_Registry.get() };
+        }
+        return std::nullopt;
+    }
+
     void Scene::Update(double deltaTime)
     {
         ProcessEntityDestructions();
@@ -197,6 +209,11 @@ namespace QuasarEngine
         }
 
         Renderer::m_SceneData.m_ScriptSystem->Update(deltaTime);
+
+        if (Input::IsKeyJustPressed(Key::Escape))
+        {
+            Application::Get().GetWindow().SetInputMode(false, false);
+		}
     }
 
     void Scene::OnRuntimeStart()
@@ -206,6 +223,8 @@ namespace QuasarEngine
         UpdatePrimaryCameraCache();
 
         Renderer::m_SceneData.m_ScriptSystem->Start();
+
+        Application::Get().GetWindow().SetInputMode(true, true);
     }
 
     void Scene::OnRuntimeStop()

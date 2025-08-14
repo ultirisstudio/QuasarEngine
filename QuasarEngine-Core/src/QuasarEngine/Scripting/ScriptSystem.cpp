@@ -9,6 +9,7 @@
 #include <QuasarEngine/Entity/Entity.h>
 
 #include <QuasarEngine/Core/Input.h>
+#include <glm/gtx/compatibility.hpp>
 
 namespace QuasarEngine
 {
@@ -435,6 +436,79 @@ namespace QuasarEngine
 
         lua_state.set_function("getScene", []() -> Scene* {
             return Renderer::m_SceneData.m_Scene;
+            });
+
+        lua_state.set_function("getEntityByName", [&lua_state](const std::string& name) -> sol::object {
+            std::optional<Entity> ent = Renderer::m_SceneData.m_Scene->GetEntityByName(name);
+            if (ent.has_value())
+                return sol::make_object(lua_state, ent.value());
+            return sol::nil;
+            });
+
+        lua_state.set_function("lookAtEuler", [](const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) -> glm::vec3 {
+            glm::mat4 view = glm::lookAt(position, target, up);
+
+            glm::quat q = glm::quat_cast(view);
+
+            glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
+
+            return euler;
+            });
+
+
+        lua_state.set_function("lookAt", [](const glm::vec3& position,
+            const glm::vec3& target,
+            const glm::vec3& up) -> glm::mat4
+            {
+                glm::vec3 dir = target - position;
+
+                if (glm::length(dir) < 1e-6f) {
+                    return glm::mat4(1.0f);
+                }
+                dir = glm::normalize(dir);
+
+                glm::vec3 upNorm = glm::normalize(up);
+
+                if (glm::abs(glm::dot(upNorm, dir)) > 0.999f) {
+                    upNorm = glm::vec3(0, 1, 0);
+                    if (glm::abs(glm::dot(upNorm, dir)) > 0.999f) {
+                        upNorm = glm::vec3(1, 0, 0);
+                    }
+                }
+
+                return glm::lookAt(position, position + dir, upNorm);
+            });
+
+        lua_state.set_function("mat4_to_euler", [](const glm::mat4& mat) -> glm::vec3 {
+            glm::mat4 rotMat = mat;
+            
+            for (int i = 0; i < 3; ++i) {
+                glm::vec3 axis(rotMat[0][i], rotMat[1][i], rotMat[2][i]);
+                if (glm::length(axis) > 1e-6f) {
+                    axis = glm::normalize(axis);
+                }
+                rotMat[0][i] = axis.x;
+                rotMat[1][i] = axis.y;
+                rotMat[2][i] = axis.z;
+            }
+
+            glm::quat q = glm::quat_cast(rotMat);
+            glm::vec3 euler = glm::eulerAngles(q); //glm::degrees(glm::eulerAngles(q));
+
+            if (!glm::all(glm::isfinite(euler))) {
+                return glm::vec3(0.0f);
+            }
+
+            return euler;
+            });
+
+
+        lua_state.set_function("inverse", [](const glm::mat4& mat) -> glm::mat4 {
+            return glm::inverse(mat);
+            });
+
+        lua_state.set_function("radians_to_degrees", [](const glm::vec3& v) -> glm::vec3 {
+            return glm::degrees(v);
             });
     }
 

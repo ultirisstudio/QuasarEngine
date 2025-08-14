@@ -20,9 +20,15 @@ void QuasarEngine::Viewport::Render(Scene& scene)
 
 	m_ViewportFrameBuffer->Bind();
 
+	RenderCommand::Clear();
+	RenderCommand::ClearColor(glm::vec4(0.2f, 0.2f, .2f, 1.0f));
+
 	Renderer::BeginScene(scene);
 
-	Renderer::Render(scene.GetPrimaryCamera());
+	Camera& camera = scene.GetPrimaryCamera();
+	Renderer::RenderSkybox(camera);
+	Renderer::Render(camera);
+
 	Renderer::EndScene();
 
 	m_ViewportFrameBuffer->Unbind();
@@ -55,7 +61,7 @@ void QuasarEngine::Viewport::OnImGuiRender(Scene& scene)
 			void* handle = m_ViewportFrameBuffer->GetColorAttachment(0);
 			if (handle)
 			{
-				ImGui::Image((ImTextureID)handle, ImVec2{ m_EditorViewportSize.x, m_EditorViewportSize.y }, ImVec2{ 0, 0 }, ImVec2{ 1, 1 });
+				ImGui::Image((ImTextureID)handle, ImVec2{ m_EditorViewportSize.x, m_EditorViewportSize.y }, RendererAPI::GetAPI() == RendererAPI::API::OpenGL ? ImVec2{ 0, 1 } : ImVec2{ 0, 0 }, RendererAPI::GetAPI() == RendererAPI::API::OpenGL ? ImVec2{ 1, 0 } : ImVec2{ 1, 1 });
 			}
 		}
 	}

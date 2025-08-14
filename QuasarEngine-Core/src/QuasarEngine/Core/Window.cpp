@@ -190,6 +190,22 @@ namespace QuasarEngine {
 		m_Data.VSync = enabled;
 	}
 
+	void Window::SetInputMode(bool cursorDisabled, bool rawMouseMotion)
+	{
+		if (cursorDisabled)
+		{
+			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, (rawMouseMotion && glfwRawMouseMotionSupported()) ? GLFW_TRUE : GLFW_FALSE);
+		}
+		else
+		{
+			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+		}
+		//m_Data.MousePos = glm::uvec2(0.0f, 0.0f);
+		//glfwGetCursorPos(m_Window, &m_Data.MousePos.x, &m_Data.MousePos.y);
+	}
+
 	bool Window::IsVSync() const
 	{
 		return m_Data.VSync;

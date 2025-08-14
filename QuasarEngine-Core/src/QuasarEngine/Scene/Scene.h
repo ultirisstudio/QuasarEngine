@@ -30,6 +30,7 @@ namespace QuasarEngine
 
         std::optional<Entity> FindEntityByName(const std::string& name) const;
         std::optional<Entity> GetEntityByUUID(UUID uuid) const;
+		std::optional<Entity> GetEntityByName(const std::string& name) const;
 
         void Update(double deltaTime);
         void UpdateRuntime(double deltaTime);

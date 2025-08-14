@@ -47,6 +47,7 @@ namespace QuasarEngine {
 		}
 
 		void SetVSync(bool enabled);
+		void SetInputMode(bool cursorDisabled, bool rawMouseMotion);
 		bool IsVSync() const;
 
 		void SetCursorVisibility(bool visible);

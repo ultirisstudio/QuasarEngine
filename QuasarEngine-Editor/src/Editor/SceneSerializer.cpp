@@ -3,18 +3,7 @@
 
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Entity/Entity.h>
-#include <QuasarEngine/Entity/Components/HierarchyComponent.h>
-#include <QuasarEngine/Entity/Components/TransformComponent.h>
-#include <QuasarEngine/Entity/Components/MaterialComponent.h>
-#include <QuasarEngine/Entity/Components/MeshComponent.h>
-#include <QuasarEngine/Entity/Components/CameraComponent.h>
-#include <QuasarEngine/Entity/Components/LightComponent.h>
-#include <QuasarEngine/Entity/Components/MeshRendererComponent.h>
-#include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
-#include <QuasarEngine/Entity/Components/Physics/MeshColliderComponent.h>
-#include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
-#include <QuasarEngine/Entity/Components/Physics/CapsuleColliderComponent.h>
-#include <QuasarEngine/Entity/Components/Physics/SphereColliderComponent.h>
+#include <QuasarEngine/Entity/AllComponents.h>
 
 #include <QuasarEngine/Core/Input.h>
 #include <QuasarEngine/Core/KeyCodes.h>
@@ -231,6 +220,8 @@ namespace QuasarEngine
 							c.GetCamera().Init(&entity.GetComponent<TransformComponent>());
 							if (value["fov"])
 								c.GetCamera().SetFov(value["fov"].as<float>());
+							if (value["primary"])
+								c.Primary = value["primary"].as<bool>();
 						}
 						else if (key == "RigidBodyComponent") {
 							auto& c = entity.AddOrReplaceComponent<RigidBodyComponent>();
@@ -308,6 +299,14 @@ namespace QuasarEngine
 								c.m_Height = value["height"].as<float>();
 							c.UpdateColliderMaterial();
 							c.UpdateColliderSize();
+						}
+
+						else if (key == "ScriptComponent") {
+							auto& scriptComponent = entity.AddOrReplaceComponent<ScriptComponent>();
+							if (value["scriptPath"]) {
+								std::string scriptPath = assetPath + "/" + value["scriptPath"].as<std::string>();
+								scriptComponent.scriptPath = scriptPath;
+							}
 						}
 					}
 				}
@@ -445,6 +444,7 @@ namespace QuasarEngine
 			out << YAML::Value << YAML::BeginMap;
 			auto& cc = entity.GetComponent<CameraComponent>();
 			out << YAML::Key << "fov" << YAML::Value << cc.GetCamera().GetFov();
+			out << YAML::Key << "primary" << YAML::Value << cc.Primary;
 			out << YAML::EndMap;
 			out << YAML::EndMap;
 		}
@@ -513,6 +513,18 @@ namespace QuasarEngine
 			out << YAML::EndMap;
 			out << YAML::EndMap;
 		}
+
+		if (entity.HasComponent<ScriptComponent>())
+		{
+			out << YAML::BeginMap;
+			out << YAML::Key << "ScriptComponent";
+			out << YAML::Value << YAML::BeginMap;
+			auto& sc = entity.GetComponent<ScriptComponent>();
+			out << YAML::Key << "scriptPath" << YAML::Value << sc.scriptPath;
+			out << YAML::EndMap;
+			out << YAML::EndMap;
+		}
+
 		out << YAML::EndSeq;
 		out << YAML::EndMap;
 		std::vector<UUID> childrens = entity.GetComponent<HierarchyComponent>().m_Childrens;
