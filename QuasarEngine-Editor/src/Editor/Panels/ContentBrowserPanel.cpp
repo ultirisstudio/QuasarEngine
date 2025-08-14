@@ -308,6 +308,23 @@ namespace QuasarEngine
                 else if (fileType == AssetType::SCRIPT)
                 {
                     m_CodeEditor = std::make_shared<CodeEditor>();
+                    if (extension == ".lua")
+                    {
+						m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
+					}
+					else if (extension == ".cpp" || extension == ".h")
+					{
+						m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
+					}
+                    m_CodeEditor->LoadFromFile(relativePath.string());
+                }
+                else
+                {
+                    m_CodeEditor = std::make_shared<CodeEditor>();
+                    if (extension == ".txt")
+                    {
+                        m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
+                    }
                     m_CodeEditor->LoadFromFile(relativePath.string());
                 }
             }
@@ -353,7 +370,7 @@ namespace QuasarEngine
                         newFile = m_CurrentDirectory / ("NewFile" + std::to_string(counter++) + ".txt");
                     }
                     std::ofstream ofs(newFile);
-                    ofs << ""; // fichier vide
+                    ofs << "";
                     ofs.close();
                 }
 

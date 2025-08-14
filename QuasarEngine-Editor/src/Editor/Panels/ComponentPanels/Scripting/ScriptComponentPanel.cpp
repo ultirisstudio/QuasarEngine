@@ -5,6 +5,8 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+#include <glm/glm.hpp>
+
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>
 
@@ -16,50 +18,113 @@ namespace QuasarEngine
 		m_LocalBuffer[0] = '\0';
 	}
 
-	void ScriptComponentPanel::Render(Entity entity)
-	{
-		if (!entity || !entity.IsValid())
-			return;
+    void ScriptComponentPanel::Render(Entity entity)
+    {
+        if (!entity || !entity.IsValid())
+            return;
 
-		if (!entity.HasComponent<ScriptComponent>())
-			return;
+        if (!entity.HasComponent<ScriptComponent>())
+            return;
 
-		auto& sc = entity.GetComponent<ScriptComponent>();
+        auto& sc = entity.GetComponent<ScriptComponent>();
 
-		if (m_LastEntityID != entity.GetUUID() || sc.scriptPath != m_LastFullPath)
-		{
-			try
-			{
-				std::filesystem::path fullPath(sc.scriptPath);
-				std::filesystem::path relativePath = std::filesystem::relative(fullPath, m_ProjectPath);
+        if (m_LastEntityID != entity.GetUUID() || sc.scriptPath != m_LastFullPath)
+        {
+            try
+            {
+                std::filesystem::path fullPath(sc.scriptPath);
+                std::filesystem::path relativePath = std::filesystem::relative(fullPath, m_ProjectPath);
+                std::strncpy(m_LocalBuffer, relativePath.string().c_str(), sizeof(m_LocalBuffer) - 1);
+            }
+            catch (...)
+            {
+                std::strncpy(m_LocalBuffer, sc.scriptPath.c_str(), sizeof(m_LocalBuffer) - 1);
+            }
+            m_LocalBuffer[sizeof(m_LocalBuffer) - 1] = '\0';
+            m_LastEntityID = entity.GetUUID();
+            m_LastFullPath = sc.scriptPath;
+        }
 
-				std::strncpy(m_LocalBuffer, relativePath.string().c_str(), sizeof(m_LocalBuffer) - 1);
-				m_LocalBuffer[sizeof(m_LocalBuffer) - 1] = '\0';
-			}
-			catch (...)
-			{
-				std::strncpy(m_LocalBuffer, sc.scriptPath.c_str(), sizeof(m_LocalBuffer) - 1);
-				m_LocalBuffer[sizeof(m_LocalBuffer) - 1] = '\0';
-			}
+        if (ImGui::TreeNodeEx("Script", ImGuiTreeNodeFlags_DefaultOpen, "Script"))
+        {
+            if (ImGui::InputText("Script Path", m_LocalBuffer, sizeof(m_LocalBuffer)))
+            {
+                sc.scriptPath = (std::filesystem::path(m_ProjectPath) / m_LocalBuffer).string();
+                m_LastFullPath = sc.scriptPath;
+            }
 
-			m_LastEntityID = entity.GetUUID();
-			m_LastFullPath = sc.scriptPath;
-		}
+            if (ImGui::Button("Reload Script"))
+            {
+                sc.Initialize();
+            }
 
-		if (ImGui::TreeNodeEx("Script", ImGuiTreeNodeFlags_DefaultOpen, "Script"))
-		{
-			if (ImGui::InputText("Script Path", m_LocalBuffer, sizeof(m_LocalBuffer)))
-			{
-				sc.scriptPath = (std::filesystem::path(m_ProjectPath) / m_LocalBuffer).string();
-				m_LastFullPath = sc.scriptPath;
-			}
+            if (ImGui::TreeNodeEx("Exposed (public)", ImGuiTreeNodeFlags_DefaultOpen, "Exposed (public)"))
+            {
+                if (sc.publicTable.valid() && sc.environment.valid())
+                {
+                    for (auto& rv : sc.reflectedVars)
+                    {
+                        const char* label = rv.name.c_str();
 
-			if (ImGui::Button("Reload Script"))
-			{
-				sc.Initialize();
-			}
+                        switch (rv.type)
+                        {
+                        case ScriptComponent::VarType::Number:
+                        {
+                            double val = sc.publicTable[rv.name].get_or(0.0);
+                            float fval = static_cast<float>(val);
+                            if (ImGui::DragFloat(label, &fval, 0.1f))
+                            {
+                                sc.publicTable[rv.name] = static_cast<double>(fval);
+                                sc.environment[rv.name] = static_cast<double>(fval);
+                            }
+                            break;
+                        }
+                        case ScriptComponent::VarType::String:
+                        {
+                            sol::optional<std::string> sval = sc.publicTable[rv.name];
+                            char buf[256];
+                            std::snprintf(buf, sizeof(buf), "%s", sval.value_or("").c_str());
+                            if (ImGui::InputText(label, buf, sizeof(buf)))
+                            {
+                                std::string newVal(buf);
+                                sc.publicTable[rv.name] = newVal;
+                                sc.environment[rv.name] = newVal;
+                            }
+                            break;
+                        }
+                        case ScriptComponent::VarType::Boolean:
+                        {
+                            bool bval = sc.publicTable[rv.name].get_or(false);
+                            if (ImGui::Checkbox(label, &bval))
+                            {
+                                sc.publicTable[rv.name] = bval;
+                                sc.environment[rv.name] = bval;
+                            }
+                            break;
+                        }
+                        case ScriptComponent::VarType::Vec3:
+                        {
+                            glm::vec3 vval = sc.publicTable[rv.name].get_or(glm::vec3{ 0.0f, 0.0f, 0.0f });
+                            float arr[3] = { vval.x, vval.y, vval.z };
+                            if (ImGui::DragFloat3(label, arr, 0.1f))
+                            {
+                                glm::vec3 newV(arr[0], arr[1], arr[2]);
+                                sc.publicTable[rv.name] = newV;
+                                sc.environment[rv.name] = newV;
+                            }
+                            break;
+                        }
+                        }
+                    }
+                }
+                else
+                {
+                    ImGui::TextDisabled("No 'public' table in this script or environment not initialized.");
+                }
+                ImGui::TreePop();
+            }
 
-			ImGui::TreePop();
-		}
-	}
+            ImGui::TreePop();
+        }
+    }
 }

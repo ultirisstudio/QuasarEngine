@@ -3,6 +3,8 @@
 #include <entt.hpp>
 #include <sol/sol.hpp>
 
+//#include <unordered_map>
+
 namespace QuasarEngine
 {
     class ScriptComponent;
@@ -24,6 +26,8 @@ namespace QuasarEngine
 
     private:
         std::unique_ptr<entt::registry> m_Registry;
+
+        //std::unordered_map<std::string, sol::object> preserved;
 
         sol::state lua;
     };

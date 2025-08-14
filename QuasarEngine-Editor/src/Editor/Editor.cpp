@@ -36,6 +36,8 @@
 
 #include <QuasarEngine/Scripting/ScriptSystem.h>
 
+#include <QuasarEngine/Scripting/QMM/QMM.h>
+
 namespace QuasarEngine
 {
 	Editor::Editor(const EditorSpecification& spec)
@@ -93,6 +95,28 @@ namespace QuasarEngine
 
 		std::filesystem::path base_path = m_Specification.ProjectPath + "\\Assets";
 		SetupAssets(base_path);
+
+		VM vm;
+
+		vm.registerFunction("create_entity", [](const std::vector<Value::Prim>& args)->Value::Prim {
+			std::string name = args.size() > 0 && std::holds_alternative<std::string>(args[0]) ? std::get<std::string>(args[0]) : "Unnamed";
+			static double nextId = 1; double id = nextId++;
+			std::cout << "[ENGINE] Create entity '" << name << "' -> id=" << id << "\n";
+			return id;
+			});
+
+		const std::string code = R"(// Q-- demo
+			let hp = 100;
+			let name = "Player";
+			fn heal(x){ return x + 10; }
+			hp = heal(hp);
+			if (hp > 50) { print(name, "OK", hp); } else { print("LOW"); }
+			let id = create_entity("Hero");
+			let i = 0; while(i < 3){ print("tick", i); i = i + 1; }
+		)";
+
+		try { vm.eval(code); }
+		catch (const QError& e) { std::cerr << "Q-- Error: " << e.what() << "\n"; }
 	}
 
 	void Editor::SetupAssets(const std::filesystem::path& chemin) {

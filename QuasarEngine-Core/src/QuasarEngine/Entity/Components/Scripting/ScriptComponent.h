@@ -17,13 +17,24 @@ namespace QuasarEngine
         void Initialize();
         void Destroy();
 
-        std::string scriptPath = ""; //"Assets/Scripts/player.lua"
+        std::string scriptPath = "";
 
         sol::environment environment;
 
         sol::function startFunc;
         sol::function updateFunc;
         sol::function stopFunc;
+
+        sol::table publicTable;
+
+        enum class VarType { Number, String, Boolean, Vec3 };
+
+        struct ReflectedVar {
+            std::string name;
+            VarType type;
+        };
+
+        std::vector<ReflectedVar> reflectedVars;
 
         bool initialized = false;
     };

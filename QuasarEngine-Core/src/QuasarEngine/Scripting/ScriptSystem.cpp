@@ -78,42 +78,72 @@ namespace QuasarEngine
         }
 
         sol::environment env(lua, sol::create, lua.globals());
-        m_Registry->emplace_or_replace<sol::environment>(entity, env);
+
+        sol::table publicTable = lua.create_table();
+        env["public"] = publicTable;
 
         Entity entityObject{ entity, Renderer::m_SceneData.m_Scene->GetRegistry() };
         env["entity"] = entityObject;
         env["self"] = entityObject;
 
+        env.set_function("vec3", [](float x, float y, float z) {
+            return glm::vec3(x, y, z);
+            });
+
         try {
             lua.script_file(scriptComponent.scriptPath, env);
 
+            sol::object maybePublic = env["public"];
+            if (maybePublic.is<sol::table>()) {
+                publicTable = maybePublic.as<sol::table>();
+            }
+
+            scriptComponent.publicTable = publicTable;
+            scriptComponent.reflectedVars.clear();
+
+            for (auto&& kv : publicTable) {
+                std::string key = kv.first.as<std::string>();
+                sol::object value = kv.second;
+
+                ScriptComponent::ReflectedVar rv;
+                rv.name = key;
+
+                switch (value.get_type()) {
+                case sol::type::number:   rv.type = ScriptComponent::VarType::Number; break;
+                case sol::type::string:   rv.type = ScriptComponent::VarType::String; break;
+                case sol::type::boolean:  rv.type = ScriptComponent::VarType::Boolean; break;
+                case sol::type::userdata:
+                case sol::type::table: {
+                    if (value.is<glm::vec3>()) rv.type = ScriptComponent::VarType::Vec3;
+                    else continue;
+                    break;
+                }
+                default: continue;
+                }
+
+                scriptComponent.reflectedVars.push_back(std::move(rv));
+            }
+
             scriptComponent.startFunc = env["start"];
-
-            if (!scriptComponent.startFunc.valid()) {
-                std::cerr << "[ScriptSystem] ERROR: 'start' function not found in script: "
-                    << scriptComponent.scriptPath << std::endl;
-            }
-
             scriptComponent.updateFunc = env["update"];
-
-            if (!scriptComponent.updateFunc.valid()) {
-                std::cerr << "[ScriptSystem] ERROR: 'update' function not found in script: "
-                    << scriptComponent.scriptPath << std::endl;
-            }
-
             scriptComponent.stopFunc = env["stop"];
 
-            if (!scriptComponent.stopFunc.valid()) {
-                std::cerr << "[ScriptSystem] ERROR: 'stop' function not found in script: "
-                    << scriptComponent.scriptPath << std::endl;
-            }
-
-            scriptComponent.environment = env;
+            scriptComponent.environment = std::move(env);
             scriptComponent.initialized = true;
 
-            /*for (const auto& kv : env) {
-                std::string key = kv.first.as<std::string>();
-                std::cout << "[ScriptSystem] Key in env: " << key << std::endl;
+            /*if (scriptComponent.publicTable.valid()) {
+                for (auto&& kv : scriptComponent.publicTable) {
+                    std::string key = kv.first.as<std::string>();
+                    preserved.emplace(key, kv.second);
+                }
+            }
+
+            if (scriptComponent.publicTable.valid()) {
+                for (auto& [key, obj] : preserved) {
+                    if (scriptComponent.publicTable[key].valid())
+                        scriptComponent.publicTable[key] = obj;
+                    scriptComponent.environment[key] = scriptComponent.publicTable[key];
+                }
             }*/
         }
         catch (const sol::error& e) {
