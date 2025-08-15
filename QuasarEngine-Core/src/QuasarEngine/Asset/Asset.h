@@ -11,7 +11,8 @@ namespace QuasarEngine
 		MODEL,
 		QASSET,
 		MESH,
-		SCRIPT
+		SCRIPT,
+		SCENE
 	};
 
 	class Asset

@@ -11,6 +11,8 @@
 
 #include <QuasarEngine/Core/Logger.h>
 
+#include "Editor/Resources/images_data.h"
+
 namespace QuasarEngine
 {
 	ContentBrowserPanel::ContentBrowserPanel(const std::string& projectPath, AssetImporter* importer) : m_BaseDirectory(projectPath + "\\Assets"), m_CurrentDirectory(m_BaseDirectory), m_AssetImporter(importer)
@@ -18,19 +20,32 @@ namespace QuasarEngine
 		TextureSpecification spec;
 
 		m_DirectoryIcon = Texture2D::CreateTexture2D(spec);
-		m_DirectoryIcon->LoadFromPath("Assets/Icons/texture_dossier.png");
+		//m_DirectoryIcon->LoadFromPath("Assets/Icons/texture_dossier.png");
+        m_DirectoryIcon->LoadFromMemory(img_texture_dossier, img_texture_dossier_size);
 
 		m_FilePNGIcon = Texture2D::CreateTexture2D(spec);
-		m_FilePNGIcon->LoadFromPath("Assets/Icons/texture_png.png");
+		//m_FilePNGIcon->LoadFromPath("Assets/Icons/texture_png.png");
+		m_FilePNGIcon->LoadFromMemory(img_texture_png, img_texture_png_size);
 
 		m_FileJPGIcon = Texture2D::CreateTexture2D(spec);
-		m_FileJPGIcon->LoadFromPath("Assets/Icons/texture_jpg.png");
+		//m_FileJPGIcon->LoadFromPath("Assets/Icons/texture_jpg.png");
+		m_FileJPGIcon->LoadFromMemory(img_texture_jpg, img_texture_jpg_size);
 
 		m_FileOBJIcon = Texture2D::CreateTexture2D(spec);
-		m_FileOBJIcon->LoadFromPath("Assets/Icons/texture_obj.png");
+		//m_FileOBJIcon->LoadFromPath("Assets/Icons/texture_obj.png");
+		m_FileOBJIcon->LoadFromMemory(img_texture_obj, img_texture_obj_size);
+
+		m_FileSceneIcon = Texture2D::CreateTexture2D(spec);
+		//m_FileSceneIcon->LoadFromPath("Assets/Icons/texture_scene.png");
+		m_FileSceneIcon->LoadFromMemory(img_texture_scene, img_texture_scene_size);
 
 		m_FileOtherIcon = Texture2D::CreateTexture2D(spec);
-		m_FileOtherIcon->LoadFromPath("Assets/Icons/texture_texte.png");
+		//m_FileOtherIcon->LoadFromPath("Assets/Icons/texture_texte.png");
+		m_FileOtherIcon->LoadFromMemory(img_texture_texte, img_texture_texte_size);
+
+		m_FileLuaIcon = Texture2D::CreateTexture2D(spec);
+		//m_FileLuaIcon->LoadFromPath("Assets/Icons/texture_lua.png");
+		m_FileLuaIcon->LoadFromMemory(img_texture_lua, img_texture_lua_size);
 
         //AssetToLoad asset;
         //asset.id = "Assets/Textures/1001_albedo.png";
@@ -243,6 +258,25 @@ namespace QuasarEngine
                     else
                         icon = m_FileOtherIcon;
                 }
+            }
+            else if (fileType == AssetType::SCRIPT)
+            {
+                if (extension == ".lua")
+                {
+                    icon = m_FileLuaIcon;
+                }
+                else if (extension == ".cpp" || extension == ".h")
+                {
+                    icon = m_FileOtherIcon;
+                }
+                else
+                {
+                    icon = m_FileOtherIcon;
+                }
+			}
+            else if (fileType == AssetType::SCENE)
+            {
+                icon = m_FileSceneIcon;
             }
             else
             {

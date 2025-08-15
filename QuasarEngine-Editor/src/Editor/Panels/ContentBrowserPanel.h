@@ -30,6 +30,8 @@ namespace QuasarEngine
 		std::shared_ptr<Texture2D> m_FilePNGIcon;
 		std::shared_ptr<Texture2D> m_FileJPGIcon;
 		std::shared_ptr<Texture2D> m_FileOBJIcon;
+		std::shared_ptr<Texture2D> m_FileLuaIcon;
+		std::shared_ptr<Texture2D> m_FileSceneIcon;
 		std::shared_ptr<Texture2D> m_FileOtherIcon;
 
 		std::shared_ptr<TextureViewerPanel> m_TextureViewerPanel;
