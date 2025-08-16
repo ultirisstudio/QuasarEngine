@@ -65,11 +65,11 @@ project "QuasarEngine-Core"
 		systemversion "latest"
 
 	filter "configurations:Debug"
-		defines "DEBUG"
+		defines "DEBUG"		
 		runtime "Debug"
 		symbols "on"
 
 	filter "configurations:Release"
-		defines "RELEASE"
+		defines "RELEASE"		
 		runtime "Release"
 		optimize "on"

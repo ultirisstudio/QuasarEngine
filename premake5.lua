@@ -29,7 +29,6 @@ group "Dependance"
 	include "vendor/zlib"
 	include "vendor/TextEditor"
 	include "vendor/lua"
-
 group ""
 
 group "Core"
@@ -47,3 +46,4 @@ group ""
 group "Units"
 	include "QuasarEngine-Units"
 group ""
+
