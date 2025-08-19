@@ -25,7 +25,9 @@ project "QuasarEngine-Runtime"
 		"%{IncludeDir.tinyfiledialogs}",
 		"%{IncludeDir.mbedtls}",
 		"%{IncludeDir.zlib}",
-		"%{IncludeDir.entt}"
+		"%{IncludeDir.entt}",
+		"%{IncludeDir.sol2}",
+		"%{IncludeDir.lua}"
 	}
 
 	links
@@ -34,7 +36,8 @@ project "QuasarEngine-Runtime"
 		"tinyfiledialogs",
 		"yaml-cpp",
 		"mbedtls",
-		"zlib"
+		"zlib",
+		"lua"
 	}
 	
 	filter "system:windows"

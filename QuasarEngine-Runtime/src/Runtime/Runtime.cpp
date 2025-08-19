@@ -26,34 +26,72 @@ namespace QuasarEngine
 
 	void Runtime::OnAttach()
 	{
-		//RenderCommand::Init();
-
 		//PhysicEngine::Init();
-		//Renderer::Init();
 
 		Application::Get().GetWindow().SetCursorVisibility(true);
 
-		//m_ScreenQuad = std::make_unique<ScreenQuad>();
+		m_ScreenQuad = std::make_unique<ScreenQuad>();
 		m_Scene = std::make_unique<Scene>();
 
 		Renderer::BeginScene(*m_Scene);
 
-		//ShaderFile shaderfile;
-		//shaderfile.vertexShaderFile = "Assets/Shaders/ScreenQuad.vert";
-		//shaderfile.fragmentShaderFile = "Assets/Shaders/ScreenQuad.frag";
-		//m_ScreenQuadShader = Shader::Create(shaderfile);
+		Shader::ShaderDescription screenDesc;
+
+		std::string vertPath = "Assets/Shaders/ScreenQuad.vert." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+		std::string fragPath = "Assets/Shaders/ScreenQuad.frag." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+
+		screenDesc.modules = {
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Vertex,
+				vertPath,
+				{
+					{0, Shader::ShaderIOType::Vec2, "aPos", true, ""},
+					{1, Shader::ShaderIOType::Vec2, "aTexCoords", true, ""}
+				}
+			},
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Fragment,
+				fragPath,
+				{
+					{0, Shader::ShaderIOType::Vec4, "FragColor", false, ""}
+				}
+			}
+		};
+
+		screenDesc.globalUniforms = {};
+
+		screenDesc.objectUniforms = {};
+
+		screenDesc.samplers = {
+			{"screenTexture", 0, 0, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+		};
+
+		screenDesc.blendMode = Shader::BlendMode::None;
+		screenDesc.cullMode = Shader::CullMode::None;
+		screenDesc.fillMode = Shader::FillMode::Solid;
+		screenDesc.depthFunc = Shader::DepthFunc::Always;
+		screenDesc.depthTestEnable = false;
+		screenDesc.depthWriteEnable = false;
+		screenDesc.topology = Shader::PrimitiveTopology::TriangleList;
+		screenDesc.enableDynamicViewport = true;
+		screenDesc.enableDynamicScissor = true;
+
+		m_ScreenQuadShader = Shader::Create(screenDesc);
+
 		//m_ScreenQuadShader->setUniform("screenTexture", 0);
 
-		//FramebufferSpecification spec;
-		//spec.Width = Application::Get().GetWindow().GetWidth();
-		//spec.Height = Application::Get().GetWindow().GetHeight();
-		//spec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
+		FramebufferSpecification spec;
+		spec.Width = Application::Get().GetWindow().GetWidth();
+		spec.Height = Application::Get().GetWindow().GetHeight();
+		spec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
 
-		//m_FrameBuffer = Framebuffer::Create(spec);
+		m_FrameBuffer = Framebuffer::Create(spec);
+
 		//m_ApplicationSize = { spec.Width, spec.Height };
 		m_ApplicationSize = { 1280, 720 };
-		//RenderCommand::SetViewport(0, 0, m_ApplicationSize.x, m_ApplicationSize.y);
-		//m_FrameBuffer->Resize((uint32_t)m_ApplicationSize.x, (uint32_t)m_ApplicationSize.y);
+
+		RenderCommand::SetViewport(0, 0, m_ApplicationSize.x, m_ApplicationSize.y);
+		m_FrameBuffer->Resize((uint32_t)m_ApplicationSize.x, (uint32_t)m_ApplicationSize.y);
 
 		m_ChunkManager = std::make_unique<ChunkManager>();
 		m_Player = std::make_unique<Player>();
@@ -97,39 +135,41 @@ namespace QuasarEngine
 
 	void Runtime::OnRender()
 	{
-		//m_FrameBuffer->Bind();
+		m_FrameBuffer->Bind();
 
-		//RenderCommand::Clear();
-		//RenderCommand::ClearColor(glm::vec4(0.1f, 0.5f, .9f, 1.0f));
+		RenderCommand::Clear();
+		RenderCommand::ClearColor(glm::vec4(0.1f, 0.5f, .9f, 1.0f));
 
-		//Renderer::BeginScene(*m_Scene);
+		Renderer::BeginScene(*m_Scene);
 		
-		//Renderer::RenderSkybox(m_Player->GetCamera());
-		//Renderer::EndScene();
+		Renderer::RenderSkybox(m_Player->GetCamera());
+		Renderer::Render(m_Player->GetCamera());
+		Renderer::EndScene();
 
 		unsigned int width = Application::Get().GetWindow().GetWidth();
 		unsigned int height = Application::Get().GetWindow().GetHeight();
 		if (m_ApplicationSize.x != width || m_ApplicationSize.y != height)
 		{
-			//RenderCommand::SetViewport(0, 0, width, height);
+			RenderCommand::SetViewport(0, 0, width, height);
 			m_Player->GetCamera().OnResize(width, height);
-			//m_FrameBuffer->Resize((uint32_t)width, (uint32_t)height);
+			m_FrameBuffer->Resize((uint32_t)width, (uint32_t)height);
 
 			m_ApplicationSize = { width, height };
 		}
 
-		//m_FrameBuffer->Unbind();
+		m_FrameBuffer->Unbind();
 
-		//m_ScreenQuadShader->Use();
-		//m_FrameBuffer->BindColorAttachment(0);
-		//m_ScreenQuad->Draw();
+		m_ScreenQuadShader->Use();
+		m_FrameBuffer->BindColorAttachment(0);
+		m_ScreenQuad->Draw();
 	}
 
 	void Runtime::OnGuiRender()
 	{
-		Renderer::BeginScene(*m_Scene);
-		Renderer::Render(m_Player->GetCamera());
-		Renderer::EndScene();
+		//Renderer::BeginScene(*m_Scene);
+		//Renderer::RenderSkybox(m_Player->GetCamera());
+		//Renderer::Render(m_Player->GetCamera());
+		//Renderer::EndScene();
 	}
 
 	void Runtime::OnEvent(Event& e)

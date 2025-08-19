@@ -30,10 +30,10 @@ namespace QuasarEngine
 		void OnEvent(Event& e) override;
 
 	private:
-		//std::unique_ptr<ScreenQuad> m_ScreenQuad;
+		std::unique_ptr<ScreenQuad> m_ScreenQuad;
 		std::unique_ptr<Scene> m_Scene;
-		//std::shared_ptr<Framebuffer> m_FrameBuffer;
-		//std::shared_ptr<Shader> m_ScreenQuadShader;
+		std::shared_ptr<Framebuffer> m_FrameBuffer;
+		std::shared_ptr<Shader> m_ScreenQuadShader;
 		glm::vec2 m_ApplicationSize = { 0.0f, 0.0f };
 
 	private:
