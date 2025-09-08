@@ -60,7 +60,9 @@ namespace QuasarEngine
 		m_vertexArray->Bind();
 
 		uint32_t size = m_vertexBuffer->GetSize();
-		uint32_t count = m_vertexArray->GetIndexBuffer()->GetCount();
+
+		std::shared_ptr<IndexBuffer> indexBuffer = m_vertexArray->GetIndexBuffer();
+		uint32_t count = indexBuffer ? indexBuffer->GetCount() : 0;
 
 		if (count == 0)
 			RenderCommand::DrawArrays(m_drawMode, size);

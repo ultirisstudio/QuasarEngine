@@ -14,7 +14,8 @@ namespace QuasarEngine {
 		{
 			None = 0,
 			Vulkan,
-			OpenGL
+			OpenGL,
+			DirectX
 		};
 	public:
 		virtual ~RendererAPI() = default;

@@ -10,10 +10,10 @@ namespace QuasarEngine
 		OpenGLImGuiLayer();
 		~OpenGLImGuiLayer() override;
 
-		virtual void OnAttach() override;
-		virtual void OnDetach() override;
+		void OnAttach() override;
+		void OnDetach() override;
 
-		virtual void Begin() override;
-		virtual void End() override;
+		void Begin() override;
+		void End() override;
 	};
 }

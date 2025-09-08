@@ -38,6 +38,10 @@ namespace QuasarEngine {
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 			break;
 
+		case RendererAPI::API::DirectX:
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+			break;
+
 		default:
 			Q_ERROR("Unsupported RendererAPI selected!");
 			break;

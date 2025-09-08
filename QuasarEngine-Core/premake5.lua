@@ -63,6 +63,13 @@ project "QuasarEngine-Core"
 
 	filter "system:windows"
 		systemversion "latest"
+		
+		links
+		{
+			"d3d11",
+			"dxgi",
+			"dxguid"
+		}
 
 	filter "configurations:Debug"
 		defines "DEBUG"		

@@ -5,6 +5,7 @@
 
 #include <Platform/Vulkan/VulkanShader.h>
 #include <Platform/OpenGL/OpenGLShader.h>
+#include <Platform/DirectX/DirectXShader.h>
 
 namespace QuasarEngine
 {
@@ -15,6 +16,7 @@ namespace QuasarEngine
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:	return std::make_shared<VulkanShader>(desc);
 		case RendererAPI::API::OpenGL:	return std::make_shared<OpenGLShader>(desc);
+		case RendererAPI::API::DirectX:	return std::make_shared<DirectXShader>(desc);
 		}
 
 		return nullptr;
