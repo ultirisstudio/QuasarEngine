@@ -169,7 +169,7 @@ namespace QuasarEngine
 
 		if (!success)
 		{
-			texture->m_ID = 0;
+			//texture->m_ID = 0;
 			throw std::runtime_error("Failed to load one or more faces of the cubemap");
 		}
 

@@ -2,6 +2,9 @@
 
 #include <QuasarEngine/Resources/Texture2D.h>
 
+#include <wrl/client.h>
+#include <d3d11.h>
+
 namespace QuasarEngine
 {
 	class DirectXTexture2D : public Texture2D
@@ -14,11 +17,13 @@ namespace QuasarEngine
 		void LoadFromMemory(unsigned char* image_data, size_t size) override;
 		void LoadFromData(unsigned char* image_data, size_t size) override;
 
-		void* GetHandle() const override { return reinterpret_cast<void*>(static_cast<uintptr_t>(m_ID)); }
+		void* GetHandle() const override { return reinterpret_cast<void*>(m_SRV.Get()); }
 
 		void Bind(int index) const override;
 		void Unbind() const override;
 
-		uint32_t m_ID;
+	private:
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> m_Texture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_SRV;
 	};
 }
