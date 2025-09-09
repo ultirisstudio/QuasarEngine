@@ -34,7 +34,8 @@ project "QuasarEngine-Core"
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.VulkanSDK}",
 		"%{IncludeDir.sol2}",
-		"%{IncludeDir.lua}"
+		"%{IncludeDir.lua}",
+		"%{IncludeDir.PhysX}"
 	}
 	
 	libdirs
@@ -56,6 +57,21 @@ project "QuasarEngine-Core"
 		"ImGuizmo",
 		"mbedtls",
 		"lua",
+		
+		-- PhysX modules
+		"PhysXExtensions",
+		"PhysXCooking",
+		"PhysXCharacterKinematic",
+		"PhysXVehicle2",
+		"PhysX",
+		"SimulationController",
+		"SceneQuery",
+		"PhysXTask",
+		"LowLevelDynamics",
+		"LowLevelAABB",
+		"LowLevel",
+		"PhysXCommon",
+		"PhysXFoundation",
 		
 		"%{Library.Vulkan}" --,
 		-- "%{Library.VulkanUtils}"

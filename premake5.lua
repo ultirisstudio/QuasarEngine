@@ -17,7 +17,7 @@ workspace "QuasarEngine"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-group "Dependance"
+group "Dependencies"
 	include "vendor/GLFW"
 	include "vendor/Glad"
 	include "vendor/assimp"
@@ -29,6 +29,7 @@ group "Dependance"
 	include "vendor/zlib"
 	include "vendor/TextEditor"
 	include "vendor/lua"
+	include "vendor/PhysX"
 group ""
 
 group "Core"
