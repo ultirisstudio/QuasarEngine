@@ -28,7 +28,8 @@ project "QuasarEngine-Editor"
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.TextEditor}",
 		"%{IncludeDir.sol2}",
-		"%{IncludeDir.lua}"
+		"%{IncludeDir.lua}",
+		"%{IncludeDir.PhysX}"
 	}
 
 	links
@@ -41,7 +42,22 @@ project "QuasarEngine-Editor"
 		"mbedtls",
 		"zlib",
 		"TextEditor",
-		"lua"
+		"lua",
+		
+		-- PhysX modules
+		"PhysXExtensions",
+		"PhysXCooking",
+		"PhysXCharacterKinematic",
+		"PhysXVehicle2",
+		"PhysX",
+		"SimulationController",
+		"SceneQuery",
+		"PhysXTask",
+		"LowLevelDynamics",
+		"LowLevelAABB",
+		"LowLevel",
+		"PhysXCommon",
+		"PhysXFoundation"
 	}
 	
 	defines
@@ -53,11 +69,11 @@ project "QuasarEngine-Editor"
 		systemversion "latest"
 	
 	filter "configurations:Debug"
-		defines "DEBUG"
+		defines { "DEBUG", "_DEBUG" }
 		runtime "Debug"
 		symbols "on"
 
 	filter "configurations:Release"
-		defines "RELEASE"
+		defines { "RELEASE", "NDEBUG" }	
 		runtime "Release"
 		optimize "on"

@@ -38,6 +38,8 @@
 
 #include <QuasarEngine/Scripting/QMM/QMM.h>
 
+#include <QuasarEngine/Physic/PhysXTest.h>
+
 namespace QuasarEngine
 {
 	Editor::Editor(const EditorSpecification& spec)
@@ -117,6 +119,13 @@ namespace QuasarEngine
 
 		try { vm.eval(code); }
 		catch (const QError& e) { std::cerr << "Q-- Error: " << e.what() << "\n"; }
+
+		PhysXTest test;
+
+		for (int i = 0; i < 300; i++)
+		{
+			test.StepSimulation(1.0f / 60.0f);
+		}
 	}
 
 	void Editor::SetupAssets(const std::filesystem::path& chemin) {

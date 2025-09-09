@@ -88,11 +88,11 @@ project "QuasarEngine-Core"
 		}
 
 	filter "configurations:Debug"
-		defines "DEBUG"		
+		defines { "DEBUG", "_DEBUG" }
 		runtime "Debug"
 		symbols "on"
 
 	filter "configurations:Release"
-		defines "RELEASE"		
+		defines { "RELEASE", "NDEBUG" }		
 		runtime "Release"
 		optimize "on"
