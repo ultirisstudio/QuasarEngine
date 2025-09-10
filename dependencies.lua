@@ -19,6 +19,7 @@ IncludeDir["sol2"] = "%{wks.location}/vendor/sol2/include"
 IncludeDir["lua"] = "%{wks.location}/vendor/lua/include"
 IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/Include"
 IncludeDir["PhysX"] = "%{wks.location}/vendor/PhysX/physx/include"
+IncludeDir["PhysXsrc"] = "%{wks.location}/vendor/PhysX/physx/src"
 
 LibraryDir = {}
 LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/Lib"

@@ -1,46 +1,67 @@
 #pragma once
 
 #include <QuasarEngine/Renderer/Framebuffer.h>
+#include <wrl/client.h>
+#include <d3d11.h>
+#include <vector>
 
 namespace QuasarEngine
 {
-	class DirectXFramebuffer : public Framebuffer
-	{
+    class DirectXFramebuffer : public Framebuffer
+    {
     public:
         DirectXFramebuffer(const FramebufferSpecification& spec);
-        ~DirectXFramebuffer();
+        ~DirectXFramebuffer() override;
 
         DirectXFramebuffer(const DirectXFramebuffer&) = delete;
         DirectXFramebuffer& operator=(const DirectXFramebuffer&) = delete;
 
         void* GetColorAttachment(uint32_t index) const override;
-        void* GetDepthAttachment() const override;
+        void* GetDepthAttachment() const override; 
 
-        int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
+        int   ReadPixel(uint32_t attachmentIndex, int x, int y) override;
+        void  ClearAttachment(uint32_t attachmentIndex, int value) override;
 
-        void ClearAttachment(uint32_t attachmentIndex, int value) override;
+        void  Resize(uint32_t width, uint32_t height) override;
+        void  Invalidate() override;
+        void  Resolve() override;
 
-        void Resize(uint32_t width, uint32_t height) override;
-        void Invalidate() override;
+        void  Bind() const override;
+        void  Unbind() const override;
 
-        void Resolve() override;
-
-        void Bind() const override;
-        void Unbind() const override;
-
-        void BindColorAttachment(uint32_t index = 0) const override;
+        void  BindColorAttachment(uint32_t index = 0) const override;
 
     private:
-        uint32_t m_ID;
-        FramebufferSpecification m_Specification;
+        struct ColorAttachmentDX
+        {
+            Microsoft::WRL::ComPtr<ID3D11Texture2D>            texture;
+            Microsoft::WRL::ComPtr<ID3D11RenderTargetView>     rtv;
+            Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>   srv;
 
-        std::vector<FramebufferTextureSpecification> m_ColorAttachmentSpecifications;
-        FramebufferTextureSpecification m_DepthAttachmentSpecification;
+            Microsoft::WRL::ComPtr<ID3D11Texture2D>            resolveTexture;
+            Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>   resolveSRV;
+        };
 
-        std::vector<uint32_t> m_ColorAttachments;
-        uint32_t m_DepthAttachment = 0;
-        
-        uint32_t m_ResolveFBO = 0;
-        uint32_t m_ResolvedColorTexture = 0;
-	};
+        struct DepthAttachmentDX
+        {
+            Microsoft::WRL::ComPtr<ID3D11Texture2D>          texture;
+            Microsoft::WRL::ComPtr<ID3D11DepthStencilView>   dsv;
+        };
+
+    private:
+        DXGI_FORMAT ToDXColorFormat(FramebufferTextureFormat fmt) const;
+        bool        IsDepthFormat(FramebufferTextureFormat fmt) const;
+
+        void        ReleaseResources();
+
+    private:
+        FramebufferSpecification m_Spec;
+        std::vector<FramebufferTextureSpecification> m_ColorSpecs;
+        FramebufferTextureSpecification               m_DepthSpec;
+
+        std::vector<ColorAttachmentDX> m_Color;
+        DepthAttachmentDX              m_Depth;
+
+        mutable D3D11_VIEWPORT m_Viewport{};
+    };
 }

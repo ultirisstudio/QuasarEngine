@@ -5,9 +5,10 @@ OUTPUT_DIR  = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 -- Feature toggles -------------------------------------------------------------
 PUBLIC_RELEASE      = true
 USE_CUDA_DELAYLOAD  = false
-USE_PVD            = false
-USE_VEHICLE        = true
-USE_CHARACTER      = true
+PUBLIC_RELEASE 		= true
+USE_PVD            	= false
+USE_VEHICLE        	= true
+USE_CHARACTER      	= true
 
 -- Common helpers --------------------------------------------------------------
 local function physx_common_defines()
@@ -20,6 +21,9 @@ local function physx_common_defines()
         USE_CHARACTER and "PX_ENABLE_CHARACTER=1"  or "PX_ENABLE_CHARACTER=0",
         USE_VEHICLE   and "PX_ENABLE_VEHICLE=1"    or "PX_ENABLE_VEHICLE=0",
     }
+	if PUBLIC_RELEASE then
+        defines { "PX_PUBLIC_RELEASE" }
+    end
 
     filter "system:windows"
         -- Force MBCS so WinAPI uses narrow-char (avoids LPCWSTR issues).
@@ -218,7 +222,7 @@ links {
     "SceneQuery",
     "SimulationController",
     "PhysXCommon",
-    "PhysXFoundation",
+    "PhysXFoundation"
 }
 defines { "PX_PHYSX_STATIC_LIB" }
 
@@ -401,15 +405,65 @@ files {
     PHYSX_ROOT .. "/source/physxmetadata/extensions/include/**.h",
     PHYSX_ROOT .. "/include/extensions/**.h",
     PHYSX_ROOT .. "/include/filebuf/**.h",
+	
+	PHYSX_ROOT .. "/source/lowlevel/common/include/collision/**.h",
+    PHYSX_ROOT .. "/source/lowlevel/common/include/collision/**.cpp",
+	
+	PHYSX_ROOT .. "/source/physxgpu/include/**.h",
+	PHYSX_ROOT .. "/source/physxgpu/include/**.cpp",
+	
+    PHYSX_ROOT .. "/source/lowleveldynamics/include/**.h",
+    PHYSX_ROOT .. "/source/lowleveldynamics/include/**.cpp",
+	
+    PHYSX_ROOT .. "/source/lowleveldynamics/src/**.h",
+    PHYSX_ROOT .. "/source/lowleveldynamics/src/**.cpp",
+	
+    PHYSX_ROOT .. "/source/lowleveldynamics/shared/**.h",
+    PHYSX_ROOT .. "/source/lowleveldynamics/shared/**.cpp",
+	
+    PHYSX_ROOT .. "/source/lowlevel/common/include/utils/**.h",
+    PHYSX_ROOT .. "/source/lowlevel/common/include/utils/**.cpp",
+	
+    PHYSX_ROOT .. "/source/lowlevel/common/include/pipeline/**.h",
+    PHYSX_ROOT .. "/source/lowlevel/common/include/pipeline/**.cpp",
+	
+    PHYSX_ROOT .. "/source/simulationcontroller/include/**.h",
+    PHYSX_ROOT .. "/source/simulationcontroller/include/**.cpp",
+	
+    PHYSX_ROOT .. "/source/simulationcontroller/src/**.h",
+    PHYSX_ROOT .. "/source/simulationcontroller/src/**.cpp",
+	
+	PHYSX_ROOT .. "/source/lowlevel/software/include/**.h",
+	PHYSX_ROOT .. "/source/lowlevel/software/include/**.cpp",
+	
+    PHYSX_ROOT .. "/source/lowlevel/software/src/**.h",
+    PHYSX_ROOT .. "/source/lowlevel/software/src/**.cpp",
+	
+    PHYSX_ROOT .. "/source/physx/src/**.h",
+    PHYSX_ROOT .. "/source/physx/src/**.cpp",
+	
+	PHYSX_ROOT .. "/source/geomutils/include/**.h",
+	PHYSX_ROOT .. "/source/geomutils/include/**.cpp",
+	
+	PHYSX_ROOT .. "/source/geomutils/src/**.h",
+	PHYSX_ROOT .. "/source/geomutils/src/**.cpp",
+	PHYSX_ROOT .. "/source/geomutils/src/gjk/**.h",
+	PHYSX_ROOT .. "/source/geomutils/src/gjk/**.cpp",
+	PHYSX_ROOT .. "/source/geomutils/src/sweep/**.h",
+	PHYSX_ROOT .. "/source/geomutils/src/sweep/**.cpp",
+	PHYSX_ROOT .. "/source/geomutils/src/mesh/**.h",
+	PHYSX_ROOT .. "/source/geomutils/src/mesh/**.cpp",
+	PHYSX_ROOT .. "/source/geomutils/src/hf/**.h",
+	PHYSX_ROOT .. "/source/geomutils/src/hf/**.cpp",
+	PHYSX_ROOT .. "/source/geomutils/src/distance/**.h",
+	PHYSX_ROOT .. "/source/geomutils/src/distance/**.cpp",
+	PHYSX_ROOT .. "/source/geomutils/src/common/**.h",
+	PHYSX_ROOT .. "/source/geomutils/src/common/**.cpp",
 }
 includedirs {
     PHYSX_ROOT .. "/include",
     PHYSX_ROOT .. "/source/common/include",
     PHYSX_ROOT .. "/source/common/src",
-    PHYSX_ROOT .. "/source/geomutils/include",
-    PHYSX_ROOT .. "/source/geomutils/src",
-    PHYSX_ROOT .. "/source/geomutils/src/intersection",
-    PHYSX_ROOT .. "/source/geomutils/src/mesh",
     PHYSX_ROOT .. "/source/physxmetadata/core/include",
     PHYSX_ROOT .. "/source/physxmetadata/extensions/include",
     PHYSX_ROOT .. "/source/physxextensions/src",
@@ -419,6 +473,42 @@ includedirs {
     PHYSX_ROOT .. "/source/physx/src",
     PHYSX_ROOT .. "/source/pvd/include",
     PHYSX_ROOT .. "/source/scenequery/include",
+
+    PHYSX_ROOT .. "/source/physxgpu/include",
+	
+    PHYSX_ROOT .. "/source/lowlevelaabb/include",
+	
+    PHYSX_ROOT .. "/source/lowlevel/common/include/collision",
+    PHYSX_ROOT .. "/source/lowlevel/common/include/utils",
+    PHYSX_ROOT .. "/source/lowlevel/common/include/pipeline",
+	
+    PHYSX_ROOT .. "/source/simulationcontroller/include",
+    PHYSX_ROOT .. "/source/simulationcontroller/src",
+	
+    PHYSX_ROOT .. "/source/lowlevel/software/include",
+    PHYSX_ROOT .. "/source/lowlevel/software/src",
+	
+    PHYSX_ROOT .. "/source/lowlevel/api/include",
+	
+    PHYSX_ROOT .. "/source/lowleveldynamics/include",
+    PHYSX_ROOT .. "/source/lowleveldynamics/src",
+    PHYSX_ROOT .. "/source/lowleveldynamics/shared",
+	
+    PHYSX_ROOT .. "/source/geomutils/include",
+		
+    PHYSX_ROOT .. "/source/geomutils/src",
+    PHYSX_ROOT .. "/source/geomutils/src/common",
+	PHYSX_ROOT .. "/source/geomutils/src/gjk",
+	PHYSX_ROOT .. "/source/geomutils/src/sweep",
+	PHYSX_ROOT .. "/source/geomutils/src/convex",
+	PHYSX_ROOT .. "/source/geomutils/src/mesh",
+	PHYSX_ROOT .. "/source/geomutils/src/hf",
+	PHYSX_ROOT .. "/source/geomutils/src/distance",
+    PHYSX_ROOT .. "/source/geomutils/src/intersection",
+    PHYSX_ROOT .. "/source/geomutils/src/ccd",
+    PHYSX_ROOT .. "/source/geomutils/src/contact",
+    PHYSX_ROOT .. "/source/geomutils/src/cooking",
+    PHYSX_ROOT .. "/source/geomutils/src/pcm",
 }
 links { "PhysXFoundation", "PhysX" }
 if USE_PVD then links { "PhysXPvdSDK" } end
@@ -494,6 +584,22 @@ if USE_VEHICLE then
         PHYSX_ROOT .. "/source/physxvehicle/src/tire/VhTireFunctions.cpp",
         PHYSX_ROOT .. "/source/physxvehicle/src/tire/VhTireHelpers.cpp",
         PHYSX_ROOT .. "/source/physxvehicle/src/wheel/VhWheelFunctions.cpp",
+		
+		PHYSX_ROOT .. "/source/geomutils/include/**.h",
+		PHYSX_ROOT .. "/source/geomutils/include/**.cpp",
+		
+		PHYSX_ROOT .. "/source/geomutils/src/**.h",
+		PHYSX_ROOT .. "/source/geomutils/src/**.cpp",
+		PHYSX_ROOT .. "/source/geomutils/src/gjk/**.h",
+		PHYSX_ROOT .. "/source/geomutils/src/gjk/**.cpp",
+		PHYSX_ROOT .. "/source/geomutils/src/sweep/**.h",
+		PHYSX_ROOT .. "/source/geomutils/src/sweep/**.cpp",
+		PHYSX_ROOT .. "/source/geomutils/src/mesh/**.h",
+		PHYSX_ROOT .. "/source/geomutils/src/mesh/**.cpp",
+		PHYSX_ROOT .. "/source/geomutils/src/hf/**.h",
+		PHYSX_ROOT .. "/source/geomutils/src/hf/**.cpp",
+		PHYSX_ROOT .. "/source/geomutils/src/distance/**.h",
+		PHYSX_ROOT .. "/source/geomutils/src/distance/**.cpp",
 
         PHYSX_ROOT .. "/source/physxvehicle/src/pvd/VhPvdHelpers.cpp",
         PHYSX_ROOT .. "/source/physxvehicle/src/pvd/VhPvdFunctions.cpp",
@@ -505,6 +611,24 @@ if USE_VEHICLE then
     includedirs {
         PHYSX_ROOT .. "/include",
         PHYSX_ROOT .. "/pvdruntime/include",
+		
+        PHYSX_ROOT .. "/source/geomutils/include",
+		
+		PHYSX_ROOT .. "/source/geomutils/src",
+		PHYSX_ROOT .. "/source/geomutils/src/common",
+		PHYSX_ROOT .. "/source/geomutils/src/gjk",
+		PHYSX_ROOT .. "/source/geomutils/src/sweep",
+		PHYSX_ROOT .. "/source/geomutils/src/convex",
+		PHYSX_ROOT .. "/source/geomutils/src/mesh",
+		PHYSX_ROOT .. "/source/geomutils/src/hf",
+		PHYSX_ROOT .. "/source/geomutils/src/distance",
+		PHYSX_ROOT .. "/source/geomutils/src/intersection",
+		PHYSX_ROOT .. "/source/geomutils/src/ccd",
+		PHYSX_ROOT .. "/source/geomutils/src/contact",
+		PHYSX_ROOT .. "/source/geomutils/src/cooking",
+		PHYSX_ROOT .. "/source/geomutils/src/pcm",
+		
+        PHYSX_ROOT .. "/source/common/src",
     }
     links { "PhysXFoundation", "PhysXCommon", "PhysXCooking", "PhysX", "PhysXExtensions" }
     defines { "PX_PHYSX_STATIC_LIB" }

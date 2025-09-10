@@ -8,7 +8,7 @@ namespace QuasarEngine
     using namespace physx;
     PhysXTest::PhysXTest()
     {
-        mFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, mAllocator, mErrorCallback);
+        /*mFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, mAllocator, mErrorCallback);
         mPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *mFoundation, PxTolerancesScale(), true);
 
         PxSceneDesc sceneDesc(mPhysics->getTolerancesScale());
@@ -33,23 +33,23 @@ namespace QuasarEngine
         mBox = PxCreateDynamic(*mPhysics, boxPose, PxBoxGeometry(0.5f, 0.5f, 0.5f), *mMaterial, 10.0f);
         mScene->addActor(*mBox);
 
-        std::cout << "PhysXTest initialized: box at height 10" << std::endl;
+        std::cout << "PhysXTest initialized: box at height 10" << std::endl;*/
     }
 
     PhysXTest::~PhysXTest()
     {
-        if (mScene)      mScene->release();
+        /*if (mScene)      mScene->release();
         if (mDispatcher) mDispatcher->release();
         if (mPhysics)    mPhysics->release();
-        if (mFoundation) mFoundation->release();
+        if (mFoundation) mFoundation->release();*/
     }
 
     void PhysXTest::StepSimulation(float dt)
     {
-        mScene->simulate(dt);
+        /*mScene->simulate(dt);
         mScene->fetchResults(true);
 
         PxTransform pose = mBox->getGlobalPose();
-        std::cout << "Box height: " << pose.p.y << std::endl;
+        std::cout << "Box height: " << pose.p.y << std::endl;*/
     }
 }

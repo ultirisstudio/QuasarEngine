@@ -2,6 +2,9 @@
 
 #include <QuasarEngine/Renderer/Buffer.h>
 
+#include <wrl/client.h>
+#include <d3d11.h>
+
 namespace QuasarEngine
 {
 	class DirectXUniformBuffer
@@ -11,12 +14,13 @@ namespace QuasarEngine
 		~DirectXUniformBuffer();
 
 		void SetData(const void* data, size_t size);
-		void BindToShader(uint32_t programID, const std::string& blockName);
 
-		uint32_t GetID() const;
+		ID3D11Buffer* GetBuffer() const { return m_Buffer.Get(); }
+		size_t GetSize() const { return m_Size; }
+		uint32_t GetBinding() const { return m_Binding; }
 
 	private:
-		uint32_t m_ID = 0;
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_Buffer;
 		size_t m_Size = 0;
 		uint32_t m_Binding = 0;
 	};
@@ -27,21 +31,23 @@ namespace QuasarEngine
 		DirectXVertexBuffer();
 		DirectXVertexBuffer(uint32_t size);
 		DirectXVertexBuffer(const std::vector<float>& vertices);
-		virtual ~DirectXVertexBuffer();
+		~DirectXVertexBuffer() override;
 
-		virtual void Bind() const override;
-		virtual void Unbind() const override;
+		void Bind() const override;
+		void Unbind() const override;
 
 		void UploadVertices(const std::vector<float> vertices) override;
 
 		size_t GetSize() const override { return m_Size; }
 
-		virtual const BufferLayout& GetLayout() const override { return m_Layout; }
-		virtual void SetLayout(const BufferLayout& layout) override { m_Layout = layout; }
+		const BufferLayout& GetLayout() const override { return m_Layout; }
+		void SetLayout(const BufferLayout& layout) override { m_Layout = layout; }
+
 	private:
-		uint32_t m_RendererID;
-		size_t m_Size;
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_Buffer;
+		size_t m_Size = 0;
 		BufferLayout m_Layout;
+		bool m_IsDynamic = true;
 	};
 
 	class DirectXIndexBuffer : public IndexBuffer
@@ -49,16 +55,18 @@ namespace QuasarEngine
 	public:
 		DirectXIndexBuffer();
 		DirectXIndexBuffer(const std::vector<uint32_t> indices);
-		virtual ~DirectXIndexBuffer();
+		~DirectXIndexBuffer() override;
 
-		virtual void Bind() const;
-		virtual void Unbind() const;
+		void Bind() const override;
+		void Unbind() const override;
 
 		void UploadIndices(const std::vector<uint32_t> indices) override;
 
-		virtual size_t GetCount() const { return m_Count; }
+		size_t GetCount() const override { return m_Count; }
+
 	private:
-		uint32_t m_RendererID;
-		size_t m_Count;
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_Buffer;
+		size_t m_Count = 0;
+		bool m_IsDynamic = true;
 	};
 }

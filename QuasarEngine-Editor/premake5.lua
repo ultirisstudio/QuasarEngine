@@ -29,7 +29,8 @@ project "QuasarEngine-Editor"
 		"%{IncludeDir.TextEditor}",
 		"%{IncludeDir.sol2}",
 		"%{IncludeDir.lua}",
-		"%{IncludeDir.PhysX}"
+		"%{IncludeDir.PhysX}",
+		"%{IncludeDir.PhysXsrc}"
 	}
 
 	links

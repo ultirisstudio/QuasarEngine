@@ -35,7 +35,8 @@ project "QuasarEngine-Core"
 		"%{IncludeDir.VulkanSDK}",
 		"%{IncludeDir.sol2}",
 		"%{IncludeDir.lua}",
-		"%{IncludeDir.PhysX}"
+		"%{IncludeDir.PhysX}",
+		"%{IncludeDir.PhysXsrc}"
 	}
 	
 	libdirs
