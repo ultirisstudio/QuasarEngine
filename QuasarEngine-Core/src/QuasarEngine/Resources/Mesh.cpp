@@ -101,26 +101,46 @@ namespace QuasarEngine
 		m_meshGenerated = true;
 	}
 
-	bool Mesh::IsVisible(const Math::Frustum& frustum, const glm::mat4& modelMatrix) const
+	bool Mesh::IsVisible(const Math::Frustum& frustum,
+		const glm::mat4& modelMatrix,
+		const glm::vec3 size) const
 	{
-		glm::vec3 position;
-		glm::decompose(modelMatrix, glm::vec3(), glm::quat(), position, glm::vec3(), glm::vec4());
-		for (unsigned i = 0; i < std::size(frustum.planes); i++)
-		{
-			glm::vec3 positive = position + m_boundingBoxPosition;
-			if (frustum.planes[i].a >= 0)
-				positive.x += m_boundingBoxSize.x;
-			if (frustum.planes[i].b >= 0)
-				positive.y += m_boundingBoxSize.y;
-			if (frustum.planes[i].c >= 0)
-				positive.z += m_boundingBoxSize.z;
+		const glm::vec3 bbMinLocal = m_boundingBoxPosition;
+		const glm::vec3 bbSizeLocal = m_boundingBoxSize;
 
-			if (positive.x * frustum.planes[i].a + positive.y * frustum.planes[i].b + positive.z * frustum.planes[i].c + frustum.planes[i].d < 0)
+		const glm::vec3 bbCenterLocal = bbMinLocal + 0.5f * bbSizeLocal;
+		const glm::vec3 bbHalfLocal = 0.5f * bbSizeLocal;
+
+		const glm::vec3 absScale = glm::abs(size);
+
+		const glm::vec3 scaledCenterLocal = bbCenterLocal * absScale;
+		const glm::vec3 scaledHalfLocal = bbHalfLocal * absScale;
+
+		const glm::mat3 R = glm::mat3(modelMatrix);
+
+		const glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(scaledCenterLocal, 1.0f));
+
+		const glm::mat3 absR = glm::mat3(glm::abs(R[0]), glm::abs(R[1]), glm::abs(R[2]));
+		const glm::vec3 worldHalf = absR * scaledHalfLocal;
+
+		for (unsigned i = 0; i < std::size(frustum.planes); ++i)
+		{
+			const auto& p = frustum.planes[i];
+
+			const glm::vec3 n(p.a, p.b, p.c);
+
+			const float dist = glm::dot(n, worldCenter) + p.d;
+
+			const glm::vec3 an = glm::abs(n);
+			const float radius = an.x * worldHalf.x + an.y * worldHalf.y + an.z * worldHalf.z;
+
+			if (dist + radius < 0.0f)
 				return false;
 		}
 
 		return true;
 	}
+
 
 	bool Mesh::IsMeshGenerated()
 	{

@@ -240,7 +240,7 @@ namespace QuasarEngine
 
 				Math::Frustum frustum = Math::CalculateFrustum(camera.getProjectionMatrix() * camera.getViewMatrix());
 
-				if (!entity.GetComponent<MeshComponent>().GetMesh().IsVisible(frustum, transform))
+				if (!entity.GetComponent<MeshComponent>().GetMesh().IsVisible(frustum, transform, entity.GetComponent<TransformComponent>().Scale))
 				{
 					continue;
 				}
