@@ -4,7 +4,6 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/matrix_decompose.hpp>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
@@ -15,28 +14,13 @@
 
 #include "QuasarEngine/Resources/ResourceManager.h"
 
-#include "QuasarEngine/Perlin/PerlinManager.h"
-
-#include "QuasarEngine/Core/Logger.h"
-
 #include "QuasarEngine/Asset/AssetManager.h"
 
 #include <QuasarEngine/Memory/MemoryTracker.h>
-#include <QuasarEngine/Thread/JobSystem.h>
-
-#include "QuasarEngine/Entity/AllComponents.h"
-
-#include "mbedtls/aes.h"
 
 #include <yaml-cpp/yaml.h>
 
-#include "Export.h"
-
-#include <sol/sol.hpp>
-
-#include <QuasarEngine/Scripting/ScriptSystem.h>
-
-#include <QuasarEngine/Scripting/QMM/QMM.h>
+#include <QuasarEngine/Scripting/QMM/VM.h>
 
 #include <QuasarEngine/Physic/PhysXTest.h>
 
@@ -107,14 +91,116 @@ namespace QuasarEngine
 			return id;
 			});
 
-		const std::string code = R"(// Q-- demo
-			let hp = 100;
-			let name = "Player";
-			fn heal(x){ return x + 10; }
-			hp = heal(hp);
-			if (hp > 50) { print(name, "OK", hp); } else { print("LOW"); }
-			let id = create_entity("Hero");
-			let i = 0; while(i < 3){ print("tick", i); i = i + 1; }
+		const std::string code = R"(
+			// =====================
+			// Tests de base
+			// =====================
+			print("== scalaires ==");
+			let a = 1_234.5e-1;
+			let b = 2;
+			let c = a + b * 3 - 4 / 2 + 7 % 3;
+			print("a=", a, " b=", b, " c=", c);
+
+			print("== chaînes & escapes ==");
+			let s = "hello\n\tworld \"quote\" \\ backslash \u263A";
+			print(s);
+			print("len(s)=", len(s), " substr(s,7,5)=", substr(s, 7, 5));
+			print("str(3.14)=", str(3.14), " str(true)=", str(true));
+
+			// =====================
+			// Logique & égalité typée
+			// =====================
+			print("== logique / égalité ==");
+			let t = true; let f = false; let z = nil;
+			print("truthy(true)=", t, " truthy(false)=", f, " truthy(nil)=", z);
+			print("1 == 1     ->", 1 == 1);
+			print("1 == \"1\"  ->", 1 == "1");
+			print("true != false ->", true != false);
+
+			fn ping(msg) { print(msg); return true; }
+			fn pong(msg) { print(msg); return false; }
+			print("OR short-circuit (true || ...):");
+			print( (ping("ping called") || ping("NE DOIT PAS S'AFFICHER")) );
+			print("AND short-circuit (false && ...):");
+			print( (pong("pong called") && ping("NE DOIT PAS S'AFFICHER")) );
+
+			// =====================
+			// Contrôle de flux
+			// =====================
+			print("== if/else & while ==");
+			let n = 5;
+			if (n > 3) { print("n > 3"); } else { print("n <= 3"); }
+
+			let fact = 1;
+			let i = 1;
+			while (i <= n) { fact = fact * i; i = i + 1; }
+			print("fact(", n, ") = ", fact);
+
+			// =====================
+			// Fonctions nommées + return
+			// =====================
+			print("== fonctions nommées ==");
+			fn add(x, y) { return x + y; }
+			fn fib(k) {
+				if (k <= 1) { return k; }
+				return fib(k-1) + fib(k-2);
+			}
+			print("add(2,3)=", add(2,3), " fib(10)=", fib(10));
+
+			// =====================
+			// [FNEXPR] Fonctions anonymes & closures
+			// =====================
+			print("== fonctions anonymes & closures ==");
+			fn makeAdder(a) {
+				return fn (b) { return a + b; };
+			}
+			let add10 = makeAdder(10);
+			print("add10(7)=", add10(7));
+
+			print("square(6) via (fn(x){...})(6): ", (fn (x) { return x * x; })(6));
+
+			// =====================
+			// Stdlib math / random / clock
+			// =====================
+			print("== stdlib math/random/clock ==");
+			print("sin(0)=", sin(0), " cos(0)=", cos(0), " sqrt(9)=", sqrt(9));
+			let r = rand();
+			print("rand()=", r);
+			let t0 = clock();
+			let spin = 0;
+			while (spin < 10000) { spin = spin + 1; }
+			let t1 = clock();
+			print("clock delta ~", t1 - t0);
+
+			// =====================
+			// Nil & vérité
+			// =====================
+			print("== nil & vérité ==");
+			let maybe = nil;
+			if (maybe) { print("nil est truthy ?! erreur");
+				}
+			else { print("nil est falsy ok"); }
+
+			// =====================
+			// Erreurs évitées (division/mod zéro) — exemples sûrs
+			// =====================
+			print("== division/mod sûrs ==");
+			print("10 / 2 = ", 10 / 2);
+			print("10 % 3 = ", 10 % 3);
+
+			// =====================
+			// Création d'entités (bindings natifs)
+			// =====================
+			print("== test create_entity ==");
+
+			let id1 = create_entity("Player");
+			let id2 = create_entity("Enemy");
+			let id3 = create_entity();
+
+			print("ids:", id1, id2, id3);
+
+			// Fin
+			print("== DONE ==");
 		)";
 
 		try { vm.eval(code); }
