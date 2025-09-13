@@ -416,8 +416,10 @@ namespace QuasarEngine
 		}
 
 		ImGui::PopClipRect();
+
 		ImGui::SetCursorScreenPos(pos);
 		ImGui::InvisibleButton("##frame_plot", plot_size, ImGuiButtonFlags_MouseButtonLeft);
+
 		const bool hovered = ImGui::IsItemHovered();
 		if (hovered)
 		{
@@ -451,7 +453,8 @@ namespace QuasarEngine
 			ImGui::EndTooltip();
 		}
 
-		ImGui::Dummy(plot_size);
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, 0.0f));
 
 		if (ImGui::BeginTable("##legend", n_curves, ImGuiTableFlags_SizingStretchSame))
 		{
@@ -469,6 +472,7 @@ namespace QuasarEngine
 			ImGui::EndTable();
 		}
 
+		ImGui::PopStyleVar();
 		ImGui::Separator();
 	}
 

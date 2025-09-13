@@ -74,7 +74,7 @@ namespace QuasarEngine
 
         float value_at_index_clamped(int idx) const;
         int   find_segment(float t) const;
-        float resolve_tangent(const KeyframeScalar& k, int index, int direction /*-1=in, +1=out*/) const;
+        float resolve_tangent(const KeyframeScalar& k, int index, int direction) const;
 
         float linear_extrap_left(float t) const;
         float linear_extrap_right(float t) const;
@@ -119,7 +119,7 @@ namespace QuasarEngine
 
     struct AnimationClip {
         std::string name = "Clip";
-        float length = 5.f; // seconds
+        float length = 5.f;
         float fps = 60.f;
 
         std::vector<TrackScalar> scalarTracks;
