@@ -277,6 +277,10 @@ namespace QuasarEngine
 		m_Viewport->Render(m_SceneManager->GetActiveScene());
 	}
 
+	static inline ImVec4 ColorU32ToVec4(ImU32 c) {
+		return ImGui::ColorConvertU32ToFloat4(c);
+	}
+
 	void Editor::DrawStatsWindow()
 	{
 		static FrameTimeHistory frame_history;
@@ -284,14 +288,41 @@ namespace QuasarEngine
 		const ApplicationInfos& infos = Application::Get().GetAppInfos();
 		auto& tracker = MemoryTracker::instance();
 
-		ImGui::Begin("Performance & Memory Tracker");
+		if (!ImGui::Begin("Performance & Memory Tracker"))
+		{
+			ImGui::End(); return;
+		}
 
 		DrawFrameStats(infos, frame_history);
 
-		ImGui::Text("Total Allocated: %.2f MB", tracker.GetTotalAllocated() / (1024.0f * 1024.0f));
-		ImGui::Text("Total Freed:     %.2f MB", tracker.GetTotalFreed() / (1024.0f * 1024.0f));
-		ImGui::Text("Current Usage:   %.2f MB", tracker.GetCurrentUsage() / (1024.0f * 1024.0f));
-		ImGui::PlotLines("Memory Usage", tracker.GetHistory().data(), tracker.GetHistory().size(), 0, nullptr, 0.0f, FLT_MAX, ImVec2(-1, 80));
+		if (ImGui::BeginTable("##memtbl", 3, ImGuiTableFlags_SizingStretchProp))
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0); ImGui::Text("Total Allocated");
+			ImGui::TableSetColumnIndex(1); ImGui::Text("Total Freed");
+			ImGui::TableSetColumnIndex(2); ImGui::Text("Current Usage");
+
+			ImGui::TableNextRow();
+			auto mb = [](double b) { return b / (1024.0 * 1024.0); };
+			ImGui::TableSetColumnIndex(0); ImGui::Text("%.2f MB", mb(tracker.GetTotalAllocated()));
+			ImGui::TableSetColumnIndex(1); ImGui::Text("%.2f MB", mb(tracker.GetTotalFreed()));
+			ImGui::TableSetColumnIndex(2); ImGui::Text("%.2f MB", mb(tracker.GetCurrentUsage()));
+			ImGui::EndTable();
+		}
+
+		const auto& memHist = tracker.GetHistory();
+		if (!memHist.empty())
+		{
+			float minv = memHist[0], maxv = memHist[0];
+			for (float v : memHist) { if (v < minv) minv = v; if (v > maxv) maxv = v; }
+			float range = ImMax(1.0f, (maxv - minv) * 1.1f);
+			float smin = maxv - range;
+			float smax = maxv + range * 0.05f;
+
+			ImGui::PlotLines("Memory Usage (MB)",
+				memHist.data(), (int)memHist.size(), 0,
+				nullptr, smin, smax, ImVec2(-1, 90.0f));
+		}
 
 		ImGui::End();
 	}
@@ -300,101 +331,144 @@ namespace QuasarEngine
 	{
 		static double last_push = 0.0;
 		double now = ImGui::GetTime();
+		if (now - last_push > 0.25) { history.Push(infos); last_push = now; }
 
-		if (now - last_push > 1.0)
-		{
-			history.Push(infos);
-			last_push = now;
-		}
-
-		ImGui::Text("FPS: %.1f | Frame Time: %.2f ms", infos.app_fps, 1000.0 / std::max(1.0, infos.app_fps));
+		const double fps = infos.app_fps;
+		ImGui::Text("FPS: %.1f | Frame Time: %.2f ms", fps, 1000.0 / ImMax(1.0, fps));
 		ImGui::Separator();
 
-		ImVec2 plot_size = ImVec2(ImGui::GetContentRegionAvail().x, 100);
-		ImDrawList* draw_list = ImGui::GetWindowDrawList();
-		ImVec2 pos = ImGui::GetCursorScreenPos();
+		const int size = history.Size();
+		if (size < 2) { ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x, 120)); return; }
 
-		int size = history.Size();
-		if (size < 2) {
-			ImGui::Dummy(plot_size);
-			return;
-		}
+		ImVec2 plot_size(ImGui::GetContentRegionAvail().x, 120.0f);
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		const ImVec2 pos = ImGui::GetCursorScreenPos();
+		const ImVec2 pos_max = pos + plot_size;
 
-		constexpr int RECENT_COUNT = 4;
-		float max_recent = 0.0f;
-		int actual_count = std::min(size, RECENT_COUNT);
-		int start = history.filled ? history.index : 0;
-
-		for (int i = 0; i < actual_count; ++i)
-		{
-			int idx = (start + size - actual_count + i) % FRAME_HISTORY_SIZE;
-			float total = history.begin[idx] + history.update[idx] + history.render[idx] + history.end[idx]
-				+ history.event[idx] + history.asset[idx] + history.imgui[idx];
-			if (total > max_recent) max_recent = total;
-		}
-		if (max_recent < 1.5f) max_recent = 1.5f;
-
-		float max_v = max_recent / 0.95f;
-
-		if (max_v < 3.0f)  max_v = 3.0f;
-		if (max_v > 50.0f) max_v = 50.0f;
-
-		ImU32 colors[] = {
-			IM_COL32(200, 100, 255, 255), // begin
-			IM_COL32(150, 230, 120, 255), // update
-			IM_COL32(80, 170, 255, 255),  // render
-			IM_COL32(255, 210, 120, 255), // end
-			IM_COL32(255, 100, 100, 255), // event
-			IM_COL32(100, 210, 180, 255), // asset
-			IM_COL32(255, 110, 220, 255)  // imgui
+		static const ImU32 kColors[] = {
+			IM_COL32(200,100,255,255), // begin
+			IM_COL32(150,230,120,255), // update
+			IM_COL32(80,170,255,255), // render
+			IM_COL32(255,210,120,255), // end
+			IM_COL32(255,100,100,255), // event
+			IM_COL32(100,210,180,255), // asset
+			IM_COL32(255,110,220,255)  // imgui
 		};
-		const char* labels[] = {
-			"Begin", "Update", "Render", "End", "Event", "Asset", "ImGui"
-		};
+		static const char* kLabels[] = { "Begin","Update","Render","End","Event","Asset","ImGui" };
+		static bool visible[IM_ARRAYSIZE(kLabels)] = { true,true,true,true,true,true,true };
+
 		float* curves[] = {
 			history.begin, history.update, history.render, history.end,
 			history.event, history.asset, history.imgui
 		};
-		int n_curves = 7;
+		const int n_curves = IM_ARRAYSIZE(kLabels);
+
+		constexpr int RECENT_COUNT = 4;
+		float max_recent = 0.0f;
+		const int lookback = ImMin(size, RECENT_COUNT);
+		const int start = history.filled ? history.index : 0;
+		for (int i = 0; i < lookback; ++i)
+		{
+			const int idx = (start + size - lookback + i) % FRAME_HISTORY_SIZE;
+			float sum = 0.f;
+			for (int c = 0; c < n_curves; ++c) if (visible[c]) sum += curves[c][idx];
+			if (sum > max_recent) max_recent = sum;
+		}
+		max_recent = ImMax(max_recent, 1.5f);
+		float max_v = max_recent / 0.95f;
+		max_v = ImClamp(max_v, 3.0f, 50.0f);
+
+		dl->AddRectFilled(pos, pos_max, IM_COL32(32, 32, 36, 255), 6.0f);
+		dl->AddRect(pos, pos_max, IM_COL32(80, 80, 90, 180), 6.0f);
+		ImGui::PushClipRect(pos, pos_max, true);
+
+		const float guides[] = { 8.0f, 16.6667f, 33.3333f };
+		for (float g : guides)
+		{
+			float y = pos.y + plot_size.y - (g / max_v) * plot_size.y;
+			ImU32 col = (fabsf(g - 16.6667f) < 0.01f || fabsf(g - 33.3333f) < 0.01f)
+				? IM_COL32(200, 200, 255, 80) : IM_COL32(200, 200, 200, 40);
+			dl->AddLine(ImVec2(pos.x, y), ImVec2(pos_max.x, y), col, 1.0f);
+			dl->AddText(ImVec2(pos.x + 4, y - ImGui::GetTextLineHeight() * 0.5f),
+				IM_COL32(220, 220, 220, 160),
+				(std::to_string((int)g) + " ms").c_str());
+		}
+
+		static std::vector<ImVec2> poly;
+		poly.reserve(FRAME_HISTORY_SIZE);
+
+		const float step = plot_size.x / float(size - 1);
 
 		for (int c = 0; c < n_curves; ++c)
 		{
-			for (int i = 1; i < size; ++i)
+			if (!visible[c]) continue;
+
+			poly.clear();
+			poly.resize(size);
+			for (int i = 0; i < size; ++i)
 			{
-				int idx0 = (start + i - 1) % FRAME_HISTORY_SIZE;
-				int idx1 = (start + i) % FRAME_HISTORY_SIZE;
-
-				float x0 = pos.x + ((i - 1) / float(size - 1)) * plot_size.x;
-				float x1 = pos.x + (i / float(size - 1)) * plot_size.x;
-
-				float y0 = pos.y + plot_size.y - (curves[c][idx0] / max_v) * plot_size.y;
-				float y1 = pos.y + plot_size.y - (curves[c][idx1] / max_v) * plot_size.y;
-				draw_list->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), colors[c], 2.0f);
+				const int idx = (start + i) % FRAME_HISTORY_SIZE;
+				const float x = pos.x + i * step;
+				const float y = pos.y + plot_size.y - (curves[c][idx] / max_v) * plot_size.y;
+				poly[i] = ImVec2(x, y);
 			}
+			dl->AddPolyline(poly.data(), size, kColors[c], false, 2.0f);
 		}
 
-		draw_list->AddRect(pos, ImVec2(pos.x + plot_size.x, pos.y + plot_size.y), IM_COL32(180, 180, 180, 100));
+		ImGui::PopClipRect();
+		ImGui::SetCursorScreenPos(pos);
+		ImGui::InvisibleButton("##frame_plot", plot_size, ImGuiButtonFlags_MouseButtonLeft);
+		const bool hovered = ImGui::IsItemHovered();
+		if (hovered)
+		{
+			const ImVec2 m = ImGui::GetIO().MousePos;
+			float t = (plot_size.x > 0.f) ? (m.x - pos.x) / plot_size.x : 0.f;
+			t = ImClamp(t, 0.f, 1.f);
+			int i = int(t * (size - 1) + 0.5f);
+			const int idx = (start + i) % FRAME_HISTORY_SIZE;
+
+			dl->AddLine(ImVec2(pos.x + i * step, pos.y),
+				ImVec2(pos.x + i * step, pos.y + plot_size.y),
+				IM_COL32(255, 255, 255, 60), 1.0f);
+
+			float total = 0.f;
+			for (int c = 0; c < n_curves; ++c) if (visible[c]) total += curves[c][idx];
+
+			ImGui::BeginTooltip();
+			ImGui::Text("Frame #%d", i);
+			ImGui::Separator();
+			ImGui::Text("Total: %.2f ms (%.0f FPS)", total, total > 0.f ? 1000.f / total : 0.f);
+			for (int c = 0; c < n_curves; ++c)
+			{
+				if (!visible[c]) continue;
+				float v = curves[c][idx];
+				float pct = (total > 0.f) ? (v / total * 100.f) : 0.f;
+				ImGui::ColorButton(("##c" + std::to_string(c)).c_str(), ColorU32ToVec4(kColors[c]),
+					ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(10, 10));
+				ImGui::SameLine();
+				ImGui::Text("%-6s  %6.2f ms  (%5.1f%%)", kLabels[c], v, pct);
+			}
+			ImGui::EndTooltip();
+		}
+
 		ImGui::Dummy(plot_size);
 
-		auto ColorU32ToVec4 = [](ImU32 color) -> ImVec4 {
-			float r = ((color >> IM_COL32_R_SHIFT) & 0xFF) / 255.0f;
-			float g = ((color >> IM_COL32_G_SHIFT) & 0xFF) / 255.0f;
-			float b = ((color >> IM_COL32_B_SHIFT) & 0xFF) / 255.0f;
-			float a = ((color >> IM_COL32_A_SHIFT) & 0xFF) / 255.0f;
-			return ImVec4(r, g, b, a);
-			};
-
-		ImGui::BeginGroup();
-		for (int c = 0; c < n_curves; ++c)
+		if (ImGui::BeginTable("##legend", n_curves, ImGuiTableFlags_SizingStretchSame))
 		{
-			ImGui::SameLine();
-			ImGui::ColorButton(labels[c], ColorU32ToVec4(colors[c]),
-				ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(8, 8));
-			ImGui::SameLine(0, 2);
-			ImGui::Text("%s", labels[c]);
-			ImGui::SameLine(0, 12);
+			for (int c = 0; c < n_curves; ++c)
+			{
+				ImGui::TableNextColumn();
+				ImGui::PushID(c);
+				ImGui::Checkbox("##v", &visible[c]); ImGui::SameLine(0, 4);
+				ImGui::ColorButton("##clr", ColorU32ToVec4(kColors[c]),
+					ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(10, 10));
+				ImGui::SameLine(0, 4);
+				ImGui::TextUnformatted(kLabels[c]);
+				ImGui::PopID();
+			}
+			ImGui::EndTable();
 		}
-		ImGui::EndGroup();
+
 		ImGui::Separator();
 	}
 
