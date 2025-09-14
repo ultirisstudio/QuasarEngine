@@ -4,228 +4,246 @@
 #include "QuasarEngine/Events/ApplicationEvent.h"
 #include "QuasarEngine/Events/MouseEvent.h"
 #include "QuasarEngine/Events/KeyEvent.h"
-
 #include "QuasarEngine/Renderer/Renderer.h"
-
-#include <GLFW/glfw3.h>
 #include "Logger.h"
 
-namespace QuasarEngine {
+#include <GLFW/glfw3.h>
 
-	static bool s_GLFWInitialized = false;
+namespace QuasarEngine
+{
+    int Window::s_GLFWRefCount = 0;
 
-	static void GLFWErrorCallback(int error, const char* description)
-	{
-		std::cout << "GLFW Error (" << error << "): " << description << std::endl;
-	}
+    static void GLFWErrorCallback(int error, const char* description)
+    {
+        Q_ERROR("GLFW Error ({}): {}", error, description);
+    }
 
-	Window::Window()
-	{
-		if (!s_GLFWInitialized)
-		{
-			int success = glfwInit();
-			glfwSetErrorCallback(GLFWErrorCallback);
-			s_GLFWInitialized = true;
-		}
+    Window::Window()
+    {
+        if (s_GLFWRefCount == 0) {
+            glfwSetErrorCallback(GLFWErrorCallback);
+            const int ok = glfwInit();
+            if (!ok) {
+                Q_ERROR("glfwInit() failed");
+                Q_ASSERT(false, "GLFW init failed");
+            }
+        }
+        ++s_GLFWRefCount;
 
-		switch (RendererAPI::GetAPI())
-		{
-		case RendererAPI::API::OpenGL:
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-			break;
+        switch (RendererAPI::GetAPI())
+        {
+        case RendererAPI::API::OpenGL:
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+            break;
+        case RendererAPI::API::Vulkan:
+        case RendererAPI::API::DirectX:
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            break;
+        default:
+            Q_ERROR("Unsupported RendererAPI selected!");
+            break;
+        }
 
-		case RendererAPI::API::Vulkan:
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-			break;
+        m_Window = glfwCreateWindow(static_cast<int>(m_Data.Width),
+            static_cast<int>(m_Data.Height),
+            m_Data.Title.c_str(),
+            nullptr, nullptr);
+        if (!m_Window) {
+            Q_ERROR("glfwCreateWindow() failed");
+            Q_ASSERT(false, "Failed to create GLFW window");
+        }
 
-		case RendererAPI::API::DirectX:
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-			break;
+        glfwSetWindowUserPointer(m_Window, &m_Data);
 
-		default:
-			Q_ERROR("Unsupported RendererAPI selected!");
-			break;
-		}
+        m_Context = GraphicsContext::Create(m_Window);
+        Q_ASSERT(m_Context, "GraphicsContext::Create failed");
 
-		m_Window = glfwCreateWindow((int)m_Data.Width, (int)m_Data.Height, m_Data.Title.c_str(), nullptr, nullptr);
+        SetVSync(false);
 
-		glfwSetWindowUserPointer(m_Window, &m_Data);
+        glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
+            {
+                auto& data = *static_cast<Window::WindowData*>(glfwGetWindowUserPointer(window));
+                if (!data.EventCallback) return;
+                WindowCloseEvent event;
+                data.EventCallback(event);
+            });
 
-		m_Context = GraphicsContext::Create(m_Window);
+        glfwSetWindowSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
+            {
+                auto& data = *static_cast<Window::WindowData*>(glfwGetWindowUserPointer(window));
+                data.Width = static_cast<unsigned int>(width);
+                data.Height = static_cast<unsigned int>(height);
+                if (!data.EventCallback) return;
+                WindowResizeEvent event(width, height);
+                data.EventCallback(event);
+            });
 
-		SetVSync(false);
+        glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int /*mods*/)
+            {
+                auto& data = *static_cast<Window::WindowData*>(glfwGetWindowUserPointer(window));
+                if (!data.EventCallback) return;
+                if (action == GLFW_PRESS) {
+                    MouseButtonPressedEvent event(button);
+                    data.EventCallback(event);
+                }
+                else if (action == GLFW_RELEASE) {
+                    MouseButtonReleasedEvent event(button);
+                    data.EventCallback(event);
+                }
+            });
 
-		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+        glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
+            {
+                auto& data = *static_cast<Window::WindowData*>(glfwGetWindowUserPointer(window));
+                if (!data.EventCallback) return;
+                MouseScrolledEvent event(static_cast<float>(xOffset), static_cast<float>(yOffset));
+                data.EventCallback(event);
+            });
 
-			WindowCloseEvent event;
-			data.EventCallback(event);
-		});
+        glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double xPos, double yPos)
+            {
+                auto& data = *static_cast<Window::WindowData*>(glfwGetWindowUserPointer(window));
+                data.MousePos = glm::uvec2(static_cast<unsigned int>(xPos), static_cast<unsigned int>(yPos));
+                if (!data.EventCallback) return;
+                MouseMovedEvent event(xPos, yPos);
+                data.EventCallback(event);
+            });
 
-		glfwSetWindowSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
-			data.Width = width;
-			data.Height = height;
+        glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
+            {
+                auto& data = *static_cast<Window::WindowData*>(glfwGetWindowUserPointer(window));
+                if (!data.EventCallback) return;
 
-			WindowResizeEvent event(width, height);
-			data.EventCallback(event);
-		});
+                switch (action)
+                {
+                case GLFW_PRESS: {
+                    KeyPressedEvent event(key, 0);
+                    data.EventCallback(event);
+                    break;
+                }
+                case GLFW_RELEASE: {
+                    KeyReleasedEvent event(key);
+                    data.EventCallback(event);
+                    break;
+                }
+                case GLFW_REPEAT: {
+                    KeyPressedEvent event(key, true);
+                    data.EventCallback(event);
+                    break;
+                }
+                default: break;
+                }
+            });
 
-		glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int mods)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+        glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int keycode)
+            {
+                auto& data = *static_cast<Window::WindowData*>(glfwGetWindowUserPointer(window));
+                if (!data.EventCallback) return;
+                KeyTypedEvent event(keycode);
+                data.EventCallback(event);
+            });
+    }
 
-			switch (action)
-			{
-			case GLFW_PRESS:
-			{
-				MouseButtonPressedEvent event(button);
-				data.EventCallback(event);
-				break;
-			}
-			case GLFW_RELEASE:
-			{
-				MouseButtonReleasedEvent event(button);
-				data.EventCallback(event);
-				break;
-			}
-			}
-		});
+    Window::~Window()
+    {
+        Shutdown();
+    }
 
-		glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+    void Window::PollEvents()
+    {
+        glfwPollEvents();
+    }
 
-			MouseScrolledEvent event((float)xOffset, (float)yOffset);
-			data.EventCallback(event);
-		});
+    void Window::WaitEvents(double timeoutSeconds)
+    {
+        if (timeoutSeconds > 0.0)
+            glfwWaitEventsTimeout(timeoutSeconds);
+        else
+            glfwWaitEvents();
+    }
 
-		glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double xPos, double yPos)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+    void Window::BeginFrame()
+    {
+        m_Context->BeginFrame();
+    }
 
-			MouseMovedEvent event((double)xPos, (double)yPos);
-			data.EventCallback(event);
-		});
+    void Window::EndFrame()
+    {
+        m_Context->EndFrame();
+    }
 
-		glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+    void Window::Resize(unsigned int width, unsigned int height)
+    {
+        m_Data.Width = width;
+        m_Data.Height = height;
+        m_Context->Resize(width, height);
+    }
 
-			switch (action)
-			{
-			case GLFW_PRESS:
-			{
-				KeyPressedEvent event(key, 0);
-				data.EventCallback(event);
-				break;
-			}
-			case GLFW_RELEASE:
-			{
-				KeyReleasedEvent event(key);
-				data.EventCallback(event);
-				break;
-			}
-			case GLFW_REPEAT:
-			{
-				KeyPressedEvent event(key, true);
-				data.EventCallback(event);
-				break;
-			}
-			}
-		});
+    void Window::Shutdown()
+    {
+        if (m_Window) {
+            glfwSetWindowUserPointer(m_Window, nullptr);
+            glfwDestroyWindow(m_Window);
+            m_Window = nullptr;
+        }
+        if (s_GLFWRefCount > 0) {
+            --s_GLFWRefCount;
+            if (s_GLFWRefCount == 0) {
+                glfwTerminate();
+            }
+        }
+    }
 
-		glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int keycode)
-		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+    void Window::SetVSync(bool enabled)
+    {
+        if (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) {
+            glfwMakeContextCurrent(m_Window);
+            glfwSwapInterval(enabled ? 1 : 0);
+        }
+        
+        // TODO: ajouté SetVSync() côté GraphicsContext pour Vulkan/DirectX.
 
-			KeyTypedEvent event(keycode);
-			data.EventCallback(event);
-		});
-	}
+        m_Data.VSync = enabled;
+    }
 
-	Window::~Window()
-	{
-		Shutdown();
-	}
+    void Window::SetInputMode(bool cursorDisabled, bool rawMouseMotion)
+    {
+        if (cursorDisabled) {
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            glfwSetInputMode(
+                m_Window,
+                GLFW_RAW_MOUSE_MOTION,
+                (rawMouseMotion && glfwRawMouseMotionSupported()) ? GLFW_TRUE : GLFW_FALSE
+            );
+        }
+        else {
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+        }
+    }
 
-	void Window::PollEvents()
-	{
-		glfwPollEvents();
-	}
+    void Window::SetCursorVisibility(bool visible)
+    {
+        glfwSetInputMode(m_Window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+    }
 
-	void Window::BeginFrame()
-	{
-		m_Context->BeginFrame();
-	}
+    void Window::SetMousePosition(float x, float y)
+    {
+        glfwSetCursorPos(m_Window, static_cast<double>(x), static_cast<double>(y));
+        m_Data.MousePos = glm::uvec2(static_cast<unsigned int>(x), static_cast<unsigned int>(y));
+    }
 
-	void Window::EndFrame()
-	{
-		m_Context->EndFrame();
-	}
+    void Window::SetMaximized(bool maximized)
+    {
+        if (maximized)
+            glfwMaximizeWindow(m_Window);
+        else
+            glfwRestoreWindow(m_Window);
+    }
 
-	void Window::Resize(unsigned int width, unsigned int height)
-	{
-		m_Context->Resize(width, height);
-	}
-
-	void Window::Shutdown()
-	{
-		glfwDestroyWindow(m_Window);
-		glfwTerminate();
-	}
-
-	void Window::SetVSync(bool enabled)
-	{
-		if (RendererAPI::GetAPI() == RendererAPI::API::OpenGL)
-		{
-			if (enabled)
-			{
-				glfwSwapInterval(1);
-			}
-			else
-			{
-				glfwSwapInterval(0);
-			}
-		}
-
-		m_Data.VSync = enabled;
-	}
-
-	void Window::SetInputMode(bool cursorDisabled, bool rawMouseMotion)
-	{
-		if (cursorDisabled)
-		{
-			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-			glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, (rawMouseMotion && glfwRawMouseMotionSupported()) ? GLFW_TRUE : GLFW_FALSE);
-		}
-		else
-		{
-			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
-		}
-		//m_Data.MousePos = glm::uvec2(0.0f, 0.0f);
-		//glfwGetCursorPos(m_Window, &m_Data.MousePos.x, &m_Data.MousePos.y);
-	}
-
-	bool Window::IsVSync() const
-	{
-		return m_Data.VSync;
-	}
-
-	void Window::SetCursorVisibility(bool visible)
-	{
-		if (visible)
-			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		else
-			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	}
-
-	void Window::SetTitle(const std::string& title)
-	{
-		glfwSetWindowTitle(m_Window, title.c_str());
-	}
-
+    void Window::SetTitle(const std::string& title)
+    {
+        m_Data.Title = title;
+        glfwSetWindowTitle(m_Window, m_Data.Title.c_str());
+    }
 }

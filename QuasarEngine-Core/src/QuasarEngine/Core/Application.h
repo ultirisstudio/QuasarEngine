@@ -77,11 +77,10 @@ namespace QuasarEngine
 	private:
 		ApplicationSpecification m_Specification;
 
-		bool m_Running = true;
+		std::atomic<bool> m_Running{ true };
 		bool m_Minimized = false;
 
 		float deltaTime = 0;
-		float lastFrame = 0;
 
 		bool m_can_calcul_latency = false;
 
@@ -92,10 +91,6 @@ namespace QuasarEngine
 		std::unique_ptr<Window> m_Window;
 		std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
 		LayerManager m_LayerManager;
-
-		//double last_time = Renderer::GetTime();
-		double perf_last_time = 0.0;
-		
 	};
 
 	Application* CreateApplication(ApplicationCommandLineArgs args);

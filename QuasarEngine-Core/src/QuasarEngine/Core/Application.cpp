@@ -1,12 +1,10 @@
 #include "qepch.h"
 
-#include <GLFW/glfw3.h>
-
 #include <chrono>
 
 #include "Application.h"
 #include "QuasarEngine/Renderer/Renderer.h"
-#include "QuasarEngine/Core/Input.h"
+#include "QuasarEngine/Core/Logger.h"
 
 namespace QuasarEngine
 {
@@ -14,23 +12,32 @@ namespace QuasarEngine
 	
 	Application::Application(const ApplicationSpecification& specification) : m_Specification(specification)
 	{
+		Q_ASSERT(s_Instance == nullptr, "Only one Application instance allowed");
 		s_Instance = this;
 
 		m_Window = std::make_unique<Window>();
 		m_Window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));
 		m_Window->SetVSync(false);
 
-		m_ImGuiLayer = ImGuiLayer::Create();
-		PushOverlay(m_ImGuiLayer.get());
+		if (m_Specification.EnableImGui)
+		{
+			m_ImGuiLayer = ImGuiLayer::Create();
+			PushOverlay(m_ImGuiLayer.get());
+		}
 
 		Renderer::Init();
 	}
 
 	Application::~Application()
 	{
+		if (m_Specification.EnableImGui)
+		{
+			m_ImGuiLayer.reset();
+		}
+
 		Renderer::Shutdown();
 
-		m_ImGuiLayer.reset();
+		s_Instance = nullptr;
 	}
 
 	void Application::OnEvent(Event& e)
@@ -40,14 +47,19 @@ namespace QuasarEngine
 		dispatcher.Dispatch<WindowResizeEvent>(std::bind(&Application::OnWindowResize, this, std::placeholders::_1));
 		dispatcher.Dispatch<MouseMovedEvent>(std::bind(&Application::OnMouseMove, this, std::placeholders::_1));
 
-		for (Layer* layer : m_LayerManager)
-			layer->OnEvent(e);
+		//for (Layer* layer : m_LayerManager)
+		//	layer->OnEvent(e);
+
+		for (auto it = m_LayerManager.rbegin(); it != m_LayerManager.rend(); ++it)
+		{
+			(*it)->OnEvent(e);
+			if (e.Handled) break;
+		}
 	}
 
 	void Application::MaximizeWindow(bool value)
 	{
-		if (value)
-			glfwMaximizeWindow(static_cast<GLFWwindow*>(m_Window->GetNativeWindow()));
+		m_Window->SetMaximized(value);
 	}
 
 	void Application::PushLayer(Layer* layer)
@@ -69,9 +81,8 @@ namespace QuasarEngine
 
 	void Application::Run()
 	{
-		using clock = std::chrono::high_resolution_clock;
+		using clock = std::chrono::steady_clock;
 		auto lastTime = clock::now();
-		perf_last_time = std::chrono::duration<double>(lastTime.time_since_epoch()).count();
 
 		while (m_Running)
 		{
@@ -80,62 +91,64 @@ namespace QuasarEngine
 			auto now = clock::now();
 			deltaTime = std::chrono::duration<float>(now - lastTime).count();
 			lastTime = now;
+			if (deltaTime > 0.1f) deltaTime = 0.1f;
 
-			m_appInfos.update_latency = 0.0;
-			m_appInfos.render_latency = 0.0;
-			if (!m_Minimized)
+			ApplicationInfos nextInfos{};
+
+			for (Layer* layer : m_LayerManager)
 			{
-				for (Layer* layer : m_LayerManager)
-				{
-					auto t_update0 = clock::now();
-					layer->OnUpdate(deltaTime);
-					auto t_update1 = clock::now();
-					m_appInfos.update_latency += std::chrono::duration<double, std::milli>(t_update1 - t_update0).count();
+				auto t0 = clock::now();
+				layer->OnUpdate(deltaTime);
+				auto t1 = clock::now();
+				nextInfos.update_latency += std::chrono::duration<double, std::milli>(t1 - t0).count();
 
-					auto t_render0 = clock::now();
-					layer->OnRender();
-					auto t_render1 = clock::now();
-					m_appInfos.render_latency += std::chrono::duration<double, std::milli>(t_render1 - t_render0).count();
-				}
+				auto t2 = clock::now();
+				layer->OnRender();
+				auto t3 = clock::now();
+				nextInfos.render_latency += std::chrono::duration<double, std::milli>(t3 - t2).count();
 			}
 
-			auto t0 = clock::now();
+			auto tb0 = clock::now();
 			m_Window->BeginFrame();
-			auto t1 = clock::now();
-			m_appInfos.begin_latency = std::chrono::duration<double, std::milli>(t1 - t0).count();
+			auto tb1 = clock::now();
+			nextInfos.begin_latency = std::chrono::duration<double, std::milli>(tb1 - tb0).count();
 
-			auto t2 = clock::now();
-
-			if (m_Specification.EnableImGui)
+			if (m_ImGuiLayer)
 			{
+				auto ti0 = clock::now();
 				m_ImGuiLayer->Begin();
 				for (Layer* layer : m_LayerManager)
 					layer->OnGuiRender();
 				m_ImGuiLayer->End();
+				auto ti1 = clock::now();
+				nextInfos.imgui_latency = std::chrono::duration<double, std::milli>(ti1 - ti0).count();
 			}
-			
-			auto t3 = clock::now();
-			m_appInfos.imgui_latency = std::chrono::duration<double, std::milli>(t3 - t2).count();
 
-			auto t4 = clock::now();
+			auto te0 = clock::now();
 			m_Window->EndFrame();
-			auto t5 = clock::now();
-			m_appInfos.end_latency = std::chrono::duration<double, std::milli>(t5 - t4).count();
+			auto te1 = clock::now();
+			nextInfos.end_latency = std::chrono::duration<double, std::milli>(te1 - te0).count();
 
-			auto t6 = clock::now();
+			auto tev0 = clock::now();
 			m_Window->PollEvents();
-			auto t7 = clock::now();
-			m_appInfos.event_latency = std::chrono::duration<double, std::milli>(t7 - t6).count();
+			auto tev1 = clock::now();
+			nextInfos.event_latency = std::chrono::duration<double, std::milli>(tev1 - tev0).count();
 
-			auto t8 = clock::now();
-			Renderer::m_SceneData.m_AssetManager->Update();
-			auto t9 = clock::now();
-			m_appInfos.asset_latency = std::chrono::duration<double, std::milli>(t9 - t8).count();
+			auto ta0 = clock::now();
+			if (Renderer::m_SceneData.m_AssetManager)
+				Renderer::m_SceneData.m_AssetManager->Update();
+			auto ta1 = clock::now();
+			nextInfos.asset_latency = std::chrono::duration<double, std::milli>(ta1 - ta0).count();
 
-			auto frameEnd = clock::now();
-			double frameTimeMs = std::chrono::duration<double, std::milli>(frameEnd - frameStart).count();
-
+			const double frameTimeMs =
+				std::chrono::duration<double, std::milli>(clock::now() - frameStart).count();
 			CalculPerformance(frameTimeMs);
+
+			const double fps = m_appInfos.app_fps;
+			const double avg = m_appInfos.app_latency;
+			m_appInfos = nextInfos;
+			m_appInfos.app_fps = fps;
+			m_appInfos.app_latency = avg;
 		}
 
 		for (Layer* layer : m_LayerManager)
@@ -144,45 +157,39 @@ namespace QuasarEngine
 
 	void Application::CalculPerformance(double frameTimeMs)
 	{
-		double currentTime = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-		m_appInfos.app_nb_frame++;
+		using clock = std::chrono::steady_clock;
+		static auto lastSample = clock::now();
+		static double accMs = 0.0;
+		static int frames = 0;
+		static double emaMs = frameTimeMs;
 
-		static double minFrameTime = std::numeric_limits<double>::max();
-		static double maxFrameTime = 0.0;
-		minFrameTime = std::min(minFrameTime, frameTimeMs);
-		maxFrameTime = std::max(maxFrameTime, frameTimeMs);
+		++frames; accMs += frameTimeMs; emaMs += 0.1 * (frameTimeMs - emaMs);
 
-		if (currentTime - perf_last_time >= 1.0) {
-			m_appInfos.app_fps = m_appInfos.app_nb_frame;
-			m_appInfos.app_latency = (m_appInfos.app_nb_frame > 0) ? (1000.0 / double(m_appInfos.app_nb_frame)) : 0.0;
+		const double elapsedMs = std::chrono::duration<double, std::milli>(clock::now() - lastSample).count();
+		if (elapsedMs >= 1000.0) {
+			const double avgMs = frames ? (accMs / frames) : 0.0;
+			const double fps = elapsedMs ? (frames * 1000.0 / elapsedMs) : 0.0;
 
-			/*std::cout << std::fixed << std::setprecision(3);
-			std::cout << "\n---------------------" << std::endl;
-			std::cout << "FPS: " << m_appInfos.app_fps << " | Avg Latency: " << m_appInfos.app_latency << " ms" << std::endl;
-			std::cout << "Frame time: avg ~" << frameTimeMs << " ms [min: " << minFrameTime << " ms, max: " << maxFrameTime << " ms]\n";
-			std::cout << "begin: " << m_appInfos.begin_latency << " ms" << std::endl;
-			std::cout << "update: " << m_appInfos.update_latency << " ms" << std::endl;
-			std::cout << "render: " << m_appInfos.render_latency << " ms" << std::endl;
-			std::cout << "end: " << m_appInfos.end_latency << " ms" << std::endl;
-			std::cout << "event: " << m_appInfos.event_latency << " ms" << std::endl;
-			std::cout << "asset: " << m_appInfos.asset_latency << " ms" << std::endl;
-			std::cout << "imgui: " << m_appInfos.imgui_latency << " ms" << std::endl;*/
+			m_appInfos.app_fps = fps;
+			m_appInfos.app_latency = avgMs;
 
-			m_Window->SetTitle(m_Specification.Name + " [" +
-				std::to_string(int(m_appInfos.app_fps)) + " FPS / " +
-				std::to_string(int(frameTimeMs)) + " ms]");
+			std::ostringstream title;
+			title.imbue(std::locale::classic());
+			title.setf(std::ios::fixed);
+			title.precision(1);
+			title << m_Specification.Name << " [" << static_cast<int>(fps + 0.5) << " FPS / " << avgMs << " ms avg | " << emaMs << " ms EMA]";
 
-			m_appInfos.app_nb_frame = 0;
-			perf_last_time += 1.0;
-			minFrameTime = std::numeric_limits<double>::max();
-			maxFrameTime = 0.0;
+			m_Window->SetTitle(title.str());
+
+			lastSample = clock::now();
+			accMs = 0.0; frames = 0;
 		}
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
 	{
 		m_Running = false;
-		return false;
+		return true;
 	}
 
 	bool Application::OnWindowResize(WindowResizeEvent& e)
@@ -194,7 +201,6 @@ namespace QuasarEngine
 		}
 
 		m_Minimized = false;
-		//RenderCommand::SetViewport(0, 0, e.GetWidth(), e.GetHeight());
 
 		m_Window->Resize(e.GetWidth(), e.GetHeight());
 
@@ -202,9 +208,7 @@ namespace QuasarEngine
 	}
 
 	bool Application::OnMouseMove(MouseMovedEvent& e) {
-		Window::WindowData& data = *(Window::WindowData*)glfwGetWindowUserPointer(reinterpret_cast<GLFWwindow*>(Application::Get().GetWindow().GetNativeWindow()));
-		data.MousePos.x = e.GetX();
-		data.MousePos.y = e.GetY();
+		m_Window->SetMousePosition(static_cast<float>(e.GetX()), static_cast<float>(e.GetY()));
 		return false;
 	}
 }
