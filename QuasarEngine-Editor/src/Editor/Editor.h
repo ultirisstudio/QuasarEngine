@@ -24,7 +24,6 @@
 #include "Panels/Viewport.h"
 #include "Panels/NodeEditor/NodeEditor.h"
 #include "Panels/AnimationEditorPanel.h"
-#include "Panels/CodeEditor.h"
 #include "Panels/HeightMapEditor/HeightMapEditor.h"
 
 #include "QuasarEngine/Scene/Scene.h"
@@ -109,7 +108,6 @@ namespace QuasarEngine
 		std::unique_ptr<Viewport> m_Viewport;
 		std::unique_ptr<NodeEditor> m_NodeEditor;
 		std::unique_ptr<AnimationEditorPanel> m_AnimationEditorPanel;
-		//std::unique_ptr<CodeEditor> m_CodeEditor;
 		std::unique_ptr<HeightMapEditor> m_HeightMapEditor;
 
 		std::unique_ptr<SceneManager> m_SceneManager;

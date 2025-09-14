@@ -9,6 +9,8 @@
 #include "imgui/imgui_internal.h"
 #include "ImGuizmo.h"
 
+#include "QuasarEngine/Core/Logger.h"
+
 #include "QuasarEngine/Core/MouseCodes.h"
 #include "QuasarEngine/Physic/PhysicEngine.h"
 
@@ -46,14 +48,9 @@ namespace QuasarEngine
 	{
 		InitImGuiStyle();
 
+		Logger::initUtf8Console();
+
 		PhysicEngine::Init();
-
-		/*AssetToLoad asset;
-		asset.type = TEXTURE;
-		asset.id = "Assets/Icons/no_texture.png";
-		Renderer::m_SceneData.m_AssetManager->loadAsset(asset);*/
-
-		//m_EditorCamera->m_CameraFocus = true;
 
 		m_AssetImporter = std::make_unique<AssetImporter>(m_Specification.ProjectPath);
 
@@ -64,20 +61,12 @@ namespace QuasarEngine
 		m_Viewport = std::make_unique<Viewport>();
 		m_NodeEditor = std::make_unique<NodeEditor>();
 		m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
-		//m_CodeEditor = std::make_unique<CodeEditor>();
 		m_HeightMapEditor = std::make_unique<HeightMapEditor>();
 
 		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
 		m_SceneManager->createNewScene();
 
 		Renderer::BeginScene(m_SceneManager->GetActiveScene());
-
-		/*MaterialSpecification mat;
-		mat.AlbedoTexture = "Assets/Textures/white_texture.jpg";
-		QuasarEngine::SceneManager::ModelToLoad modelToLoad;
-		modelToLoad.path = "C:\\Users\\rouff\\Documents\\Ultiris Projects\\CallOf\\Assets\\Models\\BackPackFusion.obj";
-		modelToLoad.material = mat;
-		m_SceneManager->LoadModel(modelToLoad);*/
 
 		std::filesystem::path base_path = m_Specification.ProjectPath + "\\Assets";
 		SetupAssets(base_path);
@@ -212,6 +201,85 @@ namespace QuasarEngine
 		{
 			test.StepSimulation(1.0f / 60.0f);
 		}
+
+		using QuasarEngine::Logger;
+		using L = Logger::Level;
+
+		const bool TEST_SINKS = false;
+		const bool RUN_ASSERT = false;
+		const int  THREADS = 3;
+		const int  MSGS_PER_THR = 60;
+
+		const L    oldMin = Logger::minLevel();
+		const bool oldColors = Logger::colorsEnabled();
+		const bool oldAbort = Logger::abortOnFatal();
+
+		Logger::setAbortOnFatal(false);
+		Q_DEBUG("SelfTest: DEBUG");
+		Q_INFO("SelfTest: INFO");
+		Q_WARNING("SelfTest: WARNING");
+		Q_ERROR("SelfTest: ERROR");
+		Q_FATAL("SelfTest: FATAL (ne doit pas abort)");
+
+		Logger::setMinLevel(L::Warning);
+		Q_INFO("NE DOIT PAS APPARAITRE (min=Warning)");
+		Q_WARNING("OK (Warning passe)");
+		Q_ERROR("OK (Error passe)");
+		Logger::setMinLevel(L::Debug);
+
+		Logger::enableColors(false);
+		Q_INFO("Couleurs OFF");
+		Logger::enableColors(true);
+		Q_INFO("Couleurs ON");
+
+		Logger::apiInfo("Vulkan", {
+			{"Vendor",   "0.0.0.1"},
+			{"Renderer", "0.0.0.1"},
+			{"Version",  "0.0.0.1"}
+			});
+
+#if defined(__cpp_lib_format) && (__cpp_lib_format >= 201907L)
+		Q_INFOF("Formatted: {} + {} = {}", 2, 2, 2 + 2);
+		Q_WARNF("Formatted float ~ {}", 3.14159);
+#else
+		Q_INFO("C++20 <format> indisponible: Q_*F(...) sont no-op");
+#endif
+
+		{
+			std::vector<std::thread> pool;
+			for (int t = 0; t < THREADS; ++t) {
+				pool.emplace_back([t, MSGS_PER_THR] {
+					for (int i = 0; i < MSGS_PER_THR; ++i) {
+						Q_DEBUG(std::string("T") + std::to_string(t) + " -> " + std::to_string(i));
+						if ((i % 20) == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					}
+					});
+			}
+			for (auto& th : pool) th.join();
+			Q_INFO("Multithread OK");
+		}
+
+		if (TEST_SINKS) {
+			Logger::addFileSink("logger_selftest.log", true);
+			Q_INFO("Écrit dans console + fichier (truncate)");
+
+			Logger::clearSinks();
+			Logger::addSink(std::cout);
+			Q_WARNING("Après clearSinks(): seule la console est réinstallée");
+		}
+
+		if (RUN_ASSERT) {
+#ifndef NDEBUG
+			Q_ASSERT(false, "SelfTest: assert volontaire (va quitter)");
+#else
+			Q_INFO("NDEBUG actif: Q_ASSERT désactivé (aucun effet).");
+#endif
+		}
+
+		Logger::setMinLevel(oldMin);
+		Logger::enableColors(oldColors);
+		Logger::setAbortOnFatal(oldAbort);
+		Q_INFO("Logger tests terminé.");
 	}
 
 	void Editor::SetupAssets(const std::filesystem::path& chemin) {
@@ -243,7 +311,6 @@ namespace QuasarEngine
 		m_Viewport.reset();
 		m_NodeEditor.reset();
 		m_AnimationEditorPanel.reset();
-		//m_CodeEditor.reset();
 		m_HeightMapEditor.reset();
 	}
 
@@ -478,10 +545,6 @@ namespace QuasarEngine
 
 	void Editor::OnGuiRender()
 	{
-		/*Renderer::BeginScene(m_SceneManager->GetActiveScene());
-		Renderer::Render(*m_EditorCamera.get());
-		Renderer::EndScene();*/
-
 		static bool dockspaceOpen = true;
 		static bool opt_fullscreen = true;
 		static bool opt_padding = false;
@@ -648,7 +711,6 @@ namespace QuasarEngine
 		m_EntityPropertiePanel->OnImGuiRender(m_SceneManager->GetActiveScene(), *m_SceneHierarchy);
 		m_SceneHierarchy->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_ContentBrowserPanel->OnImGuiRender();
-		//m_CodeEditor->OnImGuiRender();
 		m_AnimationEditorPanel->OnImGuiRender();
 		m_NodeEditor->OnImGuiRender();
 		m_HeightMapEditor->OnImGuiRender();
@@ -698,8 +760,6 @@ namespace QuasarEngine
 
 	bool Editor::OnWindowResized(WindowResizeEvent& e)
 	{
-		//m_EditorCamera->OnResize(e.GetWidth(), e.GetHeight());
-
 		return false;
 	}
 
