@@ -26,6 +26,14 @@
 
 #include <QuasarEngine/Physic/PhysXTest.h>
 
+#ifndef QE_PROFILE_APP_TIMERS
+#if !defined(NDEBUG)
+#define QE_PROFILE_APP_TIMERS 1
+#else
+#define QE_PROFILE_APP_TIMERS 1
+#endif
+#endif
+
 namespace QuasarEngine
 {
 	Editor::Editor(const EditorSpecification& spec)
@@ -717,17 +725,9 @@ namespace QuasarEngine
 
 		OptionMenu();
 
+#if QE_PROFILE_APP_TIMERS
 		DrawStatsWindow();
-
-		ImGui::Begin("Latences");
-
-		ImGui::Text(std::string("Update: " + std::to_string(Application::Get().GetAppInfos().update_latency)).c_str());
-		ImGui::Text(std::string("Render: " + std::to_string(Application::Get().GetAppInfos().render_latency)).c_str());
-		ImGui::Text(std::string("Event: " + std::to_string(Application::Get().GetAppInfos().event_latency)).c_str());
-		ImGui::Text(std::string("Asset: " + std::to_string(Application::Get().GetAppInfos().asset_latency)).c_str());
-		ImGui::Text(std::string("ImGui: " + std::to_string(Application::Get().GetAppInfos().imgui_latency)).c_str());
-
-		ImGui::End();
+#endif
 
 		ImGui::End();
 	}

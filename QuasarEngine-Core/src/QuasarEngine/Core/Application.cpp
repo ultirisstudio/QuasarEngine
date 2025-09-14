@@ -6,6 +6,14 @@
 #include "QuasarEngine/Renderer/Renderer.h"
 #include "QuasarEngine/Core/Logger.h"
 
+#ifndef QE_PROFILE_APP_TIMERS
+#if !defined(NDEBUG)
+#define QE_PROFILE_APP_TIMERS 1
+#else
+#define QE_PROFILE_APP_TIMERS 1
+#endif
+#endif
+
 namespace QuasarEngine
 {
 	Application* Application::s_Instance = nullptr;
@@ -88,67 +96,99 @@ namespace QuasarEngine
 		{
 			auto frameStart = clock::now();
 
+#if QE_PROFILE_APP_TIMERS
 			auto now = clock::now();
 			deltaTime = std::chrono::duration<float>(now - lastTime).count();
 			lastTime = now;
 			if (deltaTime > 0.1f) deltaTime = 0.1f;
 
 			ApplicationInfos nextInfos{};
+#endif
 
 			for (Layer* layer : m_LayerManager)
 			{
+#if QE_PROFILE_APP_TIMERS
 				auto t0 = clock::now();
+#endif
 				layer->OnUpdate(deltaTime);
+#if QE_PROFILE_APP_TIMERS
 				auto t1 = clock::now();
 				nextInfos.update_latency += std::chrono::duration<double, std::milli>(t1 - t0).count();
+#endif
 
+#if QE_PROFILE_APP_TIMERS
 				auto t2 = clock::now();
+#endif
 				layer->OnRender();
+#if QE_PROFILE_APP_TIMERS
 				auto t3 = clock::now();
 				nextInfos.render_latency += std::chrono::duration<double, std::milli>(t3 - t2).count();
+#endif
 			}
 
+#if QE_PROFILE_APP_TIMERS
 			auto tb0 = clock::now();
+#endif
 			m_Window->BeginFrame();
+#if QE_PROFILE_APP_TIMERS
 			auto tb1 = clock::now();
 			nextInfos.begin_latency = std::chrono::duration<double, std::milli>(tb1 - tb0).count();
+#endif
 
 			if (m_ImGuiLayer)
 			{
+#if QE_PROFILE_APP_TIMERS
 				auto ti0 = clock::now();
+#endif
 				m_ImGuiLayer->Begin();
 				for (Layer* layer : m_LayerManager)
 					layer->OnGuiRender();
 				m_ImGuiLayer->End();
+#if QE_PROFILE_APP_TIMERS
 				auto ti1 = clock::now();
 				nextInfos.imgui_latency = std::chrono::duration<double, std::milli>(ti1 - ti0).count();
+#endif
 			}
 
+#if QE_PROFILE_APP_TIMERS
 			auto te0 = clock::now();
+#endif
 			m_Window->EndFrame();
+#if QE_PROFILE_APP_TIMERS
 			auto te1 = clock::now();
 			nextInfos.end_latency = std::chrono::duration<double, std::milli>(te1 - te0).count();
+#endif
 
+#if QE_PROFILE_APP_TIMERS
 			auto tev0 = clock::now();
+#endif
 			m_Window->PollEvents();
+#if QE_PROFILE_APP_TIMERS
 			auto tev1 = clock::now();
 			nextInfos.event_latency = std::chrono::duration<double, std::milli>(tev1 - tev0).count();
+#endif
 
+#if QE_PROFILE_APP_TIMERS
 			auto ta0 = clock::now();
+#endif
 			if (Renderer::m_SceneData.m_AssetManager)
 				Renderer::m_SceneData.m_AssetManager->Update();
+#if QE_PROFILE_APP_TIMERS
 			auto ta1 = clock::now();
 			nextInfos.asset_latency = std::chrono::duration<double, std::milli>(ta1 - ta0).count();
+#endif
 
 			const double frameTimeMs =
 				std::chrono::duration<double, std::milli>(clock::now() - frameStart).count();
 			CalculPerformance(frameTimeMs);
 
+#if QE_PROFILE_APP_TIMERS
 			const double fps = m_appInfos.app_fps;
 			const double avg = m_appInfos.app_latency;
 			m_appInfos = nextInfos;
 			m_appInfos.app_fps = fps;
 			m_appInfos.app_latency = avg;
+#endif
 		}
 
 		for (Layer* layer : m_LayerManager)
@@ -189,7 +229,7 @@ namespace QuasarEngine
 	bool Application::OnWindowClose(WindowCloseEvent& e)
 	{
 		m_Running = false;
-		return true;
+		return false;
 	}
 
 	bool Application::OnWindowResize(WindowResizeEvent& e)
