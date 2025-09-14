@@ -11,7 +11,8 @@
 
 #include <QuasarEngine/Renderer/RenderCommand.h>
 
-#include <filesystem>
+#include <QuasarEngine/Resources/Lights/PointLight.h>
+#include <QuasarEngine/Resources/Lights/DirectionalLight.h>
 
 namespace QuasarEngine
 {
@@ -28,6 +29,10 @@ namespace QuasarEngine
 			std::shared_ptr<BasicSkybox> m_Skybox;
 
 			std::unique_ptr<ScriptSystem> m_ScriptSystem;
+
+			std::array<PointLight, 4> m_PointsBuffer;
+			std::array<DirectionalLight, 4> m_DirectionalsBuffer;
+			int nPts = 0, nDirs = 0;
 		};
 		static SceneData m_SceneData;
 

@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <glm/glm.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 namespace QuasarEngine::Math {
 	enum Axis
@@ -66,6 +67,10 @@ namespace QuasarEngine::Math {
 	Direction VectorToDir(glm::vec3 vec);
 
 	Frustum CalculateFrustum(const glm::mat4& camera);
+
+	glm::vec3 ForwardFromEulerRad(const glm::vec3& eulerXYZRad, bool forwardIsNegZ = true);
+	glm::vec3 ForwardFromEulerDeg(const glm::vec3& eulerXYZDeg, bool forwardIsNegZ = true);
+	glm::vec3 ForwardFromQuat(const glm::quat& q, bool forwardIsNegZ = true);
 }
 
 namespace QuasarEngine::Interpolator {

@@ -47,7 +47,7 @@ namespace QuasarEngine
 		m_viewMatrix = glm::lookAt(m_position, m_position + m_target, glm::vec3(0.0f, 1.0f, 0.0f));
 	}
 
-	const glm::mat4 EditorCamera::getViewMatrix() const
+	const glm::mat4& EditorCamera::getViewMatrix() const
 	{
 		return m_viewMatrix;
 	}
@@ -57,7 +57,7 @@ namespace QuasarEngine
 		return m_projectionMatrix;
 	}
 
-	glm::vec3 EditorCamera::GetFront()
+	glm::vec3& EditorCamera::GetFront()
 	{
 		glm::vec3 front;
 		front.x = cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
@@ -66,10 +66,15 @@ namespace QuasarEngine
 		return glm::normalize(front);
 	}
 
-	glm::mat4 EditorCamera::GetTransform()
+	glm::mat4& EditorCamera::GetTransform()
 	{
 		glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(m_pitch), { 1, 0, 0 }) * glm::rotate(glm::mat4(1.0f), glm::radians(m_yaw), { 0, 1, 0 }) * glm::rotate(glm::mat4(1.0f), 0.0f, { 0, 0, 1 });
 		return glm::translate(glm::mat4(1.f), m_position) * rotation;
+	}
+
+	glm::vec3& EditorCamera::GetPosition()
+	{
+		return m_position;
 	}
 
 	float EditorCamera::getFov() const

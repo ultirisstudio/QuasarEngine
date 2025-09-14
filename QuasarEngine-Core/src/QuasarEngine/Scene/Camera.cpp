@@ -13,7 +13,7 @@ namespace QuasarEngine
 		m_TransformComponent = transformComponent;
 	}
 
-	const glm::mat4 Camera::getViewMatrix() const
+	const glm::mat4& Camera::getViewMatrix() const
 	{
 		return m_TransformComponent->GetGlobalViewMatrix();
 	}
@@ -21,6 +21,22 @@ namespace QuasarEngine
 	const glm::mat4& Camera::getProjectionMatrix() const
 	{
 		return m_projectionMatrix;
+	}
+
+	glm::vec3& Camera::GetPosition()
+	{
+		return m_TransformComponent->Position;
+	}
+
+	glm::mat4& Camera::GetTransform()
+	{
+		return m_TransformComponent->GetGlobalTransform();
+	}
+
+	glm::vec3& Camera::GetFront()
+	{
+		glm::vec3 front = m_TransformComponent->Rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+		return glm::normalize(front);
 	}
 
 	void Camera::updateProjectionMatrix()
@@ -49,17 +65,6 @@ namespace QuasarEngine
 		default:
 			break;
 		}
-	}
-
-	glm::mat4 Camera::GetTransform()
-	{
-		return m_TransformComponent->GetGlobalTransform();
-	}
-
-	glm::vec3 Camera::GetFront()
-	{
-		glm::vec3 front = m_TransformComponent->Rotation * glm::vec3(0.0f, 0.0f, -1.0f);
-		return glm::normalize(front);
 	}
 
 	float Camera::GetFov() const

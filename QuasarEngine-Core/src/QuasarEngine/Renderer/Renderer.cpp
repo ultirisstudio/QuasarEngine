@@ -143,6 +143,9 @@ namespace QuasarEngine
 
 		m_SceneData.m_ScriptSystem = std::make_unique<ScriptSystem>();
 		m_SceneData.m_ScriptSystem->Initialize();
+
+		m_SceneData.m_PointsBuffer.fill(PointLight());
+		m_SceneData.m_DirectionalsBuffer.fill(DirectionalLight());
 	}
 
 	void Renderer::Shutdown()
@@ -150,6 +153,7 @@ namespace QuasarEngine
 		m_SceneData.m_Skybox.reset();
 		m_SceneData.m_Shader.reset();
 		m_SceneData.m_AssetManager.reset();
+		m_SceneData.m_ScriptSystem.reset();
 	}
 
 	void Renderer::BeginScene(Scene& scene)
@@ -159,15 +163,10 @@ namespace QuasarEngine
 
 	void Renderer::Render(BaseCamera& camera)
 	{
+		Math::Frustum frustum = Math::CalculateFrustum(camera.getProjectionMatrix() * camera.getViewMatrix());
+
 		glm::mat4 viewMatrix = camera.getViewMatrix();
 		glm::mat4 projectionMatrix = camera.getProjectionMatrix();
-
-		glm::vec3 cameraPosition, scale, skew;
-		glm::quat rotation;
-		glm::vec4 perspective;
-		glm::decompose(camera.GetTransform(), scale, rotation, cameraPosition, skew, perspective);
-
-		// Renderer
 
 		m_SceneData.m_Shader->Use();
 
@@ -176,119 +175,109 @@ namespace QuasarEngine
 
 		m_SceneData.m_Shader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
 		m_SceneData.m_Shader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
-		m_SceneData.m_Shader->SetUniform("camera_position", &cameraPosition, sizeof(glm::vec3));
+		m_SceneData.m_Shader->SetUniform("camera_position", &camera.GetPosition(), sizeof(glm::vec3));
 
-		std::vector<PointLight> point_lights;
-		std::vector<DirectionalLight> directional_lights;
+		m_SceneData.nDirs = 0;
+		m_SceneData.nPts = 0;
 
-		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<IDComponent>())
+		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<LightComponent, TransformComponent>())
 		{
-			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
+			Entity entity{ e, m_SceneData.m_Scene->GetRegistry()};
 
-			if (entity.HasComponent<LightComponent>())
+			auto& lc = entity.GetComponent<LightComponent>();
+			auto& tr = entity.GetComponent<TransformComponent>();
+
+			if (lc.lightType == LightComponent::LightType::DIRECTIONAL && m_SceneData.nDirs < 4)
 			{
-				auto& lc = entity.GetComponent<LightComponent>();
-				if (lc.lightType == LightComponent::LightType::DIRECTIONAL && directional_lights.size() < 4)
-				{
-					lc.directional_light.direction = entity.GetComponent<TransformComponent>().Rotation;
-					directional_lights.push_back(lc.directional_light);
-				}
-				else if (lc.lightType == LightComponent::LightType::POINT && point_lights.size() < 4)
-				{
-					lc.point_light.position = entity.GetComponent<TransformComponent>().Position;
-					point_lights.push_back(lc.point_light);
-				}
+				DirectionalLight dl = lc.directional_light;
+				dl.direction = -Math::ForwardFromEulerRad(tr.Rotation);
+				m_SceneData.m_DirectionalsBuffer[m_SceneData.nDirs++] = dl;
+			}
+			else if (lc.lightType == LightComponent::LightType::POINT && m_SceneData.nPts < 4)
+			{
+				PointLight pl = lc.point_light;
+				pl.position = tr.Position;
+				m_SceneData.m_PointsBuffer[m_SceneData.nPts++] = pl;
 			}
 		}
 
-		int point_lights_count = static_cast<int>(point_lights.size());
-		int directional_lights_count = static_cast<int>(directional_lights.size());
+		m_SceneData.m_Shader->SetUniform("usePointLight", &m_SceneData.nPts, sizeof(int));
+		m_SceneData.m_Shader->SetUniform("useDirLight", &m_SceneData.nDirs, sizeof(int));
 
-		m_SceneData.m_Shader->SetUniform("usePointLight", &point_lights_count, sizeof(int));
-		m_SceneData.m_Shader->SetUniform("useDirLight", &directional_lights_count, sizeof(int));
-
-		std::array<PointLight, 4> points_buffer{};
-		for (size_t i = 0; i < point_lights_count; ++i)
-			points_buffer[i] = point_lights[i];
-
-		std::array<DirectionalLight, 4> directionals_buffer{};
-		for (size_t i = 0; i < directional_lights_count; ++i)
-			directionals_buffer[i] = directional_lights[i];
-
-		m_SceneData.m_Shader->SetUniform("pointLights", points_buffer.data(), sizeof(PointLight) * 4);
-		m_SceneData.m_Shader->SetUniform("dirLights", directionals_buffer.data(), sizeof(DirectionalLight) * 4);
+		m_SceneData.m_Shader->SetUniform("pointLights", m_SceneData.m_PointsBuffer.data(), sizeof(PointLight) * 4);
+		m_SceneData.m_Shader->SetUniform("dirLights", m_SceneData.m_DirectionalsBuffer.data(), sizeof(DirectionalLight) * 4);
 
 		if (!m_SceneData.m_Shader->UpdateGlobalState())
 		{
 			return;
 		}
 
-		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<IDComponent>())
+		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, MeshComponent, MeshRendererComponent>())
 		{
 			Entity entity{ e, m_SceneData.m_Scene->GetRegistry()};
 
-			glm::mat4 transform = entity.GetComponent<TransformComponent>().GetGlobalTransform();
+			auto& tr = entity.GetComponent<TransformComponent>();
 
-			if (entity.HasComponent<MeshRendererComponent>() && entity.HasComponent<MeshComponent>() && entity.GetComponent<MeshComponent>().HasMesh())
+			glm::mat4 transform = tr.GetGlobalTransform();
+
+			auto& mc = entity.GetComponent<MeshComponent>();
+			auto& matc = entity.GetComponent<MaterialComponent>();
+			auto& mr = entity.GetComponent<MeshRendererComponent>();
+
+			//totalEntity++;
+
+			if (!mc.HasMesh())
 			{
-				//totalEntity++;
-
-				if (!entity.GetComponent<MeshRendererComponent>().m_Rendered)
-				{
-					continue;
-				}
-
-				Math::Frustum frustum = Math::CalculateFrustum(camera.getProjectionMatrix() * camera.getViewMatrix());
-
-				if (!entity.GetComponent<MeshComponent>().GetMesh().IsVisible(frustum, transform, entity.GetComponent<TransformComponent>().Scale))
-				{
-					continue;
-				}
-
-				//entityDraw++;
-
-				Material& material = entity.GetComponent<MaterialComponent>().GetMaterial();
-
-				m_SceneData.m_Shader->SetUniform("model", &transform, sizeof(glm::mat4));
-
-				m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
-				m_SceneData.m_Shader->SetUniform("roughness", &material.GetRoughness(), sizeof(float));
-				m_SceneData.m_Shader->SetUniform("metallic", &material.GetMetallic(), sizeof(float));
-				m_SceneData.m_Shader->SetUniform("ao", &material.GetAO(), sizeof(float));
-
-				int hasAlbedoTexture = material.HasTexture(Albedo) ? 1 : 0;
-				int hasNormalTexture = material.HasTexture(Normal) ? 1 : 0;
-				int hasRougnessTexture = material.HasTexture(Roughness) ? 1 : 0;
-				int hasMetallicTexture = material.HasTexture(Metallic) ? 1 : 0;
-				int hasAOTexture = material.HasTexture(AO) ? 1 : 0;
-
-				m_SceneData.m_Shader->SetUniform("has_albedo_texture", &hasAlbedoTexture, sizeof(int));
-				m_SceneData.m_Shader->SetUniform("has_normal_texture", &hasNormalTexture, sizeof(int));
-				m_SceneData.m_Shader->SetUniform("has_roughness_texture", &hasRougnessTexture, sizeof(int));
-				m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasMetallicTexture, sizeof(int));
-				m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasAOTexture, sizeof(int));
-
-				m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(Albedo));
-				m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(Normal));
-				m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(Roughness));
-				m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(Metallic));
-				m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(AO));
-
-				if (!m_SceneData.m_Shader->UpdateObject(&material))
-				{
-					continue;
-				}
-
-				if (entity.GetComponent<MeshComponent>().HasMesh())
-				{
-					//if (material.GetTexture(Albedo))
-					//{
-						entity.GetComponent<MeshComponent>().GetMesh().draw();
-					//}
-				}
-
-				m_SceneData.m_Shader->Reset();
+				continue;
 			}
+
+			if (!mr.m_Rendered)
+			{
+				continue;
+			}
+
+			if (!mc.GetMesh().IsVisible(frustum, transform, tr.Scale))
+			{
+				continue;
+			}
+
+			//entityDraw++;
+
+			Material& material = matc.GetMaterial();
+
+			m_SceneData.m_Shader->SetUniform("model", &transform, sizeof(glm::mat4));
+
+			m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
+			m_SceneData.m_Shader->SetUniform("roughness", &material.GetRoughness(), sizeof(float));
+			m_SceneData.m_Shader->SetUniform("metallic", &material.GetMetallic(), sizeof(float));
+			m_SceneData.m_Shader->SetUniform("ao", &material.GetAO(), sizeof(float));
+
+			int hasAlbedoTexture = material.HasTexture(Albedo) ? 1 : 0;
+			int hasNormalTexture = material.HasTexture(Normal) ? 1 : 0;
+			int hasRougnessTexture = material.HasTexture(Roughness) ? 1 : 0;
+			int hasMetallicTexture = material.HasTexture(Metallic) ? 1 : 0;
+			int hasAOTexture = material.HasTexture(AO) ? 1 : 0;
+
+			m_SceneData.m_Shader->SetUniform("has_albedo_texture", &hasAlbedoTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_normal_texture", &hasNormalTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_roughness_texture", &hasRougnessTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasMetallicTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasAOTexture, sizeof(int));
+
+			m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(Albedo));
+			m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(Normal));
+			m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(Roughness));
+			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(Metallic));
+			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(AO));
+
+			if (!m_SceneData.m_Shader->UpdateObject(&material))
+			{
+				continue;
+			}
+
+			mc.GetMesh().draw();
+
+			m_SceneData.m_Shader->Reset();
 		}
 
 		//std::cout << entityDraw << "/" << totalEntity << std::endl;

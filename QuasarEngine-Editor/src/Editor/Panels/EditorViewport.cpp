@@ -28,7 +28,7 @@ namespace QuasarEngine
 
 		spec.Attachments = {
 			FramebufferTextureFormat::RGBA8,
-			FramebufferTextureFormat::RED_INTEGER,
+			//FramebufferTextureFormat::RED_INTEGER,
 			FramebufferTextureFormat::Depth
 		};
 

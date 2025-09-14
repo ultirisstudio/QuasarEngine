@@ -74,6 +74,24 @@ namespace QuasarEngine {
 	{
 		return (((value - fromMin) * (toMax - toMin)) / (fromMax - fromMin)) + toMin;
 	}
+
+	glm::vec3 Math::ForwardFromEulerRad(const glm::vec3& eulerXYZRad, bool forwardIsNegZ)
+	{
+		glm::mat4 R = glm::yawPitchRoll(eulerXYZRad.y, eulerXYZRad.x, eulerXYZRad.z);
+		glm::vec3 f = glm::vec3(R * glm::vec4(0.0f, 0.0f, forwardIsNegZ ? -1.0f : 1.0f, 0.0f));
+		return glm::normalize(f);
+	}
+
+	glm::vec3 Math::ForwardFromEulerDeg(const glm::vec3& eulerXYZDeg, bool forwardIsNegZ)
+	{
+		return ForwardFromEulerRad(glm::radians(eulerXYZDeg), forwardIsNegZ);
+	}
+
+	glm::vec3 Math::ForwardFromQuat(const glm::quat& q, bool forwardIsNegZ)
+	{
+		glm::vec3 f = q * glm::vec3(0.0f, 0.0f, forwardIsNegZ ? -1.0f : 1.0f);
+		return glm::normalize(f);
+	}
 }
 
 namespace QuasarEngine::Interpolator {
