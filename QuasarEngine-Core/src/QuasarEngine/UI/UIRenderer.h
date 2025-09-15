@@ -1,0 +1,70 @@
+#pragma once
+
+#include <vector>
+#include <cstdint>
+
+#include "UITransform.h"
+#include "UIStyle.h"
+
+namespace QuasarEngine {
+	struct UIVertex {
+		float x, y, u, v;
+		uint32_t rgba;
+	};
+
+	struct UITexture {
+		int id = -1;
+	};
+
+	struct UIScissor {
+		int x = 0, y = 0, w = 0, h = 0;
+	};
+
+	class UIBatcher;
+
+	struct UIRenderContext {
+		UIBatcher* batcher = nullptr;
+		UITexture whiteTex;
+		float dpiScale = 1.f;
+
+		void DrawDebugText(const char* s, float x, float y, const UIColor& color);
+	};
+
+	struct UIDrawCmd {
+		UITexture tex;
+		UIScissor scissor;
+
+		int vtxOffset = 0;
+		int idxOffset = 0;
+		int idxCount = 0;
+	};
+
+	class UIBatcher {
+	public:
+		void Clear();
+		void PushRect(const Rect& r, uint32_t rgba, const UIScissor* sc);
+		const std::vector<UIVertex>& Vertices() const { return m_Vertices; }
+		const std::vector<uint32_t>& Indices() const { return m_Indices; }
+		const std::vector<UIDrawCmd>& Commands() const { return m_Cmds; }
+	private:
+		std::vector<UIVertex> m_Vertices;
+		std::vector<uint32_t> m_Indices;
+		std::vector<UIDrawCmd> m_Cmds;
+	};
+
+	class UIRenderer {
+	public:
+		void Begin(int fbW, int fbH);
+		void End();
+
+		UIRenderContext& Ctx() { return m_Context; }
+		UIBatcher& Batcher() { return m_Batcher; }
+
+		void FlushToEngine();
+
+	private:
+		int fbW_ = 0, fbH_ = 0;
+		UIRenderContext m_Context{};
+		UIBatcher m_Batcher{};
+	};
+}

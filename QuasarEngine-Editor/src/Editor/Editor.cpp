@@ -331,7 +331,7 @@ namespace QuasarEngine
 		m_EditorCamera->Update();
 		m_SceneManager->Update(dt);
 		m_EditorViewport->Update(*m_EditorCamera);
-		m_Viewport->Update(m_SceneManager->GetActiveScene());
+		m_Viewport->Update(m_SceneManager->GetActiveScene(), dt);
 		//m_AnimationEditorPanel->Update(dt);
 		//m_HeightMapEditor->Update();
 		//m_UserInterfaceEditor->Update();

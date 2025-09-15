@@ -8,6 +8,8 @@
 #include <QuasarEngine/Renderer/Framebuffer.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 
+#include <QuasarEngine/UI/UISystem.h>
+
 namespace QuasarEngine
 {
 	class Viewport
@@ -17,7 +19,7 @@ namespace QuasarEngine
 
 		void Render(Scene& scene);
 
-		void Update(Scene& scene);
+		void Update(Scene& scene, double dt);
 
 		void OnImGuiRender(Scene& scene);
 
@@ -40,5 +42,7 @@ namespace QuasarEngine
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
+
+		std::unique_ptr<UISystem> m_UI;
 	};
 }

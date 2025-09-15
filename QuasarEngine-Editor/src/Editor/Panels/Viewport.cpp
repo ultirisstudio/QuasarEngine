@@ -4,6 +4,10 @@
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
 
+#include <QuasarEngine/UI/UIContainer.h>
+#include <QuasarEngine/UI/UIText.h>
+#include <QuasarEngine/UI/UIButton.h>
+
 namespace QuasarEngine
 {
 	Viewport::Viewport()
@@ -18,6 +22,25 @@ namespace QuasarEngine
 
 		m_ViewportFrameBuffer = Framebuffer::Create(spec);
 		m_ViewportFrameBuffer->Invalidate();
+
+		m_UI = std::make_unique<UISystem>();
+
+		auto root = std::make_shared<UIContainer>("Root");
+		root->layout = UILayoutType::Vertical;
+		root->Style().padding = 12.f;
+		root->Transform().size = { 320.f, 0.f };
+
+		auto title = std::make_shared<UIText>("Title");
+		title->text = "Menu Pause";
+		title->Style().bg = { 0,0,0,0 };
+		root->AddChild(title);
+
+		auto btn = std::make_shared<UIButton>("Resume");
+		btn->label = "Reprendre";
+		btn->onClick = []() {};
+		root->AddChild(btn);
+
+		m_UI->SetRoot(root);
 	}
 
 	void Viewport::Render(Scene& scene)
@@ -61,9 +84,12 @@ namespace QuasarEngine
 		}
 	}
 
-	void Viewport::Update(Scene& scene)
+	void Viewport::Update(Scene& scene, double dt)
 	{
 		ResizeIfNeeded(scene, m_ViewportPanelSize);
+
+		UIFBInfo fb{ m_ViewportPanelSize.x, m_ViewportPanelSize.y, 1.0 };
+		m_UI->Tick(dt, fb);
 	}
 
 	void Viewport::OnImGuiRender(Scene& scene)
