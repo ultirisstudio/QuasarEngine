@@ -18,7 +18,7 @@ namespace QuasarEngine
 {
 	class Renderer
 	{
-	public:		
+	public:
 		struct SceneData
 		{
 			Scene* m_Scene;

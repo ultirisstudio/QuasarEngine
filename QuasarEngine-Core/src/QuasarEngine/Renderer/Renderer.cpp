@@ -3,22 +3,16 @@
 #include <GLFW/glfw3.h>
 
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/matrix_decompose.hpp>
 
 #include <QuasarEngine/Renderer/Renderer.h>
 
 #include <QuasarEngine/Entity/Entity.h>
-#include <QuasarEngine/Resources/Model.h>
 #include <QuasarEngine/Resources/Materials/Material.h>
 #include <QuasarEngine/Resources/Mesh.h>
 
 #include <QuasarEngine/Entity/AllComponents.h>
 
 #include <QuasarEngine/Tools/Math.h>
-
-#include "QuasarEngine/Core/Logger.h"
-
-#include <glad/glad.h>
 
 namespace QuasarEngine
 {
