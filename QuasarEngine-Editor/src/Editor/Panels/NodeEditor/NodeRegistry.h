@@ -27,13 +27,13 @@ namespace QuasarEngine
 
         void Register(const std::string& typeName, NodeFactory factory)
         {
-            factories_[typeName] = factory;
+            m_Factories[typeName] = factory;
         }
 
         std::shared_ptr<Node> Create(const std::string& typeName, Node::NodeId id) const
         {
-            auto it = factories_.find(typeName);
-            if (it != factories_.end())
+            auto it = m_Factories.find(typeName);
+            if (it != m_Factories.end())
                 return it->second(id);
             return nullptr;
         }
@@ -41,12 +41,12 @@ namespace QuasarEngine
         std::vector<std::string> GetRegisteredTypes() const
         {
             std::vector<std::string> names;
-            for (auto& [name, _] : factories_) names.push_back(name);
+            for (auto& [name, _] : m_Factories) names.push_back(name);
             return names;
         }
 
     private:
-        std::unordered_map<std::string, NodeFactory> factories_;
+        std::unordered_map<std::string, NodeFactory> m_Factories;
         NodeRegistry() = default;
     };
 }

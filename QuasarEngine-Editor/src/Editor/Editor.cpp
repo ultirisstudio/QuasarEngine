@@ -67,9 +67,10 @@ namespace QuasarEngine
 		m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Specification.ProjectPath, m_AssetImporter.get());
 		m_EditorViewport = std::make_unique<EditorViewport>();
 		m_Viewport = std::make_unique<Viewport>();
-		m_NodeEditor = std::make_unique<NodeEditor>();
-		m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
-		m_HeightMapEditor = std::make_unique<HeightMapEditor>();
+		//m_NodeEditor = std::make_unique<NodeEditor>();
+		//m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
+		//m_HeightMapEditor = std::make_unique<HeightMapEditor>();
+		//m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
 
 		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
 		m_SceneManager->createNewScene();
@@ -79,7 +80,7 @@ namespace QuasarEngine
 		std::filesystem::path base_path = m_Specification.ProjectPath + "\\Assets";
 		SetupAssets(base_path);
 
-		VM vm;
+		/*VM vm;
 
 		vm.registerFunction("create_entity", [](const std::vector<Value::Prim>& args)->Value::Prim {
 			std::string name = args.size() > 0 && std::holds_alternative<std::string>(args[0]) ? std::get<std::string>(args[0]) : "Unnamed";
@@ -287,7 +288,7 @@ namespace QuasarEngine
 		Logger::setMinLevel(oldMin);
 		Logger::enableColors(oldColors);
 		Logger::setAbortOnFatal(oldAbort);
-		Q_INFO("Logger tests terminé.");
+		Q_INFO("Logger tests terminé.");*/
 	}
 
 	void Editor::SetupAssets(const std::filesystem::path& chemin) {
@@ -317,9 +318,9 @@ namespace QuasarEngine
 		m_ContentBrowserPanel.reset();
 		m_EditorViewport.reset();
 		m_Viewport.reset();
-		m_NodeEditor.reset();
-		m_AnimationEditorPanel.reset();
-		m_HeightMapEditor.reset();
+		//m_NodeEditor.reset();
+		//m_AnimationEditorPanel.reset();
+		//m_HeightMapEditor.reset();
 	}
 
 	void Editor::OnUpdate(double dt)
@@ -331,8 +332,9 @@ namespace QuasarEngine
 		m_SceneManager->Update(dt);
 		m_EditorViewport->Update(*m_EditorCamera);
 		m_Viewport->Update(m_SceneManager->GetActiveScene());
-		m_AnimationEditorPanel->Update(dt);
-		m_HeightMapEditor->Update();
+		//m_AnimationEditorPanel->Update(dt);
+		//m_HeightMapEditor->Update();
+		//m_UserInterfaceEditor->Update();
 
 		if (Input::IsKeyPressed(Key::LeftControl))
 		{
@@ -719,9 +721,18 @@ namespace QuasarEngine
 		m_EntityPropertiePanel->OnImGuiRender(m_SceneManager->GetActiveScene(), *m_SceneHierarchy);
 		m_SceneHierarchy->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_ContentBrowserPanel->OnImGuiRender();
-		m_AnimationEditorPanel->OnImGuiRender();
-		m_NodeEditor->OnImGuiRender();
-		m_HeightMapEditor->OnImGuiRender();
+		//m_AnimationEditorPanel->OnImGuiRender();
+		//m_NodeEditor->OnImGuiRender();
+		//m_HeightMapEditor->OnImGuiRender();
+		//m_UserInterfaceEditor->OnImGuiRender();
+
+		/*try {
+			m_UserInterfaceEditor->OnImGuiRender("UI Editor");
+		}
+		catch (const std::system_error& e) {
+			OutputDebugStringA(("std::system_error: " + std::string(e.what()) + "\n").c_str());
+			// mets aussi un __debugbreak() ici
+		}*/
 
 		OptionMenu();
 

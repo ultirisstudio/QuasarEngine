@@ -24,26 +24,26 @@ namespace QuasarEngine
         void DeleteNode(Node::NodeId id);
 
         void StartConnectionDrag(Node::NodeId nodeId, bool output, const std::string& portName, PortType type, ImVec2 screenPos);
-        bool IsConnectionDragActive() const { return connectionDrag_.active; }
+        bool IsConnectionDragActive() const { return m_ConnectionDrag.active; }
         bool IsPortCompatible(Node::NodeId nodeId, bool output, size_t portIdx, PortType type) const;
 
     private:
-        std::shared_ptr<NodeGraph> nodeGraph_;
-        std::unordered_map<Node::NodeId, std::unique_ptr<NodeView>> nodeViews_;
+        std::shared_ptr<NodeGraph> m_NodeGraph;
+        std::unordered_map<Node::NodeId, std::unique_ptr<NodeView>> m_NodeViews;
 
-        Node::NodeId selectedNode_ = 0;
-        Node::NodeId draggingNode_ = 0;
-        ImVec2 dragOffset_{ 0,0 };
+        Node::NodeId m_SelectedNode = 0;
+        Node::NodeId m_DraggingNode = 0;
+        ImVec2 m_DragOffset{ 0,0 };
 
-        ImVec2 canvasPos;
-        ImVec2 canvasSize;
+        ImVec2 m_CanvasPos;
+        ImVec2 m_CanvasSize;
 
-        bool connecting_ = false;
-        Node::NodeId connectFromNode_ = 0;
-        std::string connectFromPort_;
+        bool m_Connecting = false;
+        Node::NodeId m_ConnectFromNode = 0;
+        std::string m_ConnectFromPort;
 
-        ImVec2 panOffset_{ 0,0 };
-        float zoom_ = 1.0f;
+        ImVec2 m_PanOffset{ 0,0 };
+        float m_Zoom = 1.0f;
 
         struct ConnectionDragState {
             bool active = false;
@@ -53,7 +53,7 @@ namespace QuasarEngine
             PortType portType = PortType::Unknown;
             ImVec2 dragStartScreenPos;
         };
-        ConnectionDragState connectionDrag_;
+        ConnectionDragState m_ConnectionDrag;
 
         void ShowGraph();
         void HandleEvents(bool hoveringCanvas, bool activeCanvas);
