@@ -14,6 +14,6 @@ namespace QuasarEngine {
 		void Clear() override;
 
 		void DrawArrays(DrawMode drawMode, uint32_t size) override;
-		void DrawElements(DrawMode drawMode, uint32_t count) override;
+		void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex) override;
 	};
 }

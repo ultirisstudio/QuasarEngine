@@ -14,6 +14,10 @@
 
 #include <QuasarEngine/Tools/Math.h>
 
+#include <QuasarEngine/UI/UIContainer.h>
+#include <QuasarEngine/UI/UIText.h>
+#include <QuasarEngine/UI/UIButton.h>
+
 namespace QuasarEngine
 {
 	Renderer::SceneData Renderer::m_SceneData = Renderer::SceneData();
@@ -140,6 +144,31 @@ namespace QuasarEngine
 
 		m_SceneData.m_PointsBuffer.fill(PointLight());
 		m_SceneData.m_DirectionalsBuffer.fill(DirectionalLight());
+
+		m_SceneData.m_UI = std::make_unique<UISystem>();
+
+		auto root = std::make_shared<UIContainer>("Root");
+		root->layout = UILayoutType::Vertical;
+		root->Style().padding = 12.f;
+		root->Style().bg = { 0.1f, 0.1f, 0.1f, 0.8f };
+		root->Transform().pos = { 10.f, 10.f };
+		root->Transform().size = { 500.f, 100.f };
+
+		auto title = std::make_shared<UIText>("Title");
+		title->text = "Menu Pause";
+		title->Style().bg = { 0,0,0,0 };
+		title->Transform().pos = { 0.f, 0.f };
+		title->Transform().size = { 10.f, 50.f };
+		root->AddChild(title);
+
+		auto btn = std::make_shared<UIButton>("Resume");
+		btn->label = "Reprendre";
+		btn->onClick = []() { std::cout << "Resume clicked\n"; };
+		btn->Transform().pos = { 0.f, 0.f };
+		btn->Transform().size = { 100.f, 50.f };
+		root->AddChild(btn);
+
+		m_SceneData.m_UI->SetRoot(root);
 	}
 
 	void Renderer::Shutdown()
@@ -296,6 +325,12 @@ namespace QuasarEngine
 		m_SceneData.m_Skybox->Draw();
 
 		m_SceneData.m_Skybox->Unbind();
+	}
+
+	void Renderer::RenderUI(BaseCamera& camera)
+	{
+		UIFBInfo fb{ 1920.0f, 1080.0f, 1.0 };
+		m_SceneData.m_UI->Render(camera, fb);
 	}
 
 	void Renderer::EndScene()

@@ -26,18 +26,21 @@ namespace QuasarEngine
 	public:
 		OpenGLVertexBuffer();
 		OpenGLVertexBuffer(uint32_t size);
-		OpenGLVertexBuffer(const std::vector<float>& vertices);
-		virtual ~OpenGLVertexBuffer();
+		OpenGLVertexBuffer(const void* data, uint32_t size);
 
-		virtual void Bind() const override;
-		virtual void Unbind() const override;
+		~OpenGLVertexBuffer() override;
 
-		void UploadVertices(const std::vector<float> vertices) override;
+		void Bind() const override;
+		void Unbind() const override;
+
+		void Upload(const void* data, uint32_t size) override;
+
+		void Reserve(uint32_t size) override;
 
 		size_t GetSize() const override { return m_Size; }
 
-		virtual const BufferLayout& GetLayout() const override { return m_Layout; }
-		virtual void SetLayout(const BufferLayout& layout) override { m_Layout = layout; }
+		const BufferLayout& GetLayout() const override { return m_Layout; }
+		void SetLayout(const BufferLayout& layout) override { m_Layout = layout; }
 	private:
 		uint32_t m_RendererID;
 		size_t m_Size;
@@ -48,17 +51,22 @@ namespace QuasarEngine
 	{
 	public:
 		OpenGLIndexBuffer();
-		OpenGLIndexBuffer(const std::vector<uint32_t> indices);
-		virtual ~OpenGLIndexBuffer();
+		OpenGLIndexBuffer(uint32_t size);
+		OpenGLIndexBuffer(const void* data, uint32_t size);
 
-		virtual void Bind() const;
-		virtual void Unbind() const;
+		~OpenGLIndexBuffer() override;
 
-		void UploadIndices(const std::vector<uint32_t> indices) override;
+		void Bind() const override;
+		void Unbind() const override;
 
-		virtual size_t GetCount() const { return m_Count; }
+		void Upload(const void* data, uint32_t size) override;
+
+		void Reserve(uint32_t size) override;
+
+		size_t GetSize() const override { return m_Size; }
+		uint32_t GetCount() const override { return m_Size / sizeof(uint32_t); }
 	private:
 		uint32_t m_RendererID;
-		size_t m_Count;
+		size_t m_Size;
 	};
 }

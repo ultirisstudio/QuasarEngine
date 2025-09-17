@@ -113,7 +113,9 @@ namespace QuasarEngine {
 		virtual void Bind() const = 0;
 		virtual void Unbind() const = 0;
 
-		virtual void UploadVertices(const std::vector<float> vertices) = 0;
+		virtual void Upload(const void* data, uint32_t size) = 0;
+
+		virtual void Reserve(uint32_t size) = 0;
 
 		virtual size_t GetSize() const = 0;
 
@@ -121,7 +123,8 @@ namespace QuasarEngine {
 		virtual void SetLayout(const BufferLayout& layout) = 0;
 
 		static std::shared_ptr<VertexBuffer> Create();
-		static std::shared_ptr<VertexBuffer> Create(const std::vector<float> vertices);
+		static std::shared_ptr<VertexBuffer> Create(uint32_t size);
+		static std::shared_ptr<VertexBuffer> Create(const void* data, uint32_t size);
 	};
 
 	class IndexBuffer
@@ -132,11 +135,15 @@ namespace QuasarEngine {
 		virtual void Bind() const = 0;
 		virtual void Unbind() const = 0;
 
-		virtual void UploadIndices(const std::vector<uint32_t> indices) = 0;
+		virtual void Upload(const void* data, uint32_t size) = 0;
 
-		virtual size_t GetCount() const = 0;
+		virtual void Reserve(uint32_t size) = 0;
+
+		virtual size_t GetSize() const = 0;
+		virtual uint32_t GetCount() const = 0;
 
 		static std::shared_ptr<IndexBuffer> Create();
-		static std::shared_ptr<IndexBuffer> Create(const std::vector<uint32_t> indices);
+		static std::shared_ptr<IndexBuffer> Create(uint32_t size);
+		static std::shared_ptr<IndexBuffer> Create(const void* data, uint32_t size);
 	};
 }

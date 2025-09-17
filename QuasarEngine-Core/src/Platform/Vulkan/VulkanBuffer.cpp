@@ -8,6 +8,13 @@
 
 namespace QuasarEngine
 {
+	static inline uint32_t NextPow2(uint32_t v) {
+		if (v <= 1024) return 1024;
+		v--;
+		v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16;
+		v++;
+		return v;
+	}
 
 	VulkanBuffer::VulkanBuffer(VkDevice device, VkPhysicalDevice physicalDevice, uint64_t size, VkBufferUsageFlags usage, uint32_t memoryPropertyFlags, bool bindOnCreate)
 		: handle(VK_NULL_HANDLE), device(device), physicalDevice(physicalDevice), memory(VK_NULL_HANDLE), totalSize(size), usage(usage), memoryPropertyFlags(memoryPropertyFlags)
@@ -252,41 +259,47 @@ namespace QuasarEngine
 	}
 
 	VulkanVertexBuffer::VulkanVertexBuffer()
-		: currentOffset(0), m_Size(0)
+		: m_Size(0), currentOffset(0)
 	{
-		uint64_t bufferSize = sizeof(glm::vec3) * (1024 * 1024);
-		
+		const uint32_t initialBytes = 64 * 1024;
+		m_Size = initialBytes;
+
 		buffer = std::make_unique<VulkanBuffer>(
 			VulkanContext::Context.device->device,
 			VulkanContext::Context.device->physicalDevice,
-			bufferSize,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			m_Size,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			true
 		);
-
-		std::string str = "VulkanVertexBuffer initialized with size: " + std::to_string(bufferSize);
-		Q_DEBUG(str);
 	}
 
-	VulkanVertexBuffer::VulkanVertexBuffer(const std::vector<float> vertices)
-		: currentOffset(0), m_Size(vertices.size())
+	VulkanVertexBuffer::VulkanVertexBuffer(uint32_t sizeBytes)
+		: m_Size(std::max<uint32_t>(sizeBytes, 1024)), currentOffset(0)
 	{
-		uint64_t bufferSize = sizeof(float) * m_Size;
-
 		buffer = std::make_unique<VulkanBuffer>(
 			VulkanContext::Context.device->device,
 			VulkanContext::Context.device->physicalDevice,
-			bufferSize,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			m_Size,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			true
+		);
+	}
+
+	VulkanVertexBuffer::VulkanVertexBuffer(const void* data, uint32_t sizeBytes)
+		: m_Size(std::max<uint32_t>(sizeBytes, 1024)), currentOffset(0)
+	{
+		buffer = std::make_unique<VulkanBuffer>(
+			VulkanContext::Context.device->device,
+			VulkanContext::Context.device->physicalDevice,
+			m_Size,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			true
 		);
 
-		std::string str = "VulkanVertexBuffer initialized with size: " + std::to_string(bufferSize);
-		Q_DEBUG(str);
-
-		UploadVertices(vertices);
+		Upload(data, sizeBytes);
 	}
 
 	VulkanVertexBuffer::~VulkanVertexBuffer()
@@ -297,7 +310,10 @@ namespace QuasarEngine
 	void VulkanVertexBuffer::Bind() const
 	{
 		VkDeviceSize offsets[1] = { 0 };
-		vkCmdBindVertexBuffers(VulkanContext::Context.frameCommandBuffers.back()->handle, 0, 1, &buffer->handle, (VkDeviceSize*)offsets);
+		VkBuffer bufs[1] = { buffer->handle };
+		vkCmdBindVertexBuffers(
+			VulkanContext::Context.frameCommandBuffers.back()->handle, 0, 1, bufs, offsets
+		);
 	}
 
 	void VulkanVertexBuffer::Unbind() const
@@ -305,63 +321,96 @@ namespace QuasarEngine
 
 	}
 
-	void VulkanVertexBuffer::UploadVertices(const std::vector<float> vertices)
-	{
-		m_Size = vertices.size();
+	void VulkanVertexBuffer::Reserve(uint32_t size) {
+		if (size <= m_Size) return;
 
-		uint64_t bufferSize = sizeof(float) * m_Size;
+		m_Size = NextPow2(size);
+
+		buffer.reset();
+		buffer = std::make_unique<VulkanBuffer>(
+			VulkanContext::Context.device->device,
+			VulkanContext::Context.device->physicalDevice,
+			m_Size,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			true
+		);
+
+		currentOffset = 0;
+	}
+
+	void VulkanVertexBuffer::Upload(const void* data, uint32_t size) {
+		if (size == 0 || data == nullptr) return;
+
+		if (size > m_Size) {
+			Reserve(size);
+		}
 
 		std::unique_ptr<VulkanBuffer> staging = std::make_unique<VulkanBuffer>(
 			VulkanContext::Context.device->device,
 			VulkanContext::Context.device->physicalDevice,
-			bufferSize,
+			size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			true
 		);
 
-		staging->LoadData(0, bufferSize, 0, vertices.data());
-		staging->CopyTo(VulkanContext::Context.device->graphicsCommandPool, 0, VulkanContext::Context.device->graphicsQueue, buffer->handle, currentOffset, bufferSize);
+		staging->LoadData(0, size, 0, data);
 
-		currentOffset += bufferSize;
+		staging->CopyTo(
+			VulkanContext::Context.device->graphicsCommandPool,
+			0,
+			VulkanContext::Context.device->graphicsQueue,
+			buffer->handle,
+			0,
+			size
+		);
+
+		currentOffset = size;
 	}
 
 	VulkanIndexBuffer::VulkanIndexBuffer()
-		: currentOffset(0), m_Count(0)
+		: m_Size(0), currentOffset(0)
 	{
-		uint64_t bufferSize = sizeof(uint32_t) * (1024 * 1024);
+		const uint32_t initialBytes = 32 * 1024;
+		m_Size = initialBytes;
 
 		buffer = std::make_unique<VulkanBuffer>(
 			VulkanContext::Context.device->device,
 			VulkanContext::Context.device->physicalDevice,
-			bufferSize,
-			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			m_Size,
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			true
 		);
-
-		std::string str = "VulkanIndexBuffer initialized with size: " + std::to_string(bufferSize);
-		Q_DEBUG(str);
 	}
 
-	VulkanIndexBuffer::VulkanIndexBuffer(const std::vector<uint32_t> indices)
-		: currentOffset(0), m_Count(indices.size())
+	VulkanIndexBuffer::VulkanIndexBuffer(uint32_t size)
+		: m_Size(std::max<uint32_t>(size, 1024)), currentOffset(0)
 	{
-		uint64_t bufferSize = sizeof(uint32_t) * m_Count;
-
 		buffer = std::make_unique<VulkanBuffer>(
 			VulkanContext::Context.device->device,
 			VulkanContext::Context.device->physicalDevice,
-			bufferSize,
-			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			m_Size,
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			true
+		);
+	}
+
+	VulkanIndexBuffer::VulkanIndexBuffer(const void* data, uint32_t size)
+		: m_Size(std::max<uint32_t>(size, 1024)), currentOffset(0)
+	{
+		buffer = std::make_unique<VulkanBuffer>(
+			VulkanContext::Context.device->device,
+			VulkanContext::Context.device->physicalDevice,
+			m_Size,
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			true
 		);
 
-		std::string str = "VulkanIndexBuffer initialized with size: " + std::to_string(bufferSize);
-		Q_DEBUG(str);
-
-		UploadIndices(indices);
+		Upload(data, size);
 	}
 
 	VulkanIndexBuffer::~VulkanIndexBuffer()
@@ -371,7 +420,9 @@ namespace QuasarEngine
 
 	void VulkanIndexBuffer::Bind() const
 	{
-		vkCmdBindIndexBuffer(VulkanContext::Context.frameCommandBuffers.back()->handle, buffer->handle, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(
+			VulkanContext::Context.frameCommandBuffers.back()->handle, buffer->handle, 0, VK_INDEX_TYPE_UINT32
+		);
 	}
 
 	void VulkanIndexBuffer::Unbind() const
@@ -379,24 +430,51 @@ namespace QuasarEngine
 
 	}
 
-	void VulkanIndexBuffer::UploadIndices(const std::vector<uint32_t> indices)
-	{
-		m_Count = indices.size();
+	void VulkanIndexBuffer::Reserve(uint32_t sizeBytes) {
+		if (sizeBytes <= m_Size) return;
 
-		uint64_t bufferSize = sizeof(uint32_t) * m_Count;
+		m_Size = NextPow2(sizeBytes);
+
+		buffer.reset();
+		buffer = std::make_unique<VulkanBuffer>(
+			VulkanContext::Context.device->device,
+			VulkanContext::Context.device->physicalDevice,
+			m_Size,
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			true
+		);
+
+		currentOffset = 0;
+	}
+
+	void VulkanIndexBuffer::Upload(const void* data, uint32_t size) {
+		if (size == 0 || data == nullptr) return;
+
+		if (size > m_Size) {
+			Reserve(size);
+		}
 
 		std::unique_ptr<VulkanBuffer> staging = std::make_unique<VulkanBuffer>(
 			VulkanContext::Context.device->device,
 			VulkanContext::Context.device->physicalDevice,
-			bufferSize,
+			size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			true
 		);
 
-		staging->LoadData(0, bufferSize, 0, indices.data());
-		staging->CopyTo(VulkanContext::Context.device->graphicsCommandPool, 0, VulkanContext::Context.device->graphicsQueue, buffer->handle, currentOffset, bufferSize);
+		staging->LoadData(0, size, 0, data);
 
-		currentOffset += bufferSize;
+		staging->CopyTo(
+			VulkanContext::Context.device->graphicsCommandPool,
+			0,
+			VulkanContext::Context.device->graphicsQueue,
+			buffer->handle,
+			0,
+			size
+		);
+
+		currentOffset = size;
 	}
 }

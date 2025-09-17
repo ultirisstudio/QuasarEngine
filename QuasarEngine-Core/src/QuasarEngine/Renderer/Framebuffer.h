@@ -60,6 +60,8 @@ namespace QuasarEngine
         virtual void* GetColorAttachment(uint32_t index) const = 0;
         virtual void* GetDepthAttachment() const = 0;
 
+		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
+
         static std::shared_ptr<Framebuffer> Create(const FramebufferSpecification& spec);
 
     protected:

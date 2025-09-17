@@ -6,6 +6,11 @@
 #include "UITransform.h"
 #include "UIStyle.h"
 
+#include <QuasarEngine/Shader/Shader.h>
+
+#include <QuasarEngine/Renderer/Buffer.h>
+#include <QuasarEngine/Renderer/VertexArray.h>
+
 namespace QuasarEngine {
 	struct UIVertex {
 		float x, y, u, v;
@@ -54,11 +59,16 @@ namespace QuasarEngine {
 
 	class UIRenderer {
 	public:
+		UIRenderer();
+		~UIRenderer() = default;
+
 		void Begin(int fbW, int fbH);
 		void End();
 
 		UIRenderContext& Ctx() { return m_Context; }
 		UIBatcher& Batcher() { return m_Batcher; }
+
+		Shader* GetShader() const { return m_Shader.get(); }
 
 		void FlushToEngine();
 
@@ -66,5 +76,10 @@ namespace QuasarEngine {
 		int fbW_ = 0, fbH_ = 0;
 		UIRenderContext m_Context{};
 		UIBatcher m_Batcher{};
+
+		std::shared_ptr<Shader> m_Shader;
+
+		std::shared_ptr<VertexArray> m_VertexArray;
+		std::shared_ptr<VertexBuffer> m_VertexBuffer;
 	};
 }

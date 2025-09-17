@@ -4,11 +4,11 @@
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
 
-#include "../SceneObject.h"
 #include <QuasarEngine/Renderer/Framebuffer.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 
-#include <QuasarEngine/UI/UISystem.h>
+#include <QuasarEngine/Events/Event.h>
+#include <QuasarEngine/Events/MouseEvent.h>
 
 namespace QuasarEngine
 {
@@ -23,6 +23,8 @@ namespace QuasarEngine
 
 		void OnImGuiRender(Scene& scene);
 
+		void OnEvent(Event& e);
+
 		const glm::vec2& GetViewportSize() const { return m_ViewportSize; }
 		bool IsFocused() const { return m_ViewportFocused; }
 		bool IsHovered() const { return m_ViewportHovered; }
@@ -30,6 +32,10 @@ namespace QuasarEngine
 
 	private:
 		void ResizeIfNeeded(Scene& scene, const ImVec2& panelSize);
+
+		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
+		bool OnMouseButtonReleased(MouseButtonReleasedEvent& e);
+		bool OnMouseMoved(MouseMovedEvent& e);
 
 	private:
 		std::shared_ptr<Framebuffer> m_ViewportFrameBuffer;
@@ -42,7 +48,5 @@ namespace QuasarEngine
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
-
-		std::unique_ptr<UISystem> m_UI;
 	};
 }

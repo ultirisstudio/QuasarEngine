@@ -76,8 +76,8 @@ namespace QuasarEngine
 		
 	}
 
-	void VulkanRendererAPI::DrawElements(DrawMode drawMode, uint32_t count)
+	void VulkanRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
 	{
-		vkCmdDrawIndexed(VulkanContext::Context.frameCommandBuffers.back()->handle, count, 1, 0, 0, 0);
+		vkCmdDrawIndexed(VulkanContext::Context.frameCommandBuffers.back()->handle, count, 1, firstIndex, 0, 0);
 	}
 }

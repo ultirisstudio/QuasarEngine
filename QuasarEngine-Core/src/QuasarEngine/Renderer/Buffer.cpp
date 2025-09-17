@@ -21,14 +21,27 @@ namespace QuasarEngine
 		return nullptr;
 	}
 
-	std::shared_ptr<VertexBuffer> VertexBuffer::Create(const std::vector<float> vertices)
+	std::shared_ptr<VertexBuffer> VertexBuffer::Create(uint32_t size)
 	{
 		switch (Renderer::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
-		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>(vertices);
-		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLVertexBuffer>(vertices);
-		case RendererAPI::API::DirectX:  return std::make_shared<DirectXVertexBuffer>(vertices);
+		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>(size);
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLVertexBuffer>(size);
+		case RendererAPI::API::DirectX:  return std::make_shared<DirectXVertexBuffer>(size);
+		}
+
+		return nullptr;
+	}
+
+	std::shared_ptr<VertexBuffer> VertexBuffer::Create(const void* data, uint32_t size)
+	{
+		switch (Renderer::GetAPI())
+		{
+		case RendererAPI::API::None:    return nullptr;
+		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>(data, size);
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLVertexBuffer>(data, size);
+		case RendererAPI::API::DirectX:  return std::make_shared<DirectXVertexBuffer>(data, size);
 		}
 
 		return nullptr;
@@ -47,14 +60,27 @@ namespace QuasarEngine
 		return nullptr;
 	}
 
-	std::shared_ptr<IndexBuffer> IndexBuffer::Create(const std::vector<uint32_t> indices)
+	std::shared_ptr<IndexBuffer> IndexBuffer::Create(uint32_t size)
 	{
 		switch (Renderer::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
-		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>(indices);
-		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLIndexBuffer>(indices);
-		case RendererAPI::API::DirectX:  return std::make_shared<DirectXIndexBuffer>(indices);
+		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>(size);
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLIndexBuffer>(size);
+		case RendererAPI::API::DirectX:  return std::make_shared<DirectXIndexBuffer>(size);
+		}
+
+		return nullptr;
+	}
+
+	std::shared_ptr<IndexBuffer> IndexBuffer::Create(const void* data, uint32_t size)
+	{
+		switch (Renderer::GetAPI())
+		{
+		case RendererAPI::API::None:    return nullptr;
+		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>(data, size);
+		case RendererAPI::API::OpenGL:  return std::make_shared<OpenGLIndexBuffer>(data, size);
+		case RendererAPI::API::DirectX:  return std::make_shared<DirectXIndexBuffer>(data, size);
 		}
 
 		return nullptr;

@@ -53,8 +53,9 @@ namespace QuasarEngine
 		return m_ID;
 	}
 
-	OpenGLVertexBuffer::OpenGLVertexBuffer()
+	OpenGLVertexBuffer::OpenGLVertexBuffer() : m_Size(0), m_Layout(), m_RendererID(0)
 	{
+
 	}
 
 	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size)
@@ -65,12 +66,12 @@ namespace QuasarEngine
 		glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
 	}
 
-	OpenGLVertexBuffer::OpenGLVertexBuffer(const std::vector<float>& vertices)
-		: m_Size(vertices.size())
+	OpenGLVertexBuffer::OpenGLVertexBuffer(const void* data, uint32_t size)
+		: m_Size(size)
 	{
 		glCreateBuffers(1, &m_RendererID);
 		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
 	}
 
 	OpenGLVertexBuffer::~OpenGLVertexBuffer()
@@ -88,23 +89,44 @@ namespace QuasarEngine
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	void OpenGLVertexBuffer::UploadVertices(const std::vector<float> vertices)
+	void OpenGLVertexBuffer::Upload(const void* data, uint32_t size)
 	{
+		if (size == 0 || data == nullptr) return;
+
+		if (size > m_Size) {
+			Reserve(size);
+		}
+
 		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
+		glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
 	}
 
-	OpenGLIndexBuffer::OpenGLIndexBuffer()
+	void OpenGLVertexBuffer::Reserve(uint32_t size)
+	{
+		if (size <= m_Size) return;
+		m_Size = size;
+		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
+		glBufferData(GL_ARRAY_BUFFER, m_Size, nullptr, GL_DYNAMIC_DRAW);
+	}
+
+	OpenGLIndexBuffer::OpenGLIndexBuffer() : m_Size(0), m_RendererID(0)
 	{
 	}
 
-	OpenGLIndexBuffer::OpenGLIndexBuffer(const std::vector<uint32_t> indices)
-		: m_Count(indices.size())
+	OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t size)
+		: m_Size(size)
 	{
 		glCreateBuffers(1, &m_RendererID);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+	}
 
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, indices.size() * sizeof(uint32_t), indices.data(), GL_STATIC_DRAW);
+	OpenGLIndexBuffer::OpenGLIndexBuffer(const void* data, uint32_t size)
+		: m_Size(size)
+	{
+		glCreateBuffers(1, &m_RendererID);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
 	}
 
 	OpenGLIndexBuffer::~OpenGLIndexBuffer()
@@ -122,9 +144,23 @@ namespace QuasarEngine
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 
-	void OpenGLIndexBuffer::UploadIndices(const std::vector<uint32_t> indices)
+	void OpenGLIndexBuffer::Upload(const void* data, uint32_t size)
 	{
+		if (size == 0 || data == nullptr) return;
+
+		if (size > m_Size) {
+			Reserve(size);
+		}
+
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
-		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.size() * sizeof(uint32_t), indices.data());
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, data);
+	}
+
+	void OpenGLIndexBuffer::Reserve(uint32_t size)
+	{
+		if (size <= m_Size) return;
+		m_Size = size;
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_Size, nullptr, GL_DYNAMIC_DRAW);
 	}
 }

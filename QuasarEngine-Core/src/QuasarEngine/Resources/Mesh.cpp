@@ -76,12 +76,12 @@ namespace QuasarEngine
 
 		if (layout.has_value())
 		{
-			m_vertexBuffer = VertexBuffer::Create(vertices);
+			m_vertexBuffer = VertexBuffer::Create(vertices.data(), vertices.size() * sizeof(float));
 			m_vertexBuffer->SetLayout(layout.value());
 		}
 		else
 		{
-			m_vertexBuffer = VertexBuffer::Create(vertices);
+			m_vertexBuffer = VertexBuffer::Create(vertices.data(), vertices.size() * sizeof(float));
 			m_vertexBuffer->SetLayout({
 				{ ShaderDataType::Vec3, "inPosition" },
 				{ ShaderDataType::Vec3, "inNormal" },
@@ -90,7 +90,7 @@ namespace QuasarEngine
 		}		
 		m_vertexArray->AddVertexBuffer(m_vertexBuffer);
 
-		std::shared_ptr<IndexBuffer> indexBuffer = IndexBuffer::Create(indices);
+		std::shared_ptr<IndexBuffer> indexBuffer = IndexBuffer::Create(indices.data(), indices.size() * sizeof(unsigned int));
 		m_vertexArray->SetIndexBuffer(indexBuffer);
 
 		m_vertices = std::move(vertices);

@@ -35,7 +35,7 @@ namespace QuasarEngine
 		
 	}
 
-	void DirectXRendererAPI::DrawElements(DrawMode drawMode, uint32_t count)
+	void DirectXRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
 	{
 		
 	}

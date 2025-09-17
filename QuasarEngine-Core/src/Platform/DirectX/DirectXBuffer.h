@@ -30,13 +30,16 @@ namespace QuasarEngine
 	public:
 		DirectXVertexBuffer();
 		DirectXVertexBuffer(uint32_t size);
-		DirectXVertexBuffer(const std::vector<float>& vertices);
+		DirectXVertexBuffer(const void* data, uint32_t size);
+
 		~DirectXVertexBuffer() override;
 
 		void Bind() const override;
 		void Unbind() const override;
 
-		void UploadVertices(const std::vector<float> vertices) override;
+		void Upload(const void* data, uint32_t size) override;
+
+		void Reserve(uint32_t size) override;
 
 		size_t GetSize() const override { return m_Size; }
 
@@ -54,19 +57,24 @@ namespace QuasarEngine
 	{
 	public:
 		DirectXIndexBuffer();
-		DirectXIndexBuffer(const std::vector<uint32_t> indices);
+		DirectXIndexBuffer(uint32_t size);
+		DirectXIndexBuffer(const void* data, uint32_t size);
+
 		~DirectXIndexBuffer() override;
 
 		void Bind() const override;
 		void Unbind() const override;
 
-		void UploadIndices(const std::vector<uint32_t> indices) override;
+		void Upload(const void* data, uint32_t size) override;
 
-		size_t GetCount() const override { return m_Count; }
+		void Reserve(uint32_t size) override;
+
+		size_t GetSize() const override { return m_Size; }
+		uint32_t GetCount() const override { return (uint32_t)(m_Size / sizeof(uint32_t)); }
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_Buffer;
-		size_t m_Count = 0;
+		size_t m_Size = 0;
 		bool m_IsDynamic = true;
 	};
 }

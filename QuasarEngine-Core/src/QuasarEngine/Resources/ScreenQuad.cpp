@@ -22,14 +22,14 @@ namespace QuasarEngine
 
         m_vertexArray = VertexArray::Create();
 
-        m_vertexBuffer = VertexBuffer::Create(vertices);
+        m_vertexBuffer = VertexBuffer::Create(vertices.data(), vertices.size() * sizeof(float));
         m_vertexBuffer->SetLayout({
             { ShaderDataType::Vec2, "aPos"				},
             { ShaderDataType::Vec2, "aTexCoords"		}
         });
         m_vertexArray->AddVertexBuffer(m_vertexBuffer);
 
-        std::shared_ptr<IndexBuffer> indexBuffer = IndexBuffer::Create(indices);
+        std::shared_ptr<IndexBuffer> indexBuffer = IndexBuffer::Create(indices.data(), indices.size() * sizeof(unsigned int));
         m_vertexArray->SetIndexBuffer(indexBuffer);
     }
 

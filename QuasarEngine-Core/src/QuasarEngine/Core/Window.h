@@ -61,6 +61,8 @@ namespace QuasarEngine {
 
         void SetTitle(const std::string& title);
 
+		glm::uvec2 GetMousePosition() const { return m_Data.MousePos; }
+
         void SetEventCallback(const EventCallbackFn& callback) { m_Data.EventCallback = callback; }
 
     private:

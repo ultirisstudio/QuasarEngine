@@ -87,8 +87,19 @@ namespace QuasarEngine {
 		glDrawArrays(Utils::DrawModeToGLenum(drawMode), 0, static_cast<GLsizei>(size));
 	}
 
-	void OpenGLRendererAPI::DrawElements(DrawMode drawMode, uint32_t count)
+	void OpenGLRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
 	{
-		glDrawElements(Utils::DrawModeToGLenum(drawMode), static_cast<GLsizei>(count), GL_UNSIGNED_INT, nullptr);
+		GLenum glMode = Utils::DrawModeToGLenum(drawMode);
+
+		const void* offsetBytes = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex) * sizeof(uint32_t));
+
+		if (baseVertex == 0)
+		{
+			glDrawElements(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes);
+		}
+		else
+		{
+			glDrawElementsBaseVertex(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes, baseVertex);
+		}
 	}
 }

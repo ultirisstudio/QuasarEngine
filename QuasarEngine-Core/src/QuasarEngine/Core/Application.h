@@ -78,6 +78,7 @@ namespace QuasarEngine
 		ApplicationSpecification m_Specification;
 
 		std::atomic<bool> m_Running{ true };
+		std::atomic<bool> m_Running2{ true };
 		bool m_Minimized = false;
 
 		float deltaTime = 0;

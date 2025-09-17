@@ -747,9 +747,10 @@ namespace QuasarEngine
 	{
 		m_EditorCamera->OnEvent(e);
 
+		//m_Viewport->OnEvent(e);
+
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<MouseButtonPressedEvent>(std::bind(&Editor::OnMouseButtonPressed, this, std::placeholders::_1));
-		dispatcher.Dispatch<WindowResizeEvent>(std::bind(&Editor::OnWindowResized, this, std::placeholders::_1));
 	}
 
 	bool Editor::OnMouseButtonPressed(MouseButtonPressedEvent& e)
@@ -760,17 +761,12 @@ namespace QuasarEngine
 		if (!m_EditorViewport->IsViewportHovered())
 			return false;
 
-		if (e.GetMouseButton() == Mouse::Button0)
-		{
+		//if (e.GetMouseButton() == Mouse::Button0)
+		//{
 			//m_SceneHierarchy->m_SelectedEntity = m_EditorViewport->GetHoveredEntity();
-			return true;
-		}
+			//return true;
+		//}
 
-		return false;
-	}
-
-	bool Editor::OnWindowResized(WindowResizeEvent& e)
-	{
 		return false;
 	}
 

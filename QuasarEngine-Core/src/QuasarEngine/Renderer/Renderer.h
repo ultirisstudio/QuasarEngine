@@ -1,11 +1,9 @@
 #pragma once
 
-#include <QuasarEngine/Resources/ResourceManager.h>
 #include <QuasarEngine/Resources/BasicSkybox.h>
 #include <QuasarEngine/Shader/Shader.h>
 #include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Scene/BaseCamera.h>
-#include <QuasarEngine/Asset/AssetRegistry.h>
 #include <QuasarEngine/Asset/AssetManager.h>
 #include <QuasarEngine/Scripting/ScriptSystem.h>
 
@@ -13,6 +11,8 @@
 
 #include <QuasarEngine/Resources/Lights/PointLight.h>
 #include <QuasarEngine/Resources/Lights/DirectionalLight.h>
+
+#include <QuasarEngine/UI/UISystem.h>
 
 namespace QuasarEngine
 {
@@ -30,6 +30,8 @@ namespace QuasarEngine
 
 			std::unique_ptr<ScriptSystem> m_ScriptSystem;
 
+			std::unique_ptr<UISystem> m_UI;
+
 			std::array<PointLight, 4> m_PointsBuffer;
 			std::array<DirectionalLight, 4> m_DirectionalsBuffer;
 			int nPts = 0, nDirs = 0;
@@ -42,6 +44,7 @@ namespace QuasarEngine
 		static void BeginScene(Scene& scene);
 		static void Render(BaseCamera& camera);
 		static void RenderSkybox(BaseCamera& camera);
+		static void RenderUI(BaseCamera& camera);
 		static void EndScene();
 
 		static Scene* GetScene();

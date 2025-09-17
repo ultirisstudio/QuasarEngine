@@ -8,6 +8,12 @@
 
 namespace QuasarEngine
 {
+	static inline UINT NextPow2(UINT v) {
+		if (v < 1024u) return 1024u;
+		v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++;
+		return v;
+	}
+
 	DirectXUniformBuffer::DirectXUniformBuffer(size_t size, uint32_t binding)
 		: m_Size(size), m_Binding(binding)
 	{
@@ -23,7 +29,7 @@ namespace QuasarEngine
 		HRESULT hr = dx.device->CreateBuffer(&desc, nullptr, m_Buffer.GetAddressOf());
 		if (FAILED(hr))
 		{
-			Q_ERROR("DirectXUniformBuffer: CreateBuffer failed.");
+			Q_ERROR("CreateBuffer failed.");
 		}
 	}
 
@@ -53,7 +59,7 @@ namespace QuasarEngine
 		HRESULT hr = dx.deviceContext->Map(m_Buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 		if (FAILED(hr))
 		{
-			Q_ERROR("DirectXUniformBuffer: Map failed.");
+			Q_ERROR("Map failed.");
 			return;
 		}
 		memcpy(mapped.pData, data, size);
@@ -69,44 +75,16 @@ namespace QuasarEngine
 	}
 
 	DirectXVertexBuffer::DirectXVertexBuffer(uint32_t size)
-		: m_Size(size), m_IsDynamic(true)
+		: m_Size(0), m_IsDynamic(true)
 	{
-		auto& dx = DirectXContext::Context;
-
-		D3D11_BUFFER_DESC desc = {};
-		desc.ByteWidth = static_cast<UINT>(size);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		desc.MiscFlags = 0;
-
-		HRESULT hr = dx.device->CreateBuffer(&desc, nullptr, m_Buffer.GetAddressOf());
-		if (FAILED(hr))
-		{
-			Q_ERROR("DirectXVertexBuffer: CreateBuffer(size) failed.");
-		}
+		Reserve(size);
 	}
 
-	DirectXVertexBuffer::DirectXVertexBuffer(const std::vector<float>& vertices)
-		: m_Size(vertices.size() * sizeof(float)), m_IsDynamic(true)
+	DirectXVertexBuffer::DirectXVertexBuffer(const void* data, uint32_t size)
+		: m_Size(0), m_IsDynamic(true)
 	{
-		auto& dx = DirectXContext::Context;
-
-		D3D11_BUFFER_DESC desc = {};
-		desc.ByteWidth = static_cast<UINT>(m_Size);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		desc.MiscFlags = 0;
-
-		D3D11_SUBRESOURCE_DATA init = {};
-		init.pSysMem = vertices.data();
-
-		HRESULT hr = dx.device->CreateBuffer(&desc, &init, m_Buffer.GetAddressOf());
-		if (FAILED(hr))
-		{
-			Q_ERROR("DirectXVertexBuffer: CreateBuffer(init) failed.");
-		}
+		Reserve(size);
+		Upload(data, size);
 	}
 
 	DirectXVertexBuffer::~DirectXVertexBuffer()
@@ -114,85 +92,78 @@ namespace QuasarEngine
 		
 	}
 
-	void DirectXVertexBuffer::Bind() const
-	{
+	void DirectXVertexBuffer::Bind() const {
 		auto& dx = DirectXContext::Context;
 		UINT stride = m_Layout.GetStride();
 		UINT offset = 0;
-
-		dx.deviceContext->IASetVertexBuffers(0, 1, m_Buffer.GetAddressOf(), &stride, &offset);
+		ID3D11Buffer* buf = m_Buffer.Get();
+		dx.deviceContext->IASetVertexBuffers(0, 1, &buf, &stride, &offset);
 	}
 
-	void DirectXVertexBuffer::Unbind() const
-	{
+	void DirectXVertexBuffer::Unbind() const {
 		auto& dx = DirectXContext::Context;
 		ID3D11Buffer* nullBuf = nullptr;
 		UINT stride = 0, offset = 0;
 		dx.deviceContext->IASetVertexBuffers(0, 1, &nullBuf, &stride, &offset);
 	}
 
-	void DirectXVertexBuffer::UploadVertices(const std::vector<float> vertices)
-	{
+	void DirectXVertexBuffer::Reserve(uint32_t size) {
 		auto& dx = DirectXContext::Context;
-		size_t bytes = vertices.size() * sizeof(float);
+		if (size <= m_Size && m_Buffer) return;
 
-		if (!m_Buffer || bytes > m_Size)
-		{
-			m_Size = bytes;
+		const UINT cap = NextPow2(size);
 
-			D3D11_BUFFER_DESC desc = {};
-			desc.ByteWidth = static_cast<UINT>(m_Size);
-			desc.Usage = D3D11_USAGE_DYNAMIC;
-			desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		D3D11_BUFFER_DESC desc = {};
+		desc.ByteWidth = cap;
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-			D3D11_SUBRESOURCE_DATA init = {};
-			init.pSysMem = vertices.data();
-
-			HRESULT hr = dx.device->CreateBuffer(&desc, &init, m_Buffer.GetAddressOf());
-			if (FAILED(hr))
-			{
-				Q_ERROR("DirectXVertexBuffer: UploadVertices CreateBuffer failed.");
-			}
+		m_Buffer.Reset();
+		HRESULT hr = dx.device->CreateBuffer(&desc, nullptr, m_Buffer.GetAddressOf());
+		if (FAILED(hr)) {
+			Q_ERROR("CreateBuffer failed (capacity): " + std::to_string(cap));
 			return;
+		}
+
+		m_Size = cap;
+	}
+
+	void DirectXVertexBuffer::Upload(const void* data, uint32_t size) {
+		if (!data || size == 0) return;
+
+		auto& dx = DirectXContext::Context;
+		if (!m_Buffer || size > m_Size) {
+			Reserve(size);
 		}
 
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
 		HRESULT hr = dx.deviceContext->Map(m_Buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		if (FAILED(hr))
-		{
-			Q_ERROR("DirectXVertexBuffer: Map failed.");
+		if (FAILED(hr)) {
+			Q_ERROR("Map failed.");
 			return;
 		}
-		memcpy(mapped.pData, vertices.data(), bytes);
+		std::memcpy(mapped.pData, data, size);
 		dx.deviceContext->Unmap(m_Buffer.Get(), 0);
 	}
 
 	DirectXIndexBuffer::DirectXIndexBuffer()
-		: m_Count(0), m_IsDynamic(true)
+		: m_Size(0), m_IsDynamic(true)
 	{
 		
 	}
 
-	DirectXIndexBuffer::DirectXIndexBuffer(const std::vector<uint32_t> indices)
-		: m_Count(indices.size()), m_IsDynamic(true)
+	DirectXIndexBuffer::DirectXIndexBuffer(uint32_t size)
+		: m_Size(0), m_IsDynamic(true)
 	{
-		auto& dx = DirectXContext::Context;
+		Reserve(size);
+	}
 
-		D3D11_BUFFER_DESC desc = {};
-		desc.ByteWidth = static_cast<UINT>(indices.size() * sizeof(uint32_t));
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-		D3D11_SUBRESOURCE_DATA init = {};
-		init.pSysMem = indices.data();
-
-		HRESULT hr = dx.device->CreateBuffer(&desc, &init, m_Buffer.GetAddressOf());
-		if (FAILED(hr))
-		{
-			Q_ERROR("DirectXIndexBuffer: CreateBuffer(init) failed.");
-		}
+	DirectXIndexBuffer::DirectXIndexBuffer(const void* data, uint32_t size)
+		: m_Size(0), m_IsDynamic(true)
+	{
+		Reserve(size);
+		Upload(data, size);
 	}
 
 	DirectXIndexBuffer::~DirectXIndexBuffer()
@@ -200,73 +171,53 @@ namespace QuasarEngine
 		
 	}
 
-	void DirectXIndexBuffer::Bind() const
-	{
+	void DirectXIndexBuffer::Bind() const {
 		auto& dx = DirectXContext::Context;
 		dx.deviceContext->IASetIndexBuffer(m_Buffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 	}
 
-	void DirectXIndexBuffer::Unbind() const
-	{
+	void DirectXIndexBuffer::Unbind() const {
 		auto& dx = DirectXContext::Context;
 		dx.deviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
 	}
 
-	void DirectXIndexBuffer::UploadIndices(const std::vector<uint32_t> indices)
-	{
+	void DirectXIndexBuffer::Reserve(uint32_t size) {
 		auto& dx = DirectXContext::Context;
-		m_Count = indices.size();
-		size_t bytes = indices.size() * sizeof(uint32_t);
+		if (size <= m_Size && m_Buffer) return;
 
-		if (!m_Buffer)
-		{
-			D3D11_BUFFER_DESC desc = {};
-			desc.ByteWidth = static_cast<UINT>(bytes);
-			desc.Usage = D3D11_USAGE_DYNAMIC;
-			desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		const UINT cap = NextPow2(size);
 
-			D3D11_SUBRESOURCE_DATA init = {};
-			init.pSysMem = indices.data();
+		D3D11_BUFFER_DESC desc = {};
+		desc.ByteWidth = cap;
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-			HRESULT hr = dx.device->CreateBuffer(&desc, &init, m_Buffer.GetAddressOf());
-			if (FAILED(hr))
-			{
-				Q_ERROR("DirectXIndexBuffer: UploadIndices CreateBuffer failed.");
-			}
+		m_Buffer.Reset();
+		HRESULT hr = dx.device->CreateBuffer(&desc, nullptr, m_Buffer.GetAddressOf());
+		if (FAILED(hr)) {
+			Q_ERROR("CreateBuffer failed (capacity): " + std::to_string(cap));
 			return;
 		}
 
-		D3D11_BUFFER_DESC currentDesc = {};
-		m_Buffer->GetDesc(&currentDesc);
-		if (bytes > currentDesc.ByteWidth)
-		{
-			D3D11_BUFFER_DESC desc = {};
-			desc.ByteWidth = static_cast<UINT>(bytes);
-			desc.Usage = D3D11_USAGE_DYNAMIC;
-			desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		m_Size = cap;
+	}
 
-			D3D11_SUBRESOURCE_DATA init = {};
-			init.pSysMem = indices.data();
+	void DirectXIndexBuffer::Upload(const void* data, uint32_t size) {
+		if (!data || size == 0) return;
 
-			m_Buffer.Reset();
-			HRESULT hr = dx.device->CreateBuffer(&desc, &init, m_Buffer.GetAddressOf());
-			if (FAILED(hr))
-			{
-				Q_ERROR("DirectXIndexBuffer: UploadIndices resize CreateBuffer failed.");
-			}
-			return;
+		auto& dx = DirectXContext::Context;
+		if (!m_Buffer || size > m_Size) {
+			Reserve(size);
 		}
 
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
 		HRESULT hr = dx.deviceContext->Map(m_Buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		if (FAILED(hr))
-		{
-			Q_ERROR("DirectXIndexBuffer: Map failed.");
+		if (FAILED(hr)) {
+			Q_ERROR("Map failed.");
 			return;
 		}
-		memcpy(mapped.pData, indices.data(), bytes);
+		std::memcpy(mapped.pData, data, size);
 		dx.deviceContext->Unmap(m_Buffer.Get(), 0);
 	}
 }

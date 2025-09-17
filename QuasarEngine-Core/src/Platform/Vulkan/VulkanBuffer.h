@@ -55,13 +55,17 @@ namespace QuasarEngine
 	{
 	public:
 		VulkanVertexBuffer();
-		VulkanVertexBuffer(const std::vector<float> vertices);
+		VulkanVertexBuffer(uint32_t size);
+		VulkanVertexBuffer(const void* data, uint32_t size);
+
 		~VulkanVertexBuffer() override;
 
 		void Bind() const override;
 		void Unbind() const override;
 
-		void UploadVertices(const std::vector<float> vertices) override;
+		void Upload(const void* data, uint32_t size) override;
+
+		void Reserve(uint32_t size) override;
 
 		size_t GetSize() const override { return m_Size; }
 
@@ -79,19 +83,24 @@ namespace QuasarEngine
 	{
 	public:
 		VulkanIndexBuffer();
-		VulkanIndexBuffer(const std::vector<uint32_t> indices);
+		VulkanIndexBuffer(uint32_t size);
+		VulkanIndexBuffer(const void* data, uint32_t size);
+
 		~VulkanIndexBuffer() override;
 
 		void Bind() const override;
 		void Unbind() const override;
 
-		void UploadIndices(const std::vector<uint32_t> indices) override;
+		void Upload(const void* data, uint32_t size) override;
 
-		size_t GetCount() const override { return m_Count; }
+		void Reserve(uint32_t size) override;
+
+		size_t GetSize() const override { return m_Size; }
+		uint32_t GetCount() const override { return m_Size / sizeof(uint32_t); }
 	private:
 		std::unique_ptr<VulkanBuffer> buffer;
 
-		size_t m_Count;
+		size_t m_Size;
 		uint64_t currentOffset;
 	};
 }

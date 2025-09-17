@@ -6,6 +6,8 @@
 #include "UIInput.h"
 #include "UIRenderer.h"
 
+#include <QuasarEngine/Scene/BaseCamera.h>
+
 namespace QuasarEngine {
 	struct UIFBInfo {
 		int width = 1280, height = 720;
@@ -15,7 +17,7 @@ namespace QuasarEngine {
 	class UISystem {
 	public:
 		void SetRoot(std::shared_ptr<UIElement> root) { m_Root = std::move(root); m_Input.SetRoot(m_Root); }
-		void Tick(float dt, const UIFBInfo& fb);
+		void Render(BaseCamera& camera, const UIFBInfo& fb);
 
 		UIInput& Input() { return m_Input; }
 		UIRenderer& Renderer() { return m_Renderer; }
@@ -23,7 +25,6 @@ namespace QuasarEngine {
 	private:
 		void MeasureLayout();
 		void Arrange(const UIFBInfo& fb);
-		void Render();
 
 		std::shared_ptr<UIElement> m_Root;
 		UIInput m_Input;

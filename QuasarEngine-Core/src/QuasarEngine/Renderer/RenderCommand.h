@@ -32,9 +32,9 @@ namespace QuasarEngine {
 			s_RendererAPI->DrawArrays(drawMode, size);
 		}
 
-		static void DrawElements(DrawMode drawMode, uint32_t count)
+		static void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex = 0, int32_t baseVertex = 0)
 		{
-			s_RendererAPI->DrawElements(drawMode, count);
+			s_RendererAPI->DrawElements(drawMode, count, firstIndex, baseVertex);
 		}
 	private:
 		static std::unique_ptr<RendererAPI> s_RendererAPI;

@@ -90,7 +90,6 @@ namespace QuasarEngine
 		void OnEvent(Event& e) override;
 	private:
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
-		bool OnWindowResized(WindowResizeEvent& e);
 	private:
 		void InitImGuiStyle();
 		void OptionMenu();
