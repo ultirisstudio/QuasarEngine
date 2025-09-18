@@ -235,7 +235,7 @@ namespace QuasarEngine
 		viewInfo.subresourceRange.baseArrayLayer = 0;
 		viewInfo.subresourceRange.layerCount = layerCount;
 
-		VK_CHECK(vkCreateImageView(VulkanContext::Context.device->device, &viewInfo, VulkanContext::Context.allocator->GetCallbacks(), &view))
+		VK_CHECK(vkCreateImageView(VulkanContext::Context.device->device, &viewInfo, VulkanContext::Context.allocator->GetCallbacks(), &view));
 	}
 
 	VulkanImage::~VulkanImage()

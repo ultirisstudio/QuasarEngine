@@ -39,7 +39,7 @@ namespace QuasarEngine
 			Camera& camera = scene.GetPrimaryCamera();
 			Renderer::RenderSkybox(camera);
 			Renderer::Render(camera);
-			//Renderer::RenderUI(camera);
+			Renderer::RenderUI(camera);
 
 			Renderer::EndScene();
 		}
@@ -71,7 +71,7 @@ namespace QuasarEngine
 
 	void Viewport::OnImGuiRender(Scene& scene)
 	{
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 		ImGuiWindowFlags vpFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 		ImGui::Begin("Viewport", nullptr, vpFlags);
 

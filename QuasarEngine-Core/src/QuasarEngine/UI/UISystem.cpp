@@ -5,8 +5,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <QuasarEngine/Resources/Materials/Material.h>
-
 namespace QuasarEngine {
 	void UISystem::MeasureLayout() {
 		if (!m_Root) return;
@@ -29,19 +27,18 @@ namespace QuasarEngine {
 
 		m_Renderer.GetShader()->Use();
 
-		glm::mat4 uProj = glm::ortho(0.0f, (float)fb.width, (float)fb.height, 0.0f, -1.0f, 1.0f);
+		glm::mat4 proj = glm::ortho(0.0f, (float)fb.width, (float)fb.height, 0.0f, -1.0f, 1.0f);
+		glm::mat4 model = glm::mat4(1.0f);
 
-		m_Renderer.GetShader()->SetUniform("uProj", &uProj, sizeof(glm::mat4));
+		m_Renderer.GetShader()->SetUniform("proj", &proj, sizeof(glm::mat4));
+		m_Renderer.GetShader()->SetUniform("model", &model, sizeof(glm::mat4));
 
 		if (!m_Renderer.GetShader()->UpdateGlobalState())
 		{
 			return;
 		}
 
-		MaterialSpecification spec;
-		Material material = Material(spec);
-
-		if (!m_Renderer.GetShader()->UpdateObject(&material))
+		if (!m_Renderer.GetShader()->UpdateObject(&m_Renderer.GetMaterial()))
 		{
 			return;
 		}
@@ -52,5 +49,7 @@ namespace QuasarEngine {
 		m_Renderer.End();
 
 		m_Renderer.GetShader()->Reset();
+
+		m_Renderer.GetShader()->Unuse();
 	}
 }

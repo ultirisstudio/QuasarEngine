@@ -41,16 +41,19 @@ namespace QuasarEngine {
 
         struct UIUniforms {
             glm::mat4 proj;
+            glm::mat4 model;
         };
 
         Shader::ShaderStageFlags uiUniformFlags =
             Shader::StageToBit(Shader::ShaderStageType::Vertex);
 
         desc.globalUniforms = {
-            {"uProj", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, proj), 0, 0, uiUniformFlags}
+            {"proj", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, proj), 0, 0, uiUniformFlags}
         };
 
-        desc.objectUniforms = {};
+        desc.objectUniforms = {
+            {"model", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, model), 0, 0, uiUniformFlags}
+        };
         desc.samplers = {};
 
         desc.blendMode = Shader::BlendMode::AlphaBlend;
@@ -65,6 +68,8 @@ namespace QuasarEngine {
 
         m_Shader = Shader::Create(desc);
 
+		m_Shader->AcquireResources(&m_Material);
+
         m_VertexArray = VertexArray::Create();
 
         m_VertexBuffer = VertexBuffer::Create(64 * 1024);
@@ -78,6 +83,15 @@ namespace QuasarEngine {
 
         std::shared_ptr<IndexBuffer> indexBuffer = IndexBuffer::Create(32 * 1024);
         m_VertexArray->SetIndexBuffer(indexBuffer);
+    }
+
+    UIRenderer::~UIRenderer()
+    {
+		m_Shader->ReleaseResources(&m_Material);
+
+        m_VertexArray.reset();
+        m_VertexBuffer.reset();
+		m_Shader.reset();
     }
 
     void UIBatcher::Clear() {
@@ -143,16 +157,18 @@ namespace QuasarEngine {
         const uint32_t vbBytes = (uint32_t)(interleaved.size() * sizeof(float));
         const uint32_t ibBytes = (uint32_t)(I.size() * sizeof(uint32_t));
 
+        m_VertexArray->Bind();
+
         m_VertexBuffer->Reserve(vbBytes);
         m_VertexArray->GetIndexBuffer()->Reserve(ibBytes);
 
         m_VertexBuffer->Upload(interleaved.data(), vbBytes);
         m_VertexArray->GetIndexBuffer()->Upload(I.data(), ibBytes);
 
-        m_VertexArray->Bind();
-
         for (const auto& cmd : C) {
             RenderCommand::DrawElements(DrawMode::TRIANGLES, cmd.idxCount, cmd.idxOffset);
         }
+
+		m_VertexArray->Unbind();
     }
 }

@@ -47,15 +47,8 @@ namespace QuasarEngine::Math {
 		{ 0, 0, -1 },
 	};
 
-	struct Plane
-	{
-		float a, b, c, d;
-	};
-
-	struct Frustum
-	{
-		Plane planes[Math::DIRECTION_COUNT];
-	};
+	struct Plane { glm::vec3 n; float d; };
+	struct Frustum { Plane planes[6]; };
 
 	float MapRange(float value, float fromMin, float fromMax, float toMin, float toMax);
 	float lerp(float a, float b, float x);
@@ -66,7 +59,8 @@ namespace QuasarEngine::Math {
 	Direction AxisToDir(Axis axis, bool negative);
 	Direction VectorToDir(glm::vec3 vec);
 
-	Frustum CalculateFrustum(const glm::mat4& camera);
+	Plane MakePlane(const glm::vec4& p);
+	Frustum CalculateFrustum(const glm::mat4& VP);
 
 	glm::vec3 ForwardFromEulerRad(const glm::vec3& eulerXYZRad, bool forwardIsNegZ = true);
 	glm::vec3 ForwardFromEulerDeg(const glm::vec3& eulerXYZDeg, bool forwardIsNegZ = true);

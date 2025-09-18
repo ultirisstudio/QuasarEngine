@@ -350,8 +350,8 @@ namespace QuasarEngine
 
 	void Editor::OnRender()
 	{
-		m_EditorViewport->Render(m_SceneManager->GetActiveScene(), *m_EditorCamera);
 		m_Viewport->Render(m_SceneManager->GetActiveScene());
+		m_EditorViewport->Render(m_SceneManager->GetActiveScene(), *m_EditorCamera);
 	}
 
 	static inline ImVec4 ColorU32ToVec4(ImU32 c) {
@@ -716,6 +716,7 @@ namespace QuasarEngine
 			ImGui::EndMenuBar();
 		}
 
+		//m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_EditorViewport->OnImGuiRender(*m_EditorCamera, *m_SceneManager, *m_SceneHierarchy);
 		m_EntityPropertiePanel->OnImGuiRender(m_SceneManager->GetActiveScene(), *m_SceneHierarchy);
@@ -747,7 +748,7 @@ namespace QuasarEngine
 	{
 		m_EditorCamera->OnEvent(e);
 
-		//m_Viewport->OnEvent(e);
+		m_Viewport->OnEvent(e);
 
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<MouseButtonPressedEvent>(std::bind(&Editor::OnMouseButtonPressed, this, std::placeholders::_1));

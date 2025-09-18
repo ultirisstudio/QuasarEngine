@@ -59,9 +59,9 @@ namespace QuasarEngine
 		const glm::mat4& getViewMatrix() const override;
 		const glm::mat4& getProjectionMatrix() const override;
 
-		glm::vec3& GetFront() override;
-		glm::mat4& GetTransform() override;
-		glm::vec3& GetPosition() override;
+		glm::vec3 GetFront() override;
+		glm::mat4 GetTransform() override;
+		glm::vec3 GetPosition() override;
 
 		float getFov() const;
 		void setFov(float fov) { m_fov = fov; }

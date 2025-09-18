@@ -101,46 +101,35 @@ namespace QuasarEngine
 		m_meshGenerated = true;
 	}
 
-	bool Mesh::IsVisible(const Math::Frustum& frustum,
-		const glm::mat4& modelMatrix,
-		const glm::vec3 size) const
+	bool Mesh::IsVisible(const Math::Frustum& frustum, const glm::mat4& modelMatrix) const
 	{
 		const glm::vec3 bbMinLocal = m_boundingBoxPosition;
 		const glm::vec3 bbSizeLocal = m_boundingBoxSize;
+		const glm::vec3 bbCenterL = bbMinLocal + 0.5f * bbSizeLocal;
+		const glm::vec3 bbHalfL = 0.5f * bbSizeLocal;
 
-		const glm::vec3 bbCenterLocal = bbMinLocal + 0.5f * bbSizeLocal;
-		const glm::vec3 bbHalfLocal = 0.5f * bbSizeLocal;
+		const glm::vec3 centerW = glm::vec3(modelMatrix * glm::vec4(bbCenterL, 1.0f));
 
-		const glm::vec3 absScale = glm::abs(size);
+		const glm::vec3 axisX = glm::vec3(modelMatrix[0]) * bbHalfL.x;
+		const glm::vec3 axisY = glm::vec3(modelMatrix[1]) * bbHalfL.y;
+		const glm::vec3 axisZ = glm::vec3(modelMatrix[2]) * bbHalfL.z;
 
-		const glm::vec3 scaledCenterLocal = bbCenterLocal * absScale;
-		const glm::vec3 scaledHalfLocal = bbHalfLocal * absScale;
-
-		const glm::mat3 R = glm::mat3(modelMatrix);
-
-		const glm::vec3 worldCenter = glm::vec3(modelMatrix * glm::vec4(scaledCenterLocal, 1.0f));
-
-		const glm::mat3 absR = glm::mat3(glm::abs(R[0]), glm::abs(R[1]), glm::abs(R[2]));
-		const glm::vec3 worldHalf = absR * scaledHalfLocal;
-
-		for (unsigned i = 0; i < std::size(frustum.planes); ++i)
+		for (int i = 0; i < 6; ++i)
 		{
-			const auto& p = frustum.planes[i];
+			const glm::vec3 n = frustum.planes[i].n;
+			const float d = frustum.planes[i].d;
 
-			const glm::vec3 n(p.a, p.b, p.c);
+			const float dist = glm::dot(n, centerW) + d;
+			
+			const float r = std::abs(glm::dot(n, axisX))
+				+ std::abs(glm::dot(n, axisY))
+				+ std::abs(glm::dot(n, axisZ));
 
-			const float dist = glm::dot(n, worldCenter) + p.d;
-
-			const glm::vec3 an = glm::abs(n);
-			const float radius = an.x * worldHalf.x + an.y * worldHalf.y + an.z * worldHalf.z;
-
-			if (dist + radius < 0.0f)
+			if (dist + r < 0.0f)
 				return false;
 		}
-
 		return true;
 	}
-
 
 	bool Mesh::IsMeshGenerated()
 	{

@@ -285,11 +285,27 @@ namespace QuasarEngine
         glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
         
         RenderCommand::SetViewport(0, 0, m_Specification.Width, m_Specification.Height);
+
+        /*if (m_ColorAttachments.size() > 0)
+        {
+            std::array<GLenum, 8> bufs;
+            for (uint32_t i = 0; i < m_ColorAttachments.size(); ++i)
+                bufs[i] = GL_COLOR_ATTACHMENT0 + i;
+
+            glDrawBuffers((GLsizei)m_ColorAttachments.size(), bufs.data());
+        }
+        else
+        {
+            glDrawBuffer(GL_NONE);
+            glReadBuffer(GL_NONE);
+        }*/
     }
 
     void OpenGLFramebuffer::Unbind() const
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        //glDrawBuffer(GL_BACK);
+        //glReadBuffer(GL_BACK);
     }
 
     void OpenGLFramebuffer::BindColorAttachment(uint32_t index) const

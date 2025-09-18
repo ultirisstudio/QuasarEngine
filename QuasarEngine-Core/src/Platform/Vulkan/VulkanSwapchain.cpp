@@ -164,7 +164,7 @@ namespace QuasarEngine
 			createInfo.subresourceRange.baseArrayLayer = 0;
 			createInfo.subresourceRange.layerCount = 1;
 
-			VK_CHECK(vkCreateImageView(VulkanContext::Context.device->device, &createInfo, VulkanContext::Context.allocator->GetCallbacks(), &views[i]))
+			VK_CHECK(vkCreateImageView(VulkanContext::Context.device->device, &createInfo, VulkanContext::Context.allocator->GetCallbacks(), &views[i]));
 		}
 
 		depthAttachment.reset();

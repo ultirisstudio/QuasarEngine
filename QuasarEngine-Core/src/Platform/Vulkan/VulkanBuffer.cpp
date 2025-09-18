@@ -58,8 +58,8 @@ namespace QuasarEngine
 			Bind();
 		}
 
-		std::string str = "Vulkan buffer initialized successfully with size: " + std::to_string(size);
-		Q_DEBUG(str);
+		//std::string str = "Vulkan buffer initialized successfully with size: " + std::to_string(size);
+		//Q_DEBUG(str);
 	}
 
 	VulkanBuffer::~VulkanBuffer()

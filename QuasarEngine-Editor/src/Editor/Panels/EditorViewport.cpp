@@ -19,8 +19,7 @@
 
 namespace QuasarEngine
 {
-	EditorViewport::EditorViewport()
-		: m_EditorViewportSize({ 0.0f, 0.0f })
+	EditorViewport::EditorViewport() : m_EditorViewportSize({ 0.0f, 0.0f })
 	{
 		FramebufferSpecification spec;
 		spec.Width = Application::Get().GetWindow().GetWidth();

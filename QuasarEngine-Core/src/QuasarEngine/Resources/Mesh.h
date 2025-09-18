@@ -48,7 +48,7 @@ namespace QuasarEngine
 
 		glm::vec3 GetBoundingBoxSize() const { return m_boundingBoxSize; }
 
-		bool IsVisible(const Math::Frustum& frustum, const glm::mat4& modelMatrix, const glm::vec3 size) const;
+		bool IsVisible(const Math::Frustum& frustum, const glm::mat4& modelMatrix) const;
 
 		bool IsMeshGenerated();
 

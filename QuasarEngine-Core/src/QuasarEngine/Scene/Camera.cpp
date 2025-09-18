@@ -1,9 +1,10 @@
 #include "qepch.h"
 #include <QuasarEngine/Scene/Camera.h>
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace QuasarEngine
 {
-	Camera::Camera() : m_projectionMatrix(1.0f), m_fov(45.0f), m_minFov(15.0f), m_maxFov(95.0f), m_ViewportSize(1.0f, 1.0f), m_TransformComponent(nullptr)
+	Camera::Camera() : m_projectionMatrix(1.0f), m_fov(60.0f), m_minFov(15.0f), m_maxFov(95.0f), m_ViewportSize(1.0f, 1.0f), m_TransformComponent(nullptr), m_cameraType(CameraType::PERSPECTIVE)
 	{
 
 	}
@@ -11,11 +12,12 @@ namespace QuasarEngine
 	void Camera::Init(TransformComponent* transformComponent)
 	{
 		m_TransformComponent = transformComponent;
+		updateProjectionMatrix();
 	}
 
 	const glm::mat4& Camera::getViewMatrix() const
 	{
-		return m_TransformComponent->GetGlobalViewMatrix();
+		return m_TransformComponent ? m_TransformComponent->GetGlobalViewMatrix() : glm::mat4(1.0f);
 	}
 
 	const glm::mat4& Camera::getProjectionMatrix() const
@@ -23,46 +25,57 @@ namespace QuasarEngine
 		return m_projectionMatrix;
 	}
 
-	glm::vec3& Camera::GetPosition()
+	glm::vec3 Camera::GetPosition()
 	{
-		return m_TransformComponent->Position;
+		return m_TransformComponent ? m_TransformComponent->Position : glm::vec3(0.0f);
 	}
 
-	glm::mat4& Camera::GetTransform()
+	glm::mat4 Camera::GetTransform()
 	{
-		return m_TransformComponent->GetGlobalTransform();
+		return m_TransformComponent ? m_TransformComponent->GetGlobalTransform() : glm::mat4(1.0f);
 	}
 
-	glm::vec3& Camera::GetFront()
+	glm::vec3 Camera::GetFront()
 	{
-		glm::vec3 front = m_TransformComponent->Rotation * glm::vec3(0.0f, 0.0f, -1.0f);
-		return glm::normalize(front);
+		if (!m_TransformComponent)
+			return glm::vec3(0, 0, -1);
+
+		glm::vec3 scale, translation, skew;
+		glm::vec4 perspective;
+		glm::quat rotationQuat;
+		glm::mat4 M = m_TransformComponent->GetGlobalTransform();
+
+		if (glm::decompose(M, scale, rotationQuat, translation, skew, perspective))
+		{
+			glm::vec3 front = rotationQuat * glm::vec3(0.0f, 0.0f, -1.0f);
+			return glm::normalize(front);
+		}
+		
+		return glm::vec3(0, 0, -1);
 	}
 
 	void Camera::updateProjectionMatrix()
 	{
+		const float w = std::max(1.0f, m_ViewportSize.x);
+		const float h = std::max(1.0f, m_ViewportSize.y);
+		const float aspect = w / h;
+
 		switch (m_cameraType)
 		{
 		case CameraType::PERSPECTIVE:
 		{
-			m_projectionMatrix = glm::perspective(glm::radians(GetFov()), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 1000.0f);
+			m_projectionMatrix = glm::perspectiveRH_ZO(glm::radians(GetFov()), aspect, 0.1f, 1000.0f);
 			break;
 		}
 		case CameraType::ORTHOGRAPHIC:
 		{
-			float aspect_ratio = m_ViewportSize.x / m_ViewportSize.y;
-
-			if (aspect_ratio > 1.7778) {
-				float half_height = m_ViewportSize.y / 1080.0f / 2.0f;
-				m_projectionMatrix = glm::ortho(-half_height * aspect_ratio, half_height * aspect_ratio, -half_height, half_height, 0.1f, 100.0f);
-			}
-			else {
-				float half_width = m_ViewportSize.x / 1920.0f / 2.0f;
-				m_projectionMatrix = glm::ortho(-half_width, half_width, -half_width / aspect_ratio, half_width / aspect_ratio, 0.1f, 100.0f);
-			}
+			const float halfHeight = 0.5f;
+			const float halfWidth = halfHeight * aspect;
+			m_projectionMatrix = glm::orthoRH_ZO(-halfWidth, +halfWidth, -halfHeight, +halfHeight, 0.1f, 100.0f);
 			break;
 		}
 		default:
+			m_projectionMatrix = glm::mat4(1.0f);
 			break;
 		}
 	}
@@ -74,8 +87,8 @@ namespace QuasarEngine
 
 	void Camera::SetFov(float fov)
 	{
-		m_fov = fov;
-		
+		m_fov = glm::clamp(fov, m_minFov, m_maxFov);
+
 		updateProjectionMatrix();
 	}
 

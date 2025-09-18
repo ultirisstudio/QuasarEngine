@@ -13,15 +13,15 @@ namespace QuasarEngine
 	{
 		switch (func)
 		{
-		case Shader::DepthFunc::Never:        return GL_NEVER;
-		case Shader::DepthFunc::Less:         return GL_LESS;
-		case Shader::DepthFunc::Equal:        return GL_EQUAL;
+		case Shader::DepthFunc::Never:			return GL_NEVER;
+		case Shader::DepthFunc::Less:			return GL_LESS;
+		case Shader::DepthFunc::Equal:			return GL_EQUAL;
 		case Shader::DepthFunc::LessOrEqual:    return GL_LEQUAL;
-		case Shader::DepthFunc::Greater:      return GL_GREATER;
-		case Shader::DepthFunc::NotEqual:     return GL_NOTEQUAL;
+		case Shader::DepthFunc::Greater:		return GL_GREATER;
+		case Shader::DepthFunc::NotEqual:		return GL_NOTEQUAL;
 		case Shader::DepthFunc::GreaterOrEqual: return GL_GEQUAL;
-		case Shader::DepthFunc::Always:       return GL_ALWAYS;
-		default:                      return GL_LESS;
+		case Shader::DepthFunc::Always:			return GL_ALWAYS;
+		default:								return GL_LESS;
 		}
 	}
 
@@ -312,6 +312,30 @@ namespace QuasarEngine
 
 	void OpenGLShader::ApplyPipelineStates()
 	{
+		/*
+		//UI
+        desc.blendMode = Shader::BlendMode::AlphaBlend;
+        desc.cullMode = Shader::CullMode::None;
+        desc.fillMode = Shader::FillMode::Solid;
+        desc.depthFunc = Shader::DepthFunc::Always;
+        desc.depthTestEnable = false;
+        desc.depthWriteEnable = false;
+        desc.topology = Shader::PrimitiveTopology::TriangleList;
+        desc.enableDynamicViewport = true;
+        desc.enableDynamicScissor = true;
+
+        //3D
+        desc.blendMode = Shader::BlendMode::None;
+        desc.cullMode = Shader::CullMode::Back;
+        desc.fillMode = Shader::FillMode::Solid;
+        desc.depthFunc = Shader::DepthFunc::Less;
+        desc.depthTestEnable = true;
+        desc.depthWriteEnable = true;
+        desc.topology = Shader::PrimitiveTopology::TriangleList;
+        desc.enableDynamicViewport = true;
+        desc.enableDynamicScissor = true;
+        desc.enableDynamicLineWidth = false;
+		*/
 		if (m_Description.depthTestEnable)
 			glEnable(GL_DEPTH_TEST);
 		else

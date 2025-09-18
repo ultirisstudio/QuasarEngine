@@ -10,6 +10,7 @@
 
 #include <QuasarEngine/Renderer/Buffer.h>
 #include <QuasarEngine/Renderer/VertexArray.h>
+#include <QuasarEngine/Resources/Materials/Material.h>
 
 namespace QuasarEngine {
 	struct UIVertex {
@@ -60,7 +61,7 @@ namespace QuasarEngine {
 	class UIRenderer {
 	public:
 		UIRenderer();
-		~UIRenderer() = default;
+		~UIRenderer();
 
 		void Begin(int fbW, int fbH);
 		void End();
@@ -70,6 +71,8 @@ namespace QuasarEngine {
 
 		Shader* GetShader() const { return m_Shader.get(); }
 
+		Material& GetMaterial() { return m_Material; }
+
 		void FlushToEngine();
 
 	private:
@@ -78,6 +81,8 @@ namespace QuasarEngine {
 		UIBatcher m_Batcher{};
 
 		std::shared_ptr<Shader> m_Shader;
+
+		Material m_Material = Material(MaterialSpecification());
 
 		std::shared_ptr<VertexArray> m_VertexArray;
 		std::shared_ptr<VertexBuffer> m_VertexBuffer;

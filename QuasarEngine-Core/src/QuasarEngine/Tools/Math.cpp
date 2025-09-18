@@ -3,13 +3,13 @@
 
 #include <random>
 
-namespace QuasarEngine {
-	Math::Direction Math::AxisToDir(Axis axis, bool negative)
+namespace QuasarEngine::Math {
+	Direction AxisToDir(Axis axis, bool negative)
 	{
-		return Math::Direction(axis * 2 + (negative ? 1 : 0));
+		return Direction(axis * 2 + (negative ? 1 : 0));
 	}
 
-	Math::Direction Math::VectorToDir(glm::vec3 vec)
+	Direction VectorToDir(glm::vec3 vec)
 	{
 		float max = vec[0];
 		int axis = 0;
@@ -26,68 +26,72 @@ namespace QuasarEngine {
 		return AxisToDir(Axis(axis), vec[axis] < 0.0f);
 	}
 
-	float Math::lerp(float a, float b, float x)
+	float lerp(float a, float b, float x)
 	{
 		return a + x * (b - a);
 	}
 
-	float Math::dist(int x1, int y1, int x2, int y2)
+	float dist(int x1, int y1, int x2, int y2)
 	{
 		return std::sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 	}
 
-	float Math::random(float min, float max)
+	float random(float min, float max)
 	{
 		return min + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (max - min);
 	}
 
-	float Math::random_float()
+	float random_float()
 	{
 		static std::default_random_engine e;
 		static std::uniform_real_distribution<> dis(-1, 1);
 		return dis(e);
 	}
 
-	Math::Frustum Math::CalculateFrustum(const glm::mat4& camera)
+	Plane MakePlane(const glm::vec4& p)
 	{
-		Math::Frustum result;
-		glm::vec4 base = { camera[0][3], camera[1][3], camera[2][3], camera[3][3] };
-
-		for (unsigned i = 0; i < DIRECTION_COUNT; i++)
-		{
-			glm::vec4 normal = { camera[0][i / 2], camera[1][i / 2], camera[2][i / 2], camera[3][i / 2] };
-
-			if (i % 2 == 1)
-				normal = -1.0f * normal;
-
-			normal += base;
-			glm::vec3 eq = normal;
-			float len = glm::length(eq);
-			eq /= len;
-			result.planes[i] = { eq.x, eq.y, eq.z, normal.w / len };
-		}
-
-		return result;
+		glm::vec3 n(p.x, p.y, p.z);
+		float len = glm::length(n);
+		if (len == 0.0f) return { {0,0,0}, 0.0f };
+		return { n / len, p.w / len };
 	}
 
-	float Math::MapRange(float value, float fromMin, float fromMax, float toMin, float toMax)
+	Frustum CalculateFrustum(const glm::mat4& VP)
+	{
+		Frustum f;
+		const glm::vec4 c0 = VP[0];
+		const glm::vec4 c1 = VP[1];
+		const glm::vec4 c2 = VP[2];
+		const glm::vec4 c3 = VP[3];
+
+		f.planes[0] = MakePlane(c3 + c0);
+		f.planes[1] = MakePlane(c3 - c0);
+		f.planes[2] = MakePlane(c3 + c1);
+		f.planes[3] = MakePlane(c3 - c1);
+		f.planes[4] = MakePlane(c3 + c2);
+		f.planes[5] = MakePlane(c3 - c2);
+
+		return f;
+	}
+
+	float MapRange(float value, float fromMin, float fromMax, float toMin, float toMax)
 	{
 		return (((value - fromMin) * (toMax - toMin)) / (fromMax - fromMin)) + toMin;
 	}
 
-	glm::vec3 Math::ForwardFromEulerRad(const glm::vec3& eulerXYZRad, bool forwardIsNegZ)
+	glm::vec3 ForwardFromEulerRad(const glm::vec3& eulerXYZRad, bool forwardIsNegZ)
 	{
 		glm::mat4 R = glm::yawPitchRoll(eulerXYZRad.y, eulerXYZRad.x, eulerXYZRad.z);
 		glm::vec3 f = glm::vec3(R * glm::vec4(0.0f, 0.0f, forwardIsNegZ ? -1.0f : 1.0f, 0.0f));
 		return glm::normalize(f);
 	}
 
-	glm::vec3 Math::ForwardFromEulerDeg(const glm::vec3& eulerXYZDeg, bool forwardIsNegZ)
+	glm::vec3 ForwardFromEulerDeg(const glm::vec3& eulerXYZDeg, bool forwardIsNegZ)
 	{
 		return ForwardFromEulerRad(glm::radians(eulerXYZDeg), forwardIsNegZ);
 	}
 
-	glm::vec3 Math::ForwardFromQuat(const glm::quat& q, bool forwardIsNegZ)
+	glm::vec3 ForwardFromQuat(const glm::quat& q, bool forwardIsNegZ)
 	{
 		glm::vec3 f = q * glm::vec3(0.0f, 0.0f, forwardIsNegZ ? -1.0f : 1.0f);
 		return glm::normalize(f);

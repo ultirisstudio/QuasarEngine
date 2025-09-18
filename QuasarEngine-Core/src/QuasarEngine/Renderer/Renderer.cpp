@@ -17,6 +17,9 @@
 #include <QuasarEngine/UI/UIContainer.h>
 #include <QuasarEngine/UI/UIText.h>
 #include <QuasarEngine/UI/UIButton.h>
+#include <glm/gtx/matrix_decompose.hpp>
+
+#include <glad/glad.h>
 
 namespace QuasarEngine
 {
@@ -175,6 +178,7 @@ namespace QuasarEngine
 	{
 		m_SceneData.m_Skybox.reset();
 		m_SceneData.m_Shader.reset();
+		m_SceneData.m_UI.reset();
 		m_SceneData.m_AssetManager.reset();
 		m_SceneData.m_ScriptSystem.reset();
 	}
@@ -186,7 +190,8 @@ namespace QuasarEngine
 
 	void Renderer::Render(BaseCamera& camera)
 	{
-		Math::Frustum frustum = Math::CalculateFrustum(camera.getProjectionMatrix() * camera.getViewMatrix());
+		const glm::mat4 VP = camera.getProjectionMatrix() * camera.getViewMatrix();
+		Math::Frustum frustum = Math::CalculateFrustum(VP);
 
 		glm::mat4 viewMatrix = camera.getViewMatrix();
 		glm::mat4 projectionMatrix = camera.getProjectionMatrix();
@@ -259,9 +264,9 @@ namespace QuasarEngine
 				continue;
 			}
 
-			if (!mc.GetMesh().IsVisible(frustum, transform, tr.Scale))
+			if (!mc.GetMesh().IsVisible(frustum, transform))
 			{
-				continue;
+				//continue;
 			}
 
 			//entityDraw++;
