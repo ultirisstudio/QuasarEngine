@@ -93,8 +93,8 @@ namespace QuasarEngine
 
 		if (m_ViewportFrameBuffer) {
 			if (void* handle = m_ViewportFrameBuffer->GetColorAttachment(0)) {
-				ImVec2 uv0 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 0,1 } : ImVec2{ 0,0 };
-				ImVec2 uv1 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 1,0 } : ImVec2{ 1,1 };
+				ImVec2 uv0 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 0,1 } : ImVec2{ 1,0 };
+				ImVec2 uv1 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 1,0 } : ImVec2{ 0,1 };
 				ImGui::SetCursorScreenPos(vpMin);
 				ImGui::Image((ImTextureID)handle, vpSize, uv0, uv1);
 			}

@@ -56,7 +56,7 @@ namespace QuasarEngine
         glfwSetWindowUserPointer(m_Window, &m_Data);
 
         m_Context = GraphicsContext::Create(m_Window);
-        Q_ASSERT(m_Context, "GraphicsContext::Create failed");
+        Q_ASSERT(m_Context.get(), "GraphicsContext::Create failed");
 
         SetVSync(false);
 
