@@ -24,8 +24,6 @@
 
 #include <QuasarEngine/Scripting/QMM/VM.h>
 
-#include <QuasarEngine/Physic/PhysXTest.h>
-
 #ifndef QE_PROFILE_APP_TIMERS
 #if !defined(NDEBUG)
 #define QE_PROFILE_APP_TIMERS 1
@@ -56,9 +54,9 @@ namespace QuasarEngine
 	{
 		InitImGuiStyle();
 
-		Logger::initUtf8Console();
+		PhysicEngine::Instance().Initialize();
 
-		PhysicEngine::Init();
+		Logger::initUtf8Console();
 
 		m_AssetImporter = std::make_unique<AssetImporter>(m_Specification.ProjectPath);
 
@@ -202,16 +200,9 @@ namespace QuasarEngine
 		)";
 
 		try { vm.eval(code); }
-		catch (const QError& e) { std::cerr << "Q-- Error: " << e.what() << "\n"; }
+		catch (const QError& e) { std::cerr << "Q-- Error: " << e.what() << "\n"; }*/
 
-		PhysXTest test;
-
-		for (int i = 0; i < 300; i++)
-		{
-			test.StepSimulation(1.0f / 60.0f);
-		}
-
-		using QuasarEngine::Logger;
+		/*using QuasarEngine::Logger;
 		using L = Logger::Level;
 
 		const bool TEST_SINKS = false;
@@ -310,8 +301,6 @@ namespace QuasarEngine
 
 	void Editor::OnDetach()
 	{
-		PhysicEngine::Shutdown();
-
 		m_SceneManager.reset();
 		m_EntityPropertiePanel.reset();
 		m_SceneHierarchy.reset();
@@ -321,6 +310,8 @@ namespace QuasarEngine
 		//m_NodeEditor.reset();
 		//m_AnimationEditorPanel.reset();
 		//m_HeightMapEditor.reset();
+
+		PhysicEngine::Instance().Shutdown();
 	}
 
 	void Editor::OnUpdate(double dt)

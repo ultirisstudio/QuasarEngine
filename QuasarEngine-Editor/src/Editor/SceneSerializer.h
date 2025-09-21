@@ -1,27 +1,36 @@
 #pragma once
 
-#include "SceneObject.h"
-
 #include <filesystem>
-#include <yaml-cpp/yaml.h>
+#include <string>
+
+namespace YAML { class Emitter; class Node; }
 
 namespace QuasarEngine
 {
-    class SceneSerializer {
+    class SceneObject;
+    class Scene;
+    class Entity;
+
+    class SceneSerializer
+    {
     public:
-        SceneSerializer(SceneObject& sceneObject, std::filesystem::path assetPath)
+        SceneSerializer(SceneObject& sceneObject, std::filesystem::path assetPath) noexcept
             : m_SceneObject(&sceneObject), m_AssetPath(std::move(assetPath)) {
         }
 
         void Serialize(const std::string& filepath) const;
-        bool Deserialize(const std::string& filepath);
+        [[nodiscard]] bool Deserialize(const std::string& filepath);
+
+        const std::filesystem::path& GetAssetPath() const noexcept { return m_AssetPath; }
+        void SetAssetPath(std::filesystem::path p) noexcept { m_AssetPath = std::move(p); }
 
     private:
         void SerializeEntity(YAML::Emitter& out, Entity entity, const std::string& assetPath) const;
         bool LoadEntities(const YAML::Node& entities, Scene& scene, const std::string& assetPath);
         bool SetupHierarchy(const YAML::Node& entities, Scene& scene);
 
-        SceneObject* m_SceneObject;
+    private:
+        SceneObject* m_SceneObject = nullptr;
         std::filesystem::path m_AssetPath;
     };
 }

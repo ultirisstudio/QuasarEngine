@@ -1,77 +1,76 @@
 #include "BoxColliderComponentPanel.h"
 
 #include <imgui/imgui.h>
+#include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <QuasarEngine/Entity/Entity.h>
+#include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
-#include <QuasarEngine/Physic/Shape/BoxShape.h>
-#include <QuasarEngine/Physic/Shape/ProxyShape.h>
-#include <QuasarEngine/Physic/Collision/Collider.h>
 
 namespace QuasarEngine
 {
-	void BoxColliderComponentPanel::Render(Entity entity)
-	{
-		if (!entity.HasComponent<BoxColliderComponent>())
-			return;
+    static inline glm::vec3 ClampVec3Min(const glm::vec3& v, float mn)
+    {
+        return { v.x < mn ? mn : v.x, v.y < mn ? mn : v.y, v.z < mn ? mn : v.z };
+    }
 
-		auto& cc = entity.GetComponent<BoxColliderComponent>();
+    void BoxColliderComponentPanel::Render(Entity entity)
+    {
+        if (!entity.HasComponent<BoxColliderComponent>()) return;
+        auto& cc = entity.GetComponent<BoxColliderComponent>();
 
-		if (ImGui::TreeNodeEx("Box Collider", ImGuiTreeNodeFlags_DefaultOpen, "Box Collider"))
-		{
-			if (ImGui::BeginPopupContextItem())
-			{
-				if (ImGui::MenuItem("Delete Component"))
-				{
-					entity.RemoveComponent<BoxColliderComponent>();
-				}
-				ImGui::EndPopup();
-			}
+        if (!ImGui::TreeNodeEx("Box Collider", ImGuiTreeNodeFlags_DefaultOpen, "Box Collider")) return;
 
-			ImGui::Checkbox("Use entity scale", &cc.m_UseEntityScale);
-			if (!cc.m_UseEntityScale)
-			{
-				if (ImGui::DragFloat3("Manual Size", glm::value_ptr(cc.m_Size), 0.1f, 0.01f, 1000.0f))
-				{
-					cc.UpdateColliderSize();
-				}
-			}
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem("Delete Component"))
+                entity.RemoveComponent<BoxColliderComponent>();
+            ImGui::EndPopup();
+        }
 
-			if (Collider* collider = cc.GetCollider()) {
-				const auto& proxyShapes = collider->GetProxyShapes();
+        bool sizeChanged = false;
 
-				if (!proxyShapes.empty() && proxyShapes[0]) {
-					if (CollisionShape* shape = proxyShapes[0]->GetCollisionShape()) {
-						if (auto* box = dynamic_cast<BoxShape*>(shape)) {
-							glm::vec3 halfExtents = box->GetHalfExtents();
-							ImGui::Text("Half Extents: %.2f, %.2f, %.2f", halfExtents.x, halfExtents.y, halfExtents.z);
-						}
-					}
-				}
-			}
+        if (ImGui::Checkbox("Use Entity Scale", &cc.m_UseEntityScale))
+            sizeChanged = true;
 
-			if (ImGui::TreeNodeEx("Material", ImGuiTreeNodeFlags_DefaultOpen))
-			{
-				bool updated = false;
+        if (!cc.m_UseEntityScale)
+        {
+            glm::vec3 sz = cc.m_Size;
+            if (ImGui::DragFloat3("Size (XYZ)", glm::value_ptr(sz), 0.01f, 0.001f, 1e6f))
+            {
+                cc.m_Size = ClampVec3Min(sz, 0.001f);
+                sizeChanged = true;
+            }
+        }
 
-				ImGui::Text("Mass");
-				updated |= ImGui::DragFloat("##Mass", &cc.mass, 1.0f, 0.0f, 1000.0f);
+        if (sizeChanged)
+            cc.UpdateColliderSize();
 
-				ImGui::Text("Friction");
-				updated |= ImGui::DragFloat("##Friction", &cc.friction, 0.05f, 0.0f, 10.0f);
+        glm::vec3 usedSize = cc.m_UseEntityScale
+            ? entity.GetComponent<TransformComponent>().Scale
+            : cc.m_Size;
 
-				ImGui::Text("Bounciness");
-				updated |= ImGui::DragFloat("##Bounciness", &cc.bounciness, 0.05f, 0.0f, 1.0f);
+        usedSize = ClampVec3Min(usedSize, 0.001f);
+        const glm::vec3 halfExtents = 0.5f * usedSize;
+        const float volume = usedSize.x * usedSize.y * usedSize.z;
 
-				if (updated) {
-					cc.UpdateColliderMaterial();
-				}
+        ImGui::SeparatorText("Shape");
+        ImGui::Text("Half Extents:  (%.3f, %.3f, %.3f)", halfExtents.x, halfExtents.y, halfExtents.z);
+        ImGui::Text("Volume:        %.6f m^3", volume);
 
-				ImGui::TreePop();
-			}
+        ImGui::SeparatorText("Material / Mass");
+        bool matChanged = false;
+        matChanged |= ImGui::DragFloat("Mass (kg)", &cc.mass, 0.1f, 0.0f, 1e6f);
+        matChanged |= ImGui::DragFloat("Friction", &cc.friction, 0.01f, 0.0f, 10.0f);
+        matChanged |= ImGui::DragFloat("Bounciness", &cc.bounciness, 0.01f, 0.0f, 1.0f);
 
-			ImGui::TreePop();
-		}
-	}
+        if (matChanged)
+            cc.UpdateColliderMaterial();
+
+        if (ImGui::Button("Rebuild Shape"))
+            cc.UpdateColliderSize();
+
+        ImGui::TreePop();
+    }
 }

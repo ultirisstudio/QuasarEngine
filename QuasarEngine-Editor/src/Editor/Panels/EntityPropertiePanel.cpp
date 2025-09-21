@@ -1,195 +1,379 @@
 #include "EntityPropertiePanel.h"
 
 #include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
-#include "glm/gtc/type_ptr.hpp"
+#include <glm/gtc/type_ptr.hpp>
+#include <cstring>
+#include <algorithm>
+#include <cctype>
 
-#include <filesystem>
-#include <sstream>
-
-#include <QuasarEngine/Renderer/Renderer.h>
+#include "../SceneManager.h"
+#include "SceneHierarchy.h"
 #include <QuasarEngine/Scene/Scene.h>
+#include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Entity/AllComponents.h>
-
 #include <QuasarEngine/Core/UUID.h>
+
+#include "ComponentPanels/TransformComponentPanel.h"
+#include "ComponentPanels/CameraComponentPanel.h"
+#include "ComponentPanels/MeshComponentPanel.h"
+#include "ComponentPanels/TerrainComponentPanel.h"
+#include "ComponentPanels/MaterialComponentPanel.h"
+#include "ComponentPanels/LightComponentPanel.h"
+#include "ComponentPanels/MeshRendererComponentPanel.h"
+
+#include "ComponentPanels/Physics/RigidBodyComponentPanel.h"
+#include "ComponentPanels/Physics/BoxColliderComponentPanel.h"
+#include "ComponentPanels/Physics/ConvexMeshColliderComponentPanel.h"
+#include "ComponentPanels/Physics/TriangleMeshColliderComponentPanel.h"
+#include "ComponentPanels/Physics/CapsuleColliderComponentPanel.h"
+#include "ComponentPanels/Physics/PlaneColliderComponentPanel.h"
+#include "ComponentPanels/Physics/SphereColliderComponentPanel.h"
+#include "ComponentPanels/Physics/HeightfieldColliderComponentPanel.h"
+
+#include "ComponentPanels/Scripting/ScriptComponentPanel.h"
+
+#include <QuasarEngine/Entity/AllComponents.h>
+#include <QuasarEngine/Core/UUID.h>
+#include <QuasarEngine/Renderer/Renderer.h>
 
 namespace QuasarEngine
 {
-	EntityPropertiePanel::EntityPropertiePanel(const std::string& projectPath)
-	{
-		m_TransformComponentPanel = std::make_unique<TransformComponentPanel>();
-		m_CameraComponentPanel = std::make_unique<CameraComponentPanel>();
-		m_MeshComponentPanel = std::make_unique<MeshComponentPanel>();
-		m_TerrainComponentPanel = std::make_unique<TerrainComponentPanel>();
-		m_MaterialComponentPanel = std::make_unique<MaterialComponentPanel>();
-		m_LightComponentPanel = std::make_unique<LightComponentPanel>();
-		m_MeshRendererComponentPanel = std::make_unique<MeshRendererComponentPanel>();
-		m_RigidBodyComponentPanel = std::make_unique<RigidBodyComponentPanel>();
-		m_BoxColliderComponentPanel = std::make_unique<BoxColliderComponentPanel>();
-		m_MeshColliderComponentPanel = std::make_unique<MeshColliderComponentPanel>();
-		m_CapsuleColliderComponentPanel = std::make_unique<CapsuleColliderComponentPanel>();
-		m_SphereColliderComponentPanel = std::make_unique<SphereColliderComponentPanel>();
-		m_ScriptComponentPanel = std::make_unique<ScriptComponentPanel>(projectPath);
-	}
+    class IComponentPanel
+    {
+    public:
+        virtual ~IComponentPanel() = default;
+        virtual const char* Name() const = 0;
+        virtual void Render(Entity& entity, Scene* scene) = 0;
+    };
 
-	EntityPropertiePanel::~EntityPropertiePanel()
-	{
-		Renderer::m_SceneData.m_AssetManager->unloadAsset("Assets/Icons/no_texture.png");
-	}
+    template <typename TPanel>
+    class PanelWrapper : public IComponentPanel
+    {
+    public:
+        template <typename... Args>
+        explicit PanelWrapper(Args&&... args) : impl_(std::forward<Args>(args)...) {}
+        const char* Name() const override { return impl_.Name(); }
+        void Render(Entity& e, Scene* s) override { impl_.Render(e, s ? *s : *reinterpret_cast<Scene*>(nullptr)); }
+    private:
+        TPanel impl_;
+    };
 
-	void EntityPropertiePanel::OnImGuiRender(Scene& scene, SceneHierarchy& sceneHierarchy)
-	{
-		ImGui::Begin("Inspector");
+    struct TransformPanelAdapter : public IComponentPanel
+    {
+        TransformComponentPanel p;
+        const char* Name() const override { return "Transform"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct CameraPanelAdapter : public IComponentPanel
+    {
+        CameraComponentPanel p;
+        const char* Name() const override { return "Camera"; }
+        void Render(Entity& e, Scene* s) override { p.Render(e, *s); }
+    };
+    struct MeshRendererPanelAdapter : public IComponentPanel
+    {
+        MeshRendererComponentPanel p;
+        const char* Name() const override { return "Mesh Renderer"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct MeshPanelAdapter : public IComponentPanel
+    {
+        MeshComponentPanel p;
+        const char* Name() const override { return "Mesh"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct TerrainPanelAdapter : public IComponentPanel
+    {
+        TerrainComponentPanel p;
+        const char* Name() const override { return "Terrain"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct MaterialPanelAdapter : public IComponentPanel
+    {
+        MaterialComponentPanel p;
+        const char* Name() const override { return "Material"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct LightPanelAdapter : public IComponentPanel
+    {
+        LightComponentPanel p;
+        const char* Name() const override { return "Light"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct RigidBodyPanelAdapter : public IComponentPanel
+    {
+        RigidBodyComponentPanel p;
+        const char* Name() const override { return "RigidBody"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct BoxColliderPanelAdapter : public IComponentPanel
+    {
+        BoxColliderComponentPanel p;
+        const char* Name() const override { return "Box Collider"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct SphereColliderPanelAdapter : public IComponentPanel
+    {
+        SphereColliderComponentPanel p;
+        const char* Name() const override { return "Sphere Collider"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct CapsuleColliderPanelAdapter : public IComponentPanel
+    {
+        CapsuleColliderComponentPanel p;
+        const char* Name() const override { return "Capsule Collider"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct PlaneColliderPanelAdapter : public IComponentPanel
+    {
+        PlaneColliderComponentPanel p;
+        const char* Name() const override { return "Plane Collider"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct ConvexMeshColliderPanelAdapter : public IComponentPanel
+    {
+        ConvexMeshColliderComponentPanel p;
+        const char* Name() const override { return "Convex Mesh Collider"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct TriangleMeshColliderPanelAdapter : public IComponentPanel
+    {
+        TriangleMeshColliderComponentPanel p;
+        const char* Name() const override { return "Triangle Mesh Collider"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct HeightfieldColliderPanelAdapter : public IComponentPanel
+    {
+        HeightfieldColliderComponentPanel p;
+        const char* Name() const override { return "Heightfield Collider"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
+    struct ScriptPanelAdapter : public IComponentPanel
+    {
+        explicit ScriptPanelAdapter(const std::string& projectPath) : p(projectPath) {}
+        ScriptComponentPanel p;
+        const char* Name() const override { return "Script"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+    };
 
-		if (sceneHierarchy.m_SelectedEntity.IsValid())
-		{
-			if (scene.isOnRuntime())
-			{
-				//ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-				//ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-			}
+    static std::string toLower(std::string s)
+    {
+        for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return s;
+    }
 
-			Entity entity = sceneHierarchy.m_SelectedEntity;
+    bool EntityPropertiePanel::textContainsI(const std::string& hay, const std::string& needle)
+    {
+        if (needle.empty()) return true;
+        return toLower(hay).find(toLower(needle)) != std::string::npos;
+    }
 
-			UUID uuid = entity.GetUUID();
+    EntityPropertiePanel::EntityPropertiePanel(const std::string& projectPath)
+        : m_ProjectPath(projectPath)
+    {
+        buildPanels(projectPath);
+        buildMenuItems(projectPath);
+    }
 
-			ImGui::Text(std::string("UUID: " + std::to_string(uuid)).c_str());
+    EntityPropertiePanel::~EntityPropertiePanel()
+    {
+        Renderer::m_SceneData.m_AssetManager->unloadAsset("Assets/Icons/no_texture.png");
+    }
 
-			ImGui::Separator();
+    void EntityPropertiePanel::buildPanels(const std::string& projectPath)
+    {
+        m_Panels.reserve(12);
+        m_Panels.push_back({ std::make_unique<TransformPanelAdapter>(), "Transform" });
+        m_Panels.push_back({ std::make_unique<CameraPanelAdapter>(), "Camera" });
+        m_Panels.push_back({ std::make_unique<MeshRendererPanelAdapter>(), "Mesh Renderer" });
+        m_Panels.push_back({ std::make_unique<MeshPanelAdapter>(), "Mesh" });
+        m_Panels.push_back({ std::make_unique<TerrainPanelAdapter>(), "Terrain" });
+        m_Panels.push_back({ std::make_unique<MaterialPanelAdapter>(), "Material" });
+        m_Panels.push_back({ std::make_unique<LightPanelAdapter>(), "Light" });
+        m_Panels.push_back({ std::make_unique<RigidBodyPanelAdapter>(), "RigidBody" });
+        m_Panels.push_back({ std::make_unique<BoxColliderPanelAdapter>(), "Box Collider" });
+        m_Panels.push_back({ std::make_unique<SphereColliderPanelAdapter>(), "Sphere Collider" });
+        m_Panels.push_back({ std::make_unique<CapsuleColliderPanelAdapter>(), "Capsule Collider" });
+        m_Panels.push_back({ std::make_unique<PlaneColliderPanelAdapter>(), "Plane Collider" });
+        m_Panels.push_back({ std::make_unique<ConvexMeshColliderPanelAdapter>(), "Convex Mesh Collider" });
+        m_Panels.push_back({ std::make_unique<TriangleMeshColliderPanelAdapter>(), "Triangle Mesh Collider" });
+        m_Panels.push_back({ std::make_unique<HeightfieldColliderPanelAdapter>(), "Heightfield Collider" });
+        m_Panels.push_back({ std::make_unique<ScriptPanelAdapter>(projectPath), "Script" });
+    }
 
-			char buffer[256];
-			std::strncpy(buffer, entity.GetName().c_str(), sizeof(buffer));
-			buffer[sizeof(buffer) - 1] = '\0';
+    void EntityPropertiePanel::buildMenuItems(const std::string& projectPath)
+    {
+        m_MenuItems.clear();
+        m_MenuItems.reserve(16);
 
-			if (ImGui::InputText(("##" + std::to_string(uuid)).c_str(), buffer, sizeof(buffer)))
-			{
-				if (entity.HasComponent<TagComponent>())
-				{
-					auto& tag = entity.GetComponent<TagComponent>();
-					tag.Tag = std::string(buffer);
-				}
-			}
+        auto add = [&](std::string name,
+            std::string category,
+            std::string keywords,
+            std::function<bool(Entity&)> hasFn,
+            std::function<void(Entity&)> addFn)
+            {
+                m_MenuItems.push_back(MenuItem{ std::move(name), std::move(hasFn), std::move(addFn),
+                                                std::move(category), std::move(keywords) });
+            };
 
-			ImGui::Separator();
+        add("Transform Component", "Core", "transform position rotation scale",
+            [](Entity& e) { return e.HasComponent<TransformComponent>(); },
+            [](Entity& e) { e.AddComponent<TransformComponent>(); });
 
-			m_TransformComponentPanel->Render(entity);
-			m_CameraComponentPanel->Render(entity, scene);
-			m_MeshRendererComponentPanel->Render(entity);
-			m_MeshComponentPanel->Render(entity);
-			m_TerrainComponentPanel->Render(entity);
-			m_MaterialComponentPanel->Render(entity);
-			m_LightComponentPanel->Render(entity);
-			m_RigidBodyComponentPanel->Render(entity);
-			m_BoxColliderComponentPanel->Render(entity);
-			m_MeshColliderComponentPanel->Render(entity);
-			m_CapsuleColliderComponentPanel->Render(entity);
-			m_SphereColliderComponentPanel->Render(entity);
-			m_ScriptComponentPanel->Render(entity);
+        add("Mesh Renderer Component", "Rendering", "mesh renderer material render",
+            [](Entity& e) { return e.HasComponent<MeshRendererComponent>(); },
+            [](Entity& e) { e.AddComponent<MeshRendererComponent>(); });
 
-			if (ImGui::Button("Add Component")) {
-				ImGui::OpenPopup("AddComponent");
-			}
+        add("Mesh Component", "Rendering", "mesh model geometry",
+            [](Entity& e) { return e.HasComponent<MeshComponent>(); },
+            [](Entity& e) {
+                if (!e.HasComponent<MeshRendererComponent>()) e.AddComponent<MeshRendererComponent>();
+                e.AddComponent<MeshComponent>();
+            });
 
-			if (ImGui::BeginPopup("AddComponent"))
-			{
-				if (!entity.HasComponent<TransformComponent>()) {
-					if (ImGui::MenuItem("Transform Component")) {
-						entity.AddComponent<TransformComponent>();
-					}
-				}
+        add("Material Component", "Rendering", "material pbr shader",
+            [](Entity& e) { return e.HasComponent<MaterialComponent>(); },
+            [](Entity& e) { e.AddComponent<MaterialComponent>(); });
 
-				if (!entity.HasComponent<MeshRendererComponent>()) {
-					if (ImGui::MenuItem("Mesh Renderer Component")) {
-						entity.AddComponent<MeshRendererComponent>();
-					}
-				}
+        add("Terrain Component", "Terrain", "terrain heightmap ground",
+            [](Entity& e) { return e.HasComponent<TerrainComponent>(); },
+            [](Entity& e) { e.AddComponent<TerrainComponent>(); });
 
-				if (!entity.HasComponent<MeshComponent>()) {
-					if (ImGui::MenuItem("Mesh Component")) {
-						if (!entity.HasComponent<MeshRendererComponent>()) {
-							entity.AddComponent<MeshRendererComponent>();
-						}
-						entity.AddComponent<MeshComponent>();
-					}
-				}
+        add("Camera Component", "Camera", "camera perspective orthographic",
+            [](Entity& e) { return e.HasComponent<CameraComponent>(); },
+            [](Entity& e) {
+                auto& c = e.AddComponent<CameraComponent>();
+                if (e.HasComponent<TransformComponent>())
+                    c.GetCamera().Init(&e.GetComponent<TransformComponent>());
+            });
 
-				if (!entity.HasComponent<TerrainComponent>()) {
-					if (ImGui::MenuItem("Terrain Component")) {
-						entity.AddComponent<TerrainComponent>();
-					}
-				}
+        add("Directional Light", "Lighting", "light directional sun shadow",
+            [](Entity& e) { return e.HasComponent<LightComponent>(); },
+            [](Entity& e) { e.AddComponent<LightComponent>(LightComponent::LightType::DIRECTIONAL); });
 
-				if (!entity.HasComponent<MaterialComponent>()) {
-					if (ImGui::MenuItem("Material Component")) {
-						entity.AddComponent<MaterialComponent>();
-						entity.GetComponent<MaterialComponent>();
-					}
-				}
+        add("Point Light Component", "Lighting", "light point spot",
+            [](Entity& e) { return e.HasComponent<LightComponent>(); },
+            [](Entity& e) { e.AddComponent<LightComponent>(LightComponent::LightType::POINT); });
 
-				if (!entity.HasComponent<CameraComponent>()) {
-					if (ImGui::MenuItem("Camera Component")) {
-						entity.AddComponent<CameraComponent>().GetCamera().Init(&entity.GetComponent<TransformComponent>());
-					}
-				}
+        add("RigidBody Component", "Physics", "rigidbody physics body",
+            [](Entity& e) { return e.HasComponent<RigidBodyComponent>(); },
+            [](Entity& e) { e.AddComponent<RigidBodyComponent>().Init(); });
 
-				if (!entity.HasComponent<LightComponent>()) {
-					if (ImGui::MenuItem("Directional Light")) {
-						entity.AddComponent<LightComponent>(LightComponent::LightType::DIRECTIONAL);
-					}
-				}
+        add("Box Collider Component", "Physics", "collider box cube",
+            [](Entity& e) { return e.HasComponent<BoxColliderComponent>(); },
+            [](Entity& e) { e.AddComponent<BoxColliderComponent>().Init(); });
 
-				if (!entity.HasComponent<LightComponent>()) {
-					if (ImGui::MenuItem("Point Light Component")) {
-						entity.AddComponent<LightComponent>(LightComponent::LightType::POINT);
-					}
-				}
+        add("Sphere Collider Component", "Physics", "collider sphere ball",
+            [](Entity& e) { return e.HasComponent<SphereColliderComponent>(); },
+            [](Entity& e) { e.AddComponent<SphereColliderComponent>().Init(); });
 
-				if (!entity.HasComponent<RigidBodyComponent>()) {
-					if (ImGui::MenuItem("RigidBody Component")) {
-						entity.AddComponent<RigidBodyComponent>().Init();
-					}
-				}
+        add("Capsule Collider Component", "Physics", "collider capsule character",
+            [](Entity& e) { return e.HasComponent<CapsuleColliderComponent>(); },
+            [](Entity& e) { e.AddComponent<CapsuleColliderComponent>().Init(); });
 
-				if (!entity.HasComponent<BoxColliderComponent>()) {
-					if (ImGui::MenuItem("Box Collider Component")) {
-						entity.AddComponent<BoxColliderComponent>().Init();
-					}
-				}
+        add("Plane Collider Component", "Physics", "collider plane infinite ground wall",
+            [](Entity& e) { return e.HasComponent<PlaneColliderComponent>(); },
+            [](Entity& e) { e.AddComponent<PlaneColliderComponent>().Init(); });
 
-				if (!entity.HasComponent<SphereColliderComponent>()) {
-					if (ImGui::MenuItem("Sphere Collider Component")) {
-						entity.AddComponent<SphereColliderComponent>().Init();
-					}
-				}
+        add("Convex Mesh Collider Component", "Physics", "collider convex hull dynamic",
+            [](Entity& e) { return e.HasComponent<ConvexMeshColliderComponent>(); },
+            [](Entity& e) { e.AddComponent<ConvexMeshColliderComponent>().Init(); });
 
-				if (!entity.HasComponent<MeshColliderComponent>()) {
-					if (ImGui::MenuItem("Mesh Collider Component")) {
-						entity.AddComponent<MeshColliderComponent>();
-					}
-				}
+        add("Triangle Mesh Collider Component", "Physics", "collider triangle mesh static concave",
+            [](Entity& e) { return e.HasComponent<TriangleMeshColliderComponent>(); },
+            [](Entity& e) { e.AddComponent<TriangleMeshColliderComponent>().Init(); });
 
-				if (!entity.HasComponent<CapsuleColliderComponent>()) {
-					if (ImGui::MenuItem("Capsule Collider Component")) {
-						entity.AddComponent<CapsuleColliderComponent>().Init();
-					}
-				}
+        add("Heightfield Collider Component", "Physics", "collider terrain heightfield ground",
+            [](Entity& e) { return e.HasComponent<HeightfieldColliderComponent>(); },
+            [](Entity& e) { e.AddComponent<HeightfieldColliderComponent>().Init(); });
 
-				if (!entity.HasComponent<ScriptComponent>()) {
-					if (ImGui::MenuItem("Scripting Component")) {
-						entity.AddComponent<ScriptComponent>();
-					}
-				}
+        add("Scripting Component", "Scripting", "script csharp lua behavior",
+            [](Entity& e) { return e.HasComponent<ScriptComponent>(); },
+            [](Entity& e) { e.AddComponent<ScriptComponent>(); });
+    }
 
-				ImGui::EndPopup();
-			}
+    void EntityPropertiePanel::renderPanels(Entity& entity, Scene& scene)
+    {
+        for (auto& entry : m_Panels)
+            entry.panel->Render(entity, &scene);
+    }
 
-			if (scene.isOnRuntime())
-			{
-				//ImGui::PopItemFlag();
-				//ImGui::PopStyleVar();
-			}
-		}
+    void EntityPropertiePanel::renderAddComponentPopup(Entity& entity)
+    {
+        if (ImGui::Button("Add Component")) ImGui::OpenPopup("AddComponent");
 
-		ImGui::End();
-	}
+        if (ImGui::BeginPopup("AddComponent"))
+        {
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            ImGui::InputTextWithHint("##search_components", "Search components...", m_SearchBuffer, sizeof(m_SearchBuffer));
+
+            const std::string filter = m_SearchBuffer;
+
+            std::vector<std::string> categories;
+            categories.reserve(16);
+            for (auto& it : m_MenuItems)
+                if (std::find(categories.begin(), categories.end(), it.category) == categories.end())
+                    categories.push_back(it.category);
+
+            std::sort(categories.begin(), categories.end());
+
+            for (const auto& cat : categories)
+            {
+                std::vector<const MenuItem*> items;
+                for (auto& it : m_MenuItems)
+                {
+                    if (it.category != cat) continue;
+                    if (it.hasComponent(entity)) continue;
+                    if (!textContainsI(it.name + " " + it.keywords, filter)) continue;
+                    items.push_back(&it);
+                }
+                if (items.empty()) continue;
+
+                if (ImGui::BeginMenu(cat.c_str()))
+                {
+                    for (auto* it : items)
+                    {
+                        if (ImGui::MenuItem(it->name.c_str()))
+                        {
+                            it->addComponent(entity);
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+
+    void EntityPropertiePanel::OnImGuiRender(Scene& scene, SceneHierarchy& sceneHierarchy)
+    {
+        ImGui::Begin("Inspector");
+
+        if (sceneHierarchy.m_SelectedEntity.IsValid())
+        {
+            Entity entity = sceneHierarchy.m_SelectedEntity;
+            UUID uuid = entity.GetUUID();
+
+            ImGui::Text("UUID: %llu", (unsigned long long)uuid);
+            ImGui::Separator();
+
+            char buffer[256];
+            std::strncpy(buffer, entity.GetName().c_str(), sizeof(buffer));
+            buffer[sizeof(buffer) - 1] = '\0';
+            if (ImGui::InputText(("##" + std::to_string(uuid)).c_str(), buffer, sizeof(buffer)))
+            {
+                if (entity.HasComponent<TagComponent>())
+                    entity.GetComponent<TagComponent>().Tag = std::string(buffer);
+            }
+
+            ImGui::Separator();
+
+            renderPanels(entity, scene);
+            renderAddComponentPopup(entity);
+        }
+
+        ImGui::End();
+    }
 }

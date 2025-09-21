@@ -1,21 +1,21 @@
 #pragma once
 
 #include <QuasarEngine/Entity/Components/Physics/PrimitiveColliderComponent.h>
+
 #include <glm/glm.hpp>
-#include <QuasarEngine/Physic/Shape/SphereShape.h>
-#include <QuasarEngine/Physic/Shape/ProxyShape.h>
-#include <QuasarEngine/Physic/Collision/Collider.h>
 
-namespace QuasarEngine {
+#include <PxPhysicsAPI.h>
 
-    class SphereColliderComponent : public PrimitiveColliderComponent {
+namespace QuasarEngine
+{
+    class SphereColliderComponent : public PrimitiveColliderComponent
+    {
     public:
         SphereColliderComponent();
-        ~SphereColliderComponent();
+        ~SphereColliderComponent() override;
 
         SphereColliderComponent(const SphereColliderComponent&) = delete;
         SphereColliderComponent& operator=(const SphereColliderComponent&) = delete;
-
         SphereColliderComponent(SphereColliderComponent&&) = default;
         SphereColliderComponent& operator=(SphereColliderComponent&&) = default;
 
@@ -23,23 +23,17 @@ namespace QuasarEngine {
         void UpdateColliderMaterial() override;
         void UpdateColliderSize() override;
 
-        bool& UseEntityScale() { return m_UseEntityScale; }
+        bool        m_UseEntityScale = true;
+        float       m_Radius = 0.5f;
 
-        float mass = 1.0f;
-        float friction = 0.5f;
-        float bounciness = 0.2f;
-        float linearDamping = 0.01f;
-        float angularDamping = 0.05f;
+        physx::PxShape* GetShape()    const noexcept { return mShape; }
+        physx::PxMaterial* GetMaterial() const noexcept { return mMaterial; }
 
-        Collider* GetCollider() const { return collider.get(); }
-
-        float& Radius() { return m_Radius; }
-        const float& Radius() const { return m_Radius; }
     private:
-        float m_Radius = 0.1f;
-        bool m_UseEntityScale = true;
+        void AttachOrRebuild();
+        void RecomputeMassFromSize();
 
-        std::unique_ptr<Collider> collider;
+        physx::PxShape* mShape = nullptr;
+        physx::PxMaterial* mMaterial = nullptr;
     };
-
 }

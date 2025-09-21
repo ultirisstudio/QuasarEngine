@@ -1,50 +1,39 @@
 #pragma once
 
 #include <QuasarEngine/Entity/Components/Physics/PrimitiveColliderComponent.h>
+
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <QuasarEngine/Physic/Shape/CollisionShape.h>
-#include <QuasarEngine/Physic/Shape/BoxShape.h>
-#include <QuasarEngine/Physic/Shape/ProxyShape.h>
-#include <QuasarEngine/Physic/Collision/Collider.h>
-#include <QuasarEngine/Physic/Collision/ContactManifold.h>
 
-namespace QuasarEngine {
+#include <PxPhysicsAPI.h>
 
-	class Collider;
+namespace QuasarEngine
+{
+    class BoxColliderComponent : public PrimitiveColliderComponent
+    {
+    public:
+        BoxColliderComponent();
+        ~BoxColliderComponent() override;
 
-	class BoxColliderComponent : public PrimitiveColliderComponent {
-	public:
-		BoxColliderComponent();
-		~BoxColliderComponent();
+        BoxColliderComponent(const BoxColliderComponent&) = delete;
+        BoxColliderComponent& operator=(const BoxColliderComponent&) = delete;
+        BoxColliderComponent(BoxColliderComponent&&) = default;
+        BoxColliderComponent& operator=(BoxColliderComponent&&) = default;
 
-		BoxColliderComponent(const BoxColliderComponent&) = delete;
-		BoxColliderComponent& operator=(const BoxColliderComponent&) = delete;
+        void Init() override;
+        void UpdateColliderMaterial() override;
+        void UpdateColliderSize() override;
 
-		BoxColliderComponent(BoxColliderComponent&&) = default;
-		BoxColliderComponent& operator=(BoxColliderComponent&&) = default;
+        bool  m_UseEntityScale = true;
+        glm::vec3 m_Size = { 1.f, 1.f, 1.f };
 
-		void Init() override;
-		void UpdateColliderMaterial() override;
-		void UpdateColliderSize() override;
+        physx::PxShape* GetShape()    const noexcept { return mShape; }
+        physx::PxMaterial* GetMaterial() const noexcept { return mMaterial; }
 
-		bool m_UseEntityScale = true;
-		glm::vec3 m_Size = { 1.0f, 1.0f, 1.0f };
+    private:
+        void AttachOrRebuild();
+        void RecomputeMassFromSize();
 
-		bool& UseEntityScale() { return m_UseEntityScale; }
-		glm::vec3& Size() { return m_Size; }
-		float mass = 1.0f;
-		float friction = 0.5f;
-		float bounciness = 0.2f;
-
-		float linearDamping = 0.01f;
-		float angularDamping = 0.05f;
-
-		Collider* GetCollider() const { return collider.get(); }
-
-	private:
-		std::unique_ptr<Collider> collider;
-
-	};
-
+        physx::PxShape* mShape = nullptr;
+        physx::PxMaterial* mMaterial = nullptr;
+    };
 }

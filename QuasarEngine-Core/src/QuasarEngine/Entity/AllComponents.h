@@ -10,9 +10,14 @@
 #include <QuasarEngine/Entity/Components/LightComponent.h>
 #include <QuasarEngine/Entity/Components/TerrainComponent.h>
 #include <QuasarEngine/Entity/Components/MeshRendererComponent.h>
+
 #include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
-#include <QuasarEngine/Entity/Components/Physics/MeshColliderComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/CapsuleColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/PlaneColliderComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/SphereColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/ConvexMeshColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/TriangleMeshColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/HeightfieldColliderComponent.h>
+
 #include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>

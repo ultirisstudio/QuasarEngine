@@ -1,82 +1,99 @@
 #include "qepch.h"
+
 #include "SphereColliderComponent.h"
 
 #include <QuasarEngine/Entity/Entity.h>
-#include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
-#include <QuasarEngine/Physic/Collision/CollisionDetection.h>
+#include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
-#include <QuasarEngine/Physic/RigidBody.h>
-#include <QuasarEngine.h>
 
-namespace QuasarEngine {
+using namespace physx;
 
-    SphereColliderComponent::SphereColliderComponent() {
+namespace QuasarEngine
+{
+    static inline PxVec3 ToPx(const glm::vec3& v) { return PxVec3(v.x, v.y, v.z); }
+
+    SphereColliderComponent::SphereColliderComponent() {}
+    SphereColliderComponent::~SphereColliderComponent()
+    {
+        if (mShape) { mShape->release(); mShape = nullptr; }
+        if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
     }
 
-    SphereColliderComponent::~SphereColliderComponent() {
-        if (collider) {
-            CollisionDetection::UnregisterCollider(collider.get());
-        }
+    void SphereColliderComponent::Init()
+    {
+        auto& phys = PhysicEngine::Instance();
+        if (!mMaterial) mMaterial = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
+        AttachOrRebuild();
+        UpdateColliderMaterial();
     }
 
-    void SphereColliderComponent::Init() {
-        Entity entity{ entt_entity, registry };
-        auto& tc = entity.GetComponent<TransformComponent>();
-
-        if (entity.HasComponent<RigidBodyComponent>()) {
-            auto& rb = entity.GetComponent<RigidBodyComponent>();
-
-            float radius = m_UseEntityScale ? glm::compMax(tc.Scale) * m_Radius : m_Radius;
-            std::unique_ptr<SphereShape> shape = std::make_unique<SphereShape>(radius);
-
-            collider = std::make_unique<Collider>(rb.GetRigidBody());
-            collider->AddShape(std::move(shape));
-
-            rb.GetRigidBody()->AddCollider(collider.get());
-
-            if (collider) {
-                CollisionDetection::RegisterCollider(collider.get());
-                UpdateColliderMaterial();
-            }
-        }
-    }
-
-    void SphereColliderComponent::UpdateColliderMaterial() {
-        if (!collider) return;
-
-        auto& shapes = collider->GetProxyShapes();
-        for (auto& shape : shapes) {
-            shape->SetFriction(friction);
-            shape->SetBounciness(bounciness);
-        }
+    void SphereColliderComponent::AttachOrRebuild()
+    {
+        auto& phys = PhysicEngine::Instance();
+        auto* sdk = phys.GetPhysics();
+        if (!sdk) return;
 
         Entity entity{ entt_entity, registry };
-        if (entity.HasComponent<RigidBodyComponent>()) {
-            auto& rb = entity.GetComponent<RigidBodyComponent>();
-            if (rb.GetRigidBody()) {
-                rb.GetRigidBody()->mass = mass;
-                rb.GetRigidBody()->inverseMass = (mass > 0.0f) ? 1.0f / mass : 0.0f;
-            }
+        if (!entity.HasComponent<RigidBodyComponent>()) return;
+        auto& rb = entity.GetComponent<RigidBodyComponent>();
+        PxRigidActor* actor = rb.GetActor();
+        if (!actor) return;
+
+        PxShape* old = mShape;
+
+        float scale = 1.f;
+        if (m_UseEntityScale)
+        {
+            const auto& s = entity.GetComponent<TransformComponent>().Scale;
+            scale = std::max(s.x, std::max(s.y, s.z));
         }
+        const float radius = std::max(0.0001f, m_Radius * scale);
+
+        PxShape* shape = sdk->createShape(PxSphereGeometry(radius), *mMaterial, true);
+        if (!shape) return;
+
+        if (old) actor->detachShape(*old);
+        if (old) old->release();
+        mShape = shape;
+        actor->attachShape(*mShape);
+
+        RecomputeMassFromSize();
     }
 
-    void SphereColliderComponent::UpdateColliderSize() {
-        if (!collider) return;
+    void SphereColliderComponent::UpdateColliderMaterial()
+    {
+        if (!mMaterial) return;
+        mMaterial->setStaticFriction(friction);
+        mMaterial->setDynamicFriction(friction);
+        mMaterial->setRestitution(bounciness);
+        RecomputeMassFromSize();
+    }
 
+    void SphereColliderComponent::UpdateColliderSize()
+    {
+        AttachOrRebuild();
+    }
+
+    void SphereColliderComponent::RecomputeMassFromSize()
+    {
         Entity entity{ entt_entity, registry };
-        float scale = m_UseEntityScale ?
-            glm::compMax(entity.GetComponent<TransformComponent>().Scale) :
-            1.0f;
+        if (!entity.HasComponent<RigidBodyComponent>()) return;
+        auto& rb = entity.GetComponent<RigidBodyComponent>();
+        PxRigidDynamic* dyn = rb.GetDynamic();
+        if (!dyn || !mShape) return;
 
-        auto& shapes = collider->GetProxyShapes();
-        if (!shapes.empty()) {
-            shapes.clear();
+        float scale = 1.f;
+        if (m_UseEntityScale)
+        {
+            const auto& s = entity.GetComponent<TransformComponent>().Scale;
+            scale = std::max(s.x, std::max(s.y, s.z));
         }
+        const float r = std::max(0.0001f, m_Radius * scale);
+        const float volume = (4.0f / 3.0f) * 3.14159265358979323846f * r * r * r;
+        const float densityVal = std::max(0.000001f, mass / volume);
 
-        float scaledRadius = scale * m_Radius;
-        std::unique_ptr<SphereShape> newShape = std::make_unique<SphereShape>(scaledRadius);
-        collider->AddShape(std::move(newShape));
+        PxRigidBodyExt::updateMassAndInertia(*dyn, densityVal);
+        dyn->setMass(mass);
     }
-
 }

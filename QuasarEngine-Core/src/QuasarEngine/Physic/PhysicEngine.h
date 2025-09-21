@@ -1,46 +1,101 @@
 #pragma once
-#include <vector>
-#include "QuasarEngine/Physic/RigidBody.h"
-#include "QuasarEngine/Physic/Collision/Collider.h"
-#include "QuasarEngine/Physic/Collision/CollisionDetection.h"
-#include "QuasarEngine/Physic/Jolt&Constraint/Joint.h"
 
+#include <PxPhysicsAPI.h>
+
+#define QE_ENABLE_PVD 1
+
+#if QE_ENABLE_PVD
+#  include <pvd/PxPvd.h>
+#  include <pvd/PxPvdTransport.h>
+#endif
+
+#include <memory>
+#include <vector>
+#include <functional>
+#include <cstdint>
 
 namespace QuasarEngine
 {
+    class PxLoggerCallback final : public physx::PxErrorCallback
+    {
+    public:
+        void reportError(physx::PxErrorCode::Enum code,
+            const char* message,
+            const char* file,
+            int line) override;
+    };
 
-	struct JointInfo {
-		RigidBody* bodyA = nullptr;
-		RigidBody* bodyB = nullptr;
-		JointType type;
-		glm::vec3 anchor = glm::vec3(0.0f);
-		glm::vec3 axis = glm::vec3(0, 1, 0);
-		float minLimit = 0.0f;
-		float maxLimit = 0.0f;
-		float stiffness = 1.0f;
-	};
+    class PhysicEngine
+    {
+    public:
+        static PhysicEngine& Instance();
 
+        PhysicEngine(const PhysicEngine&) = delete;
+        PhysicEngine& operator=(const PhysicEngine&) = delete;
+        PhysicEngine(PhysicEngine&&) = delete;
+        PhysicEngine& operator=(PhysicEngine&&) = delete;
 
-	class PhysicEngine
-	{
-	public:
-		static void Init();
-		static void Shutdown();
+        bool Initialize(uint32_t numThreads = 2,
+            const physx::PxVec3& gravity = physx::PxVec3(0.f, -9.81f, 0.f),
+            bool enableCCD = true,
+            bool enablePVD = true,
+            const char* pvdHost = "127.0.0.1",
+            uint32_t pvdPort = 5425);
 
-		static void Update(double dt);
+        void Shutdown();
 
-		static void Reload();
+        void Step(float dt, float fixedTimestep = 1.f / 60.f, uint32_t maxSubsteps = 4);
 
-		static void RegisterRigidBody(RigidBody* body);
-		static void ResolveCollision(const ContactManifold& contact);
+        physx::PxPhysics* GetPhysics()        const noexcept { return mPhysics; }
+        physx::PxScene* GetScene()          const noexcept { return mScene; }
+        physx::PxMaterial* GetDefaultMaterial()const noexcept { return mDefaultMaterial; }
+        physx::PxFoundation* GetFoundation()     const noexcept { return mFoundation; }
+        physx::PxCpuDispatcher* GetDispatcher()     const noexcept { return mDispatcher; }
 
-		static void DestroyJoint(Joint* joint);
-		static void RegisterJoint(Joint* joint);
+        physx::PxMaterial* CreateMaterial(float sf = 0.5f, float df = 0.5f, float r = 0.1f);
+        physx::PxRigidStatic* CreateStaticPlane(const physx::PxVec3& n, float distance, physx::PxMaterial* mat = nullptr);
+        physx::PxRigidStatic* CreateStaticBox(const physx::PxTransform& pose, const physx::PxVec3& halfExtents, physx::PxMaterial* mat = nullptr);
+        physx::PxRigidDynamic* CreateDynamicBox(const physx::PxTransform& pose, const physx::PxVec3& halfExtents, float density = 10.f, physx::PxMaterial* mat = nullptr);
+        physx::PxRigidDynamic* CreateDynamicSphere(const physx::PxTransform& pose, float radius, float density = 10.f, physx::PxMaterial* mat = nullptr);
 
-		static Joint* CreateJoint(const JointInfo& info);
-		static void Clear();
+        void AddActor(physx::PxActor& actor);
+        void RemoveActor(physx::PxActor& actor);
 
-	private:
-		static std::vector<Joint*> s_Joints;
-	};
+        void SetGravity(const physx::PxVec3& g);
+        physx::PxVec3 GetGravity() const;
+
+        bool Raycast(const physx::PxVec3& origin,
+            const physx::PxVec3& unitDir,
+            float maxDistance,
+            physx::PxRaycastBuffer& outHit) const;
+
+        physx::PxConvexMesh* CreateConvexMesh(const physx::PxConvexMeshDesc& desc);
+        physx::PxTriangleMesh* CreateTriangleMesh(const physx::PxTriangleMeshDesc& desc);
+
+    private:
+        PhysicEngine() = default;
+        ~PhysicEngine();
+
+        void ReleaseAll();
+
+        physx::PxDefaultAllocator         mAllocator;
+        PxLoggerCallback                  mErrorCallback;
+
+        physx::PxFoundation* mFoundation = nullptr;
+        physx::PxPhysics* mPhysics = nullptr;
+        physx::PxDefaultCpuDispatcher* mDispatcher = nullptr;
+        physx::PxScene* mScene = nullptr;
+        physx::PxMaterial* mDefaultMaterial = nullptr;
+
+        physx::PxCookingParams   mCookingParams{ physx::PxTolerancesScale() };
+
+#if QE_ENABLE_PVD
+        physx::PxPvd* mPvd = nullptr;
+        physx::PxPvdTransport* mPvdTransport = nullptr;
+        bool                              mPvdConnected = false;
+#endif
+
+        float mAccumulator = 0.f;
+        bool  mInitialized = false;
+    };
 }

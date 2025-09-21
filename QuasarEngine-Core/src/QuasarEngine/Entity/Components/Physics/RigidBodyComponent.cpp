@@ -1,93 +1,142 @@
 #include "qepch.h"
+
 #include "RigidBodyComponent.h"
 
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-
 #include <QuasarEngine/Entity/Entity.h>
-#include <QuasarEngine/Physic/RigidBody.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
-#include <QuasarEngine/Physic/Collision/Collider.h>
 
-namespace QuasarEngine {
+using namespace physx;
 
-	RigidBodyComponent::RigidBodyComponent() {}
+namespace QuasarEngine
+{
+    static inline PxVec3 ToPx(const glm::vec3& v) { return PxVec3(v.x, v.y, v.z); }
+    static inline PxQuat ToPx(const glm::quat& q) { return PxQuat(q.x, q.y, q.z, q.w); }
+    static inline glm::vec3 ToGlm(const PxVec3& v) { return glm::vec3(v.x, v.y, v.z); }
+    static inline glm::quat ToGlm(const PxQuat& q) { return glm::quat(q.w, q.x, q.y, q.z); }
 
-	RigidBodyComponent::~RigidBodyComponent() {
-		Destroy();
-	}
+    RigidBodyComponent::RigidBodyComponent() {}
+    RigidBodyComponent::~RigidBodyComponent() { Destroy(); }
 
-	void RigidBodyComponent::Destroy() {
-		rigidBody.reset();
-	}
+    void RigidBodyComponent::Destroy()
+    {
+        if (mActor)
+        {
+            PhysicEngine::Instance().RemoveActor(*mActor);
+            if (mShape) { mShape->release(); mShape = nullptr; }
+            if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+            mActor->release();
+            mActor = nullptr;
+            mDynamic = nullptr;
+        }
+    }
 
-	void RigidBodyComponent::Init() {
-		Entity entity{ entt_entity, registry };
-		auto& tc = entity.GetComponent<TransformComponent>();
+    RigidBodyComponent::BodyType RigidBodyComponent::ParseBodyType(const std::string& s) const
+    {
+        if (s == "STATIC") return BodyType::Static;
+        if (s == "KINEMATIC") return BodyType::Kinematic;
+        return BodyType::Dynamic;
+    }
 
-		glm::vec3 pos = tc.Position;
-		glm::quat rot = glm::quat(tc.Rotation);
+    void RigidBodyComponent::RebuildActor()
+    {
+        auto& phys = PhysicEngine::Instance();
+        auto* sdk = phys.GetPhysics();
+        auto* scene = phys.GetScene();
+        if (!sdk || !scene) return;
 
-		float mass = (bodyTypeString == "DYNAMIC") ? 1.0f : 0.0f;
-		rigidBody = std::make_unique<RigidBody>(pos, rot, mass);
+        Entity entity{ entt_entity, registry };
+        auto& tc = entity.GetComponent<TransformComponent>();
+        PxTransform pose(ToPx(tc.Position), ToPx(glm::quat(tc.Rotation)));
 
+        PxMaterial* mat = mMaterial ? mMaterial : (mMaterial = phys.GetPhysics()->createMaterial(0.5f, 0.5f, 0.1f));
+        if (mActor)
+        {
+            PhysicEngine::Instance().RemoveActor(*mActor);
+            if (mShape) { mShape->release(); mShape = nullptr; }
+            mActor->release();
+            mActor = nullptr;
+            mDynamic = nullptr;
+        }
 
-		UpdateBodyType();
-		UpdateLinearAxisFactor();
-		UpdateAngularAxisFactor();
-		UpdateEnableGravity();  // Important pour bien initialiser l'état
-		UpdateDamping();
+        mCurrentType = ParseBodyType(bodyTypeString);
+        if (mCurrentType == BodyType::Static)
+        {
+            PxRigidStatic* a = sdk->createRigidStatic(pose);
+            mShape = sdk->createShape(PxBoxGeometry(ToPx(halfExtents)), *mat, true);
+            a->attachShape(*mShape);
+            mActor = a;
+        }
+        else
+        {
+            PxRigidDynamic* a = sdk->createRigidDynamic(pose);
+            mShape = sdk->createShape(PxBoxGeometry(ToPx(halfExtents)), *mat, true);
+            a->attachShape(*mShape);
+            PxRigidBodyExt::updateMassAndInertia(*a, density);
+            if (mCurrentType == BodyType::Kinematic) a->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+            mActor = a;
+            mDynamic = a;
+        }
 
-		// Enregistrement dans le moteur physique
-		PhysicEngine::RegisterRigidBody(rigidBody.get());
+        //mActor->setActorFlag(physx::PxActorFlag::eVISUALIZATION, true);
 
-	}
+        PhysicEngine::Instance().AddActor(*mActor);
+        UpdateEnableGravity();
+        UpdateDamping();
+        UpdateLinearAxisFactor();
+        UpdateAngularAxisFactor();
+    }
 
-	void RigidBodyComponent::Update(float dt) {
-		if (!rigidBody) return;
+    void RigidBodyComponent::Init()
+    {
+        RebuildActor();
+    }
 
-		Entity entity{ entt_entity, registry };
-		auto& tc = entity.GetComponent<TransformComponent>();
+    void RigidBodyComponent::Update(float)
+    {
+        if (!mActor) return;
+        Entity entity{ entt_entity, registry };
+        auto& tc = entity.GetComponent<TransformComponent>();
 
-		tc.Position = rigidBody->GetPosition();
-		tc.Rotation = glm::eulerAngles(rigidBody->GetOrientation());
-	}
+        const PxTransform p = mActor->getGlobalPose();
+        tc.Position = ToGlm(p.p);
+        tc.Rotation = glm::eulerAngles(ToGlm(p.q));
+    }
 
-	void RigidBodyComponent::UpdateEnableGravity() {
-		if (!rigidBody) return;
-		rigidBody->SetEnableGravity(enableGravity);
-	}
+    void RigidBodyComponent::UpdateEnableGravity()
+    {
+        if (!mActor) return;
+        mActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !enableGravity);
+    }
 
-	void RigidBodyComponent::UpdateDamping() {
-		if (!rigidBody) return;
-		rigidBody->linearDamping = linearDamping;
-		rigidBody->angularDamping = angularDamping;
-	}
+    void RigidBodyComponent::UpdateDamping()
+    {
+        if (!mDynamic) return;
+        mDynamic->setLinearDamping(linearDamping);
+        mDynamic->setAngularDamping(angularDamping);
+    }
 
-	void RigidBodyComponent::UpdateBodyType() {
-		if (!rigidBody) return;
+    void RigidBodyComponent::UpdateBodyType()
+    {
+        if (!mActor) { RebuildActor(); return; }
+        const BodyType desired = ParseBodyType(bodyTypeString);
+        if (desired == mCurrentType) return;
+        RebuildActor();
+    }
 
-		if (bodyTypeString == "DYNAMIC") {
-			rigidBody->type = RigidBodyType::Dynamic;
-		}
-		else if (bodyTypeString == "STATIC") {
-			rigidBody->type = RigidBodyType::Static;
-		}
-		else if (bodyTypeString == "KINEMATIC") {
-			rigidBody->type = RigidBodyType::Kinematic;
-		}
-		else {
-			std::cout << "Invalid body type: " << bodyTypeString << std::endl;
-		}
-	}
+    void RigidBodyComponent::UpdateLinearAxisFactor()
+    {
+        if (!mDynamic) return;
+        mDynamic->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_X, !m_LinearAxisFactorX);
+        mDynamic->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_Y, !m_LinearAxisFactorY);
+        mDynamic->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_Z, !m_LinearAxisFactorZ);
+    }
 
-	void RigidBodyComponent::UpdateLinearAxisFactor() {
-		// À implémenter plus tard dans RigidBody (lock des vitesses)
-	}
-
-	void RigidBodyComponent::UpdateAngularAxisFactor() {
-		// À implémenter plus tard dans RigidBody (lock des rotations)
-	}
-
+    void RigidBodyComponent::UpdateAngularAxisFactor()
+    {
+        if (!mDynamic) return;
+        mDynamic->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_X, !m_AngularAxisFactorX);
+        mDynamic->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y, !m_AngularAxisFactorY);
+        mDynamic->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z, !m_AngularAxisFactorZ);
+    }
 }

@@ -200,7 +200,7 @@ namespace QuasarEngine
 
     void Scene::UpdateRuntime(double deltaTime)
     {
-        PhysicEngine::Update(deltaTime);
+        PhysicEngine::Instance().Step(deltaTime);
 
         for (auto e : GetAllEntitiesWith<RigidBodyComponent>())
         {
@@ -224,7 +224,7 @@ namespace QuasarEngine
 
         Renderer::m_SceneData.m_ScriptSystem->Start();
 
-        Application::Get().GetWindow().SetInputMode(true, true);
+        //Application::Get().GetWindow().SetInputMode(true, true);
     }
 
     void Scene::OnRuntimeStop()

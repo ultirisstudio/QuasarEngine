@@ -39,7 +39,7 @@ namespace QuasarEngine
 			Camera& camera = scene.GetPrimaryCamera();
 			Renderer::RenderSkybox(camera);
 			Renderer::Render(camera);
-			Renderer::RenderUI(camera);
+			//Renderer::RenderUI(camera);
 
 			Renderer::EndScene();
 		}

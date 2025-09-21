@@ -1,45 +1,53 @@
 #pragma once
 
-#include "../SceneManager.h"
-
-#include "SceneHierarchy.h"
-
-#include "ComponentPanels/TransformComponentPanel.h"
-#include "ComponentPanels/CameraComponentPanel.h"
-#include "ComponentPanels/MeshComponentPanel.h"
-#include "ComponentPanels/TerrainComponentPanel.h"
-#include "ComponentPanels/MaterialComponentPanel.h"
-#include "ComponentPanels/LightComponentPanel.h"
-#include "ComponentPanels/MeshRendererComponentPanel.h"
-#include "ComponentPanels/Physics/RigidBodyComponentPanel.h"
-#include "ComponentPanels/Physics/BoxColliderComponentPanel.h"
-#include "ComponentPanels/Physics/MeshColliderComponentPanel.h"
-#include "ComponentPanels/Physics/CapsuleColliderComponentPanel.h"
-#include "ComponentPanels/Physics/SphereColliderComponentPanel.h"
-#include "ComponentPanels/Scripting/ScriptComponentPanel.h"
+#include <memory>
+#include <string>
+#include <vector>
+#include <functional>
 
 namespace QuasarEngine
 {
-	class EntityPropertiePanel
-	{
-	public:
-		EntityPropertiePanel(const std::string& projectPath);
-		~EntityPropertiePanel();
+    class Scene;
+    class SceneHierarchy;
+    class Entity;
+    class IComponentPanel;
 
-		void OnImGuiRender(Scene& scene, SceneHierarchy& sceneHierarchy);
-	private:
-		std::unique_ptr<TransformComponentPanel> m_TransformComponentPanel;
-		std::unique_ptr<CameraComponentPanel> m_CameraComponentPanel;
-		std::unique_ptr<MeshComponentPanel> m_MeshComponentPanel;
-		std::unique_ptr<TerrainComponentPanel> m_TerrainComponentPanel;
-		std::unique_ptr<MaterialComponentPanel> m_MaterialComponentPanel;
-		std::unique_ptr<LightComponentPanel> m_LightComponentPanel;
-		std::unique_ptr<MeshRendererComponentPanel> m_MeshRendererComponentPanel;
-		std::unique_ptr<RigidBodyComponentPanel> m_RigidBodyComponentPanel;
-		std::unique_ptr<BoxColliderComponentPanel> m_BoxColliderComponentPanel;
-		std::unique_ptr<MeshColliderComponentPanel> m_MeshColliderComponentPanel;
-		std::unique_ptr<CapsuleColliderComponentPanel> m_CapsuleColliderComponentPanel;
-		std::unique_ptr<SphereColliderComponentPanel> m_SphereColliderComponentPanel;
-		std::unique_ptr<ScriptComponentPanel> m_ScriptComponentPanel;
-	};
+    class EntityPropertiePanel
+    {
+    public:
+        explicit EntityPropertiePanel(const std::string& projectPath);
+        ~EntityPropertiePanel();
+
+        void OnImGuiRender(Scene& scene, SceneHierarchy& sceneHierarchy);
+
+    private:
+        struct PanelEntry
+        {
+            std::unique_ptr<IComponentPanel> panel;
+            std::string name;
+        };
+
+        struct MenuItem
+        {
+            std::string name;
+            std::function<bool(Entity&)> hasComponent;
+            std::function<void(Entity&)> addComponent;
+            std::string category;
+            std::string keywords;
+        };
+
+        void buildPanels(const std::string& projectPath);
+        void buildMenuItems(const std::string& projectPath);
+        void renderPanels(Entity& entity, Scene& scene);
+        void renderAddComponentPopup(Entity& entity);
+
+        static bool textContainsI(const std::string& hay, const std::string& needle);
+
+        std::vector<PanelEntry> m_Panels;
+        std::vector<MenuItem>   m_MenuItems;
+
+        std::string m_ProjectPath;
+
+        char m_SearchBuffer[128] = { 0 };
+    };
 }

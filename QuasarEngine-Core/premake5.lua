@@ -35,8 +35,7 @@ project "QuasarEngine-Core"
 		"%{IncludeDir.VulkanSDK}",
 		"%{IncludeDir.sol2}",
 		"%{IncludeDir.lua}",
-		"%{IncludeDir.PhysX}",
-		"%{IncludeDir.PhysXsrc}"
+		"%{IncludeDir.PhysX}"
 	}
 	
 	libdirs
@@ -60,19 +59,35 @@ project "QuasarEngine-Core"
 		"lua",
 		
 		-- PhysX modules
-		"PhysXExtensions",
-		"PhysXCooking",
-		"PhysXCharacterKinematic",
-		"PhysXVehicle2",
-		"PhysX",
-		"SimulationController",
-		"SceneQuery",
-		"PhysXTask",
-		"LowLevelDynamics",
-		"LowLevelAABB",
-		"LowLevel",
-		"PhysXCommon",
-		"PhysXFoundation",
+		-- "PhysXExtensions",
+		-- "PhysXCooking",
+		-- "PhysXCharacterKinematic",
+		-- "PhysXVehicle2",
+		-- "PhysX",
+		-- "SimulationController",
+		-- "SceneQuery",
+		-- "PhysXTask",
+		-- "LowLevelDynamics",
+		-- "LowLevelAABB",
+		-- "LowLevel",
+		-- "PhysXCommon",
+		-- "PhysXFoundation",
+		
+		"%{LibraryDir.PhysX}/PhysXExtensions_static_64.lib",
+		"%{LibraryDir.PhysX}/PhysXCooking_64.lib",
+		"%{LibraryDir.PhysX}/PhysXCharacterKinematic_static_64.lib",
+		"%{LibraryDir.PhysX}/PhysXVehicle2_static_64.lib",
+		"%{LibraryDir.PhysX}/PhysX_64.lib",
+		"%{LibraryDir.PhysX}/SimulationController_static_64.lib",
+		"%{LibraryDir.PhysX}/SceneQuery_static_64.lib",
+		"%{LibraryDir.PhysX}/PhysXTask_static_64.lib",
+		"%{LibraryDir.PhysX}/LowLevelDynamics_static_64.lib",
+		"%{LibraryDir.PhysX}/LowLevelAABB_static_64.lib",
+		"%{LibraryDir.PhysX}/LowLevel_static_64.lib",
+		"%{LibraryDir.PhysX}/PhysXCommon_64.lib",
+		"%{LibraryDir.PhysX}/PhysXFoundation_64.lib",
+		"%{LibraryDir.PhysX}/PhysXPvdSDK_static_64.lib",
+		"%{LibraryDir.PhysX}/PVDRuntime_64.lib",
 		
 		"%{Library.Vulkan}" --,
 		-- "%{Library.VulkanUtils}"

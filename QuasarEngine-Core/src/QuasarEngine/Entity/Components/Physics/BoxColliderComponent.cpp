@@ -1,94 +1,90 @@
 #include "qepch.h"
+
 #include "BoxColliderComponent.h"
 
 #include <QuasarEngine/Entity/Entity.h>
-#include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
-#include <QuasarEngine/Physic/Collision/Collider.h>
-#include <QuasarEngine/Physic/Shape/BoxShape.h>
-#include <QuasarEngine/Physic/Shape/CollisionShape.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
-#include <QuasarEngine/Physic/Shape/ProxyShape.h>
-#include <QuasarEngine/Physic/RigidBody.h>
-#include <QuasarEngine/Physic/Collision/CollisionDetection.h>
+#include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
 
+using namespace physx;
 
-namespace QuasarEngine {
+namespace QuasarEngine
+{
+    static inline PxVec3 ToPx(const glm::vec3& v) { return PxVec3(v.x, v.y, v.z); }
 
-	BoxColliderComponent::BoxColliderComponent() {}
+    BoxColliderComponent::BoxColliderComponent() {}
 
-	BoxColliderComponent::~BoxColliderComponent() {
-		if (collider) {
-			CollisionDetection::UnregisterCollider(collider.get());
-		}
-	}
+    BoxColliderComponent::~BoxColliderComponent()
+    {
+        if (mShape) { mShape->release(); mShape = nullptr; }
+        if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+    }
 
-	void BoxColliderComponent::Init() {
-		Entity entity{ entt_entity, registry };
-		auto& tc = entity.GetComponent<TransformComponent>();
+    void BoxColliderComponent::Init()
+    {
+        auto& phys = PhysicEngine::Instance();
+        if (!mMaterial) mMaterial = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
+        AttachOrRebuild();
+        UpdateColliderMaterial();
+    }
 
-		if (entity.HasComponent<RigidBodyComponent>()) {
-			auto& rb = entity.GetComponent<RigidBodyComponent>();
+    void BoxColliderComponent::AttachOrRebuild()
+    {
+        auto& phys = PhysicEngine::Instance();
+        auto* sdk = phys.GetPhysics();
+        if (!sdk) return;
 
-			glm::vec3 size = m_UseEntityScale ? tc.Scale : m_Size;
-			auto shape = std::make_unique<BoxShape>(size);
+        Entity entity{ entt_entity, registry };
+        if (!entity.HasComponent<RigidBodyComponent>()) return;
+        auto& rb = entity.GetComponent<RigidBodyComponent>();
+        PxRigidActor* actor = rb.GetActor();
+        if (!actor) return;
 
-			collider = std::make_unique<Collider>(rb.GetRigidBody());
-			collider->AddShape(std::move(shape));
+        PxShape* old = mShape;
+        glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
+        PxVec3 he = ToPx(full * 0.5f);
 
-			rb.GetRigidBody()->AddCollider(collider.get());
+        PxShape* shape = sdk->createShape(PxBoxGeometry(he), *mMaterial, true);
+        if (!shape) return;
 
-			if (collider) {
-				CollisionDetection::RegisterCollider(collider.get());
-				std::cout << "[DEBUG] Collider enregistré : " << collider.get() << std::endl;
+        if (old) actor->detachShape(*old);
+        if (old) old->release();
+        mShape = shape;
 
-				UpdateColliderMaterial();
-			}
-		}
-	}
+        //mShape->setFlag(physx::PxShapeFlag::eVISUALIZATION, true);
 
-	void BoxColliderComponent::UpdateColliderMaterial()
-	{
-		if (!collider.get()) return;
+        actor->attachShape(*mShape);
 
-		auto& shapes = collider->GetProxyShapes();
-		for (auto& shape : shapes)
-		{
-			shape->SetFriction(friction);
-			shape->SetBounciness(bounciness);
-		}
+        RecomputeMassFromSize();
+    }
 
-		Entity entity{ entt_entity, registry };
-		if (entity.HasComponent<RigidBodyComponent>())
-		{
-			auto& rb = entity.GetComponent<RigidBodyComponent>();
-			if (rb.GetRigidBody())
-			{
-				rb.GetRigidBody()->mass = mass;
-				rb.GetRigidBody()->inverseMass = (mass > 0.0f) ? 0.5f / mass : 0.0f;
-			}
-		}
-	}
+    void BoxColliderComponent::UpdateColliderMaterial()
+    {
+        if (!mMaterial) return;
+        mMaterial->setStaticFriction(friction);
+        mMaterial->setDynamicFriction(friction);
+        mMaterial->setRestitution(bounciness);
+        RecomputeMassFromSize();
+    }
 
-	void BoxColliderComponent::UpdateColliderSize() {
-		if (!collider.get()) return;
+    void BoxColliderComponent::UpdateColliderSize()
+    {
+        AttachOrRebuild();
+    }
 
-		Entity entity{ entt_entity, registry };
-		glm::vec3 scale = m_UseEntityScale ?
-			entity.GetComponent<TransformComponent>().Scale :
-			m_Size;
+    void BoxColliderComponent::RecomputeMassFromSize()
+    {
+        Entity entity{ entt_entity, registry };
+        if (!entity.HasComponent<RigidBodyComponent>()) return;
+        auto& rb = entity.GetComponent<RigidBodyComponent>();
+        PxRigidDynamic* dyn = rb.GetDynamic();
+        if (!dyn || !mShape) return;
 
-		// Pour simplifier : on efface la shape précédente si une seule
-		auto& shapes = collider->GetProxyShapes();
-		if (!shapes.empty()) {
-			shapes.clear();  // On libère la forme actuelle (à améliorer plus tard pour multi-shape)
-		}
-
-		// Nouvelle forme avec taille mise à jour
-		std::unique_ptr<BoxShape> newShape = std::make_unique<BoxShape>(scale);
-
-		// Ré-attache la nouvelle shape
-		collider->AddShape(std::move(newShape));
-	}
-
+        glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
+        const float volume = std::max(0.000001f, full.x * full.y * full.z);
+        const float density = std::max(0.000001f, mass / volume);
+        PxRigidBodyExt::updateMassAndInertia(*dyn, density);
+        dyn->setMass(mass);
+    }
 }
