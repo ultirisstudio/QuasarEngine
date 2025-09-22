@@ -2,7 +2,7 @@
 
 #include <PxPhysicsAPI.h>
 
-#define QE_ENABLE_PVD 1
+#define QE_ENABLE_PVD 0
 
 #if QE_ENABLE_PVD
 #  include <pvd/PxPvd.h>

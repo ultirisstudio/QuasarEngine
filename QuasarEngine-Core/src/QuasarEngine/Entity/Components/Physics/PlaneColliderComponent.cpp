@@ -18,8 +18,8 @@ namespace QuasarEngine
     PlaneColliderComponent::PlaneColliderComponent() {}
     PlaneColliderComponent::~PlaneColliderComponent()
     {
-        if (mShape) { mShape->release();    mShape = nullptr; }
-        if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+        //if (mShape) { mShape->release();    mShape = nullptr; }
+        //if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
     }
 
     void PlaneColliderComponent::Init()

@@ -22,10 +22,10 @@ namespace QuasarEngine
     {
         if (mActor)
         {
-            PhysicEngine::Instance().RemoveActor(*mActor);
-            if (mShape) { mShape->release(); mShape = nullptr; }
-            if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
-            mActor->release();
+            //PhysicEngine::Instance().RemoveActor(*mActor);
+            //if (mShape) { mShape->release(); mShape = nullptr; }
+            //if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+            //mActor->release();
             mActor = nullptr;
             mDynamic = nullptr;
         }

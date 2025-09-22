@@ -17,8 +17,8 @@ namespace QuasarEngine
 
     BoxColliderComponent::~BoxColliderComponent()
     {
-        if (mShape) { mShape->release(); mShape = nullptr; }
-        if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+        //if (mShape) { mShape->release(); mShape = nullptr; }
+        //if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
     }
 
     void BoxColliderComponent::Init()
