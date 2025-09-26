@@ -89,7 +89,7 @@ namespace QuasarEngine
 		m_ViewportBounds[0] = { vpMin.x, vpMin.y };
 		m_ViewportBounds[1] = { vpMax.x, vpMax.y };
 
-		ResizeIfNeeded(scene, vpSize);
+		//ResizeIfNeeded(scene, vpSize);
 
 		if (m_ViewportFrameBuffer) {
 			if (void* handle = m_ViewportFrameBuffer->GetColorAttachment(0)) {

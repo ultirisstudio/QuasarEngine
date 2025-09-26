@@ -56,6 +56,8 @@ namespace QuasarEngine
 
 	void EditorViewport::Update(EditorCamera& camera)
 	{
+		ResizeIfNeeded(camera, m_ViewportPanelSize);
+
 		double now = Renderer::GetTime();
 		m_LastTime = now;
 
@@ -119,7 +121,7 @@ namespace QuasarEngine
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportPanelSize = viewportSize;
 
-		ResizeIfNeeded(camera, viewportSize);
+		//ResizeIfNeeded(camera, viewportSize);
 
 		m_EditorViewportBounds[0] = { viewportMin.x, viewportMin.y };
 		m_EditorViewportBounds[1] = { viewportMin.x + viewportSize.x, viewportMin.y + viewportSize.y };
