@@ -90,8 +90,8 @@ namespace QuasarEngine
                 };
 
             loadTexture(aiTextureType_DIFFUSE, mat.AlbedoTexture);
-            //loadTexture(aiTextureType_NORMALS, mat.NormalTexture);
-            //if (!mat.NormalTexture) loadTexture(aiTextureType_HEIGHT, mat.NormalTexture);
+            loadTexture(aiTextureType_NORMALS, mat.NormalTexture);
+            if (!mat.NormalTexture) loadTexture(aiTextureType_HEIGHT, mat.NormalTexture);
 
             aiString path;
             if (material->GetTextureCount(aiTextureType_UNKNOWN) > 0) {
@@ -118,7 +118,7 @@ namespace QuasarEngine
             }
 
             float metallic = 0.0f, roughness = 0.0f;
-            //material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic);
+            material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic);
             material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness);
 
             mat.Metallic = metallic;
