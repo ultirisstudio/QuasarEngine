@@ -40,6 +40,7 @@ namespace QuasarEngine
         void BindMathToLua(sol::state& lua_state);
         void BindFunctionToLua(sol::state& lua_state);
         void BindEntityToLua(sol::state& lua_state);
+        void BindPhysicsToLua(sol::state& lua_state);
 
         std::unique_ptr<entt::registry> m_Registry;
 

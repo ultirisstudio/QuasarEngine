@@ -11,8 +11,21 @@
 #include <QuasarEngine/Core/Input.h>
 #include <glm/gtx/compatibility.hpp>
 
+#include <QuasarEngine/Physic/PhysicEngine.h>
+
 namespace QuasarEngine
 {
+    namespace {
+        inline sol::object ActorToEntityObject(physx::PxActor* a, sol::state_view lua) {
+            if (!a || !a->userData) return sol::nil;
+            const auto id = static_cast<entt::entity>(reinterpret_cast<uintptr_t>(a->userData));
+            auto* reg = QuasarEngine::Renderer::m_SceneData.m_Scene->GetRegistry();
+            QuasarEngine::Entity e{ id, reg };
+            if (!e.IsValid()) return sol::nil;
+            return sol::make_object(lua, e);
+        }
+    }
+
     ScriptSystem::ScriptSystem() {
         m_Registry = std::make_unique<entt::registry>();
 
@@ -63,12 +76,12 @@ namespace QuasarEngine
 
     void ScriptSystem::Initialize()
     {
-		// Register Lua functions for component management
         g_getComponentFuncs.insert({"TransformComponent", [](Entity& e, sol::state_view lua) -> sol::object {
             return e.HasComponent<TransformComponent>()
                 ? sol::make_object(lua, std::ref(e.GetComponent<TransformComponent>()))
                 : sol::nil;
         } });
+
         g_getComponentFuncs.insert({ "MeshComponent", [](Entity& e, sol::state_view lua) -> sol::object {
             return e.HasComponent<MeshComponent>()
                 ? sol::make_object(lua, std::ref(e.GetComponent<MeshComponent>()))
@@ -87,20 +100,24 @@ namespace QuasarEngine
                 : sol::nil;
 		} });
 
-		// Register Lua functions for checking component existence
+        g_getComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e, sol::state_view lua) -> sol::object {
+            return e.HasComponent<RigidBodyComponent>()
+                ? sol::make_object(lua, std::ref(e.GetComponent<RigidBodyComponent>()))
+                : sol::nil;
+        } });
 
         g_hasComponentFuncs.insert({ "TransformComponent", [](Entity& e) { return e.HasComponent<TransformComponent>(); } });
         g_hasComponentFuncs.insert({ "MeshComponent", [](Entity& e) { return e.HasComponent<MeshComponent>(); } });
 		g_hasComponentFuncs.insert({ "MaterialComponent", [](Entity& e) { return e.HasComponent<MaterialComponent>(); } });
 		g_hasComponentFuncs.insert({ "MeshRendererComponent", [](Entity& e) { return e.HasComponent<MeshRendererComponent>(); } });
-
-		// Register Lua functions for adding components
+        g_hasComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e) { return e.HasComponent<RigidBodyComponent>(); } });
 
         g_addComponentFuncs.insert({ "TransformComponent", [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
             if (e.HasComponent<TransformComponent>())
                 return sol::make_object(lua, std::ref(e.GetComponent<TransformComponent>()));
             return sol::make_object(lua, std::ref(e.AddComponent<TransformComponent>()));
         } });
+
         g_addComponentFuncs.insert({ "MeshComponent", [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
             if (e.HasComponent<MeshComponent>())
                 return sol::make_object(lua, std::ref(e.GetComponent<MeshComponent>()));
@@ -128,11 +145,20 @@ namespace QuasarEngine
             MeshRendererComponent* comp = &e.AddComponent<MeshRendererComponent>();
 			return sol::make_object(lua, std::ref(*comp));
 		} });
+        
+        g_addComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e, sol::variadic_args, sol::state_view lua) -> sol::object {
+            if (e.HasComponent<RigidBodyComponent>())
+                return sol::make_object(lua, std::ref(e.GetComponent<RigidBodyComponent>()));
+            auto& c = e.AddComponent<RigidBodyComponent>();
+            c.Init();
+            return sol::make_object(lua, std::ref(c));
+        } });
 
         BindInputToLua(lua);
         BindMathToLua(lua);
 		BindFunctionToLua(lua);
 		BindEntityToLua(lua);
+        BindPhysicsToLua(lua);
     }
 
     void ScriptSystem::RegisterEntityScript(ScriptComponent& scriptComponent)
@@ -380,7 +406,9 @@ namespace QuasarEngine
             sol::constructors<glm::vec3(), glm::vec3(float, float, float)>(),
             "x", &glm::vec3::x,
             "y", &glm::vec3::y,
-            "z", &glm::vec3::z
+            "z", &glm::vec3::z,
+            sol::meta_function::addition, [](const glm::vec3& a, const glm::vec3& b) { return a + b; },
+            sol::meta_function::subtraction, [](const glm::vec3& a, const glm::vec3& b) { return a - b; }
         );
 
         lua_state.new_usertype<glm::mat4>("mat4",
@@ -554,4 +582,142 @@ namespace QuasarEngine
             }
         );
 	}
+
+    void ScriptSystem::BindPhysicsToLua(sol::state& lua_state)
+    {
+        lua_state.new_usertype<RigidBodyComponent>("RigidBody",
+            "enableGravity", sol::property(
+                [](RigidBodyComponent& c) { return c.enableGravity; },
+                [](RigidBodyComponent& c, bool v) { c.enableGravity = v; c.UpdateEnableGravity(); }
+            ),
+            "set_body_type", [](RigidBodyComponent& c, const std::string& t) { c.bodyTypeString = t; c.UpdateBodyType(); },
+            "set_linear_damping", [](RigidBodyComponent& c, float v) { c.linearDamping = v; c.UpdateDamping(); },
+            "set_angular_damping", [](RigidBodyComponent& c, float v) { c.angularDamping = v; c.UpdateDamping(); }
+        );
+
+        sol::table physics = lua_state.create_table();
+
+        physics.set_function("get_gravity", []() -> glm::vec3 {
+            auto* scene = PhysicEngine::Instance().GetScene();
+            if (!scene) return { 0.f, -9.81f, 0.f };
+            return ToGlm(scene->getGravity());
+            });
+
+        physics.set_function("set_gravity", [](const glm::vec3& g) {
+            PhysicEngine::Instance().SetGravity(ToPx(g));
+            });
+
+        physics.set_function("raycast",
+            [&lua_state](const glm::vec3& origin,
+                const glm::vec3& dir,
+                float maxDist,
+                sol::optional<bool> queryDynamic,
+                sol::optional<bool> queryStatic) -> sol::object
+            {
+                auto* scene = PhysicEngine::Instance().GetScene();
+                if (!scene) return sol::nil;
+
+                physx::PxQueryFilterData f{};
+                f.flags = physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC;
+                if (queryDynamic && !queryDynamic.value()) f.flags &= ~physx::PxQueryFlag::eDYNAMIC;
+                if (queryStatic && !queryStatic.value())  f.flags &= ~physx::PxQueryFlag::eSTATIC;
+
+                physx::PxRaycastBuffer hit;
+                const bool ok = scene->raycast(ToPx(origin), ToPx(glm::normalize(dir)), maxDist,
+                    hit, physx::PxHitFlag::eDEFAULT, f);
+
+                sol::table res = lua_state.create_table();
+                res["hit"] = ok && hit.hasBlock;
+                if (ok && hit.hasBlock) {
+                    res["position"] = ToGlm(hit.block.position);
+                    res["normal"] = ToGlm(hit.block.normal);
+                    res["distance"] = hit.block.distance;
+                    res["entity"] = ActorToEntityObject(hit.block.actor, lua_state);
+                    res["shape"] = (uintptr_t)hit.block.shape;
+                }
+                return sol::make_object(lua_state, res);
+            });
+
+        physics.set_function("overlap_sphere",
+            [&lua_state](const glm::vec3& center, float radius) -> sol::object
+            {
+                auto* scene = PhysicEngine::Instance().GetScene();
+                if (!scene) return sol::nil;
+
+                physx::PxSphereGeometry geo(radius);
+                physx::PxTransform pose(ToPx(center));
+                physx::PxOverlapBuffer buf;
+
+                if (!scene->overlap(geo, pose, buf)) {
+                    sol::table t = lua_state.create_table();
+                    t["entities"] = lua_state.create_table();
+                    t["count"] = 0;
+                    return sol::make_object(lua_state, t);
+                }
+
+                sol::table ents = lua_state.create_table();
+                uint32_t idx = 1;
+                const physx::PxU32 n = buf.getNbTouches();
+                const physx::PxOverlapHit* touches = buf.getTouches();
+                for (physx::PxU32 i = 0; i < n; ++i) {
+                    physx::PxActor* a = touches[i].actor;
+                    auto obj = ActorToEntityObject(a, lua_state);
+                    if (obj != sol::nil) ents[idx++] = obj;
+                }
+
+                sol::table t = lua_state.create_table();
+                t["entities"] = ents;
+                t["count"] = idx - 1;
+                return sol::make_object(lua_state, t);
+            });
+
+        physics.set_function("sweep_sphere",
+            [&lua_state](const glm::vec3& origin, float radius, const glm::vec3& dir, float maxDist) -> sol::object
+            {
+                auto* scene = PhysicEngine::Instance().GetScene();
+                if (!scene) return sol::nil;
+
+                physx::PxSphereGeometry geo(radius);
+                physx::PxTransform pose(ToPx(origin));
+                const physx::PxVec3 direction = ToPx(glm::normalize(dir));
+                physx::PxSweepBuffer buf;
+
+                const bool ok = scene->sweep(geo, pose, direction, maxDist, buf, physx::PxHitFlag::eDEFAULT);
+
+                sol::table res = lua_state.create_table();
+                res["hit"] = ok && buf.hasBlock;
+                if (ok && buf.hasBlock) {
+                    res["position"] = ToGlm(buf.block.position);
+                    res["normal"] = ToGlm(buf.block.normal);
+                    res["distance"] = buf.block.distance;
+                    res["entity"] = ActorToEntityObject(buf.block.actor, lua_state);
+                }
+                return sol::make_object(lua_state, res);
+            });
+
+        physics.set_function("set_linear_velocity",
+            [](Entity& e, const glm::vec3& v)
+            {
+                if (!e.HasComponent<RigidBodyComponent>()) return;
+                auto& rbc = e.GetComponent<RigidBodyComponent>();
+                if (physx::PxRigidDynamic* dyn = rbc.GetDynamic()) {
+                    dyn->setLinearVelocity(ToPx(v));
+                }
+            });
+
+        physics.set_function("add_force",
+            [](Entity& e, const glm::vec3& f, sol::optional<std::string> modeStr)
+            {
+                if (!e.HasComponent<RigidBodyComponent>()) return;
+                auto& rbc = e.GetComponent<RigidBodyComponent>();
+                if (physx::PxRigidDynamic* dyn = rbc.GetDynamic()) {
+                    physx::PxForceMode::Enum mode = physx::PxForceMode::eFORCE;
+                    if (modeStr && (*modeStr == "impulse" || *modeStr == "IMPULSE"))
+                        mode = physx::PxForceMode::eIMPULSE;
+                    dyn->addForce(ToPx(f), mode, true);
+                }
+            });
+
+        lua_state["physics"] = physics;
+    }
 }

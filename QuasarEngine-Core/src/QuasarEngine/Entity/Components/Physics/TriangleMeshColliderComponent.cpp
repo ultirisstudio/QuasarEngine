@@ -11,8 +11,6 @@ using namespace physx;
 
 namespace QuasarEngine
 {
-    static inline PxVec3 ToPx(const glm::vec3& v) { return PxVec3(v.x, v.y, v.z); }
-
     TriangleMeshColliderComponent::TriangleMeshColliderComponent() {}
     TriangleMeshColliderComponent::~TriangleMeshColliderComponent()
     {

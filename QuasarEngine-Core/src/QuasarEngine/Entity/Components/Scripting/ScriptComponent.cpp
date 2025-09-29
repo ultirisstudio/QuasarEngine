@@ -6,7 +6,7 @@
 
 namespace QuasarEngine
 {
-    ScriptComponent::ScriptComponent()
+    ScriptComponent::ScriptComponent() : reflectedVars()
     {
     }
 

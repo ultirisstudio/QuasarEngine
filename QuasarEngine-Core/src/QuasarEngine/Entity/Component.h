@@ -12,7 +12,7 @@ namespace QuasarEngine
 		entt::entity entt_entity{ entt::null };
 		Registry* registry;
 
-		Component() {}
+		Component() : registry(nullptr){}
 		virtual ~Component() {}
 	};
 }

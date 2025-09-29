@@ -12,9 +12,6 @@ using namespace physx;
 
 namespace QuasarEngine
 {
-    static inline PxVec3 ToPx(const glm::vec3& v) { return { v.x, v.y, v.z }; }
-    static inline PxQuat ToPx(const glm::quat& q) { return { q.x, q.y, q.z, q.w }; }
-
     PlaneColliderComponent::PlaneColliderComponent() {}
     PlaneColliderComponent::~PlaneColliderComponent()
     {
@@ -75,6 +72,9 @@ namespace QuasarEngine
         PxShape* shape = sdk->createShape(PxPlaneGeometry(), *mMaterial, true);
         if (shape)
         {
+            //shape->setContactOffset(0.02f);
+            //shape->setRestOffset(0.0f);
+
             shape->setLocalPose(MakeLocalPose());
             actor->attachShape(*shape);
             mShape = shape;

@@ -14,8 +14,39 @@
 #include <functional>
 #include <cstdint>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
+// #define QE_COORDS_Z_UP
+
 namespace QuasarEngine
 {
+#ifndef QE_COORDS_Z_UP
+    inline physx::PxVec3  ToPx(const glm::vec3& v) noexcept { return { v.x, v.y, v.z }; }
+    inline glm::vec3      ToGlm(const physx::PxVec3& v) noexcept { return { v.x, v.y, v.z }; }
+
+    inline physx::PxQuat  ToPx(const glm::quat& q) noexcept { return { q.x, q.y, q.z, q.w }; }
+    inline glm::quat      ToGlm(const physx::PxQuat& q) noexcept { return { q.w, q.x, q.y, q.z }; }
+
+    inline physx::PxTransform ToPx(const glm::vec3& p, const glm::quat& r) noexcept { return { ToPx(p), ToPx(r) }; }
+    inline void              ToGlm(const physx::PxTransform& t, glm::vec3& outPos, glm::quat& outRot) noexcept {
+        outPos = ToGlm(t.p);
+        outRot = ToGlm(t.q);
+    }
+#else
+    inline physx::PxVec3  ToPx(const glm::vec3& v) noexcept { return { v.x, v.z, v.y }; }
+    inline glm::vec3      ToGlm(const physx::PxVec3& v) noexcept { return { v.x, v.z, v.y }; }
+
+    inline physx::PxQuat  ToPx(const glm::quat& q) noexcept { return { q.x, q.z, q.y, q.w }; }
+    inline glm::quat      ToGlm(const physx::PxQuat& q) noexcept { return { q.w, q.x, q.z, q.y }; }
+
+    inline physx::PxTransform ToPx(const glm::vec3& p, const glm::quat& r) noexcept { return { ToPx(p), ToPx(r) }; }
+    inline void              ToGlm(const physx::PxTransform& t, glm::vec3& outPos, glm::quat& outRot) noexcept {
+        outPos = ToGlm(t.p);
+        outRot = ToGlm(t.q);
+    }
+#endif
+
     class PxLoggerCallback final : public physx::PxErrorCallback
     {
     public:

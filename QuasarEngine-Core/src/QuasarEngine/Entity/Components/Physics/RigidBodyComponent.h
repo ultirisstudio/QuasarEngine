@@ -50,6 +50,10 @@ namespace QuasarEngine
         physx::PxRigidActor* GetActor() const noexcept { return mActor; }
         physx::PxRigidDynamic* GetDynamic() const noexcept { return mDynamic; }
 
+        bool IsStatic()   const noexcept { return mActor && (mDynamic == nullptr); }
+        bool IsDynamic()  const noexcept { return mDynamic && !mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
+        bool IsKinematic()const noexcept { return mDynamic && mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
+
     private:
         enum class BodyType { Dynamic, Static, Kinematic };
 

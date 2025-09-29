@@ -10,11 +10,6 @@ using namespace physx;
 
 namespace QuasarEngine
 {
-    static inline PxVec3 ToPx(const glm::vec3& v) { return PxVec3(v.x, v.y, v.z); }
-    static inline PxQuat ToPx(const glm::quat& q) { return PxQuat(q.x, q.y, q.z, q.w); }
-    static inline glm::vec3 ToGlm(const PxVec3& v) { return glm::vec3(v.x, v.y, v.z); }
-    static inline glm::quat ToGlm(const PxQuat& q) { return glm::quat(q.w, q.x, q.y, q.z); }
-
     RigidBodyComponent::RigidBodyComponent() {}
     RigidBodyComponent::~RigidBodyComponent() { Destroy(); }
 
@@ -71,12 +66,15 @@ namespace QuasarEngine
         {
             PxRigidDynamic* a = sdk->createRigidDynamic(pose);
             mShape = sdk->createShape(PxBoxGeometry(ToPx(halfExtents)), *mat, true);
+            a->setSolverIterationCounts(8, 2);
             a->attachShape(*mShape);
             PxRigidBodyExt::updateMassAndInertia(*a, density);
             if (mCurrentType == BodyType::Kinematic) a->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
             mActor = a;
             mDynamic = a;
         }
+        
+        mActor->userData = reinterpret_cast<void*>(static_cast<uintptr_t>(entt_entity));
 
         //mActor->setActorFlag(physx::PxActorFlag::eVISUALIZATION, true);
 

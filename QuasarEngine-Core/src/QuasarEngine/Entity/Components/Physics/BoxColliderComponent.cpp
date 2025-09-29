@@ -11,8 +11,6 @@ using namespace physx;
 
 namespace QuasarEngine
 {
-    static inline PxVec3 ToPx(const glm::vec3& v) { return PxVec3(v.x, v.y, v.z); }
-
     BoxColliderComponent::BoxColliderComponent() {}
 
     BoxColliderComponent::~BoxColliderComponent()
@@ -47,12 +45,15 @@ namespace QuasarEngine
 
         PxShape* shape = sdk->createShape(PxBoxGeometry(he), *mMaterial, true);
         if (!shape) return;
+        shape->setContactOffset(0.02f);
+        shape->setRestOffset(0.005f);
+        shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
+        shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, true);
+        shape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, false);
 
         if (old) actor->detachShape(*old);
         if (old) old->release();
         mShape = shape;
-
-        //mShape->setFlag(physx::PxShapeFlag::eVISUALIZATION, true);
 
         actor->attachShape(*mShape);
 

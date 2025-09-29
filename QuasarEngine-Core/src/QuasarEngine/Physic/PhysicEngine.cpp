@@ -78,7 +78,7 @@ namespace QuasarEngine
         mPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *mFoundation, PxTolerancesScale(), true, pvd);
 #else
         (void)enablePVD; (void)pvdHost; (void)pvdPort;
-        std::cout << "[PVD] Build WITHOUT PVD support (QE_ENABLE_PVD=0)\n";
+        //std::cout << "[PVD] Build WITHOUT PVD support (QE_ENABLE_PVD=0)\n";
         mPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *mFoundation, PxTolerancesScale(), true);
 #endif
         if (!mPhysics)
@@ -126,6 +126,9 @@ namespace QuasarEngine
             return false;
         }
 
+        sceneDesc.solverType = PxSolverType::eTGS;
+        sceneDesc.flags |= PxSceneFlag::eENABLE_STABILIZATION;
+
         mScene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
         mScene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 1.0f);
         mScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
@@ -169,7 +172,7 @@ namespace QuasarEngine
 		mCookingParams.suppressTriangleMeshRemapTable = true;
 
         mInitialized = true;
-        std::cout << "[PhysX] Initialized successfully." << std::endl;
+        //std::cout << "[PhysX] Initialized successfully." << std::endl;
         return true;
     }
 
