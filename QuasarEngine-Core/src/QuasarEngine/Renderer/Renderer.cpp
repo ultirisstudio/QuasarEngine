@@ -240,6 +240,7 @@ namespace QuasarEngine
 	{
 		m_SceneData.m_Skybox.reset();
 		m_SceneData.m_Shader.reset();
+		m_SceneData.m_PhysicDebugShader.reset();
 		m_SceneData.m_UI.reset();
 		m_SceneData.m_AssetManager.reset();
 		m_SceneData.m_ScriptSystem.reset();
