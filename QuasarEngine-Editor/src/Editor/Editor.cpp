@@ -84,6 +84,7 @@ namespace QuasarEngine
 			std::string name = args.size() > 0 && std::holds_alternative<std::string>(args[0]) ? std::get<std::string>(args[0]) : "Unnamed";
 			static double nextId = 1; double id = nextId++;
 			std::cout << "[ENGINE] Create entity '" << name << "' -> id=" << id << "\n";
+			Renderer::m_SceneData.m_Scene->CreateEntity(name);
 			return id;
 			});
 
@@ -723,7 +724,6 @@ namespace QuasarEngine
 		}
 		catch (const std::system_error& e) {
 			OutputDebugStringA(("std::system_error: " + std::string(e.what()) + "\n").c_str());
-			// mets aussi un __debugbreak() ici
 		}*/
 
 		OptionMenu();

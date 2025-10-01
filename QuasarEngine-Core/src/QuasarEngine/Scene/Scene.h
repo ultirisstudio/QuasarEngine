@@ -28,7 +28,6 @@ namespace QuasarEngine
 
         void DestroyEntity(Entity entity);
 
-        std::optional<Entity> FindEntityByName(const std::string& name) const;
         std::optional<Entity> GetEntityByUUID(UUID uuid) const;
 		std::optional<Entity> GetEntityByName(const std::string& name) const;
 
@@ -48,7 +47,7 @@ namespace QuasarEngine
 
         void ClearEntities();
 
-        Skybox& getSkybox() { return *m_Skybox; }
+        //Skybox& getSkybox() { return *m_Skybox; }
         Registry* GetRegistry() { return m_Registry.get(); }
 
         bool IsEmpty() const { return m_EntityMap.empty(); }
@@ -64,7 +63,7 @@ namespace QuasarEngine
         NameMap m_NameMap;
 
         std::unique_ptr<Registry> m_Registry;
-        std::unique_ptr<Skybox> m_Skybox;
+        //std::unique_ptr<Skybox> m_Skybox;
 
         bool m_OnRuntime;
         uint64_t m_PrimaryCameraUUID;

@@ -17,9 +17,10 @@
 #include <QuasarEngine/UI/UIContainer.h>
 #include <QuasarEngine/UI/UIText.h>
 #include <QuasarEngine/UI/UIButton.h>
-#include <glm/gtx/matrix_decompose.hpp>
 
-#include <glad/glad.h>
+#include <QuasarEngine/Renderer/RenderCommand.h>
+#include <QuasarEngine/Renderer/RendererAPI.h>
+#include <QuasarEngine/Physic/PhysicEngine.h>
 
 namespace QuasarEngine
 {
@@ -128,6 +129,67 @@ namespace QuasarEngine
 		desc.enableDynamicLineWidth = false;
 
 		m_SceneData.m_Shader = Shader::Create(desc);
+
+		Shader::ShaderDescription phyDebDesc;
+
+		std::string phydebVertPath = "Assets/Shaders/debug.vert." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+		std::string phydebFragPath = "Assets/Shaders/debug.frag." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+
+		phyDebDesc.modules = {
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Vertex,
+				phydebVertPath,
+				{
+					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
+					{1, Shader::ShaderIOType::Vec3, "inColor",    true, ""},
+				}
+			},
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Fragment,
+				phydebFragPath,
+				{}
+			}
+		};
+
+		struct alignas(16) PhyDebGlobalUniforms
+		{
+			glm::mat4 view;
+			glm::mat4 projection;
+		};
+
+		Shader::ShaderStageFlags phyDebGlobalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+		phyDebDesc.globalUniforms = {
+			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebGlobalUniforms, view), 0, 0, phyDebGlobalUniformsFlags},
+			{"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebGlobalUniforms, projection), 0, 0, phyDebGlobalUniformsFlags}
+		};
+
+		struct PhyDebObjectUniforms {
+			glm::mat4 model;
+		};
+
+		constexpr Shader::ShaderStageFlags phyDebObjectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+		phyDebDesc.objectUniforms = {
+			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebObjectUniforms, model), 1, 0, phyDebObjectUniformsFlags},
+		};
+
+		phyDebDesc.samplers = {
+			
+		};
+
+		phyDebDesc.blendMode = Shader::BlendMode::None;
+		phyDebDesc.cullMode = Shader::CullMode::None;
+		phyDebDesc.fillMode = Shader::FillMode::Solid;
+		phyDebDesc.depthFunc = Shader::DepthFunc::Always;
+		phyDebDesc.depthTestEnable = false;
+		phyDebDesc.depthWriteEnable = false;
+		phyDebDesc.topology = Shader::PrimitiveTopology::LineList;
+		phyDebDesc.enableDynamicViewport = true;
+		phyDebDesc.enableDynamicScissor = true;
+		phyDebDesc.enableDynamicLineWidth = false;
+
+		m_SceneData.m_PhysicDebugShader = Shader::Create(phyDebDesc);
 
 		m_SceneData.m_AssetManager = std::make_unique<AssetManager>();
 
@@ -308,7 +370,35 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->Reset();
 		}
 
+		m_SceneData.m_Shader->Unuse();
+
 		//std::cout << entityDraw << "/" << totalEntity << std::endl;
+	}
+
+	void Renderer::RenderDebug(BaseCamera& camera)
+	{
+		if (PhysicEngine::Instance().GetDebugVertexArray())
+		{
+			glm::mat4 viewMatrix = camera.getViewMatrix();
+			glm::mat4 projectionMatrix = camera.getProjectionMatrix();
+
+			m_SceneData.m_PhysicDebugShader->Use();
+
+			glm::mat4 model = glm::mat4(1.0f);
+
+			m_SceneData.m_PhysicDebugShader->SetUniform("view", glm::value_ptr(viewMatrix), sizeof(glm::mat4));
+			m_SceneData.m_PhysicDebugShader->SetUniform("projection", glm::value_ptr(projectionMatrix), sizeof(glm::mat4));
+			m_SceneData.m_PhysicDebugShader->SetUniform("model", glm::value_ptr(model), sizeof(glm::mat4));
+
+			m_SceneData.m_PhysicDebugShader->UpdateGlobalState();
+			m_SceneData.m_PhysicDebugShader->UpdateObject(nullptr);
+
+			PhysicEngine::Instance().GetDebugVertexArray()->Bind();
+
+			RenderCommand::DrawArrays(DrawMode::LINES, PhysicEngine::Instance().GetDebugVertexArray()->GetVertexBuffers()[0]->GetSize() / sizeof(float) / 6); //vertices.size() / 6
+
+			m_SceneData.m_PhysicDebugShader->Unuse();
+		}
 	}
 
 	void Renderer::RenderSkybox(BaseCamera& camera)

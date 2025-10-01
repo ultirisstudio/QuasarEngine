@@ -1,187 +1,113 @@
 #include "qepch.h"
-
 #include "PhysicEngine.h"
-
 #include <iostream>
-#include <cassert>
+#include <algorithm>
 
 using namespace physx;
 
 namespace QuasarEngine
 {
-    void PxLoggerCallback::reportError(PxErrorCode::Enum code,
-        const char* message,
-        const char* file,
-        int line)
+    void PxLoggerCallback::reportError(PxErrorCode::Enum code, const char* message, const char* file, int line)
     {
         const char* level = "INFO";
         switch (code)
         {
-        case PxErrorCode::eABORT:        level = "ABORT"; break;
+        case PxErrorCode::eABORT: level = "ABORT"; break;
         case PxErrorCode::eINVALID_PARAMETER:
         case PxErrorCode::eINVALID_OPERATION:
         case PxErrorCode::eOUT_OF_MEMORY:
         case PxErrorCode::eINTERNAL_ERROR:
         case PxErrorCode::ePERF_WARNING:
-        case PxErrorCode::eDEBUG_WARNING: level = "WARN";  break;
-        case PxErrorCode::eDEBUG_INFO:    level = "INFO";  break;
-        default:                          level = "LOG";   break;
+        case PxErrorCode::eDEBUG_WARNING: level = "WARN"; break;
+        case PxErrorCode::eDEBUG_INFO: level = "INFO"; break;
+        default: level = "LOG"; break;
         }
-        std::cerr << "[PhysX][" << level << "] " << message
-            << " (" << file << ":" << line << ")"
-            << std::endl;
+        std::cerr << "[PhysX][" << level << "] " << message << " (" << file << ":" << line << ")" << std::endl;
     }
 
     PhysicEngine& PhysicEngine::Instance()
     {
-        static PhysicEngine s_instance;
-        return s_instance;
+        static PhysicEngine s_Instance;
+        return s_Instance;
     }
 
-    bool PhysicEngine::Initialize(uint32_t numThreads,
-        const PxVec3& gravity,
-        bool enableCCD,
-        bool enablePVD,
-        const char* pvdHost,
-        uint32_t pvdPort)
+    bool PhysicEngine::Initialize(uint32_t numThreads, const PxVec3& gravity, bool enableCCD, bool enablePVD, const char* pvdHost, uint32_t pvdPort)
     {
-        if (mInitialized) return true;
-
-        mFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, mAllocator, mErrorCallback);
-        if (!mFoundation)
-        {
-            std::cerr << "[PhysX] PxCreateFoundation failed." << std::endl;
-            return false;
-        }
+        if (m_Initialized) return true;
+        m_Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, m_Allocator, m_ErrorCallback);
+        if (!m_Foundation) return false;
 
 #if QE_ENABLE_PVD
-        std::cout << "[PVD] Build WITH PVD support (QE_ENABLE_PVD=1)\n";
         PxPvd* pvd = nullptr;
-        if (enablePVD) {
-            mPvd = PxCreatePvd(*mFoundation);
-            if (!mPvd) {
-                std::cerr << "[PVD] PxCreatePvd returned nullptr. Your PhysX build may have PVD disabled.\n";
-            }
-            else {
-                mPvdTransport = PxDefaultPvdSocketTransportCreate(pvdHost, pvdPort, 10);
-                if (!mPvdTransport) {
-                    std::cerr << "[PVD] PxDefaultPvdSocketTransportCreate failed.\n";
-                }
-                else {
-                    mPvdConnected = mPvd->connect(*mPvdTransport, PxPvdInstrumentationFlag::eALL);
-                    std::cout << "[PVD] connect(" << pvdHost << ":" << pvdPort << ") = "
-                        << (mPvdConnected ? "true" : "false") << "\n";
-                }
-                pvd = mPvd;
+        if (enablePVD)
+        {
+            m_Pvd = PxCreatePvd(*m_Foundation);
+            if (m_Pvd)
+            {
+                m_PvdTransport = PxDefaultPvdSocketTransportCreate(pvdHost, pvdPort, 10);
+                if (m_PvdTransport) m_PvdConnected = m_Pvd->connect(*m_PvdTransport, PxPvdInstrumentationFlag::eALL);
+                pvd = m_Pvd;
             }
         }
-        mPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *mFoundation, PxTolerancesScale(), true, pvd);
+        m_Physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_Foundation, PxTolerancesScale(), true, pvd);
 #else
         (void)enablePVD; (void)pvdHost; (void)pvdPort;
-        //std::cout << "[PVD] Build WITHOUT PVD support (QE_ENABLE_PVD=0)\n";
-        mPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *mFoundation, PxTolerancesScale(), true);
+        m_Physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_Foundation, PxTolerancesScale(), true);
 #endif
-        if (!mPhysics)
-        {
-            std::cerr << "[PhysX] PxCreatePhysics failed." << std::endl;
-            ReleaseAll();
-            return false;
-        }
+        if (!m_Physics) { ReleaseAll(); return false; }
 
 #if QE_ENABLE_PVD
-        if (!PxInitExtensions(*mPhysics, mPvd)) {
-            std::cerr << "[PhysX] PxInitExtensions failed.\n";
-        }
-        else {
-            std::cout << "[PhysX] PxInitExtensions OK\n";
-        }
+        PxInitExtensions(*m_Physics, m_Pvd);
+#else
+        PxInitExtensions(*m_Physics, nullptr);
 #endif
 
-        PxSceneDesc sceneDesc(mPhysics->getTolerancesScale());
+        PxSceneDesc sceneDesc(m_Physics->getTolerancesScale());
         sceneDesc.gravity = gravity;
-
-        mDispatcher = PxDefaultCpuDispatcherCreate(static_cast<uint32_t>(std::max<uint32_t>(1, numThreads)));
-        if (!mDispatcher)
-        {
-            std::cerr << "[PhysX] PxDefaultCpuDispatcherCreate failed." << std::endl;
-            ReleaseAll();
-            return false;
-        }
-        sceneDesc.cpuDispatcher = mDispatcher;
-
+        m_Dispatcher = PxDefaultCpuDispatcherCreate(std::max<uint32_t>(1, numThreads));
+        if (!m_Dispatcher) { ReleaseAll(); return false; }
+        sceneDesc.cpuDispatcher = m_Dispatcher;
         sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-
-        if (enableCCD)
-        {
-            sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
-        }
-
-        sceneDesc.broadPhaseType = PxBroadPhaseType::eSAP;
-
-        mScene = mPhysics->createScene(sceneDesc);
-        if (!mScene)
-        {
-            std::cerr << "[PhysX] createScene failed." << std::endl;
-            ReleaseAll();
-            return false;
-        }
-
+        if (enableCCD) sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
         sceneDesc.solverType = PxSolverType::eTGS;
         sceneDesc.flags |= PxSceneFlag::eENABLE_STABILIZATION;
+        sceneDesc.broadPhaseType = PxBroadPhaseType::eSAP;
 
-        mScene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
-        mScene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 1.0f);
-        mScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
+        m_Scene = m_Physics->createScene(sceneDesc);
+        if (!m_Scene) { ReleaseAll(); return false; }
 
 #if QE_ENABLE_PVD
-        if (mPvd && mPvdConnected) {
-            if (PxPvdSceneClient* client = mScene->getScenePvdClient()) {
-                std::cout << "[PVD] Scene client OK, enabling contact/queries streaming\n";
+        if (m_Pvd && m_PvdConnected)
+        {
+            if (PxPvdSceneClient* client = m_Scene->getScenePvdClient())
+            {
                 client->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
                 client->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
                 client->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
             }
-            else {
-                std::cerr << "[PVD] Scene client NULL (no streaming). "
-                    "Likely PVD not actually connected or PhysX without PVD instrumentation.\n";
-            }
-        }
-        else if (enablePVD) {
-            std::cerr << "[PVD] Socket connect failed; enabling file capture pvd_capture.pxd2\n";
-            if (mPvd && !mPvdConnected) {
-                PxPvdTransport* fileT = PxDefaultPvdFileTransportCreate("pvd_capture.pxd2");
-                if (fileT && mPvd->connect(*fileT, PxPvdInstrumentationFlag::eALL)) {
-                    std::cout << "[PVD] File capture ON (pvd_capture.pxd2). Open this file in PVD.\n";
-                }
-                else {
-                    std::cerr << "[PVD] File capture connect failed as well.\n";
-                }
-            }
         }
 #endif
 
-        mDefaultMaterial = CreateMaterial(0.5f, 0.5f, 0.1f);
-        if (!mDefaultMaterial)
-        {
-            std::cerr << "[PhysX] Create default material failed." << std::endl;
-            ReleaseAll();
-            return false;
-        }
+        m_Scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
+        m_Scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 1.0f);
+        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
+        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
 
-		mCookingParams = PxCookingParams(mPhysics->getTolerancesScale());
-		mCookingParams.suppressTriangleMeshRemapTable = true;
+        m_DefaultMaterial = CreateMaterial(0.5f, 0.5f, 0.1f);
+        if (!m_DefaultMaterial) { ReleaseAll(); return false; }
 
-        mInitialized = true;
-        //std::cout << "[PhysX] Initialized successfully." << std::endl;
+        m_CookingParams = PxCookingParams(m_Physics->getTolerancesScale());
+        m_CookingParams.suppressTriangleMeshRemapTable = true;
+
+        m_Initialized = true;
         return true;
     }
 
     void PhysicEngine::Shutdown()
     {
-        if (!mInitialized) return;
+        if (!m_Initialized) return;
         ReleaseAll();
-        mInitialized = false;
-        std::cout << "[PhysX] Shutdown complete." << std::endl;
+        m_Initialized = false;
     }
 
     PhysicEngine::~PhysicEngine()
@@ -191,138 +117,121 @@ namespace QuasarEngine
 
     void PhysicEngine::ReleaseAll()
     {
-        if (mScene) { mScene->release();        mScene = nullptr; }
-        if (mDispatcher) { mDispatcher->release();   mDispatcher = nullptr; }
-        if (mDefaultMaterial) { mDefaultMaterial->release(); mDefaultMaterial = nullptr; }
-        if (mPhysics) { mPhysics->release();      mPhysics = nullptr; }
-
+        m_VertexBuffer.reset();
+        m_VertexArray.reset();
+        if (m_Scene) { m_Scene->release(); m_Scene = nullptr; }
+        if (m_Dispatcher) { m_Dispatcher->release(); m_Dispatcher = nullptr; }
+        if (m_DefaultMaterial) { m_DefaultMaterial->release(); m_DefaultMaterial = nullptr; }
+        if (m_Physics) { m_Physics->release(); m_Physics = nullptr; }
 #if QE_ENABLE_PVD
-        if (mPvd)
+        if (m_Pvd)
         {
-            if (mPvdConnected) mPvd->disconnect();
-            mPvdConnected = false;
+            if (m_PvdConnected) m_Pvd->disconnect();
+            m_PvdConnected = false;
         }
-        if (mPvdTransport) { mPvdTransport->release(); mPvdTransport = nullptr; }
-        if (mPvd) { mPvd->release();         mPvd = nullptr; }
+        if (m_PvdTransport) { m_PvdTransport->release(); m_PvdTransport = nullptr; }
+        if (m_Pvd) { m_Pvd->release(); m_Pvd = nullptr; }
 #endif
+        if (m_Foundation) { m_Foundation->release(); m_Foundation = nullptr; }
+        m_Accumulator = 0.f;
+        m_DebugVertexCount = 0;
+    }
 
-        if (mFoundation) { mFoundation->release();   mFoundation = nullptr; }
-
-        mAccumulator = 0.f;
+    void PhysicEngine::BuildOrUpdateDebugBuffer(const std::vector<float>& vertices)
+    {
+        m_DebugVertexCount = static_cast<uint32_t>(vertices.size() / 6);
+        if (!m_VertexArray) m_VertexArray = VertexArray::Create();
+        if (!m_VertexBuffer)
+        {
+            m_VertexBuffer = VertexBuffer::Create(static_cast<uint32_t>(vertices.size() * sizeof(float)));
+            m_VertexBuffer->SetLayout({ { ShaderDataType::Vec3, "inPosition" }, { ShaderDataType::Vec3, "inColor" } });
+            m_VertexArray->AddVertexBuffer(m_VertexBuffer);
+        }
+        m_VertexBuffer->Upload(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)));
     }
 
     void PhysicEngine::Step(float dt, float fixedTimestep, uint32_t maxSubsteps)
     {
-        if (!mScene) return;
-
-        mAccumulator += dt;
+        if (!m_Scene) return;
+        m_Accumulator += dt;
         uint32_t substeps = 0;
-
-        while (mAccumulator >= fixedTimestep && substeps < maxSubsteps)
+        while (m_Accumulator >= fixedTimestep && substeps < maxSubsteps)
         {
-            mScene->simulate(fixedTimestep);
-            mScene->fetchResults(true);
-            mAccumulator -= fixedTimestep;
+            m_Scene->simulate(fixedTimestep);
+            m_Scene->fetchResults(true);
+            m_Accumulator -= fixedTimestep;
             ++substeps;
         }
-
         if (substeps == 0 && dt > 0.f)
         {
-            mScene->simulate(dt);
-            mScene->fetchResults(true);
+            m_Scene->simulate(dt);
+            m_Scene->fetchResults(true);
         }
+
+        std::vector<float> vertices;
+        vertices.reserve(m_DebugVertexCount ? m_DebugVertexCount * 6 : 4096);
+        const PxRenderBuffer& rb = m_Scene->getRenderBuffer();
+        for (PxU32 i = 0; i < rb.getNbLines(); ++i)
+        {
+            const PxDebugLine& l = rb.getLines()[i];
+            PxU32 c0 = l.color0;
+            float r0 = ((c0 >> 16) & 0xFF) / 255.0f;
+            float g0 = ((c0 >> 8) & 0xFF) / 255.0f;
+            float b0 = (c0 & 0xFF) / 255.0f;
+            vertices.push_back(l.pos0.x); vertices.push_back(l.pos0.y); vertices.push_back(l.pos0.z);
+            vertices.push_back(r0); vertices.push_back(g0); vertices.push_back(b0);
+
+            PxU32 c1 = l.color1;
+            float r1 = ((c1 >> 16) & 0xFF) / 255.0f;
+            float g1 = ((c1 >> 8) & 0xFF) / 255.0f;
+            float b1 = (c1 & 0xFF) / 255.0f;
+            vertices.push_back(l.pos1.x); vertices.push_back(l.pos1.y); vertices.push_back(l.pos1.z);
+            vertices.push_back(r1); vertices.push_back(g1); vertices.push_back(b1);
+        }
+        BuildOrUpdateDebugBuffer(vertices);
     }
 
     PxMaterial* PhysicEngine::CreateMaterial(float sf, float df, float r)
     {
-        return mPhysics ? mPhysics->createMaterial(sf, df, r) : nullptr;
-    }
-
-    PxRigidStatic* PhysicEngine::CreateStaticPlane(const PxVec3& n, float distance, PxMaterial* mat)
-    {
-        if (!mPhysics) return nullptr;
-        if (!mat) mat = mDefaultMaterial;
-        PxPlane plane(n, -distance);
-        return PxCreatePlane(*mPhysics, plane, *mat);
-    }
-
-    PxRigidStatic* PhysicEngine::CreateStaticBox(const PxTransform& pose, const PxVec3& halfExtents, PxMaterial* mat)
-    {
-        if (!mPhysics) return nullptr;
-        if (!mat) mat = mDefaultMaterial;
-        PxShape* shape = mPhysics->createShape(PxBoxGeometry(halfExtents), *mat, true);
-        if (!shape) return nullptr;
-        PxRigidStatic* actor = mPhysics->createRigidStatic(pose);
-        if (!actor) { shape->release(); return nullptr; }
-        actor->attachShape(*shape);
-        shape->release();
-        return actor;
-    }
-
-    PxRigidDynamic* PhysicEngine::CreateDynamicBox(const PxTransform& pose, const PxVec3& halfExtents, float density, PxMaterial* mat)
-    {
-        if (!mPhysics) return nullptr;
-        if (!mat) mat = mDefaultMaterial;
-        PxShape* shape = mPhysics->createShape(PxBoxGeometry(halfExtents), *mat, true);
-        if (!shape) return nullptr;
-        PxRigidDynamic* body = mPhysics->createRigidDynamic(pose);
-        if (!body) { shape->release(); return nullptr; }
-        body->attachShape(*shape);
-        PxRigidBodyExt::updateMassAndInertia(*body, density);
-        shape->release();
-        return body;
-    }
-
-    PxRigidDynamic* PhysicEngine::CreateDynamicSphere(const PxTransform& pose, float radius, float density, PxMaterial* mat)
-    {
-        if (!mPhysics) return nullptr;
-        if (!mat) mat = mDefaultMaterial;
-        PxShape* shape = mPhysics->createShape(PxSphereGeometry(radius), *mat, true);
-        if (!shape) return nullptr;
-        PxRigidDynamic* body = mPhysics->createRigidDynamic(pose);
-        if (!body) { shape->release(); return nullptr; }
-        body->attachShape(*shape);
-        PxRigidBodyExt::updateMassAndInertia(*body, density);
-        shape->release();
-        return body;
+        return m_Physics ? m_Physics->createMaterial(sf, df, r) : nullptr;
     }
 
     void PhysicEngine::AddActor(PxActor& actor)
     {
-        if (mScene) mScene->addActor(actor);
+        if (m_Scene) m_Scene->addActor(actor);
     }
 
     void PhysicEngine::RemoveActor(PxActor& actor)
     {
-        if (mScene) mScene->removeActor(actor);
+        if (m_Scene) m_Scene->removeActor(actor);
     }
 
     void PhysicEngine::SetGravity(const PxVec3& g)
     {
-        if (mScene) mScene->setGravity(g);
+        if (m_Scene) m_Scene->setGravity(g);
     }
 
     PxVec3 PhysicEngine::GetGravity() const
     {
-        return mScene ? mScene->getGravity() : PxVec3(0.f);
+        return m_Scene ? m_Scene->getGravity() : PxVec3(0.f);
     }
 
-    bool PhysicEngine::Raycast(const PxVec3& origin,
-        const PxVec3& unitDir,
-        float maxDistance,
-        PxRaycastBuffer& outHit) const
+    bool PhysicEngine::Raycast(const PxVec3& origin, const PxVec3& unitDir, float maxDistance, PxRaycastBuffer& outHit) const
     {
-        if (!mScene) return false;
-        return mScene->raycast(origin, unitDir, maxDistance, outHit);
+        if (!m_Scene) return false;
+        return m_Scene->raycast(origin, unitDir, maxDistance, outHit);
     }
 
-    PxConvexMesh* PhysicEngine::CreateConvexMesh(const PxConvexMeshDesc& desc)
+    void PhysicEngine::SetVisualizationScale(float scale)
     {
-        return PxCreateConvexMesh(mCookingParams, desc);
+        if (m_Scene) m_Scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, scale);
     }
 
-    PxTriangleMesh* PhysicEngine::CreateTriangleMesh(const PxTriangleMeshDesc& desc)
+    void PhysicEngine::EnableVisualization(bool shapes, bool aabbs, bool axes)
     {
-        return PxCreateTriangleMesh(mCookingParams, desc);
+        if (!m_Scene) return;
+        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, shapes ? 1.0f : 0.0f);
+        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, aabbs ? 1.0f : 0.0f);
+        m_Scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, axes ? 1.0f : 0.0f);
     }
 }

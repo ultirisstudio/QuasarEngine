@@ -245,7 +245,8 @@ namespace QuasarEngine
                             auto tryLoadTex = [&](const char* k, std::optional<std::string>& outTex) {
                                 if (!value[k]) return;
                                 std::string texRel = value[k].as<std::string>();
-                                std::string texPath = std::filesystem::path(assetPath + "/" + texRel).generic_string();
+                                //std::string texPath = std::filesystem::path(assetPath + "/" + texRel).generic_string();
+                                std::string texPath = std::filesystem::path(texRel).generic_string();
                                 outTex = texPath;
                                 if (!Renderer::m_SceneData.m_AssetManager->isAssetLoaded(texPath)) {
                                     TextureSpecification ts = TextureConfigImporter::ImportTextureConfig(texPath);

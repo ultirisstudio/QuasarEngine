@@ -21,7 +21,7 @@ namespace QuasarEngine
         m_LightsCount(0),
         m_PrimaryCameraUUID(0)
     {
-        m_Skybox = std::make_unique<Skybox>();
+        //m_Skybox = std::make_unique<Skybox>();
         m_Registry = std::make_unique<Registry>();
     }
 
@@ -158,14 +158,6 @@ namespace QuasarEngine
             m_Registry->DestroyEntity(entity);
     }
 
-    std::optional<Entity> Scene::FindEntityByName(const std::string& name) const
-    {
-        auto it = m_NameMap.find(name);
-        if (it != m_NameMap.end())
-            return Entity{ it->second, m_Registry.get() };
-        return std::nullopt;
-    }
-
     std::optional<Entity> Scene::GetEntityByUUID(UUID uuid) const
     {
         auto it = m_EntityMap.find(uuid);
@@ -224,7 +216,7 @@ namespace QuasarEngine
 
         Renderer::m_SceneData.m_ScriptSystem->Start();
 
-        //Application::Get().GetWindow().SetInputMode(true, true);
+        Application::Get().GetWindow().SetInputMode(true, true);
     }
 
     void Scene::OnRuntimeStop()

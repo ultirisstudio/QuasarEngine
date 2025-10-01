@@ -26,6 +26,7 @@ namespace QuasarEngine
 	}
 
 	OpenGLVertexArray::OpenGLVertexArray()
+		: m_RendererID(0), m_VertexBufferIndex(0)
 	{
 		glCreateVertexArrays(1, &m_RendererID);
 	}

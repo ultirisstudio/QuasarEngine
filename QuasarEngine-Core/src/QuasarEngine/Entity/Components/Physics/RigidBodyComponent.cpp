@@ -17,10 +17,6 @@ namespace QuasarEngine
     {
         if (mActor)
         {
-            //PhysicEngine::Instance().RemoveActor(*mActor);
-            //if (mShape) { mShape->release(); mShape = nullptr; }
-            //if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
-            //mActor->release();
             mActor = nullptr;
             mDynamic = nullptr;
         }
@@ -58,25 +54,20 @@ namespace QuasarEngine
         if (mCurrentType == BodyType::Static)
         {
             PxRigidStatic* a = sdk->createRigidStatic(pose);
-            mShape = sdk->createShape(PxBoxGeometry(ToPx(halfExtents)), *mat, true);
-            a->attachShape(*mShape);
             mActor = a;
         }
         else
         {
             PxRigidDynamic* a = sdk->createRigidDynamic(pose);
-            mShape = sdk->createShape(PxBoxGeometry(ToPx(halfExtents)), *mat, true);
             a->setSolverIterationCounts(8, 2);
-            a->attachShape(*mShape);
             PxRigidBodyExt::updateMassAndInertia(*a, density);
             if (mCurrentType == BodyType::Kinematic) a->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
             mActor = a;
             mDynamic = a;
         }
         
+        mActor->setActorFlag(PxActorFlag::eVISUALIZATION, true);
         mActor->userData = reinterpret_cast<void*>(static_cast<uintptr_t>(entt_entity));
-
-        //mActor->setActorFlag(physx::PxActorFlag::eVISUALIZATION, true);
 
         PhysicEngine::Instance().AddActor(*mActor);
         UpdateEnableGravity();

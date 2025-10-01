@@ -47,7 +47,7 @@ namespace QuasarEngine
 					case PendingAction::LoadScene:
 					{
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
-						serializer.Deserialize(m_PendingActionFile);
+						bool result = serializer.Deserialize(m_PendingActionFile);
 						break;
 					}
 					case PendingAction::LoadSceneWithPath:
@@ -55,13 +55,13 @@ namespace QuasarEngine
 						m_SceneObject->CreateScene();
 						Renderer::BeginScene(m_SceneObject->GetScene());
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
-						serializer.Deserialize(m_PendingActionFile);
+						bool result = serializer.Deserialize(m_PendingActionFile);
 						break;
 					}
 					case PendingAction::ReloadScene:
 					{
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
-						serializer.Deserialize(m_PendingActionFile);
+						bool result = serializer.Deserialize(m_PendingActionFile);
 						break;
 					}
 					case PendingAction::CreateNewScene:

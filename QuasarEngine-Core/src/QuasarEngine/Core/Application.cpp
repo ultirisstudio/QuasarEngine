@@ -115,7 +115,7 @@ namespace QuasarEngine
 #if QE_PROFILE_APP_TIMERS
 				auto t0 = clock::now();
 #endif
-				//layer->OnUpdate(deltaTime);
+				layer->OnUpdate(deltaTime);
 #if QE_PROFILE_APP_TIMERS
 				auto t1 = clock::now();
 				nextInfos.update_latency += std::chrono::duration<double, std::milli>(t1 - t0).count();
@@ -164,8 +164,8 @@ namespace QuasarEngine
 			nextInfos.end_latency = std::chrono::duration<double, std::milli>(te1 - te0).count();
 #endif
 
-			for (Layer* layer : m_LayerManager)
-				layer->OnUpdate(deltaTime);
+			//for (Layer* layer : m_LayerManager)
+				//layer->OnUpdate(deltaTime);
 
 #if QE_PROFILE_APP_TIMERS
 			auto tev0 = clock::now();

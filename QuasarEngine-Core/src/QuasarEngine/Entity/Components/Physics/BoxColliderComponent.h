@@ -26,14 +26,14 @@ namespace QuasarEngine
         bool  m_UseEntityScale = true;
         glm::vec3 m_Size = { 1.f, 1.f, 1.f };
 
-        physx::PxShape* GetShape()    const noexcept { return mShape; }
-        physx::PxMaterial* GetMaterial() const noexcept { return mMaterial; }
+        physx::PxShape* GetShape()    const noexcept { return m_Shape; }
+        physx::PxMaterial* GetMaterial() const noexcept { return m_Material; }
 
     private:
         void AttachOrRebuild();
         void RecomputeMassFromSize();
 
-        physx::PxShape* mShape = nullptr;
-        physx::PxMaterial* mMaterial = nullptr;
+        physx::PxShape* m_Shape = nullptr;
+        physx::PxMaterial* m_Material = nullptr;
     };
 }

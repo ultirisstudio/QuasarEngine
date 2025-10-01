@@ -4,11 +4,75 @@
 #include <glad/glad.h>
 #include <fstream>
 #include <sstream>
-#include <glm/gtc/type_ptr.hpp>
+
 #include <QuasarEngine/Core/Logger.h>
 
 namespace QuasarEngine
 {
+	static bool GetBool(GLenum cap) { return glIsEnabled(cap) == GL_TRUE; }
+
+	void RendererGLState::PushCurrent() {
+		GLPipelineState s{};
+		s.depthTest = GetBool(GL_DEPTH_TEST);
+		GLboolean wm; glGetBooleanv(GL_DEPTH_WRITEMASK, &wm); s.depthWrite = (wm == GL_TRUE);
+		GLint df; glGetIntegerv(GL_DEPTH_FUNC, &df); s.depthFunc = (GLenum)df;
+		s.cullEnabled = GetBool(GL_CULL_FACE);
+		GLint cf; glGetIntegerv(GL_CULL_FACE_MODE, &cf); s.cullFace = (GLenum)cf;
+		GLint pm; glGetIntegerv(GL_POLYGON_MODE, &pm); s.polygonMode = (GLenum)pm;
+		s.blendEnabled = GetBool(GL_BLEND);
+		GLint srcRGB, dstRGB, srcA, dstA;
+		glGetIntegerv(GL_BLEND_SRC_RGB, &srcRGB);
+		glGetIntegerv(GL_BLEND_DST_RGB, &dstRGB);
+		glGetIntegerv(GL_BLEND_SRC_ALPHA, &srcA);
+		glGetIntegerv(GL_BLEND_DST_ALPHA, &dstA);
+		s.blendSrcRGB = srcRGB; s.blendDstRGB = dstRGB; s.blendSrcA = srcA; s.blendDstA = dstA;
+
+		m_stack.push_back(s);
+		m_cached = s; m_hasCached = true;
+	}
+
+	static void SetDepth(const GLPipelineState& s) {
+		if (s.depthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+		glDepthMask(s.depthWrite ? GL_TRUE : GL_FALSE);
+		glDepthFunc(s.depthFunc);
+	}
+	static void SetCull(const GLPipelineState& s) {
+		if (s.cullEnabled) { glEnable(GL_CULL_FACE); glCullFace(s.cullFace); }
+		else glDisable(GL_CULL_FACE);
+	}
+	static void SetPoly(const GLPipelineState& s) {
+		glPolygonMode(GL_FRONT_AND_BACK, s.polygonMode);
+	}
+	static void SetBlend(const GLPipelineState& s) {
+		if (s.blendEnabled) {
+			glEnable(GL_BLEND);
+			glBlendFuncSeparate(s.blendSrcRGB, s.blendDstRGB, s.blendSrcA, s.blendDstA);
+		}
+		else glDisable(GL_BLEND);
+	}
+
+	void RendererGLState::Apply(const GLPipelineState& s) {
+		SetDepth(s); SetCull(s); SetPoly(s); SetBlend(s);
+		m_cached = s; m_hasCached = true;
+	}
+
+	void RendererGLState::Pop() {
+		if (m_stack.empty()) return;
+		const GLPipelineState s = m_stack.back();
+		m_stack.pop_back();
+		Apply(s);
+	}
+
+	void RendererGLState::ApplyBaseline() {
+		GLPipelineState s{};
+		s.depthTest = true; s.depthWrite = true; s.depthFunc = GL_LESS;
+		s.cullEnabled = true; s.cullFace = GL_BACK;
+		s.polygonMode = GL_FILL;
+		s.blendEnabled = false;
+		s.blendSrcRGB = GL_ONE; s.blendDstRGB = GL_ZERO; s.blendSrcA = GL_ONE; s.blendDstA = GL_ZERO;
+		Apply(s);
+	}
+
 	static GLenum DepthFuncToGL(Shader::DepthFunc func)
 	{
 		switch (func)
@@ -213,13 +277,31 @@ namespace QuasarEngine
 	void OpenGLShader::Use()
 	{
 		glUseProgram(m_ID);
+		
+		RendererGLState::I().PushCurrent();
 
-		ApplyPipelineStates();
+		GLPipelineState ps{};
+		ps.depthTest = m_Description.depthTestEnable;
+		ps.depthWrite = m_Description.depthWriteEnable;
+		ps.depthFunc = DepthFuncToGL(m_Description.depthFunc);
+		ps.cullEnabled = (m_Description.cullMode != CullMode::None);
+		ps.cullFace = (m_Description.cullMode == CullMode::Back ? GL_BACK : GL_FRONT);
+		ps.polygonMode = (m_Description.fillMode == FillMode::Wireframe ? GL_LINE : GL_FILL);
+		ps.blendEnabled = (m_Description.blendMode != BlendMode::None);
+		switch (m_Description.blendMode) {
+		case BlendMode::AlphaBlend: ps.blendSrcRGB = GL_SRC_ALPHA; ps.blendDstRGB = GL_ONE_MINUS_SRC_ALPHA; ps.blendSrcA = GL_SRC_ALPHA; ps.blendDstA = GL_ONE_MINUS_SRC_ALPHA; break;
+		case BlendMode::Additive:   ps.blendSrcRGB = GL_ONE; ps.blendDstRGB = GL_ONE; ps.blendSrcA = GL_ONE; ps.blendDstA = GL_ONE; break;
+		case BlendMode::Multiply:   ps.blendSrcRGB = GL_DST_COLOR; ps.blendDstRGB = GL_ZERO; ps.blendSrcA = GL_DST_ALPHA; ps.blendDstA = GL_ZERO; break;
+		default:                    ps.blendEnabled = false; break;
+		}
+		RendererGLState::I().Apply(ps);
 	}
 
 	void OpenGLShader::Unuse()
 	{
 		glUseProgram(0);
+		
+		RendererGLState::I().Pop();
 	}
 
 	void OpenGLShader::Reset()
@@ -312,30 +394,6 @@ namespace QuasarEngine
 
 	void OpenGLShader::ApplyPipelineStates()
 	{
-		/*
-		//UI
-        desc.blendMode = Shader::BlendMode::AlphaBlend;
-        desc.cullMode = Shader::CullMode::None;
-        desc.fillMode = Shader::FillMode::Solid;
-        desc.depthFunc = Shader::DepthFunc::Always;
-        desc.depthTestEnable = false;
-        desc.depthWriteEnable = false;
-        desc.topology = Shader::PrimitiveTopology::TriangleList;
-        desc.enableDynamicViewport = true;
-        desc.enableDynamicScissor = true;
-
-        //3D
-        desc.blendMode = Shader::BlendMode::None;
-        desc.cullMode = Shader::CullMode::Back;
-        desc.fillMode = Shader::FillMode::Solid;
-        desc.depthFunc = Shader::DepthFunc::Less;
-        desc.depthTestEnable = true;
-        desc.depthWriteEnable = true;
-        desc.topology = Shader::PrimitiveTopology::TriangleList;
-        desc.enableDynamicViewport = true;
-        desc.enableDynamicScissor = true;
-        desc.enableDynamicLineWidth = false;
-		*/
 		if (m_Description.depthTestEnable)
 			glEnable(GL_DEPTH_TEST);
 		else

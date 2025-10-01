@@ -15,14 +15,13 @@ namespace QuasarEngine
 
     BoxColliderComponent::~BoxColliderComponent()
     {
-        //if (mShape) { mShape->release(); mShape = nullptr; }
-        //if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+        
     }
 
     void BoxColliderComponent::Init()
     {
         auto& phys = PhysicEngine::Instance();
-        if (!mMaterial) mMaterial = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
+        if (!m_Material) m_Material = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
         AttachOrRebuild();
         UpdateColliderMaterial();
     }
@@ -39,11 +38,11 @@ namespace QuasarEngine
         PxRigidActor* actor = rb.GetActor();
         if (!actor) return;
 
-        PxShape* old = mShape;
+        PxShape* old = m_Shape;
         glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
-        PxVec3 he = ToPx(full * 0.5f);
+        PxVec3 he = ToPx(full * 1.0f);
 
-        PxShape* shape = sdk->createShape(PxBoxGeometry(he), *mMaterial, true);
+        PxShape* shape = sdk->createShape(PxBoxGeometry(he), *m_Material, true);
         if (!shape) return;
         shape->setContactOffset(0.02f);
         shape->setRestOffset(0.005f);
@@ -53,19 +52,19 @@ namespace QuasarEngine
 
         if (old) actor->detachShape(*old);
         if (old) old->release();
-        mShape = shape;
+        m_Shape = shape;
 
-        actor->attachShape(*mShape);
+        actor->attachShape(*m_Shape);
 
         RecomputeMassFromSize();
     }
 
     void BoxColliderComponent::UpdateColliderMaterial()
     {
-        if (!mMaterial) return;
-        mMaterial->setStaticFriction(friction);
-        mMaterial->setDynamicFriction(friction);
-        mMaterial->setRestitution(bounciness);
+        if (!m_Material) return;
+        m_Material->setStaticFriction(friction);
+        m_Material->setDynamicFriction(friction);
+        m_Material->setRestitution(bounciness);
         RecomputeMassFromSize();
     }
 
@@ -80,7 +79,7 @@ namespace QuasarEngine
         if (!entity.HasComponent<RigidBodyComponent>()) return;
         auto& rb = entity.GetComponent<RigidBodyComponent>();
         PxRigidDynamic* dyn = rb.GetDynamic();
-        if (!dyn || !mShape) return;
+        if (!dyn || !m_Shape) return;
 
         glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
         const float volume = std::max(0.000001f, full.x * full.y * full.z);

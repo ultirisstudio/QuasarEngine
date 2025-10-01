@@ -450,6 +450,14 @@ namespace QuasarEngine
             "z", &glm::ivec4::z,
             "w", &glm::ivec4::w
         );
+
+        lua_state.set_function("deg2rad", [](float deg) {
+			return glm::radians(deg);
+        });
+
+        lua_state.set_function("clamp", [](float x, float a, float b) {
+			return glm::clamp(x, a, b);
+        });
     }
 
     void ScriptSystem::BindFunctionToLua(sol::state& lua_state)
@@ -464,6 +472,13 @@ namespace QuasarEngine
 
         lua_state.set_function("getScene", []() -> Scene* {
             return Renderer::m_SceneData.m_Scene;
+            });
+
+        lua_state.set_function("removeEntityByName", [&lua_state](const std::string& name) -> sol::object {
+            std::optional<Entity> ent = Renderer::m_SceneData.m_Scene->GetEntityByName(name);
+            if (ent.has_value())
+                Renderer::m_SceneData.m_Scene->DestroyEntity(ent.value());
+            return sol::nil;
             });
 
         lua_state.set_function("getEntityByName", [&lua_state](const std::string& name) -> sol::object {
@@ -542,7 +557,8 @@ namespace QuasarEngine
 
     void ScriptSystem::BindEntityToLua(sol::state& lua_state)
     {
-        lua_state.new_usertype<Entity>("Entity");
+        lua_state.new_usertype<Entity>("Entity",
+            "name", &Entity::GetName);
 
         lua_state["Entity"]["getComponent"] = [this, &lua_state](Entity& entity, const std::string& componentName) -> sol::object {
             return LuaGetComponent(entity, componentName, lua_state);

@@ -27,7 +27,6 @@ namespace QuasarEngine
         float angularDamping = 0.05f;
 
         float density = 10.f;
-        glm::vec3 halfExtents = { 0.5f, 0.5f, 0.5f };
 
         RigidBodyComponent();
         ~RigidBodyComponent() override;

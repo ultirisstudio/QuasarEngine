@@ -26,6 +26,8 @@ namespace QuasarEngine
 
 			std::shared_ptr<Shader> m_Shader;
 
+			std::shared_ptr<Shader> m_PhysicDebugShader;
+
 			std::shared_ptr<BasicSkybox> m_Skybox;
 
 			std::unique_ptr<ScriptSystem> m_ScriptSystem;
@@ -43,6 +45,7 @@ namespace QuasarEngine
 
 		static void BeginScene(Scene& scene);
 		static void Render(BaseCamera& camera);
+		static void RenderDebug(BaseCamera& camera);
 		static void RenderSkybox(BaseCamera& camera);
 		static void RenderUI(BaseCamera& camera);
 		static void EndScene();

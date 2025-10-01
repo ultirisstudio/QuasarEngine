@@ -48,6 +48,7 @@ namespace QuasarEngine
 
 		Renderer::RenderSkybox(camera);
 		Renderer::Render(camera);
+		Renderer::RenderDebug(camera);
 
 		Renderer::EndScene();
 

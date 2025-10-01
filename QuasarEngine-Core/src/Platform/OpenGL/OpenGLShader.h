@@ -8,10 +8,37 @@
 #include <vector>
 
 #include <QuasarEngine/Shader/Shader.h>
-#include <glm/glm.hpp>
+
+#include <glad/glad.h>
 
 namespace QuasarEngine
 {
+	struct GLPipelineState {
+		bool depthTest;
+		bool depthWrite;
+		GLenum depthFunc;
+		bool cullEnabled;
+		GLenum cullFace;
+		GLenum polygonMode;
+		bool blendEnabled;
+		GLenum blendSrcRGB, blendDstRGB, blendSrcA, blendDstA;
+	};
+
+	class RendererGLState {
+	public:
+		static RendererGLState& I() { static RendererGLState s; return s; }
+
+		void PushCurrent();
+		void Apply(const GLPipelineState& s);
+		void Pop();
+
+		void ApplyBaseline();
+	private:
+		std::vector<GLPipelineState> m_stack;
+		GLPipelineState m_cached;
+		bool m_hasCached = false;
+	};
+
 	class OpenGLShader : public Shader
 	{
 	public:
