@@ -3,7 +3,8 @@
 
 #include <glad/glad.h>
 
-#include "QuasarEngine/Renderer/RenderCommand.h"
+#include <QuasarEngine/Core/Logger.h>
+#include <QuasarEngine/Renderer/RenderCommand.h>
 
 namespace QuasarEngine
 {
@@ -85,7 +86,7 @@ namespace QuasarEngine
             case FramebufferTextureFormat::RED_INTEGER:		return GL_RED_INTEGER;
             case FramebufferTextureFormat::DEPTH24STENCIL8:	return GL_DEPTH24_STENCIL8;
             default:
-                std::cerr << "Unknown texture format" << std::endl;
+				Q_ERROR("Unknown framebuffer texture format!");
                 return 0;
             }
         }
@@ -155,7 +156,7 @@ namespace QuasarEngine
     {
         if (m_Specification.Width == 0 && m_Specification.Height == 0)
         {
-            std::cerr << "Width or height equal 0 !" << std::endl;
+			Q_ERROR("Attempted to create framebuffer with 0 width or height!");
             return;
         }
 
@@ -210,7 +211,7 @@ namespace QuasarEngine
         if (m_ColorAttachments.size() > 1)
         {
             if (m_ColorAttachments.size() > 4)
-                std::cout << "Framebuffer has more than 4 attachments!" << std::endl;
+				Q_WARNING("Framebuffer has more than 4 color attachments! This may impact performance.");
 
             std::vector<GLenum> buffers(m_ColorAttachments.size());
             for (size_t i = 0; i < buffers.size(); ++i)
@@ -225,7 +226,8 @@ namespace QuasarEngine
         GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE)
         {
-            std::cerr << "[Framebuffer] Incomplete! Status = 0x" << std::hex << status << std::dec << std::endl;
+			Q_ERROR("Framebuffer incomplete!"); // TODO : std::hex << status << std::dec
+
             switch (status)
             {
             case GL_FRAMEBUFFER_UNDEFINED: std::cerr << "GL_FRAMEBUFFER_UNDEFINED\n"; break;
@@ -235,7 +237,9 @@ namespace QuasarEngine
             case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n"; break;
             case GL_FRAMEBUFFER_UNSUPPORTED: std::cerr << "GL_FRAMEBUFFER_UNSUPPORTED\n"; break;
             case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n"; break;
-            default: std::cerr << "Unknown error\n"; break;
+            default:
+				Q_ERROR("Unknown framebuffer error!");
+                break;
             }
         }
 
@@ -260,7 +264,7 @@ namespace QuasarEngine
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ResolvedColorTexture, 0);
 
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                std::cerr << "[Resolve FBO] Incomplete!" << std::endl;
+				Q_ERROR("Failed to create resolve framebuffer!");
         }
 
     }
@@ -285,27 +289,11 @@ namespace QuasarEngine
         glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
         
         RenderCommand::SetViewport(0, 0, m_Specification.Width, m_Specification.Height);
-
-        /*if (m_ColorAttachments.size() > 0)
-        {
-            std::array<GLenum, 8> bufs;
-            for (uint32_t i = 0; i < m_ColorAttachments.size(); ++i)
-                bufs[i] = GL_COLOR_ATTACHMENT0 + i;
-
-            glDrawBuffers((GLsizei)m_ColorAttachments.size(), bufs.data());
-        }
-        else
-        {
-            glDrawBuffer(GL_NONE);
-            glReadBuffer(GL_NONE);
-        }*/
     }
 
     void OpenGLFramebuffer::Unbind() const
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        //glDrawBuffer(GL_BACK);
-        //glReadBuffer(GL_BACK);
     }
 
     void OpenGLFramebuffer::BindColorAttachment(uint32_t index) const

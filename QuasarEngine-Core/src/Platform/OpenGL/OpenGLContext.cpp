@@ -14,9 +14,12 @@ namespace QuasarEngine {
 		glfwMakeContextCurrent(m_WindowHandle);
 		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 		if (!status)
-			std::cout << "Failed to initialize GLAD" << std::endl;
+			Q_ERROR("Failed to initialize GLAD");
 
-		//Log::LogAPIInfos((char*)glGetString(GL_VENDOR), (char*)glGetString(GL_RENDERER), (char*)glGetString(GL_VERSION));
+		Q_INFO("OpenGL Info:");
+		Q_INFO((char*)glGetString(GL_VENDOR));
+		Q_INFO((char*)glGetString(GL_RENDERER));
+		Q_INFO((char*)glGetString(GL_VERSION));
 	}
 
 	void OpenGLContext::BeginFrame()

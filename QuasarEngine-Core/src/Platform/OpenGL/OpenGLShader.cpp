@@ -40,7 +40,10 @@ namespace QuasarEngine
             SetCullAll(s);
             SetPolyAll(s);
             SetBlendAll(s);
-            m_cached = s; m_hasCached = true;
+
+            m_cached = s;
+            m_hasCached = true;
+
             return;
         }
 
@@ -232,7 +235,7 @@ namespace QuasarEngine
                 source = ReadFile(module.path);
             }
             catch (const std::exception& e) {
-                Q_ERROR("Lecture shader échouée (" + module.path + "): " + std::string(e.what()));
+                Q_ERROR("Shader reading failed (" + module.path + "): " + std::string(e.what()));
                 continue;
             }
 
@@ -254,7 +257,7 @@ namespace QuasarEngine
                 compiledShaders.push_back(shader);
             }
             catch (const std::exception& e) {
-                Q_ERROR("Compilation échouée (" + module.path + "): " + std::string(e.what()));
+                Q_ERROR("Compilation failed (" + module.path + "): " + std::string(e.what()));
             }
         }
 
@@ -262,7 +265,7 @@ namespace QuasarEngine
             LinkProgram(compiledShaders);
         }
         catch (const std::exception& e) {
-            Q_ERROR("Erreur lors du linkage du shader : " + std::string(e.what()));
+            Q_ERROR("Error linking shader : " + std::string(e.what()));
             throw;
         }
 
@@ -442,7 +445,7 @@ namespace QuasarEngine
 
         if (itSampler == m_Description.samplers.end())
         {
-            Q_ERROR("Sampler '%s' not found in shader description!", name.c_str());
+            Q_ERROR("Sampler " + name + " not found in shader description!");
             return;
         }
 

@@ -71,10 +71,10 @@ namespace QuasarEngine
         void SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
 
     private:
-        void   LinkProgram(const std::vector<uint32_t>& shaders);
-        void   ExtractUniformLocations();
+        void LinkProgram(const std::vector<uint32_t>& shaders);
+        void ExtractUniformLocations();
         std::string ReadFile(const std::string& path);
-        uint32_t    CompileShader(const std::string& source, uint32_t type);
+        uint32_t CompileShader(const std::string& source, uint32_t type);
 
         static GLenum DepthFuncToGL(Shader::DepthFunc func);
         static GLenum SamplerTypeToGL(Shader::SamplerType type);
@@ -83,6 +83,7 @@ namespace QuasarEngine
 
     private:
         uint32_t m_ID = 0;
+
         std::unordered_map<std::string, int> m_UniformLocations;
 
         std::unordered_map<std::string, const ShaderUniformDesc*> m_GlobalUniformMap;

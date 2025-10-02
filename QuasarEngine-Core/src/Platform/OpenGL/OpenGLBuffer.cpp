@@ -3,6 +3,8 @@
 
 #include <glad/glad.h>
 
+#include <QuasarEngine/Core/Logger.h>
+
 namespace QuasarEngine
 {
 	OpenGLUniformBuffer::OpenGLUniformBuffer(size_t size, uint32_t binding)
@@ -27,7 +29,7 @@ namespace QuasarEngine
 
 		if (size != m_Size)
 		{
-			std::cerr << "[Warning] Uniform buffer size mismatch: expected " << m_Size << " bytes but got " << size << " bytes." << std::endl;
+			Q_WARNING("Uniform buffer size mismatch: expected " + std::to_string(m_Size) + " bytes but got " + std::to_string(size) + " bytes.");
 		}
 
 		glBindBuffer(GL_UNIFORM_BUFFER, m_ID);
@@ -41,7 +43,7 @@ namespace QuasarEngine
 		GLuint index = glGetUniformBlockIndex(programID, blockName.c_str());
 		if (index == GL_INVALID_INDEX)
 		{
-			std::cerr << "Uniform block '" << blockName << "' not found in shader." << std::endl;
+			Q_ERROR("Uniform block '" + blockName + "' not found in shader.");
 			return;
 		}
 
