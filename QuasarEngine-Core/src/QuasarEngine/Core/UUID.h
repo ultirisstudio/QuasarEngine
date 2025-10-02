@@ -1,62 +1,48 @@
 #pragma once
 
-#include <random>
-#include <sstream>
+#include <cstdint>
+#include <string>
+#include <iosfwd>
 
-namespace QuasarEngine {
-    class UUID
-    {
+namespace QuasarEngine
+{
+    class UUID {
     public:
-        UUID();
-        UUID(uint64_t uuid);
+        using value_type = std::uint64_t;
+
+        UUID() noexcept;
+        constexpr explicit UUID(value_type v) noexcept : m_UUID(v) {}
         UUID(const UUID&) = default;
+        UUID& operator=(const UUID&) = default;
 
-        static UUID Null() { return UUID(0); }
+        static constexpr UUID Null() noexcept { return UUID(0); }
 
-        operator uint64_t() const { return m_UUID; }
+        constexpr value_type value() const noexcept { return m_UUID; }
+        explicit constexpr operator value_type() const noexcept { return m_UUID; }
 
-        bool UUID::operator==(const UUID& other) const { return m_UUID == other.m_UUID; }
-        bool UUID::operator!=(const UUID& other) const { return m_UUID != other.m_UUID; }
+        constexpr bool operator==(const UUID& other) const noexcept { return m_UUID == other.m_UUID; }
+        constexpr bool operator!=(const UUID& other) const noexcept { return m_UUID != other.m_UUID; }
 
-        std::string ToString() const
-        {
-			std::stringstream ss;
-			ss << m_UUID;
-			return ss.str();
-		}
+        std::string ToString() const;
+
     private:
-        uint64_t m_UUID;
+        value_type m_UUID{ 0 };
     };
 
-    struct UUIDMapping
-    {
-        size_t operator()(const UUID& k)const
-        {
-            return std::hash<int>()(k);
-        }
-
-        bool operator()(const UUID& a, const UUID& b)const
-        {
-            return a == b;
-        }
-    };
+    std::ostream& operator<<(std::ostream& os, const UUID& id);
 }
 
-namespace std {
-    template <typename T> struct hash;
-
+namespace std
+{
     template<>
-    struct hash<QuasarEngine::UUID>
-    {
-        std::size_t operator()(const QuasarEngine::UUID& uuid) const
-        {
-            return (uint64_t)uuid;
-        }
-
-        bool operator()(const QuasarEngine::UUID& a, const QuasarEngine::UUID& b) const
-        {
-            return a == b;
+    struct hash<QuasarEngine::UUID> {
+        size_t operator()(const QuasarEngine::UUID& uuid) const noexcept {
+            std::uint64_t v = uuid.value();
+#if SIZE_MAX >= UINT64_MAX
+            return static_cast<size_t>(v);
+#else
+            return static_cast<size_t>(v ^ (v >> 32));
+#endif
         }
     };
-
 }

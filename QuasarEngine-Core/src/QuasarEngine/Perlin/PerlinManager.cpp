@@ -50,7 +50,7 @@ namespace QuasarEngine
 
 	struct PerlinManagerData
 	{
-		std::unordered_map<uint64_t, PerlinInfos> m_PerlinMap;
+		std::unordered_map<UUID, PerlinInfos> m_PerlinMap;
 
 		std::vector<glm::vec2> curve;
 	};
@@ -78,19 +78,19 @@ namespace QuasarEngine
 		};
 	}
 
-	uint64_t PerlinManager::AddPerlinNoise()
+	UUID PerlinManager::AddPerlinNoise()
 	{
-		uint64_t uuid = UUID();
+		UUID uuid = UUID();
 		s_Data->m_PerlinMap[uuid] = { 8173561, siv::PerlinNoise() };
 		return uuid;
 	}
 
-	float PerlinManager::GetPerlinNoise(uint64_t uuid, float x, float z)
+	float PerlinManager::GetPerlinNoise(UUID uuid, float x, float z)
 	{
 		return s_Data->m_PerlinMap[uuid].perlin.octave2D(x * 0.001f, z * 0.001f, 5);
 	}
 
-	float PerlinManager::GetMapHeight(uint64_t uuid, float x, float z)
+	float PerlinManager::GetMapHeight(UUID uuid, float x, float z)
 	{
 		float noise_value = GetPerlinNoise(uuid, x, z);
 

@@ -9,11 +9,12 @@
 
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>
+#include <QuasarEngine/Core/UUID.h>
 
 namespace QuasarEngine
 {
 	ScriptComponentPanel::ScriptComponentPanel(const std::string& projectPath)
-		: m_ProjectPath(projectPath)
+		: m_ProjectPath(projectPath), m_LastEntityID(0), m_LastFullPath("")
 	{
 		m_LocalBuffer[0] = '\0';
 	}

@@ -66,7 +66,7 @@ namespace QuasarEngine
         //std::unique_ptr<Skybox> m_Skybox;
 
         bool m_OnRuntime;
-        uint64_t m_PrimaryCameraUUID;
+        UUID m_PrimaryCameraUUID;
 
         std::unordered_set<UUID> m_PendingEntityDestructions;
 

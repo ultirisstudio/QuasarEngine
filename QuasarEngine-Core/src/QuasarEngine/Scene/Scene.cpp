@@ -150,7 +150,7 @@ namespace QuasarEngine
         UUID uuid = entity.GetUUID();
 
         if (m_PrimaryCameraUUID == uuid)
-            m_PrimaryCameraUUID = 0;
+            m_PrimaryCameraUUID = UUID::Null();
 
         m_EntityMap.erase(uuid);
 
@@ -228,12 +228,12 @@ namespace QuasarEngine
 
     void Scene::ClearEntities()
     {
-        std::vector<uint64_t> uuids;
+        std::vector<UUID> uuids;
         uuids.reserve(m_EntityMap.size());
         for (const auto& [uuid, handle] : m_EntityMap)
             uuids.push_back(uuid);
 
-        for (uint64_t uuid : uuids)
+        for (UUID uuid : uuids)
         {
             DestroyEntity(Entity{ m_EntityMap[uuid], m_Registry.get() });
         }
@@ -241,12 +241,12 @@ namespace QuasarEngine
         //m_EntityMap.clear();
         //m_NameMap.clear();
         //m_Registry->ClearRegistry();
-        m_PrimaryCameraUUID = 0;
+        m_PrimaryCameraUUID = UUID::Null();
     }
 
     std::optional<Entity> Scene::GetPrimaryCameraEntity() const
     {
-        if (m_PrimaryCameraUUID)
+        if (m_PrimaryCameraUUID != UUID::Null())
         {
             auto it = m_EntityMap.find(m_PrimaryCameraUUID);
             if (it != m_EntityMap.end())
@@ -290,7 +290,7 @@ namespace QuasarEngine
 
     void Scene::UpdatePrimaryCameraCache()
     {
-        m_PrimaryCameraUUID = 0;
+        m_PrimaryCameraUUID = UUID::Null();
         auto view = m_Registry->GetRegistry().view<IDComponent, CameraComponent>();
         for (auto entity : view)
         {

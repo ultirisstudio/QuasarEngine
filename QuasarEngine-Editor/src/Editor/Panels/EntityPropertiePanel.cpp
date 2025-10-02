@@ -362,7 +362,7 @@ namespace QuasarEngine
             char buffer[256];
             std::strncpy(buffer, entity.GetName().c_str(), sizeof(buffer));
             buffer[sizeof(buffer) - 1] = '\0';
-            if (ImGui::InputText(("##" + std::to_string(uuid)).c_str(), buffer, sizeof(buffer)))
+            if (ImGui::InputText(("##" + uuid.ToString()).c_str(), buffer, sizeof(buffer)))
             {
                 if (entity.HasComponent<TagComponent>())
                     entity.GetComponent<TagComponent>().Tag = std::string(buffer);

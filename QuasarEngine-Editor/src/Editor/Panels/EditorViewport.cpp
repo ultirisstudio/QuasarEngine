@@ -330,8 +330,8 @@ namespace QuasarEngine
 
 			if (inside && m_ViewportHovered && m_EditorFrameBuffer)
 			{
-				int pixelEntity = m_EditorFrameBuffer->ReadPixel(1, (int)localX, (int)localY);
-				if (pixelEntity >= 0)
+				UUID pixelEntity = UUID(m_EditorFrameBuffer->ReadPixel(1, (int)localX, (int)localY));
+				if (pixelEntity != UUID::Null())
 				{
 					std::optional<Entity> hovered = Renderer::m_SceneData.m_Scene->GetEntityByUUID(pixelEntity);
 					m_HoveredEntity = hovered.value_or(Entity{});

@@ -15,7 +15,7 @@ namespace QuasarEngine
 
     static void GLFWErrorCallback(int error, const char* description)
     {
-        Q_ERROR("GLFW Error ({}): {}", error, description);
+        Q_ERROR("GLFW Error (" + std::to_string(error) + std::string("): ") + std::string(description));
     }
 
     Window::Window()

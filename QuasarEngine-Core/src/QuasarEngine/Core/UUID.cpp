@@ -1,20 +1,49 @@
-#pragma once
-
 #include "qepch.h"
+
 #include "UUID.h"
 
-namespace QuasarEngine {
-    static std::random_device                       s_RandomDevice;
-    static std::mt19937_64                          s_Engine(s_RandomDevice());
-    static std::uniform_int_distribution<uint64_t>  s_UniformDistribution;
+#include <random>
+#include <sstream>
+#include <limits>
+#include <mutex>
 
-	UUID::UUID() : m_UUID(s_UniformDistribution(s_Engine))
-	{
-		
-	}
+namespace
+{
+    std::mt19937_64& engine() {
+        static std::mt19937_64 e([] {
+            std::random_device rd;
+            std::seed_seq seed{ rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd() };
+            return std::mt19937_64(seed);
+            }());
+        return e;
+    }
 
-	UUID::UUID(uint64_t uuid)
-		: m_UUID(uuid)
-	{
-	}
+    std::uniform_int_distribution<std::uint64_t>& distrib() {
+        static std::uniform_int_distribution<std::uint64_t> d(
+            std::numeric_limits<std::uint64_t>::min(),
+            std::numeric_limits<std::uint64_t>::max()
+        );
+        return d;
+    }
+
+    std::mutex& rngMutex() {
+        static std::mutex m;
+        return m;
+    }
+}
+
+namespace QuasarEngine
+{
+    UUID::UUID() noexcept {
+        std::lock_guard<std::mutex> lock(rngMutex());
+        m_UUID = distrib()(engine());
+    }
+
+    std::string UUID::ToString() const {
+        return std::to_string(m_UUID);
+    }
+
+    std::ostream& operator<<(std::ostream& os, const UUID& id) {
+        return (os << id.value());
+    }
 }

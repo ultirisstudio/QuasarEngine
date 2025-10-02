@@ -77,7 +77,7 @@ namespace QuasarEngine
 
 	void SceneHierarchy::OnDrawEntityNode(Scene& scene, Entity entity)
 	{
-		ImGui::PushID((int)entity.GetUUID());
+		ImGui::PushID((int)entity.GetUUID().value());
 		bool deleteEntity = false;
 
 		bool hasChildren = entity.HasComponent<HierarchyComponent>() ? !entity.GetComponent<HierarchyComponent>().m_Childrens.empty() : false;
@@ -94,7 +94,7 @@ namespace QuasarEngine
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
 
-		bool open = ImGui::TreeNodeEx((void*)(intptr_t)entity.GetUUID(), treeFlags, "%s", entity.GetName().c_str());
+		bool open = ImGui::TreeNodeEx((void*)(intptr_t)entity.GetUUID().value(), treeFlags, "%s", entity.GetName().c_str());
 
 		if (ImGui::BeginPopupContextItem()) {
 			if (ImGui::MenuItem("Supprimer")) {
@@ -140,7 +140,7 @@ namespace QuasarEngine
 			m_SelectedEntity = entity;
 
 		ImGui::TableSetColumnIndex(1);
-		std::string uuidStr = std::to_string(entity.GetUUID());
+		std::string uuidStr = entity.GetUUID().ToString();
 		if (uuidStr.length() > 6)
 			uuidStr = uuidStr.substr(0, 6) + "...";
 		ImGui::TextUnformatted(uuidStr.c_str());

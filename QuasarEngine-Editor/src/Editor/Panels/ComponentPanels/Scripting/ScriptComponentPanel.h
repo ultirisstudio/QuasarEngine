@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <QuasarEngine/Core/UUID.h>
+
 namespace QuasarEngine
 {
 	class Entity;
@@ -18,7 +20,7 @@ namespace QuasarEngine
 		std::string m_ProjectPath;
 		char m_LocalBuffer[256];
 
-		uint64_t m_LastEntityID = 0;
+		UUID m_LastEntityID;
 		std::string m_LastFullPath;
 	};
 }

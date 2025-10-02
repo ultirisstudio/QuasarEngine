@@ -40,11 +40,53 @@ namespace QuasarEngine
         }
     };
 
+    static inline bool ReadUUID(const YAML::Node& n, QuasarEngine::UUID& out)
+    {
+        if (!n) return false;
+
+        try {
+            uint64_t v = n.as<uint64_t>();
+            out = QuasarEngine::UUID(v);
+            return true;
+        }
+        catch (...) {}
+
+        if (n.IsScalar()) {
+            std::string s = n.Scalar();
+
+            while (!s.empty() && isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+            while (!s.empty() && isspace(static_cast<unsigned char>(s.back())))  s.pop_back();
+
+            int base = 10;
+            if (s.size() > 2 && (s.rfind("0x", 0) == 0 || s.rfind("0X", 0) == 0))
+                base = 16;
+
+            try {
+                std::size_t pos = 0;
+                uint64_t v = std::stoull(s, &pos, base);
+                if (pos == s.size()) {
+                    out = QuasarEngine::UUID(v);
+                    return true;
+                }
+            }
+            catch (...) {}
+        }
+
+        return false;
+    }
+
+    static inline YAML::Emitter& operator<<(YAML::Emitter& out, const QuasarEngine::UUID& id)
+    {
+        out << std::to_string(static_cast<std::uint64_t>(id));
+        return out;
+    }
+
     static inline YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec3& v)
     {
         out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
         return out;
     }
+
     static inline YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec4& v)
     {
         out << YAML::Flow << YAML::BeginSeq << v.r << v.g << v.b << v.a << YAML::EndSeq;
@@ -55,6 +97,7 @@ namespace QuasarEngine
     {
         out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
     }
+
     static inline void EmitVec3Array(YAML::Emitter& out, const std::vector<glm::vec3>& a)
     {
         out << YAML::Flow << YAML::BeginSeq;
@@ -62,12 +105,14 @@ namespace QuasarEngine
             out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
         out << YAML::EndSeq;
     }
+
     static inline void EmitUIntArray(YAML::Emitter& out, const std::vector<uint32_t>& a)
     {
         out << YAML::Flow << YAML::BeginSeq;
         for (auto v : a) out << v;
         out << YAML::EndSeq;
     }
+
     static inline void EmitFloatArray(YAML::Emitter& out, const std::vector<float>& a)
     {
         out << YAML::Flow << YAML::BeginSeq;
@@ -196,7 +241,9 @@ namespace QuasarEngine
         {
             try {
                 std::string name = entityNode["Entity"] ? entityNode["Entity"].as<std::string>() : "Entity";
-                UUID uuid = entityNode["ID"] ? entityNode["ID"].as<uint64_t>() : UUID();
+                UUID uuid = UUID();
+                if (entityNode["ID"])
+                    ReadUUID(entityNode["ID"], uuid);
                 Entity entity = scene.CreateEntityWithUUID(uuid, name);
 
                 const YAML::Node components = entityNode["Components"];
@@ -446,8 +493,15 @@ namespace QuasarEngine
         for (const auto& entityNode : entities)
         {
             if (!entityNode["ID"] || !entityNode["ParentID"]) continue;
-            UUID uuid = entityNode["ID"].as<uint64_t>();
-            UUID parentUUID = entityNode["ParentID"].as<uint64_t>();
+
+            UUID uuid = UUID::Null();
+            if (entityNode["ID"])
+                ReadUUID(entityNode["ID"], uuid);
+
+            UUID parentUUID = UUID::Null();
+            if (entityNode["ParentID"])
+                ReadUUID(entityNode["ParentID"], parentUUID);
+
             if (parentUUID == UUID::Null()) continue;
 
             auto entityOpt = scene.GetEntityByUUID(uuid);
@@ -469,7 +523,7 @@ namespace QuasarEngine
         out << YAML::Key << "Entity" << YAML::Value << entity.GetName();
         out << YAML::Key << "ID" << YAML::Value << entity.GetUUID();
 
-        const uint64_t parentID = (entity.GetComponent<HierarchyComponent>().m_Parent != UUID::Null())
+        const UUID parentID = (entity.GetComponent<HierarchyComponent>().m_Parent != UUID::Null())
             ? entity.GetComponent<HierarchyComponent>().m_Parent
             : UUID::Null();
         out << YAML::Key << "ParentID" << YAML::Value << parentID;
