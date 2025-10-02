@@ -55,6 +55,8 @@ namespace QuasarEngine {
 
         void SetMousePosition(float x, float y);
 
+        bool WaitEventsTimeout(double seconds);
+
         void SetMaximized(bool maximized);
 
         void* GetNativeWindow() const noexcept { return m_Window; }

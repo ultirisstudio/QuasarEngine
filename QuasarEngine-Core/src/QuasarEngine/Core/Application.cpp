@@ -21,6 +21,17 @@ extern "C" {
 
 namespace QuasarEngine
 {
+	namespace
+	{
+		using clock = std::chrono::steady_clock;
+		using dsec = std::chrono::duration<double>;
+		using dmsec = std::chrono::duration<double, std::milli>;
+
+		inline void sleep_until_precise(clock::time_point tp) {
+			std::this_thread::sleep_until(tp);
+		}
+	}
+
 	Application* Application::s_Instance = nullptr;
 	
 	Application::Application(const ApplicationSpecification& specification) : m_Specification(specification)
@@ -92,116 +103,156 @@ namespace QuasarEngine
 		m_Running = false;
 	}
 
-	void Application::Run()
-	{
-		using clock = std::chrono::steady_clock;
-		auto lastTime = clock::now();
+    void Application::Run()
+    {
+        using clock = std::chrono::steady_clock;
 
-		while (m_Running)
-		{
-			auto frameStart = clock::now();
+        auto lastFrameBegin = clock::now();
+        auto lastImGuiTick = lastFrameBegin;
 
-#if QE_PROFILE_APP_TIMERS
-			auto now = clock::now();
-			deltaTime = std::chrono::duration<float>(now - lastTime).count();
-			lastTime = now;
-			if (deltaTime > 0.1f) deltaTime = 0.1f;
+        const bool capFps = (m_Specification.MaxFPS > 0);
+        const double frameMs = capFps ? (1000.0 / m_Specification.MaxFPS) : 0.0;
 
-			ApplicationInfos nextInfos{};
-#endif
+        const bool capImGui = (m_Specification.ImGuiMaxFPS > 0);
+        const double imguiMs = capImGui ? (1000.0 / m_Specification.ImGuiMaxFPS) : 0.0;
 
-			for (Layer* layer : m_LayerManager)
-			{
-#if QE_PROFILE_APP_TIMERS
-				auto t0 = clock::now();
-#endif
-				layer->OnUpdate(deltaTime);
-#if QE_PROFILE_APP_TIMERS
-				auto t1 = clock::now();
-				nextInfos.update_latency += std::chrono::duration<double, std::milli>(t1 - t0).count();
-#endif
+        while (m_Running)
+        {
+            const auto frameBegin = clock::now();
+            const double dt = std::chrono::duration<double>(frameBegin - lastFrameBegin).count();
+            lastFrameBegin = frameBegin;
+
+            deltaTime = static_cast<float>(std::min(dt, 0.1));
 
 #if QE_PROFILE_APP_TIMERS
-				auto t2 = clock::now();
-#endif
-				layer->OnRender();
-#if QE_PROFILE_APP_TIMERS
-				auto t3 = clock::now();
-				nextInfos.render_latency += std::chrono::duration<double, std::milli>(t3 - t2).count();
-#endif
-			}
-
-#if QE_PROFILE_APP_TIMERS
-			auto tb0 = clock::now();
-#endif
-			m_Window->BeginFrame();
-#if QE_PROFILE_APP_TIMERS
-			auto tb1 = clock::now();
-			nextInfos.begin_latency = std::chrono::duration<double, std::milli>(tb1 - tb0).count();
+            ApplicationInfos nextInfos{};
 #endif
 
-			if (m_ImGuiLayer)
-			{
+            for (Layer* layer : m_LayerManager)
+            {
 #if QE_PROFILE_APP_TIMERS
-				auto ti0 = clock::now();
+                auto t0 = clock::now();
 #endif
-				m_ImGuiLayer->Begin();
-				for (Layer* layer : m_LayerManager)
-					layer->OnGuiRender();
-				m_ImGuiLayer->End();
+                layer->OnUpdate(deltaTime);
 #if QE_PROFILE_APP_TIMERS
-				auto ti1 = clock::now();
-				nextInfos.imgui_latency = std::chrono::duration<double, std::milli>(ti1 - ti0).count();
-#endif
-			}
-
-#if QE_PROFILE_APP_TIMERS
-			auto te0 = clock::now();
-#endif
-			m_Window->EndFrame();
-#if QE_PROFILE_APP_TIMERS
-			auto te1 = clock::now();
-			nextInfos.end_latency = std::chrono::duration<double, std::milli>(te1 - te0).count();
-#endif
-
-			//for (Layer* layer : m_LayerManager)
-				//layer->OnUpdate(deltaTime);
-
-#if QE_PROFILE_APP_TIMERS
-			auto tev0 = clock::now();
-#endif
-			m_Window->PollEvents();
-#if QE_PROFILE_APP_TIMERS
-			auto tev1 = clock::now();
-			nextInfos.event_latency = std::chrono::duration<double, std::milli>(tev1 - tev0).count();
+                auto t1 = clock::now();
+                nextInfos.update_latency += std::chrono::duration<double, std::milli>(t1 - t0).count();
 #endif
 
 #if QE_PROFILE_APP_TIMERS
-			auto ta0 = clock::now();
+                auto t2 = clock::now();
 #endif
-			if (Renderer::m_SceneData.m_AssetManager)
-				Renderer::m_SceneData.m_AssetManager->Update();
+                layer->OnRender();
 #if QE_PROFILE_APP_TIMERS
-			auto ta1 = clock::now();
-			nextInfos.asset_latency = std::chrono::duration<double, std::milli>(ta1 - ta0).count();
+                auto t3 = clock::now();
+                nextInfos.render_latency += std::chrono::duration<double, std::milli>(t3 - t2).count();
 #endif
-
-			const double frameTimeMs =
-				std::chrono::duration<double, std::milli>(clock::now() - frameStart).count();
-			CalculPerformance(frameTimeMs);
+            }
 
 #if QE_PROFILE_APP_TIMERS
-			const double fps = m_appInfos.app_fps;
-			const double avg = m_appInfos.app_latency;
-			m_appInfos = nextInfos;
-			m_appInfos.app_fps = fps;
-			m_appInfos.app_latency = avg;
+            auto tb0 = clock::now();
 #endif
-		}
+            m_Window->BeginFrame();
+#if QE_PROFILE_APP_TIMERS
+            auto tb1 = clock::now();
+            nextInfos.begin_latency = std::chrono::duration<double, std::milli>(tb1 - tb0).count();
+#endif
 
-		for (Layer* layer : m_LayerManager)
-			layer->OnDetach();
-	}
+            const bool doImGui = m_ImGuiLayer && (!capImGui || dmsec(clock::now() - lastImGuiTick).count() >= imguiMs);
+
+            if (m_ImGuiLayer && doImGui)
+            {
+#if QE_PROFILE_APP_TIMERS
+                auto ti0 = clock::now();
+#endif
+                m_ImGuiLayer->Begin();
+                for (Layer* layer : m_LayerManager)
+                    layer->OnGuiRender();
+                m_ImGuiLayer->End();
+                lastImGuiTick = clock::now();
+#if QE_PROFILE_APP_TIMERS
+                auto ti1 = clock::now();
+                nextInfos.imgui_latency = std::chrono::duration<double, std::milli>(ti1 - ti0).count();
+#endif
+            }
+
+#if QE_PROFILE_APP_TIMERS
+            auto te0 = clock::now();
+#endif
+            m_Window->EndFrame();
+#if QE_PROFILE_APP_TIMERS
+            auto te1 = clock::now();
+            nextInfos.end_latency = std::chrono::duration<double, std::milli>(te1 - te0).count();
+#endif
+
+#if QE_PROFILE_APP_TIMERS
+            auto tev0 = clock::now();
+#endif
+
+            switch (m_Specification.EventMode)
+            {
+            case ApplicationSpecification::EventPumpMode::Poll:
+                m_Window->PollEvents();
+                break;
+            case ApplicationSpecification::EventPumpMode::Wait:
+                if (m_Window->WaitEventsTimeout(m_Specification.EventWaitTimeoutSec) == false)
+                    m_Window->PollEvents();
+                break;
+            case ApplicationSpecification::EventPumpMode::Adaptive:
+            default:
+            {
+                if (capFps) {
+                    if (m_Window->WaitEventsTimeout(m_Specification.EventWaitTimeoutSec) == false)
+                        m_Window->PollEvents();
+                }
+                else {
+                    m_Window->PollEvents();
+                }
+                break;
+            }
+            }
+
+#if QE_PROFILE_APP_TIMERS
+            auto tev1 = clock::now();
+            nextInfos.event_latency = std::chrono::duration<double, std::milli>(tev1 - tev0).count();
+#endif
+
+#if QE_PROFILE_APP_TIMERS
+            auto ta0 = clock::now();
+#endif
+            if (Renderer::m_SceneData.m_AssetManager)
+                Renderer::m_SceneData.m_AssetManager->Update();
+#if QE_PROFILE_APP_TIMERS
+            auto ta1 = clock::now();
+            nextInfos.asset_latency = std::chrono::duration<double, std::milli>(ta1 - ta0).count();
+#endif
+
+            const auto frameEnd = clock::now();
+            const double frameTimeMs = dmsec(frameEnd - frameBegin).count();
+
+            if (m_Specification.MinimizedSleep && m_Minimized) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(66));
+            }
+            else if (capFps) {
+                const auto targetEnd = frameBegin + std::chrono::milliseconds((long long)(frameMs));
+                if (targetEnd > clock::now())
+                    sleep_until_precise(targetEnd);
+            }
+
+            CalculPerformance(frameTimeMs);
+
+#if QE_PROFILE_APP_TIMERS
+            const double fps = m_appInfos.app_fps;
+            const double avg = m_appInfos.app_latency;
+            m_appInfos = nextInfos;
+            m_appInfos.app_fps = fps;
+            m_appInfos.app_latency = avg;
+#endif
+        }
+
+        for (Layer* layer : m_LayerManager)
+            layer->OnDetach();
+    }
 
 	void Application::CalculPerformance(double frameTimeMs)
 	{

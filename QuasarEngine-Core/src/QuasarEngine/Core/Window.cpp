@@ -233,6 +233,13 @@ namespace QuasarEngine
         m_Data.MousePos = glm::uvec2(static_cast<unsigned int>(x), static_cast<unsigned int>(y));
     }
 
+    bool Window::WaitEventsTimeout(double seconds)
+    {
+        if (seconds < 0.0) seconds = 0.0;
+        glfwWaitEventsTimeout(seconds);
+        return true;
+    }
+
     void Window::SetMaximized(bool maximized)
     {
         if (maximized)

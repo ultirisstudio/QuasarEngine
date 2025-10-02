@@ -65,6 +65,11 @@ namespace QuasarEngine
 		spec.Name = "Quasar Editor";
 		spec.CommandLineArgs = args;
 
+		spec.MaxFPS = 0;
+		spec.ImGuiMaxFPS = 0;
+		spec.EventMode = QuasarEngine::ApplicationSpecification::EventPumpMode::Poll;
+		spec.EventWaitTimeoutSec = 0.0;
+
 		return new QuasarEditor(spec);
 	}
 }

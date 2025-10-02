@@ -34,6 +34,14 @@ namespace QuasarEngine
 		std::string WorkingDirectory;
 		bool EnableImGui = true;
 		ApplicationCommandLineArgs CommandLineArgs;
+
+		int    MaxFPS = 0;
+		int    ImGuiMaxFPS = 0;
+		bool   MinimizedSleep = true;
+
+		enum class EventPumpMode { Poll, Wait, Adaptive };
+		EventPumpMode EventMode = EventPumpMode::Adaptive;
+		double EventWaitTimeoutSec = 0.01;
 	};
 
 	struct ApplicationInfos
