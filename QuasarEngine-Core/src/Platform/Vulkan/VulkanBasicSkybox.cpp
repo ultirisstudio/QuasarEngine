@@ -24,7 +24,7 @@ namespace QuasarEngine
 		desc.modules = {
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
-				"Assets/Shaders/basic_skybox.vert.spv",
+				"Assets/Shaders/vk/spvbasic_skybox.vert.spv",
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
@@ -33,7 +33,7 @@ namespace QuasarEngine
 			},
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Fragment,
-				"Assets/Shaders/basic_skybox.frag.spv",
+				"Assets/Shaders/vk/spv/basic_skybox.frag.spv",
 				{
 					{0, Shader::ShaderIOType::Vec3, "inTexCoord", true, ""}
 				}

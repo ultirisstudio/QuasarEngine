@@ -32,8 +32,25 @@ namespace QuasarEngine
 
 		Shader::ShaderDescription desc;
 
-		std::string vertPath = "Assets/Shaders/basic.vert." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
-		std::string fragPath = "Assets/Shaders/basic.frag." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+		std::string basePath;
+		std::string vertExt;
+		std::string fragExt;
+
+		if (RendererAPI::GetAPI() == RendererAPI::API::Vulkan)
+		{
+			basePath = "Assets/Shaders/vk/spv/";
+			vertExt = ".vert.spv";
+			fragExt = ".frag.spv";
+		}
+		else
+		{
+			basePath = "Assets/Shaders/gl/";
+			vertExt = ".vert.glsl";
+			fragExt = ".frag.glsl";
+		}
+
+		std::string vertPath = basePath + "basic" + vertExt;
+		std::string fragPath = basePath + "basic" + fragExt;
 
 		desc.modules = {
 			Shader::ShaderModuleInfo{
@@ -132,13 +149,27 @@ namespace QuasarEngine
 
 		Shader::ShaderDescription phyDebDesc;
 
-		std::string phydebVertPath = "Assets/Shaders/debug.vert." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
-		std::string phydebFragPath = "Assets/Shaders/debug.frag." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+		std::string phyDebVertExt;
+		std::string phyDebFragExt;
+
+		if (RendererAPI::GetAPI() == RendererAPI::API::Vulkan)
+		{
+			phyDebVertExt = ".vert.spv";
+			phyDebFragExt = ".frag.spv";
+		}
+		else
+		{
+			phyDebVertExt = ".vert.glsl";
+			phyDebFragExt = ".frag.glsl";
+		}
+
+		std::string phyDebVertPath = basePath + "debug" + phyDebVertExt;
+		std::string phyDebFragPath = basePath + "debug" + phyDebFragExt;
 
 		phyDebDesc.modules = {
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
-				phydebVertPath,
+				phyDebVertPath,
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inColor",    true, ""},
@@ -146,7 +177,7 @@ namespace QuasarEngine
 			},
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Fragment,
-				phydebFragPath,
+				phyDebFragPath,
 				{}
 			}
 		};

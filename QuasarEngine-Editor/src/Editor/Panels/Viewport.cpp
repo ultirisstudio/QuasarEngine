@@ -140,7 +140,7 @@ namespace QuasarEngine
 
 		Renderer::m_SceneData.m_UI->Input().FeedPointer(ev);
 
-		std::cout << "Mouse button pressed: " << e.GetMouseButton() << " at (" << ev.x << ", " << ev.y << ")\n";
+		//std::cout << "Mouse button pressed: " << e.GetMouseButton() << " at (" << ev.x << ", " << ev.y << ")\n";
 
 		return true;
 	}

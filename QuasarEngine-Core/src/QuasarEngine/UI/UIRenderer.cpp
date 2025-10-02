@@ -19,8 +19,25 @@ namespace QuasarEngine {
     {
         Shader::ShaderDescription desc;
 
-        std::string vertPath = "Assets/Shaders/ui.vert." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
-        std::string fragPath = "Assets/Shaders/ui.frag." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+        std::string basePath;
+        std::string vertExt;
+        std::string fragExt;
+
+        if (RendererAPI::GetAPI() == RendererAPI::API::Vulkan)
+        {
+            basePath = "Assets/Shaders/vk/spv/";
+            vertExt = ".vert.spv";
+            fragExt = ".frag.spv";
+        }
+        else
+        {
+            basePath = "Assets/Shaders/gl/";
+            vertExt = ".vert.glsl";
+            fragExt = ".frag.glsl";
+        }
+
+        std::string vertPath = basePath + "ui" + vertExt;
+        std::string fragPath = basePath + "ui" + fragExt;
 
         desc.modules = {
             Shader::ShaderModuleInfo{
