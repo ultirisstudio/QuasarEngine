@@ -199,30 +199,51 @@ namespace QuasarEngine {
         m_Cmds.push_back(cmd);
     }
 
-    void UIRenderContext::DrawText(const char* s, float x, float y, const UIColor& color) {
-        if (!defaultFont)
-        {
-            return;
-        }
+    void UIRenderContext::DrawText(const char* s, float x, float y, const UIColor& color)
+    {
+        if (!defaultFont) return;
 
         uint32_t rgba = PackRGBA8(color);
+
         UITexture tex;
         tex.id = defaultFont->GetTextureId();
 
         float penX = x;
         float penY = y + defaultFont->Ascent();
 
-        for (const char* p = s; *p; ++p) {
-            unsigned int cp = (unsigned char)*p;
-            if (cp == '\n') { penY += (defaultFont->Ascent() - defaultFont->Descent() + defaultFont->LineGap()); penX = x; continue; }
-            auto g = defaultFont->GetGlyph(cp);
-            if (!g) continue;
+        unsigned int prev_cp = 0;
 
-            float gx = penX + g->offsetX;
-            float gy = penY - g->offsetY;
-            batcher->PushQuadUV(gx, gy, g->w, g->h, g->u0, g->v0, g->u1, g->v1, tex, rgba, nullptr);
+        for (const unsigned char* p = reinterpret_cast<const unsigned char*>(s); *p; ++p)
+        {
+            unsigned int cp = *p;
+
+            if (cp == '\n') {
+                penY += (defaultFont->Ascent() - defaultFont->Descent() + defaultFont->LineGap());
+                penX = x;
+                prev_cp = 0;
+                continue;
+            }
+
+            if (prev_cp != 0) {
+                penX += defaultFont->GetKerning(prev_cp, cp) * defaultFont->GetScale();
+            }
+
+            const UIFontGlyph* g = defaultFont->GetGlyph(cp);
+            if (!g) {
+                prev_cp = 0;
+                continue;
+            }
+
+            const float gx = penX + g->offsetX;
+            const float gy = penY - g->offsetY;
+
+            batcher->PushQuadUV(gx, gy, g->w, g->h,
+                g->u0, g->v0, g->u1, g->v1,
+                tex, rgba, nullptr);
 
             penX += g->advance;
+
+            prev_cp = cp;
         }
     }
 

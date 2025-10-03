@@ -1,38 +1,45 @@
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include <memory>
 #include <vector>
-#include <string>
+#include <cstdint>
 
-namespace QuasarEngine
-{
-	class Texture2D;
+namespace QuasarEngine {
 
-	struct UIFontGlyph {
-		float advance;
-		float offsetX, offsetY;
-		float w, h;
-		float u0, v0, u1, v1;
-	};
+    struct UIFontGlyph {
+        float advance;
+        float offsetX, offsetY;
+        float w, h;
+        float u0, v0, u1, v1;
+    };
 
-	class UIFont {
-	public:
-		UIFont();
-		~UIFont() = default;
+    class UIFont {
+    public:
+        UIFont();
+        ~UIFont();
 
-		bool LoadTTF(const std::string& ttfPath, float pixelHeight, int atlasW = 512, int atlasH = 512);
-		std::string GetTextureId() const { return m_Id; }
-		float Ascent() const { return m_Ascent; }
-		float Descent() const { return m_Descent; }
-		float LineGap() const { return m_LineGap; }
-		const UIFontGlyph* GetGlyph(unsigned int codepoint) const;
-	private:
-		std::string m_Id;
+        bool LoadTTF(const std::string& ttfPath,
+            float pixelHeight,
+            int atlasW = 512,
+            int atlasH = 512);
 
-		int m_AtlasW = 0, m_AtlasH = 0;
-		float m_Ascent = 0, m_Descent = 0, m_LineGap = 0, m_Scale = 1.f;
+        std::string GetTextureId() const;
 
-		std::unordered_map<unsigned int, UIFontGlyph> m_Glyphs;
-	};
+        float Ascent()  const;
+        float Descent() const;
+        float LineGap() const;
+        float GetScale() const;
+
+        const UIFontGlyph* GetGlyph(uint32_t codepoint) const;
+        float GetKerning(uint32_t prev, uint32_t curr) const;
+
+        bool HasGlyph(uint32_t codepoint) const;
+
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_Impl;
+    };
+
 }

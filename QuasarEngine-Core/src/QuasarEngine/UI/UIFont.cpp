@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <algorithm>
+#include <cstring>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
@@ -11,81 +12,97 @@
 #include <QuasarEngine/Resources/Texture2D.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Asset/AssetManager.h>
-
 #include <QuasarEngine/Core/Logger.h>
 
 namespace QuasarEngine
 {
-    const UIFontGlyph* UIFont::GetGlyph(unsigned int cp) const {
-        auto it = m_Glyphs.find(cp);
-        return (it == m_Glyphs.end()) ? nullptr : &it->second;
-    }
+    struct UIFont::Impl {
+        std::string                 id;
+        std::vector<unsigned char>  ttf;
+        stbtt_fontinfo              info{};
+        std::unordered_map<uint32_t, UIFontGlyph> glyphs;
 
-	UIFont::UIFont() : m_Id("wtf"), m_AtlasW(0), m_AtlasH(0), m_Ascent(0), m_Descent(0), m_LineGap(0), m_Scale(1.f)
-    {
-    }
+        int   atlasW = 0, atlasH = 0;
+        float ascent = 0.f, descent = 0.f, lineGap = 0.f, scale = 1.f;
 
-    bool UIFont::LoadTTF(const std::string& path, float pixelHeight, int atlasW, int atlasH) {
-        std::vector<unsigned char> ttf;
-        {
-            std::ifstream ifs(path, std::ios::binary);
-            if (!ifs)
-            {
-				Q_ERROR("Failed to open font file: " + path);
-                return false;
-            }
-            ttf.assign(std::istreambuf_iterator<char>(ifs), {});
+        static bool ReadFile(const std::string& path, std::vector<unsigned char>& out) {
+            std::ifstream f(path, std::ios::binary);
+            if (!f) return false;
+            out.assign(std::istreambuf_iterator<char>(f), {});
+            return true;
         }
 
-        stbtt_fontinfo info{};
-        if (!stbtt_InitFont(&info, ttf.data(), stbtt_GetFontOffsetForIndex(ttf.data(), 0)))
+        void PackGlyph(uint32_t cp, std::vector<unsigned char>& atlas,
+            int& penX, int& penY, int& rowH)
         {
-			Q_ERROR("Failed to initialize font: " + path);
+            int w, h, xoff, yoff;
+            unsigned char* bmp = stbtt_GetCodepointBitmap(&info, scale, scale, (int)cp, &w, &h, &xoff, &yoff);
+            if (!bmp) return;
+
+            if (penX + w >= atlasW) { penX = 0; penY += rowH; rowH = 0; }
+            if (penY + h >= atlasH) { stbtt_FreeBitmap(bmp, nullptr); return; }
+
+            for (int j = 0; j < h; ++j) {
+                const int dstRow = (atlasH - 1) - (penY + j);
+                std::memcpy(&atlas[dstRow * atlasW + penX], &bmp[j * w], w);
+            }
+
+            int adv, lsb;
+            stbtt_GetCodepointHMetrics(&info, (int)cp, &adv, &lsb);
+
+            UIFontGlyph g{};
+            g.advance = adv * scale;
+            g.offsetX = static_cast<float>(xoff);
+            g.offsetY = -static_cast<float>(yoff);
+            g.w = static_cast<float>(w);
+            g.h = static_cast<float>(h);
+            g.u0 = float(penX) / float(atlasW);
+            g.v0 = float(penY) / float(atlasH);
+            g.u1 = float(penX + w) / float(atlasW);
+            g.v1 = float(penY + h) / float(atlasH);
+
+            glyphs[cp] = g;
+
+            penX += w + 1;
+            rowH = std::max(rowH, h);
+
+            stbtt_FreeBitmap(bmp, nullptr);
+        }
+    };
+
+    UIFont::UIFont() : m_Impl(std::make_unique<Impl>()) {}
+    UIFont::~UIFont() = default;
+
+    bool UIFont::LoadTTF(const std::string& path, float pixelHeight, int atlasW, int atlasH)
+    {
+        if (!Impl::ReadFile(path, m_Impl->ttf)) {
+            Q_ERROR("Failed to open font file: " + path);
             return false;
         }
 
-        m_Scale = stbtt_ScaleForPixelHeight(&info, pixelHeight);
-        int a, d, lg; stbtt_GetFontVMetrics(&info, &a, &d, &lg);
-        m_Ascent = a * m_Scale;
-        m_Descent = d * m_Scale;
-        m_LineGap = lg * m_Scale;
+        if (!stbtt_InitFont(&m_Impl->info, m_Impl->ttf.data(), stbtt_GetFontOffsetForIndex(m_Impl->ttf.data(), 0))) {
+            Q_ERROR("Failed to initialize font: " + path);
+            return false;
+        }
 
-        m_AtlasW = atlasW; m_AtlasH = atlasH;
-        std::vector<unsigned char> atlas(m_AtlasW * m_AtlasH, 0);
+        m_Impl->scale = stbtt_ScaleForPixelHeight(&m_Impl->info, pixelHeight);
+        int a, d, lg;
+        stbtt_GetFontVMetrics(&m_Impl->info, &a, &d, &lg);
+        m_Impl->ascent = a * m_Impl->scale;
+        m_Impl->descent = d * m_Impl->scale;
+        m_Impl->lineGap = lg * m_Impl->scale;
+
+        m_Impl->atlasW = atlasW; m_Impl->atlasH = atlasH;
+        std::vector<unsigned char> atlas(m_Impl->atlasW * m_Impl->atlasH, 0);
 
         int penX = 0, penY = 0, rowH = 0;
-        auto placeGlyph = [&](unsigned int cp) {
-            int w, h, xoff, yoff;
-            unsigned char* bmp = stbtt_GetCodepointBitmap(&info, m_Scale, m_Scale, cp, &w, &h, &xoff, &yoff);
-            if (!bmp) return;
 
-            if (penX + w >= m_AtlasW) { penX = 0; penY += rowH; rowH = 0; }
-            if (penY + h >= m_AtlasH) { stbtt_FreeBitmap(bmp, nullptr); return; }
+        for (uint32_t c = 32; c <= 126; ++c) m_Impl->PackGlyph(c, atlas, penX, penY, rowH);
+        for (uint32_t c = 160; c <= 255; ++c) m_Impl->PackGlyph(c, atlas, penX, penY, rowH);
 
-            for (int j = 0; j < h; ++j)
-                std::memcpy(&atlas[(penY + j) * m_AtlasW + penX], &bmp[j * w], w);
-
-            int adv, lsb;
-            stbtt_GetCodepointHMetrics(&info, cp, &adv, &lsb);
-
-            UIFontGlyph g{};
-            g.advance = adv * m_Scale;
-            g.offsetX = (float)xoff;
-            g.offsetY = (float)yoff;
-            g.w = (float)w; g.h = (float)h;
-            g.u0 = (float)penX / m_AtlasW; g.v0 = (float)penY / m_AtlasH;
-            g.u1 = (float)(penX + w) / m_AtlasW; g.v1 = (float)(penY + h) / m_AtlasH;
-            m_Glyphs[cp] = g;
-
-            penX += w + 1; rowH = std::max(rowH, h);
-            stbtt_FreeBitmap(bmp, nullptr);
-            };
-
-        for (unsigned int c = 32; c < 127; ++c) placeGlyph(c);
-
-		TextureSpecification spec{};
-        spec.width = m_AtlasW;
-        spec.height = m_AtlasH;
+        TextureSpecification spec{};
+        spec.width = m_Impl->atlasW;
+        spec.height = m_Impl->atlasH;
         spec.format = TextureFormat::RED;
         spec.internal_format = TextureFormat::RED8;
         spec.wrap_s = TextureWrap::CLAMP_TO_EDGE;
@@ -97,22 +114,43 @@ namespace QuasarEngine
         spec.flip = false;
         spec.channels = 1;
         spec.compressed = false;
-		spec.Samples = 1;
+        spec.Samples = 1;
 
-		AssetToLoad asset{};
-		asset.id = "font:" + path;
-		asset.type = AssetType::TEXTURE;
-		asset.spec = spec;
+        AssetToLoad asset{};
+        asset.id = "font:" + path;
+        asset.type = AssetType::TEXTURE;
+        asset.spec = spec;
 
         auto bytes = std::make_shared<std::vector<unsigned char>>(std::move(atlas));
         asset.data = bytes->data();
-        asset.size = (uint32_t)bytes->size();
+        asset.size = static_cast<uint32_t>(bytes->size());
         asset.hold = bytes;
 
         Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
 
-		m_Id = asset.id;
-        
+        m_Impl->id = asset.id;
         return true;
     }
+
+    std::string UIFont::GetTextureId() const { return m_Impl->id; }
+    float UIFont::Ascent()  const { return m_Impl->ascent; }
+    float UIFont::Descent() const { return m_Impl->descent; }
+    float UIFont::LineGap() const { return m_Impl->lineGap; }
+    float UIFont::GetScale() const { return m_Impl->scale; }
+
+    const UIFontGlyph* UIFont::GetGlyph(uint32_t codepoint) const {
+        auto it = m_Impl->glyphs.find(codepoint);
+        return (it == m_Impl->glyphs.end()) ? nullptr : &it->second;
+    }
+
+    float UIFont::GetKerning(uint32_t prev, uint32_t curr) const {
+        if (!prev || !curr) return 0.f;
+        const int k = stbtt_GetCodepointKernAdvance(&m_Impl->info, (int)prev, (int)curr);
+        return k * m_Impl->scale;
+    }
+
+    bool UIFont::HasGlyph(uint32_t codepoint) const {
+        return m_Impl->glyphs.find(codepoint) != m_Impl->glyphs.end();
+    }
+
 }
