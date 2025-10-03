@@ -51,7 +51,7 @@ namespace QuasarEngine {
 	class UIBatcher {
 	public:
 		void Clear();
-		void PushRect(const Rect& r, uint32_t rgba, const UIScissor* sc);
+		void PushRect(const Rect& r, UITexture tex, uint32_t rgba, const UIScissor* sc);
 		void PushQuadUV(float x, float y, float w, float h, float u0, float v0, float u1, float v1, UITexture tex, uint32_t rgba, const UIScissor* sc = nullptr);
 
 		const std::vector<UIVertex>& Vertices() const { return m_Vertices; }

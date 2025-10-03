@@ -25,6 +25,8 @@ namespace QuasarEngine
 
 		std::any handle;
 
+		std::shared_ptr<std::vector<unsigned char>> hold;
+
 		std::variant<std::monostate, TextureSpecification, MaterialSpecification> spec;
 	};
 

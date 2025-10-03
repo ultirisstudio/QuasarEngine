@@ -63,7 +63,7 @@ namespace QuasarEngine {
 
     void UIContainer::BuildDraw(UIRenderContext& ctx) {
         if (m_Style.bg.a > 0.f) {
-            ctx.batcher->PushRect(m_Transform.rect, PackRGBA8(m_Style.bg), nullptr);
+            ctx.batcher->PushRect(m_Transform.rect, ctx.whiteTex, PackRGBA8(m_Style.bg), nullptr);
         }
         for (auto& c : Children()) c->BuildDraw(ctx);
     }

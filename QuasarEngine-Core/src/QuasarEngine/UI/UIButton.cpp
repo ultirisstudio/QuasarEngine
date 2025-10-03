@@ -28,7 +28,7 @@ namespace QuasarEngine {
         UIColor bg = m_Style.bg;
         if (pressed)       bg = { 0.25f,0.27f,0.30f,1.f };
         else if (hovered)  bg = { 0.18f,0.20f,0.23f,1.f };
-        ctx.batcher->PushRect(Transform().rect, PackRGBA8(bg), nullptr);
+        ctx.batcher->PushRect(Transform().rect, ctx.whiteTex, PackRGBA8(bg), nullptr);
 
         Rect r = Transform().rect;
         float tx = r.x + m_Style.padding;

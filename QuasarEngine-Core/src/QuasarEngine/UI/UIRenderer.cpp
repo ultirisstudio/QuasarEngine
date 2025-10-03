@@ -21,13 +21,13 @@ namespace QuasarEngine {
     static UITexture MakeWhiteTexOnce() {
         static std::string id = "";
         if (id.empty()) {
-            unsigned char px = 255;
+			std::vector<unsigned char> data = { 255, 255, 255, 255 };
 
 			TextureSpecification spec{};
 			spec.width = 1;
 			spec.height = 1;
-			spec.format = TextureFormat::RED;
-			spec.internal_format = TextureFormat::RED;
+			spec.format = TextureFormat::RGBA;
+			spec.internal_format = TextureFormat::RGBA;
 			spec.wrap_s = TextureWrap::CLAMP_TO_EDGE;
 			spec.wrap_t = TextureWrap::CLAMP_TO_EDGE;
 			spec.min_filter_param = TextureFilter::NEAREST;
@@ -35,16 +35,16 @@ namespace QuasarEngine {
 			spec.mipmap = false;
 			spec.gamma = false;
 			spec.flip = false;
-			spec.channels = 1;
+			spec.channels = 4;
 			spec.compressed = false;
 			spec.Samples = 1;
 
 			AssetToLoad asset{};
 			asset.id = "ui:white";
-			asset.size = 1;
+			asset.size = 4;
 			asset.type = AssetType::TEXTURE;
 			asset.spec = spec;
-            asset.data = &px;
+            asset.data = data.data();
 
 			Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
         }
@@ -167,7 +167,7 @@ namespace QuasarEngine {
         m_Vertices.clear(); m_Indices.clear(); m_Cmds.clear();
     }
 
-    void UIBatcher::PushRect(const Rect& r, uint32_t rgba, const UIScissor* sc) {
+    void UIBatcher::PushRect(const Rect& r, UITexture tex, uint32_t rgba, const UIScissor* sc) {
         int v0 = (int)m_Vertices.size();
         m_Vertices.push_back({ r.x,       r.y,       0.f,0.f, rgba });
         m_Vertices.push_back({ r.x + r.w,   r.y,       0.f,0.f, rgba });
@@ -177,6 +177,7 @@ namespace QuasarEngine {
         m_Indices.push_back(v0 + 0); m_Indices.push_back(v0 + 1); m_Indices.push_back(v0 + 2);
         m_Indices.push_back(v0 + 0); m_Indices.push_back(v0 + 2); m_Indices.push_back(v0 + 3);
         UIDrawCmd cmd; cmd.vtxOffset = 0; cmd.idxOffset = i0; cmd.idxCount = 6;
+        cmd.tex = tex;
         if (sc) cmd.scissor = *sc;
         m_Cmds.push_back(cmd);
     }
@@ -270,12 +271,9 @@ namespace QuasarEngine {
         m_VertexArray->GetIndexBuffer()->Upload(I.data(), ibBytes);
 
         for (const auto& cmd : C) {
-            if (m_Context.defaultFont)
+            if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(cmd.tex.id))
             {
-                if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(cmd.tex.id))
-                {
-                    GetShader()->SetTexture("uTexture", Renderer::m_SceneData.m_AssetManager->getAsset<Texture>(cmd.tex.id).get(), Shader::SamplerType::Sampler2D);
-                }
+                GetShader()->SetTexture("uTexture", Renderer::m_SceneData.m_AssetManager->getAsset<Texture>(cmd.tex.id).get(), Shader::SamplerType::Sampler2D);
             }
 
             if (!GetShader()->UpdateObject(&GetMaterial()))

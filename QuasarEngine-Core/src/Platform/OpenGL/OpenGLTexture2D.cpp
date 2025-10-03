@@ -61,7 +61,12 @@ namespace QuasarEngine
 			switch (format)
 			{
 			case TextureFormat::RGB:  return 3;
+			case TextureFormat::RGB8: return 3;
+			case TextureFormat::SRGB: return 3;
+			case TextureFormat::SRGB8:return 3;
 			case TextureFormat::RGBA: return 4;
+			case TextureFormat::RGBA8:return 4;
+			case TextureFormat::SRGBA:return 4;
 			case TextureFormat::RED:  return 1;
 			case TextureFormat::RED8: return 1;
 			default: return 0;
@@ -83,7 +88,7 @@ namespace QuasarEngine
 	}
 
 	OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification)
-		: Texture2D(specification)
+		: Texture2D(specification), m_ID(0)
 	{
 	}
 
@@ -138,7 +143,7 @@ namespace QuasarEngine
 
 			int width, height, channels;
 			unsigned char* data = stbi_load_from_memory(image_data, static_cast<int>(size), &width, &height, &channels,
-				Utils::DesiredChannelFromTextureFormat(m_Specification.format));
+				Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format));
 
 			if (!data)
 			{
@@ -150,13 +155,13 @@ namespace QuasarEngine
 			m_Specification.height = height;
 			m_Specification.channels = channels;
 
-			LoadFromData(data, width * height * Utils::DesiredChannelFromTextureFormat(m_Specification.format));
+			LoadFromData(data, width * height * Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format));
 
 			stbi_image_free(data);
 		}
 		else
 		{
-			LoadFromData(image_data, m_Specification.width * m_Specification.height * Utils::BytesPerPixel(Utils::TextureFormatToGL(m_Specification.internal_format)));
+			LoadFromData(image_data, m_Specification.width * m_Specification.height * Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format));
 		}
 	}
 
@@ -167,11 +172,18 @@ namespace QuasarEngine
 		glCreateTextures(Utils::TextureTarget(multisample), 1, &m_ID);
 		glBindTexture(Utils::TextureTarget(multisample), m_ID);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, Utils::TextureWrapToGL(m_Specification.wrap_r));
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, Utils::TextureWrapToGL(m_Specification.wrap_s));
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, Utils::TextureWrapToGL(m_Specification.wrap_t));
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, Utils::TextureFilterToGL(m_Specification.min_filter_param));
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, Utils::TextureFilterToGL(m_Specification.mag_filter_param));
+
+		if (Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format) == 1)
+		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+			GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_RED };
+			glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+		}
 
 		glTexImage2D(
 			GL_TEXTURE_2D,

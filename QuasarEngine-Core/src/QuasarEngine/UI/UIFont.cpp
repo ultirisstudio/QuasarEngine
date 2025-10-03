@@ -101,10 +101,13 @@ namespace QuasarEngine
 
 		AssetToLoad asset{};
 		asset.id = "font:" + path;
-		asset.size = m_AtlasW * m_AtlasH;
 		asset.type = AssetType::TEXTURE;
 		asset.spec = spec;
-		asset.data = atlas.data();
+
+        auto bytes = std::make_shared<std::vector<unsigned char>>(std::move(atlas));
+        asset.data = bytes->data();
+        asset.size = (uint32_t)bytes->size();
+        asset.hold = bytes;
 
         Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
 
