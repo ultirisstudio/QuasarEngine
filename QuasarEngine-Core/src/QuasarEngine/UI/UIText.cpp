@@ -12,6 +12,6 @@ namespace QuasarEngine {
 	}
 
 	void UIText::BuildDraw(UIRenderContext& ctx) {
-		ctx.DrawDebugText(text.c_str(), Transform().rect.x, Transform().rect.y, m_Style.fg);
+		ctx.DrawText(text.c_str(), Transform().rect.x, Transform().rect.y, m_Style.fg);
 	}
 }

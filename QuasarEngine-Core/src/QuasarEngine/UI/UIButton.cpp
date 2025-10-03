@@ -33,6 +33,6 @@ namespace QuasarEngine {
         Rect r = Transform().rect;
         float tx = r.x + m_Style.padding;
         float ty = r.y + m_Style.padding;
-        ctx.DrawDebugText(label.c_str(), tx, ty, m_Style.fg);
+        ctx.DrawText(label.c_str(), tx, ty, m_Style.fg);
     }
 }

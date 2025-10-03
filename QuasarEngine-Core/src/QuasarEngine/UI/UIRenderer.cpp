@@ -6,6 +6,9 @@
 
 #include <QuasarEngine/Renderer/Buffer.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
+#include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Asset/AssetManager.h>
+#include <QuasarEngine/Core/Logger.h>
 
 namespace QuasarEngine {
     static void UnpackColor(uint32_t rgba, float& r, float& g, float& b, float& a) {
@@ -13,6 +16,43 @@ namespace QuasarEngine {
         g = ((rgba >> 8) & 0xFF) / 255.0f;
         b = ((rgba >> 16) & 0xFF) / 255.0f;
         a = ((rgba >> 24) & 0xFF) / 255.0f;
+    }
+
+    static UITexture MakeWhiteTexOnce() {
+        static std::string id = "";
+        if (id.empty()) {
+            unsigned char px = 255;
+
+			TextureSpecification spec{};
+			spec.width = 1;
+			spec.height = 1;
+			spec.format = TextureFormat::RED;
+			spec.internal_format = TextureFormat::RED;
+			spec.wrap_s = TextureWrap::CLAMP_TO_EDGE;
+			spec.wrap_t = TextureWrap::CLAMP_TO_EDGE;
+			spec.min_filter_param = TextureFilter::NEAREST;
+			spec.mag_filter_param = TextureFilter::NEAREST;
+			spec.mipmap = false;
+			spec.gamma = false;
+			spec.flip = false;
+			spec.channels = 1;
+			spec.compressed = false;
+			spec.Samples = 1;
+
+			AssetToLoad asset{};
+			asset.id = "ui:white";
+			asset.size = 1;
+			asset.type = AssetType::TEXTURE;
+			asset.spec = spec;
+            asset.data = &px;
+
+			Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
+        }
+
+        UITexture t;
+        t.id = "ui:white";
+        
+        return t;
     }
 
     UIRenderer::UIRenderer()
@@ -71,7 +111,9 @@ namespace QuasarEngine {
         desc.objectUniforms = {
             {"model", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, model), 0, 0, uiUniformFlags}
         };
-        desc.samplers = {};
+        desc.samplers = {
+            {"uTexture", 1, 0, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+        };
 
         desc.blendMode = Shader::BlendMode::AlphaBlend;
         desc.cullMode = Shader::CullMode::None;
@@ -100,6 +142,16 @@ namespace QuasarEngine {
 
         std::shared_ptr<IndexBuffer> indexBuffer = IndexBuffer::Create(32 * 1024);
         m_VertexArray->SetIndexBuffer(indexBuffer);
+
+		m_Context.defaultFont = new UIFont();
+        if (!m_Context.defaultFont->LoadTTF("Assets/Fonts/Monocraft.ttf", 16.f))
+        {
+            Q_ERROR("Failed to load default font: Monocraft.ttf");
+        }
+        else
+        {
+			Q_INFO("Default font loaded: Monocraft.ttf");
+        }
     }
 
     UIRenderer::~UIRenderer()
@@ -129,13 +181,47 @@ namespace QuasarEngine {
         m_Cmds.push_back(cmd);
     }
 
-    void UIRenderContext::DrawDebugText(const char* s, float x, float y, const UIColor& color) {
-        Rect r{ x, y, 8.f, 18.f };
+    void UIBatcher::PushQuadUV(float x, float y, float w, float h, float u0, float v0, float u1, float v1, UITexture tex, uint32_t rgba, const UIScissor* sc)
+    {
+        int v0i = (int)m_Vertices.size();
+        m_Vertices.push_back({ x,     y,     u0,v0, rgba });
+        m_Vertices.push_back({ x + w,   y,     u1,v0, rgba });
+        m_Vertices.push_back({ x + w,   y + h,   u1,v1, rgba });
+        m_Vertices.push_back({ x,     y + h,   u0,v1, rgba });
+
+        int i0 = (int)m_Indices.size();
+        m_Indices.push_back(v0i + 0); m_Indices.push_back(v0i + 1); m_Indices.push_back(v0i + 2);
+        m_Indices.push_back(v0i + 0); m_Indices.push_back(v0i + 2); m_Indices.push_back(v0i + 3);
+
+        UIDrawCmd cmd; cmd.vtxOffset = 0; cmd.idxOffset = i0; cmd.idxCount = 6;
+        cmd.tex = tex; if (sc) cmd.scissor = *sc;
+        m_Cmds.push_back(cmd);
+    }
+
+    void UIRenderContext::DrawText(const char* s, float x, float y, const UIColor& color) {
+        if (!defaultFont)
+        {
+            return;
+        }
+
         uint32_t rgba = PackRGBA8(color);
+        UITexture tex;
+        tex.id = defaultFont->GetTextureId();
+
+        float penX = x;
+        float penY = y + defaultFont->Ascent();
+
         for (const char* p = s; *p; ++p) {
-            Rect bar{ r.x, r.y + r.h - 3.f, r.w, 2.f };
-            batcher->PushRect(bar, rgba, nullptr);
-            r.x += 8.f;
+            unsigned int cp = (unsigned char)*p;
+            if (cp == '\n') { penY += (defaultFont->Ascent() - defaultFont->Descent() + defaultFont->LineGap()); penX = x; continue; }
+            auto g = defaultFont->GetGlyph(cp);
+            if (!g) continue;
+
+            float gx = penX + g->offsetX;
+            float gy = penY - g->offsetY;
+            batcher->PushQuadUV(gx, gy, g->w, g->h, g->u0, g->v0, g->u1, g->v1, tex, rgba, nullptr);
+
+            penX += g->advance;
         }
     }
 
@@ -143,6 +229,7 @@ namespace QuasarEngine {
         fbW_ = fbW; fbH_ = fbH;
         m_Batcher.Clear();
         m_Context.batcher = &m_Batcher;
+        if (m_Context.whiteTex.id.empty()) m_Context.whiteTex = MakeWhiteTexOnce();
     }
 
     void UIRenderer::End() {
@@ -183,6 +270,19 @@ namespace QuasarEngine {
         m_VertexArray->GetIndexBuffer()->Upload(I.data(), ibBytes);
 
         for (const auto& cmd : C) {
+            if (m_Context.defaultFont)
+            {
+                if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(cmd.tex.id))
+                {
+                    GetShader()->SetTexture("uTexture", Renderer::m_SceneData.m_AssetManager->getAsset<Texture>(cmd.tex.id).get(), Shader::SamplerType::Sampler2D);
+                }
+            }
+
+            if (!GetShader()->UpdateObject(&GetMaterial()))
+            {
+                return;
+            }
+
             RenderCommand::DrawElements(DrawMode::TRIANGLES, cmd.idxCount, cmd.idxOffset);
         }
 

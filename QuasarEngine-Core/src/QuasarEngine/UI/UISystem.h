@@ -16,6 +16,9 @@ namespace QuasarEngine {
 
 	class UISystem {
 	public:
+		UISystem();
+		~UISystem() = default;
+
 		void SetRoot(std::shared_ptr<UIElement> root) { m_Root = std::move(root); m_Input.SetRoot(m_Root); }
 		void Render(BaseCamera& camera, const UIFBInfo& fb);
 

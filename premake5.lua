@@ -29,6 +29,7 @@ group "Dependencies"
 	include "vendor/zlib"
 	include "vendor/TextEditor"
 	include "vendor/lua"
+	include "vendor/stb"
 	include "vendor/PhysX"
 group ""
 

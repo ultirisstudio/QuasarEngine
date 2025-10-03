@@ -5,6 +5,10 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Asset/AssetManager.h>
+#include <QuasarEngine/Resources/Texture2D.h>
+
 namespace QuasarEngine {
 	void UISystem::MeasureLayout() {
 		if (!m_Root) return;
@@ -16,6 +20,11 @@ namespace QuasarEngine {
 		if (!m_Root) return;
 		Rect rootRect{ 0.f, 0.f, (float)fb.width, (float)fb.height };
 		m_Root->Arrange(rootRect);
+	}
+
+	UISystem::UISystem() : m_Root(nullptr), m_Input(), m_Renderer()
+	{
+		
 	}
 
 	void UISystem::Render(BaseCamera& camera, const UIFBInfo& fb) {
@@ -34,11 +43,6 @@ namespace QuasarEngine {
 		m_Renderer.GetShader()->SetUniform("model", &model, sizeof(glm::mat4));
 
 		if (!m_Renderer.GetShader()->UpdateGlobalState())
-		{
-			return;
-		}
-
-		if (!m_Renderer.GetShader()->UpdateObject(&m_Renderer.GetMaterial()))
 		{
 			return;
 		}

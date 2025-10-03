@@ -5,6 +5,7 @@
 
 #include "UITransform.h"
 #include "UIStyle.h"
+#include "UIFont.h"
 
 #include <QuasarEngine/Shader/Shader.h>
 
@@ -19,7 +20,7 @@ namespace QuasarEngine {
 	};
 
 	struct UITexture {
-		int id = -1;
+		std::string id = "";
 	};
 
 	struct UIScissor {
@@ -29,11 +30,13 @@ namespace QuasarEngine {
 	class UIBatcher;
 
 	struct UIRenderContext {
-		UIBatcher* batcher = nullptr;
+		class UIBatcher* batcher = nullptr;
 		UITexture whiteTex;
 		float dpiScale = 1.f;
 
-		void DrawDebugText(const char* s, float x, float y, const UIColor& color);
+		UIFont* defaultFont = nullptr;
+
+		void DrawText(const char* s, float x, float y, const UIColor& color);
 	};
 
 	struct UIDrawCmd {
@@ -49,6 +52,8 @@ namespace QuasarEngine {
 	public:
 		void Clear();
 		void PushRect(const Rect& r, uint32_t rgba, const UIScissor* sc);
+		void PushQuadUV(float x, float y, float w, float h, float u0, float v0, float u1, float v1, UITexture tex, uint32_t rgba, const UIScissor* sc = nullptr);
+
 		const std::vector<UIVertex>& Vertices() const { return m_Vertices; }
 		const std::vector<uint32_t>& Indices() const { return m_Indices; }
 		const std::vector<UIDrawCmd>& Commands() const { return m_Cmds; }

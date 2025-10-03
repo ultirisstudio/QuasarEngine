@@ -12,6 +12,7 @@ namespace QuasarEngine
 	enum class TextureFormat : uint8_t
 	{
 		RED = 0,
+		RED8,
 		RGB,
 		RGB8,
 		RGBA,
@@ -121,6 +122,7 @@ namespace QuasarEngine
 			switch (format)
 			{
 			case TextureFormat::RED: return "RED";
+			case TextureFormat::RED8: return "RED8";
 			case TextureFormat::RGB: return "RGB";
 			case TextureFormat::RGBA: return "RGBA";
 			case TextureFormat::SRGB: return "SRGB";

@@ -25,6 +25,7 @@ namespace QuasarEngine
 			case TextureFormat::SRGB:  return GL_SRGB;
 			case TextureFormat::SRGBA: return GL_SRGB_ALPHA;
 			case TextureFormat::RED:   return GL_RED;
+			case TextureFormat::RED8:  return GL_R8;
 			}
 			return 0;
 		}
@@ -62,6 +63,7 @@ namespace QuasarEngine
 			case TextureFormat::RGB:  return 3;
 			case TextureFormat::RGBA: return 4;
 			case TextureFormat::RED:  return 1;
+			case TextureFormat::RED8: return 1;
 			default: return 0;
 			}
 		}
@@ -74,6 +76,7 @@ namespace QuasarEngine
 			case GL_SRGB:         return 3;
 			case GL_SRGB_ALPHA:   return 4;
 			case GL_RED:          return 1;
+			case GL_R8:           return 1;
 			default:              return 0;
 			}
 		}

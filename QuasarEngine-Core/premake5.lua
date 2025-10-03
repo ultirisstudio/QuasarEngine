@@ -14,10 +14,7 @@ project "QuasarEngine-Core"
 	{
 		"src/**.h",
 		"src/**.hpp",
-		"src/**.cpp",
-		
-		"../vendor/stb_image/stb_image.h",
-		"../vendor/stb_image/stb_image.cpp"
+		"src/**.cpp"
 	}
 
 	includedirs
@@ -28,7 +25,7 @@ project "QuasarEngine-Core"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.assimp}",
-		"%{IncludeDir.stb_image}",
+		"%{IncludeDir.stb}",
 		"%{IncludeDir.ImGuizmo}",
 		"%{IncludeDir.mbedtls}",
 		"%{IncludeDir.entt}",
@@ -57,6 +54,7 @@ project "QuasarEngine-Core"
 		"ImGuizmo",
 		"mbedtls",
 		"lua",
+		"stb",
 		
 		-- PhysX modules
 		-- "PhysXExtensions",

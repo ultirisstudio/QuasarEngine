@@ -708,6 +708,17 @@ namespace QuasarEngine
 			ImGui::EndMenuBar();
 		}
 
+		ImGui::Begin("Texture Test");
+
+		std::string textureName = Renderer::m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId();
+		if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(textureName))
+		{
+			auto tex = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(textureName);
+			ImGui::Image((ImTextureID)(intptr_t)tex->GetHandle(), ImVec2(800, 800), ImVec2(0, 1), ImVec2(1, 0));
+		}
+
+		ImGui::End();
+
 		//m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_EditorViewport->OnImGuiRender(*m_EditorCamera, *m_SceneManager, *m_SceneHierarchy);
