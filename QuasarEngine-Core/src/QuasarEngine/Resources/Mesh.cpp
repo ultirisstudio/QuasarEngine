@@ -12,28 +12,23 @@ namespace QuasarEngine
 		float minX = std::numeric_limits<float>::max();
 		float minY = std::numeric_limits<float>::max();
 		float minZ = std::numeric_limits<float>::max();
+		float maxX = -std::numeric_limits<float>::max();
+		float maxY = -std::numeric_limits<float>::max();
+		float maxZ = -std::numeric_limits<float>::max();
 
-		float maxX = std::numeric_limits<float>::min();
-		float maxY = std::numeric_limits<float>::min();
-		float maxZ = std::numeric_limits<float>::min();
+		const uint32_t strideFloats =
+			static_cast<uint32_t>(m_vertexBuffer->GetLayout().GetStride() / sizeof(float));
+		if (strideFloats < 3) return;
 
-		uint32_t stride = m_vertexBuffer->GetLayout().GetStride();
-
-		for (int i = 0; i < vertices.size(); i += stride)
+		for (size_t i = 0; i + 2 < vertices.size(); i += strideFloats)
 		{
-			if (vertices[i + 0] < minX)
-				minX = vertices[i + 0];
-			if (vertices[i + 1] < minY)
-				minY = vertices[i + 1];
-			if (vertices[i + 2] < minZ)
-				minZ = vertices[i + 2];
+			minX = std::min(minX, vertices[i + 0]);
+			minY = std::min(minY, vertices[i + 1]);
+			minZ = std::min(minZ, vertices[i + 2]);
 
-			if (vertices[i + 0] > maxX)
-				maxX = vertices[i + 0];
-			if (vertices[i + 1] > maxY)
-				maxY = vertices[i + 1];
-			if (vertices[i + 2] > maxZ)
-				maxZ = vertices[i + 2];
+			maxX = std::max(maxX, vertices[i + 0]);
+			maxY = std::max(maxY, vertices[i + 1]);
+			maxZ = std::max(maxZ, vertices[i + 2]);
 		}
 
 		m_boundingBoxSize = glm::vec3(maxX - minX, maxY - minY, maxZ - minZ);

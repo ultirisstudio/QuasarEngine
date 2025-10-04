@@ -402,6 +402,72 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->Reset();
 		}
 
+		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<
+			TransformComponent, MaterialComponent, TerrainComponent, MeshRendererComponent>())
+		{
+			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
+
+			auto& tr = entity.GetComponent<TransformComponent>();
+			auto& tc = entity.GetComponent<TerrainComponent>();
+			auto& mr = entity.GetComponent<MeshRendererComponent>();
+			auto& matc = entity.GetComponent<MaterialComponent>();
+
+			if (!mr.m_Rendered)
+				continue;
+
+			if (!tc.IsGenerated())
+				tc.GenerateTerrain();
+
+			auto mesh = tc.GetMesh();
+			if (!mesh || !mesh->IsMeshGenerated())
+				continue;
+
+			glm::mat4 transform = tr.GetGlobalTransform();
+			if (!mesh->IsVisible(frustum, transform))
+			{
+				//continue;
+			}
+
+			Material& material = matc.GetMaterial();
+
+			if (!material.HasTexture(Albedo))
+			{
+				m_SceneData.m_Shader->SetTexture("albedo_texture", &tc.GetHeightMapTexture());
+			}
+
+			m_SceneData.m_Shader->SetUniform("model", &transform, sizeof(glm::mat4));
+
+			m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
+			m_SceneData.m_Shader->SetUniform("roughness", &material.GetRoughness(), sizeof(float));
+			m_SceneData.m_Shader->SetUniform("metallic", &material.GetMetallic(), sizeof(float));
+			m_SceneData.m_Shader->SetUniform("ao", &material.GetAO(), sizeof(float));
+
+			int hasAlbedoTexture = material.HasTexture(Albedo) ? 1 : 0;
+			int hasNormalTexture = material.HasTexture(Normal) ? 1 : 0;
+			int hasRougnessTexture = material.HasTexture(Roughness) ? 1 : 0;
+			int hasMetallicTexture = material.HasTexture(Metallic) ? 1 : 0;
+			int hasAOTexture = material.HasTexture(AO) ? 1 : 0;
+
+			m_SceneData.m_Shader->SetUniform("has_albedo_texture", &hasAlbedoTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_normal_texture", &hasNormalTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_roughness_texture", &hasRougnessTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasMetallicTexture, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasAOTexture, sizeof(int));
+
+			if (material.HasTexture(Albedo))    m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(Albedo));
+			if (material.HasTexture(Normal))    m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(Normal));
+			if (material.HasTexture(Roughness)) m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(Roughness));
+			if (material.HasTexture(Metallic))  m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(Metallic));
+			if (material.HasTexture(AO))        m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(AO));
+
+			if (!m_SceneData.m_Shader->UpdateObject(&material))
+				continue;
+
+			mesh->draw();
+
+			m_SceneData.m_Shader->Reset();
+		}
+
 		m_SceneData.m_Shader->Unuse();
 
 		//std::cout << entityDraw << "/" << totalEntity << std::endl;

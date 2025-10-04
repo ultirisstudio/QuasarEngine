@@ -1,44 +1,49 @@
 #pragma once
 
 #include <memory>
-
+#include <vector>
+#include <string>
 #include <QuasarEngine/Entity/Component.h>
 #include <QuasarEngine/Resources/Texture2D.h>
-#include <QuasarEngine/Shader/Shader.h>
+#include <QuasarEngine/Resources/Mesh.h>
+#include <QuasarEngine/Resources/Materials/Material.h>
 
 namespace QuasarEngine
 {
-	class TerrainComponent : public Component
-	{
-	private:
-		std::shared_ptr<Texture2D> m_HeightMapTexture;
-		//std::shared_ptr<Shader> m_Shader;
+    class TerrainComponent : public Component
+    {
+    private:
+        std::shared_ptr<Texture2D> m_HeightMapTexture;
+        std::string m_HeightMapPath;
+        bool m_Generated = false;
 
-		std::string m_HeightMapPath;
+        std::shared_ptr<Mesh> m_Mesh;
+        std::optional<MaterialSpecification> m_MatSpec;
 
-		bool m_Generated = false;
+        std::vector<unsigned char> m_HeightPixels;
+        int m_ImgW = 0, m_ImgH = 0, m_ImgC = 0;
 
-		int m_MaxTessLevel;
+        float sampleHeightBilinear(float u, float v) const;
 
-		unsigned int terrainVAO;
-	public:
-		TerrainComponent();
+    public:
+        TerrainComponent();
 
-		bool m_PolygonMode = false;
-		int rez = 20;
-		int textureScale = 1;
-		float heightMult = 16.0f;
+        bool  m_PolygonMode = false;
+        int   rez = 256;
+        int   textureScale = 1;
+        float heightMult = 16.0f;
 
-		void SetHeightMap(const std::string& path) { m_HeightMapPath = path; }
+        void SetHeightMap(const std::string& path) { m_HeightMapPath = path; }
+        std::string GetHeightMapPath() const { return m_HeightMapPath; }
 
-		std::string GetHeightMapPath() { return m_HeightMapPath; }
-		Texture2D& GetHeightMapTexture() { return *m_HeightMapTexture; }
+        Texture2D& GetHeightMapTexture() { return *m_HeightMapTexture; }
+        bool IsGenerated() const { return m_Generated; }
 
-		//Shader& GetShader();
+        std::shared_ptr<Mesh> GetMesh() const { return m_Mesh; }
+        const std::optional<MaterialSpecification>& GetMaterialSpec() const { return m_MatSpec; }
 
-		bool IsGenerated() { return m_Generated; }
+        void GenerateTerrain();
 
-		void GenerateTerrain();
-		void Draw();
-	};
+        void Draw() {}
+    };
 }

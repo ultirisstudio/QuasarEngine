@@ -29,7 +29,7 @@ namespace QuasarEngine
     ScriptSystem::ScriptSystem() {
         m_Registry = std::make_unique<entt::registry>();
 
-        m_Lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string);
+        m_Lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::os);
     }
 
     ScriptSystem::~ScriptSystem()
@@ -112,12 +112,22 @@ namespace QuasarEngine
                 : sol::nil;
         } });
 
+        g_getComponentFuncs.insert({ "BoxColliderComponent", [](Entity& e, sol::state_view lua)->sol::object {
+            return e.HasComponent<BoxColliderComponent>() ? sol::make_object(lua, std::ref(e.GetComponent<BoxColliderComponent>())) : sol::nil;
+        } });
+
+        g_getComponentFuncs.insert({ "ScriptComponent", [](Entity& e, sol::state_view lua)->sol::object {
+            return e.HasComponent<ScriptComponent>() ? sol::make_object(lua, std::ref(e.GetComponent<ScriptComponent>())) : sol::nil;
+        } });
+
         g_hasComponentFuncs.insert({ "TagComponent", [](Entity& e) { return e.HasComponent<TagComponent>(); } });
         g_hasComponentFuncs.insert({ "TransformComponent", [](Entity& e) { return e.HasComponent<TransformComponent>(); } });
         g_hasComponentFuncs.insert({ "MeshComponent", [](Entity& e) { return e.HasComponent<MeshComponent>(); } });
 		g_hasComponentFuncs.insert({ "MaterialComponent", [](Entity& e) { return e.HasComponent<MaterialComponent>(); } });
 		g_hasComponentFuncs.insert({ "MeshRendererComponent", [](Entity& e) { return e.HasComponent<MeshRendererComponent>(); } });
         g_hasComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e) { return e.HasComponent<RigidBodyComponent>(); } });
+        g_hasComponentFuncs.insert({ "BoxColliderComponent", [](Entity& e) { return e.HasComponent<BoxColliderComponent>(); } });
+        g_hasComponentFuncs.insert({ "ScriptComponent", [](Entity& e) { return e.HasComponent<ScriptComponent>(); } });
 
         g_addComponentFuncs.insert({ "TagComponent", [](Entity& e, sol::variadic_args, sol::state_view lua) -> sol::object {
             if (e.HasComponent<TagComponent>())
@@ -165,6 +175,18 @@ namespace QuasarEngine
                 return sol::make_object(lua, std::ref(e.GetComponent<RigidBodyComponent>()));
             auto& c = e.AddComponent<RigidBodyComponent>();
             c.Init();
+            return sol::make_object(lua, std::ref(c));
+        } });
+
+        g_addComponentFuncs.insert({ "BoxColliderComponent", [](Entity& e, sol::variadic_args, sol::state_view lua)->sol::object {
+            auto& c = e.HasComponent<BoxColliderComponent>() ? e.GetComponent<BoxColliderComponent>()
+                                                             : e.AddComponent<BoxColliderComponent>();
+            c.Init();
+            return sol::make_object(lua, std::ref(c));
+        } });
+
+        g_addComponentFuncs.insert({ "ScriptComponent", [](Entity& e, sol::variadic_args, sol::state_view lua)->sol::object {
+            auto& c = e.HasComponent<ScriptComponent>() ? e.GetComponent<ScriptComponent>() : e.AddComponent<ScriptComponent>();
             return sol::make_object(lua, std::ref(c));
         } });
 
@@ -467,31 +489,108 @@ namespace QuasarEngine
 
         lua_state.set_function("deg2rad", [](float deg) {
 			return glm::radians(deg);
-        });
+            });
 
         lua_state.set_function("clamp", [](float x, float a, float b) {
 			return glm::clamp(x, a, b);
-        });
+            });
 
         lua_state.set_function("normalize", [](glm::vec3 v) {
 			return glm::normalize(v);
-        });
+            });
 
         lua_state.set_function("forward_from_yawpitch", [](float yawDeg, float pitchDeg) {
             float yaw = glm::radians(yawDeg);
             float pitch = glm::radians(pitchDeg);
             float cp = cos(pitch);
             return glm::vec3(cp * sin(yaw), sin(pitch), -cp * cos(yaw));
-        });
+            });
 
         lua_state.set_function("right_from_yaw", [](float yawDeg) {
             float yaw = glm::radians(yawDeg);
             return glm::vec3(cos(yaw), 0, sin(yaw));
-	    });
+	        });
+
+        lua_state.set_function("lookAtEuler", [](const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) -> glm::vec3 {
+            glm::mat4 view = glm::lookAt(position, target, up);
+
+            glm::quat q = glm::quat_cast(view);
+
+            glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
+
+            return euler;
+            });
+
+        lua_state.set_function("lookAt", [](const glm::vec3& position,
+            const glm::vec3& target,
+            const glm::vec3& up) -> glm::mat4 {
+                glm::vec3 dir = target - position;
+
+                if (glm::length(dir) < 1e-6f) {
+                    return glm::mat4(1.0f);
+                }
+                dir = glm::normalize(dir);
+
+                glm::vec3 upNorm = glm::normalize(up);
+
+                if (glm::abs(glm::dot(upNorm, dir)) > 0.999f) {
+                    upNorm = glm::vec3(0, 1, 0);
+                    if (glm::abs(glm::dot(upNorm, dir)) > 0.999f) {
+                        upNorm = glm::vec3(1, 0, 0);
+                    }
+                }
+
+                return glm::lookAt(position, position + dir, upNorm);
+            });
+
+        lua_state.set_function("mat4_to_euler", [](const glm::mat4& mat) -> glm::vec3 {
+            glm::mat4 rotMat = mat;
+
+            for (int i = 0; i < 3; ++i) {
+                glm::vec3 axis(rotMat[0][i], rotMat[1][i], rotMat[2][i]);
+                if (glm::length(axis) > 1e-6f) {
+                    axis = glm::normalize(axis);
+                }
+                rotMat[0][i] = axis.x;
+                rotMat[1][i] = axis.y;
+                rotMat[2][i] = axis.z;
+            }
+
+            glm::quat q = glm::quat_cast(rotMat);
+            glm::vec3 euler = glm::eulerAngles(q); //glm::degrees(glm::eulerAngles(q));
+
+            if (!glm::all(glm::isfinite(euler))) {
+                return glm::vec3(0.0f);
+            }
+
+            return euler;
+            });
+
+
+        lua_state.set_function("inverse", [](const glm::mat4& mat) -> glm::mat4 {
+            return glm::inverse(mat);
+            });
+
+        lua_state.set_function("radians_to_degrees", [](const glm::vec3& v) -> glm::vec3 {
+            return glm::degrees(v);
+            });
     }
 
     void ScriptSystem::BindFunctionToLua(sol::state& lua_state)
     {
+        lua_state.set_function("createEntity", [](const std::string& name) -> Entity {
+            auto* scene = Renderer::m_SceneData.m_Scene;
+            if (!scene) return {};
+            return scene->CreateEntity(name);
+            });
+
+        lua_state.set_function("setParent", [](Entity& child, Entity& parent) {
+            if (!child.IsValid() || !parent.IsValid()) return;
+            if (child.HasComponent<HierarchyComponent>())
+                child.GetComponent<HierarchyComponent>().m_Parent = parent.GetUUID();
+            });
+
+
         lua_state.set_function("log", [](const std::string& message) {
             std::cout << "[Lua] " << message << std::endl;
             });
@@ -522,70 +621,17 @@ namespace QuasarEngine
             return sol::nil;
             });
 
-        lua_state.set_function("lookAtEuler", [](const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) -> glm::vec3 {
-            glm::mat4 view = glm::lookAt(position, target, up);
+        lua_state.set_function("attachScript", [this](Entity& e, const std::string& path) {
+            if (!e.IsValid()) return;
+            auto& sc = e.HasComponent<ScriptComponent>() ? e.GetComponent<ScriptComponent>()
+                : e.AddComponent<ScriptComponent>();
+            sc.scriptPath = path;
 
-            glm::quat q = glm::quat_cast(view);
+            sc.Initialize();
 
-            glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
-
-            return euler;
-            });
-
-
-        lua_state.set_function("lookAt", [](const glm::vec3& position,
-            const glm::vec3& target,
-            const glm::vec3& up) -> glm::mat4
-            {
-                glm::vec3 dir = target - position;
-
-                if (glm::length(dir) < 1e-6f) {
-                    return glm::mat4(1.0f);
-                }
-                dir = glm::normalize(dir);
-
-                glm::vec3 upNorm = glm::normalize(up);
-
-                if (glm::abs(glm::dot(upNorm, dir)) > 0.999f) {
-                    upNorm = glm::vec3(0, 1, 0);
-                    if (glm::abs(glm::dot(upNorm, dir)) > 0.999f) {
-                        upNorm = glm::vec3(1, 0, 0);
-                    }
-                }
-
-                return glm::lookAt(position, position + dir, upNorm);
-            });
-
-        lua_state.set_function("mat4_to_euler", [](const glm::mat4& mat) -> glm::vec3 {
-            glm::mat4 rotMat = mat;
-            
-            for (int i = 0; i < 3; ++i) {
-                glm::vec3 axis(rotMat[0][i], rotMat[1][i], rotMat[2][i]);
-                if (glm::length(axis) > 1e-6f) {
-                    axis = glm::normalize(axis);
-                }
-                rotMat[0][i] = axis.x;
-                rotMat[1][i] = axis.y;
-                rotMat[2][i] = axis.z;
+            if (sc.startFunc.valid()) {
+                sc.startFunc();
             }
-
-            glm::quat q = glm::quat_cast(rotMat);
-            glm::vec3 euler = glm::eulerAngles(q); //glm::degrees(glm::eulerAngles(q));
-
-            if (!glm::all(glm::isfinite(euler))) {
-                return glm::vec3(0.0f);
-            }
-
-            return euler;
-            });
-
-
-        lua_state.set_function("inverse", [](const glm::mat4& mat) -> glm::mat4 {
-            return glm::inverse(mat);
-            });
-
-        lua_state.set_function("radians_to_degrees", [](const glm::vec3& v) -> glm::vec3 {
-            return glm::degrees(v);
             });
     }
 
@@ -658,6 +704,16 @@ namespace QuasarEngine
             "IsEnemy", &QuasarEngine::TagComponent::IsEnemy,
             "IsPlayer", &QuasarEngine::TagComponent::IsPlayer
         );
+
+        lua_state.new_usertype<BoxColliderComponent>("BoxCollider",
+            "mass", &BoxColliderComponent::mass,
+            "friction", &BoxColliderComponent::friction,
+            "bounciness", &BoxColliderComponent::bounciness,
+            "useEntityScale", &BoxColliderComponent::m_UseEntityScale,
+            "size", &BoxColliderComponent::m_Size,
+            "Init", &BoxColliderComponent::Init
+        );
+
 	}
 
     void ScriptSystem::BindPhysicsToLua(sol::state& lua_state)
