@@ -44,7 +44,7 @@ namespace QuasarEngine
 
         std::unique_ptr<entt::registry> m_Registry;
 
-        sol::state lua;
+        sol::state m_Lua;
     };
 }
 

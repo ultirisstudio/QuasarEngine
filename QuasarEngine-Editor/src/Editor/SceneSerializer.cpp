@@ -23,6 +23,110 @@
 
 namespace QuasarEngine
 {
+    static const std::unordered_map<std::string, QuasarEngine::TagMask> kTagByName = {
+        {"Player",      QuasarEngine::TagMask::Player},
+        {"Enemy",       QuasarEngine::TagMask::Enemy},
+        {"NPC",         QuasarEngine::TagMask::NPC},
+        {"Collectible", QuasarEngine::TagMask::Collectible},
+        {"Trigger",     QuasarEngine::TagMask::Trigger},
+        {"Static",      QuasarEngine::TagMask::Static},
+        {"Dynamic",     QuasarEngine::TagMask::Dynamic},
+        {"Boss",        QuasarEngine::TagMask::Boss},
+        {"Projectile",  QuasarEngine::TagMask::Projectile},
+    };
+
+    static std::vector<std::string> MaskToNames(QuasarEngine::TagMask mask)
+    {
+        using namespace QuasarEngine;
+        std::vector<std::string> out;
+        const uint64_t bits = static_cast<uint64_t>(mask);
+        for (auto& kv : kTagByName)
+        {
+            const uint64_t bit = static_cast<uint64_t>(kv.second);
+            if ((bits & bit) != 0ull) out.push_back(kv.first);
+        }
+        std::sort(out.begin(), out.end());
+        return out;
+    }
+
+    static std::string U64ToHex(uint64_t v)
+    {
+        std::ostringstream oss;
+        oss << "0x" << std::uppercase << std::setfill('0') << std::setw(16) << std::hex << v;
+        return oss.str();
+    }
+
+    static bool HexToU64(const std::string& s, uint64_t& out)
+    {
+        std::string t = s;
+        if (t.rfind("0x", 0) == 0 || t.rfind("0X", 0) == 0) t = t.substr(2);
+        if (t.empty()) return false;
+        char* end = nullptr;
+        out = std::strtoull(t.c_str(), &end, 16);
+        return end && *end == '\0';
+    }
+
+    static std::string trim(const std::string& s)
+    {
+        size_t a = 0, b = s.size();
+        while (a < b && std::isspace((unsigned char)s[a])) ++a;
+        while (b > a && std::isspace((unsigned char)s[b - 1])) --b;
+        return s.substr(a, b - a);
+    }
+
+    static QuasarEngine::TagMask NamesToMask(const YAML::Node& node)
+    {
+        using namespace QuasarEngine;
+        uint64_t bits = 0;
+
+        if (node && node.IsSequence())
+        {
+            for (auto n : node)
+            {
+                if (!n.IsScalar()) continue;
+                std::string key = n.as<std::string>();
+                auto it = kTagByName.find(key);
+                if (it != kTagByName.end())
+                    bits |= static_cast<uint64_t>(it->second);
+            }
+        }
+        return static_cast<TagMask>(bits);
+    }
+
+    static QuasarEngine::TagMask NodeToMask(const YAML::Node& node)
+    {
+        using namespace QuasarEngine;
+        if (!node) return TagMask::None;
+
+        if (node.IsSequence())
+            return NamesToMask(node);
+
+        if (node.IsScalar())
+        {
+            const std::string s = node.as<std::string>();
+            
+            uint64_t u = 0;
+            if (HexToU64(s, u)) return static_cast<TagMask>(u);
+
+            bool isDec = !s.empty() && std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c); });
+            if (isDec) return static_cast<TagMask>(std::strtoull(s.c_str(), nullptr, 10));
+
+            uint64_t bits = 0;
+            std::stringstream ss(s);
+            std::string part;
+            while (std::getline(ss, part, '|'))
+            {
+                part = trim(part);
+                auto it = kTagByName.find(part);
+                if (it != kTagByName.end())
+                    bits |= static_cast<uint64_t>(it->second);
+            }
+            return static_cast<TagMask>(bits);
+        }
+
+        return TagMask::None;
+    }
+
     struct NumericLocaleGuard {
         std::string prevC;
         std::locale prevCpp;
@@ -242,8 +346,8 @@ namespace QuasarEngine
             try {
                 std::string name = entityNode["Entity"] ? entityNode["Entity"].as<std::string>() : "Entity";
                 UUID uuid = UUID();
-                if (entityNode["ID"])
-                    ReadUUID(entityNode["ID"], uuid);
+                if (entityNode["ID"]) ReadUUID(entityNode["ID"], uuid);
+
                 Entity entity = scene.CreateEntityWithUUID(uuid, name);
 
                 const YAML::Node components = entityNode["Components"];
@@ -257,18 +361,43 @@ namespace QuasarEngine
                         const std::string key = it.first.as<std::string>();
                         const YAML::Node  value = it.second;
 
-                        if (key == "TransformComponent") {
+                        if (key == "TagComponent")
+                        {
+                            auto& tc = entity.HasComponent<TagComponent>()
+                                ? entity.GetComponent<TagComponent>()
+                                : entity.AddComponent<TagComponent>();
+
+                            if (const auto n = value["Name"]) tc.Tag = n.as<std::string>();
+
+                            QuasarEngine::TagMask mask = TagMask::None;
+
+                            if (const auto m = value["Mask"])
+                            {
+                                mask = NodeToMask(m);
+                            }
+                            if (const auto hx = value["MaskHex"])
+                            {
+                                const std::string s = hx.as<std::string>();
+                                uint64_t u = 0;
+                                if (HexToU64(s, u)) mask = static_cast<TagMask>(u);
+                            }
+                            tc.Mask = mask;
+                        }
+                        else if (key == "TransformComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<TransformComponent>();
                             glm::vec3 v;
                             if (value["Position"] && ReadVec3LocaleSafe(value["Position"], v)) c.Position = v; else c.Position = glm::vec3(0.f);
                             if (value["Rotation"] && ReadVec3LocaleSafe(value["Rotation"], v)) c.Rotation = v; else c.Rotation = glm::vec3(0.f);
                             if (value["Scale"] && ReadVec3LocaleSafe(value["Scale"], v)) c.Scale = v; else c.Scale = glm::vec3(1.f);
                         }
-                        else if (key == "MeshRendererComponent") {
+                        else if (key == "MeshRendererComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<MeshRendererComponent>();
                             if (value["Rendered"]) c.m_Rendered = value["Rendered"].as<bool>();
                         }
-                        else if (key == "MeshComponent") {
+                        else if (key == "MeshComponent")
+                        {
                             std::string rel = value["Path"] ? value["Path"].as<std::string>() : "";
                             std::string path = assetPath + "/" + rel;
                             std::string mname = value["Name"] ? value["Name"].as<std::string>() : "";
@@ -280,7 +409,8 @@ namespace QuasarEngine
                             AssetToLoad meshAsset; meshAsset.id = path; meshAsset.type = MESH; meshAsset.handle = &comp;
                             Renderer::m_SceneData.m_AssetManager->loadAsset(meshAsset);
                         }
-                        else if (key == "MaterialComponent") {
+                        else if (key == "MaterialComponent")
+                        {
                             MaterialSpecification spec;
                             glm::vec4 alb;
                             if (value["albedo"] && ReadVec4LocaleSafe(value["albedo"], alb)) spec.Albedo = alb; else spec.Albedo = glm::vec4(1.f);
@@ -309,7 +439,8 @@ namespace QuasarEngine
 
                             entity.AddOrReplaceComponent<MaterialComponent>(spec);
                         }
-                        else if (key == "LightComponent") {
+                        else if (key == "LightComponent")
+                        {
                             std::string type = value["lightType"] ? value["lightType"].as<std::string>() : "";
                             if (type == "Directional") {
                                 auto& c = entity.AddOrReplaceComponent<LightComponent>(LightComponent::LightType::DIRECTIONAL);
@@ -326,14 +457,16 @@ namespace QuasarEngine
                                 if (value["power"] && AsFloatLocaleSafe(value["power"], f)) c.point_light.power = f;
                             }
                         }
-                        else if (key == "CameraComponent") {
+                        else if (key == "CameraComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<CameraComponent>();
                             c.GetCamera().Init(&entity.GetComponent<TransformComponent>());
                             float f;
                             if (value["fov"] && AsFloatLocaleSafe(value["fov"], f)) c.GetCamera().SetFov(f);
                             if (value["primary"]) c.Primary = value["primary"].as<bool>();
                         }
-                        else if (key == "RigidBodyComponent") {
+                        else if (key == "RigidBodyComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<RigidBodyComponent>();
                             c.Init();
                             if (value["enableGravity"])       c.enableGravity = value["enableGravity"].as<bool>();
@@ -354,7 +487,8 @@ namespace QuasarEngine
                             c.UpdateAngularAxisFactor();
                             c.UpdateDamping();
                         }
-                        else if (key == "BoxColliderComponent") {
+                        else if (key == "BoxColliderComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<BoxColliderComponent>();
                             c.Init();
                             float f;
@@ -367,7 +501,8 @@ namespace QuasarEngine
                             c.UpdateColliderMaterial();
                             c.UpdateColliderSize();
                         }
-                        else if (key == "SphereColliderComponent") {
+                        else if (key == "SphereColliderComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<SphereColliderComponent>();
                             c.Init();
                             float f;
@@ -379,7 +514,8 @@ namespace QuasarEngine
                             c.UpdateColliderMaterial();
                             c.UpdateColliderSize();
                         }
-                        else if (key == "CapsuleColliderComponent") {
+                        else if (key == "CapsuleColliderComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<CapsuleColliderComponent>();
                             c.Init();
                             float f;
@@ -398,7 +534,8 @@ namespace QuasarEngine
                             c.UpdateColliderMaterial();
                             c.UpdateColliderSize();
                         }
-                        else if (key == "PlaneColliderComponent") {
+                        else if (key == "PlaneColliderComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<PlaneColliderComponent>();
                             c.Init();
                             float f;
@@ -411,7 +548,8 @@ namespace QuasarEngine
                             c.UpdateColliderMaterial();
                             c.UpdateColliderSize();
                         }
-                        else if (key == "ConvexMeshColliderComponent") {
+                        else if (key == "ConvexMeshColliderComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<ConvexMeshColliderComponent>();
                             c.Init();
                             float f;
@@ -426,7 +564,8 @@ namespace QuasarEngine
                             c.UpdateColliderMaterial();
                             c.UpdateColliderSize();
                         }
-                        else if (key == "TriangleMeshColliderComponent") {
+                        else if (key == "TriangleMeshColliderComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<TriangleMeshColliderComponent>();
                             c.Init();
                             float f;
@@ -444,7 +583,8 @@ namespace QuasarEngine
                             c.UpdateColliderMaterial();
                             c.UpdateColliderSize();
                         }
-                        else if (key == "HeightfieldColliderComponent") {
+                        else if (key == "HeightfieldColliderComponent")
+                        {
                             auto& c = entity.AddOrReplaceComponent<HeightfieldColliderComponent>();
                             c.Init();
                             float f;
@@ -466,7 +606,8 @@ namespace QuasarEngine
                             c.UpdateColliderMaterial();
                             c.UpdateColliderSize();
                         }
-                        else if (key == "ScriptComponent") {
+                        else if (key == "ScriptComponent")
+                        {
                             auto& sc = entity.AddOrReplaceComponent<ScriptComponent>();
                             if (value["scriptPath"]) {
                                 std::string rel = value["scriptPath"].as<std::string>();
@@ -529,6 +670,27 @@ namespace QuasarEngine
         out << YAML::Key << "ParentID" << YAML::Value << parentID;
 
         out << YAML::Key << "Components" << YAML::Value << YAML::BeginSeq;
+
+        if (entity.HasComponent<TagComponent>())
+        {
+            const auto& tc = entity.GetComponent<TagComponent>();
+            out << YAML::BeginMap;
+            out << YAML::Key << "TagComponent" << YAML::Value << YAML::BeginMap;
+
+            out << YAML::Key << "Name" << YAML::Value << tc.Tag;
+
+            {
+                const auto names = MaskToNames(tc.Mask);
+                out << YAML::Key << "Mask" << YAML::Value << YAML::BeginSeq;
+                for (const auto& n : names) out << n;
+                out << YAML::EndSeq;
+            }
+
+            out << YAML::Key << "MaskHex" << YAML::Value << U64ToHex(static_cast<uint64_t>(tc.Mask));
+
+            out << YAML::EndMap;
+            out << YAML::EndMap;
+        }
 
         auto BeginComp = [&](const char* name) {
             out << YAML::BeginMap;

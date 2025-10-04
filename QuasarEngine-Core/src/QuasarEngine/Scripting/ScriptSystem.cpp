@@ -29,7 +29,7 @@ namespace QuasarEngine
     ScriptSystem::ScriptSystem() {
         m_Registry = std::make_unique<entt::registry>();
 
-        lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string);
+        m_Lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string);
     }
 
     ScriptSystem::~ScriptSystem()
@@ -76,6 +76,12 @@ namespace QuasarEngine
 
     void ScriptSystem::Initialize()
     {
+        g_getComponentFuncs.insert({ "TagComponent", [](Entity& e, sol::state_view lua) -> sol::object {
+            return e.HasComponent<TagComponent>()
+                ? sol::make_object(lua, std::ref(e.GetComponent<TagComponent>()))
+                : sol::nil;
+        } });
+
         g_getComponentFuncs.insert({"TransformComponent", [](Entity& e, sol::state_view lua) -> sol::object {
             return e.HasComponent<TransformComponent>()
                 ? sol::make_object(lua, std::ref(e.GetComponent<TransformComponent>()))
@@ -106,11 +112,19 @@ namespace QuasarEngine
                 : sol::nil;
         } });
 
+        g_hasComponentFuncs.insert({ "TagComponent", [](Entity& e) { return e.HasComponent<TagComponent>(); } });
         g_hasComponentFuncs.insert({ "TransformComponent", [](Entity& e) { return e.HasComponent<TransformComponent>(); } });
         g_hasComponentFuncs.insert({ "MeshComponent", [](Entity& e) { return e.HasComponent<MeshComponent>(); } });
 		g_hasComponentFuncs.insert({ "MaterialComponent", [](Entity& e) { return e.HasComponent<MaterialComponent>(); } });
 		g_hasComponentFuncs.insert({ "MeshRendererComponent", [](Entity& e) { return e.HasComponent<MeshRendererComponent>(); } });
         g_hasComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e) { return e.HasComponent<RigidBodyComponent>(); } });
+
+        g_addComponentFuncs.insert({ "TagComponent", [](Entity& e, sol::variadic_args, sol::state_view lua) -> sol::object {
+            if (e.HasComponent<TagComponent>())
+                return sol::make_object(lua, std::ref(e.GetComponent<TagComponent>()));
+            auto& c = e.AddComponent<TagComponent>();
+            return sol::make_object(lua, std::ref(c));
+        } });
 
         g_addComponentFuncs.insert({ "TransformComponent", [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
             if (e.HasComponent<TransformComponent>())
@@ -154,11 +168,11 @@ namespace QuasarEngine
             return sol::make_object(lua, std::ref(c));
         } });
 
-        BindInputToLua(lua);
-        BindMathToLua(lua);
-		BindFunctionToLua(lua);
-		BindEntityToLua(lua);
-        BindPhysicsToLua(lua);
+        BindInputToLua(m_Lua);
+        BindMathToLua(m_Lua);
+		BindFunctionToLua(m_Lua);
+		BindEntityToLua(m_Lua);
+        BindPhysicsToLua(m_Lua);
     }
 
     void ScriptSystem::RegisterEntityScript(ScriptComponent& scriptComponent)
@@ -169,9 +183,9 @@ namespace QuasarEngine
             m_Registry->emplace<ScriptComponent>(entity, scriptComponent);
         }
 
-        sol::environment env(lua, sol::create, lua.globals());
+        sol::environment env(m_Lua, sol::create, m_Lua.globals());
 
-        sol::table publicTable = lua.create_table();
+        sol::table publicTable = m_Lua.create_table();
         env["public"] = publicTable;
 
         Entity entityObject{ entity, Renderer::m_SceneData.m_Scene->GetRegistry() };
@@ -183,7 +197,7 @@ namespace QuasarEngine
             });
 
         try {
-            lua.script_file(scriptComponent.scriptPath, env);
+            m_Lua.script_file(scriptComponent.scriptPath, env);
 
             sol::object maybePublic = env["public"];
             if (maybePublic.is<sol::table>()) {
@@ -458,6 +472,22 @@ namespace QuasarEngine
         lua_state.set_function("clamp", [](float x, float a, float b) {
 			return glm::clamp(x, a, b);
         });
+
+        lua_state.set_function("normalize", [](glm::vec3 v) {
+			return glm::normalize(v);
+        });
+
+        lua_state.set_function("forward_from_yawpitch", [](float yawDeg, float pitchDeg) {
+            float yaw = glm::radians(yawDeg);
+            float pitch = glm::radians(pitchDeg);
+            float cp = cos(pitch);
+            return glm::vec3(cp * sin(yaw), sin(pitch), -cp * cos(yaw));
+        });
+
+        lua_state.set_function("right_from_yaw", [](float yawDeg) {
+            float yaw = glm::radians(yawDeg);
+            return glm::vec3(cos(yaw), 0, sin(yaw));
+	    });
     }
 
     void ScriptSystem::BindFunctionToLua(sol::state& lua_state)
@@ -472,6 +502,10 @@ namespace QuasarEngine
 
         lua_state.set_function("getScene", []() -> Scene* {
             return Renderer::m_SceneData.m_Scene;
+            });
+
+        lua_state.set_function("destroyEntity", [](Entity& e) {
+            if (e.IsValid()) Renderer::m_SceneData.m_Scene->DestroyEntity(e);
             });
 
         lua_state.set_function("removeEntityByName", [&lua_state](const std::string& name) -> sol::object {
@@ -558,7 +592,9 @@ namespace QuasarEngine
     void ScriptSystem::BindEntityToLua(sol::state& lua_state)
     {
         lua_state.new_usertype<Entity>("Entity",
-            "name", &Entity::GetName);
+            "name", &Entity::GetName,
+            "id", & Entity::GetUUID
+        );
 
         lua_state["Entity"]["getComponent"] = [this, &lua_state](Entity& entity, const std::string& componentName) -> sol::object {
             return LuaGetComponent(entity, componentName, lua_state);
@@ -596,6 +632,31 @@ namespace QuasarEngine
 
                 meshComp.GenerateMesh(verts, inds);
             }
+        );
+
+        lua_state.new_enum<QuasarEngine::TagMask>("TagMask", {
+            {"None",        QuasarEngine::TagMask::None},
+            {"Player",      QuasarEngine::TagMask::Player},
+            {"Enemy",       QuasarEngine::TagMask::Enemy},
+            {"NPC",         QuasarEngine::TagMask::NPC},
+            {"Collectible", QuasarEngine::TagMask::Collectible},
+            {"Trigger",     QuasarEngine::TagMask::Trigger},
+            {"Static",      QuasarEngine::TagMask::Static},
+            {"Dynamic",     QuasarEngine::TagMask::Dynamic},
+            {"Boss",        QuasarEngine::TagMask::Boss},
+            {"Projectile",  QuasarEngine::TagMask::Projectile},
+            {"All",         QuasarEngine::TagMask::All}
+        });
+
+        lua_state.new_usertype<QuasarEngine::TagComponent>("TagComponent",
+            "Tag", &QuasarEngine::TagComponent::Tag,
+            "Add", &QuasarEngine::TagComponent::Add,
+            "Remove", &QuasarEngine::TagComponent::Remove,
+            "Set", &QuasarEngine::TagComponent::Set,
+            "HasAny", &QuasarEngine::TagComponent::HasAny,
+            "HasAll", &QuasarEngine::TagComponent::HasAll,
+            "IsEnemy", &QuasarEngine::TagComponent::IsEnemy,
+            "IsPlayer", &QuasarEngine::TagComponent::IsPlayer
         );
 	}
 

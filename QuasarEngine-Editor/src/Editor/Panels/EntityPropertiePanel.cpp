@@ -359,13 +359,71 @@ namespace QuasarEngine
             ImGui::Text("UUID: %llu", (unsigned long long)uuid);
             ImGui::Separator();
 
-            char buffer[256];
-            std::strncpy(buffer, entity.GetName().c_str(), sizeof(buffer));
-            buffer[sizeof(buffer) - 1] = '\0';
-            if (ImGui::InputText(("##" + uuid.ToString()).c_str(), buffer, sizeof(buffer)))
+            if (entity.HasComponent<TagComponent>())
             {
-                if (entity.HasComponent<TagComponent>())
+                auto& tc = entity.GetComponent<TagComponent>();
+
+                char buffer[256];
+                std::strncpy(buffer, entity.GetName().c_str(), sizeof(buffer));
+                buffer[sizeof(buffer) - 1] = '\0';
+                if (ImGui::InputText(("##" + uuid.ToString()).c_str(), buffer, sizeof(buffer)))
+                {
                     entity.GetComponent<TagComponent>().Tag = std::string(buffer);
+                }
+
+                ImGui::Spacing();
+                ImGui::SeparatorText("Tags");
+
+                static char s_TagSearch[64] = { 0 };
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                ImGui::InputTextWithHint("##search_tags", "Rechercher un tag...", s_TagSearch, sizeof(s_TagSearch));
+                const std::string tagFilter = s_TagSearch;
+
+                struct TagOption { const char* label; TagMask flag; const char* keywords; };
+                static const TagOption kTagOptions[] = {
+                    {"Player",      TagMask::Player,      "player hero character"},
+                    {"Enemy",       TagMask::Enemy,       "enemy hostile foe"},
+                    {"NPC",         TagMask::NPC,         "npc civilian vendor"},
+                    {"Collectible", TagMask::Collectible, "pickup item loot"},
+                    {"Trigger",     TagMask::Trigger,     "trigger volume area"},
+                    {"Static",      TagMask::Static,      "static environment"},
+                    {"Dynamic",     TagMask::Dynamic,     "dynamic movable"},
+                    {"Boss",        TagMask::Boss,        "boss elite"},
+                    {"Projectile",  TagMask::Projectile,  "projectile bullet"},
+                };
+
+                if (ImGui::Button("Tout cocher")) { for (auto& o : kTagOptions) tc.Add(o.flag); }
+                ImGui::SameLine();
+                if (ImGui::Button("Tout decocher")) { for (auto& o : kTagOptions) tc.Mask = TagMask::None; }
+
+                const int columns = 2;
+                if (ImGui::BeginTable("##tag_table", columns, ImGuiTableFlags_SizingStretchProp))
+                {
+                    int col = 0;
+                    for (const auto& opt : kTagOptions)
+                    {
+                        auto containsI = [](const std::string& hay, const std::string& needle) {
+                            if (needle.empty()) return true;
+                            auto toLower = [](std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; };
+                            return toLower(hay).find(toLower(needle)) != std::string::npos;
+                            };
+                        if (!containsI(std::string(opt.label) + " " + opt.keywords, tagFilter))
+                            continue;
+
+                        if (col == 0) ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(col);
+
+                        bool checked = tc.HasAny(opt.flag);
+                        if (ImGui::Checkbox(opt.label, &checked))
+                        {
+                            if (checked) tc.Add(opt.flag);
+                            else         tc.Remove(opt.flag);
+                        }
+
+                        col = (col + 1) % columns;
+                    }
+                    ImGui::EndTable();
+                }
             }
 
             ImGui::Separator();
