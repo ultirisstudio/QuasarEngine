@@ -267,19 +267,18 @@ namespace QuasarEngine
     void ScriptSystem::UnregisterEntityScript(ScriptComponent& scriptComponent)
     {
         auto view = m_Registry->view<ScriptComponent>();
-
         for (auto entity : view) {
             if (view.get<ScriptComponent>(entity).entt_entity == scriptComponent.entt_entity) {
-				m_Registry->remove<sol::environment>(entity);
-				break;
-			}
-		}
+                m_Registry->remove<ScriptComponent>(entity);
+                break;
+            }
+        }
 
-		scriptComponent.initialized = false;
-		scriptComponent.startFunc = sol::nil;
-		scriptComponent.updateFunc = sol::nil;
-		scriptComponent.stopFunc = sol::nil;
-		scriptComponent.environment = sol::nil;
+        scriptComponent.initialized = false;
+        scriptComponent.startFunc = sol::nil;
+        scriptComponent.updateFunc = sol::nil;
+        scriptComponent.stopFunc = sol::nil;
+        scriptComponent.environment = sol::nil;
     }
 
     void ScriptSystem::Update(float dt) {
@@ -487,6 +486,10 @@ namespace QuasarEngine
             "w", &glm::ivec4::w
         );
 
+        lua_state.set_function("atan2", [](double y, double x) {
+            return std::atan2(y, x);
+            });
+
         lua_state.set_function("deg2rad", [](float deg) {
 			return glm::radians(deg);
             });
@@ -623,14 +626,21 @@ namespace QuasarEngine
 
         lua_state.set_function("attachScript", [this](Entity& e, const std::string& path) {
             if (!e.IsValid()) return;
-            auto& sc = e.HasComponent<ScriptComponent>() ? e.GetComponent<ScriptComponent>()
-                : e.AddComponent<ScriptComponent>();
-            sc.scriptPath = path;
 
-            sc.Initialize();
+            auto& sc = e.HasComponent<ScriptComponent>()
+                ? e.GetComponent<ScriptComponent>()
+                : e.AddComponent<ScriptComponent>();
+
+            sc.scriptPath = path;
+            sc.entt_entity = static_cast<entt::entity>(e);
+
+            RegisterEntityScript(sc);
 
             if (sc.startFunc.valid()) {
-                sc.startFunc();
+                try { sc.startFunc(); }
+                catch (const sol::error& err) {
+                    std::cerr << "[Lua Runtime Error] " << err.what() << std::endl;
+                }
             }
             });
     }
