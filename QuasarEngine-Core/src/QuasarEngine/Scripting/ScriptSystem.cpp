@@ -589,8 +589,8 @@ namespace QuasarEngine
 
         lua_state.set_function("setParent", [](Entity& child, Entity& parent) {
             if (!child.IsValid() || !parent.IsValid()) return;
-            if (child.HasComponent<HierarchyComponent>())
-                child.GetComponent<HierarchyComponent>().m_Parent = parent.GetUUID();
+            if (parent.HasComponent<HierarchyComponent>())
+                parent.GetComponent<HierarchyComponent>().AddChild(parent.GetUUID(), child.GetUUID());
             });
 
 
@@ -670,23 +670,14 @@ namespace QuasarEngine
             "scale", &TransformComponent::Scale
         );
 
-        lua_state.new_usertype<MeshComponent>("Mesh",
+        lua_state.new_usertype<MeshComponent>("MeshComponent",
             sol::constructors<MeshComponent(), MeshComponent(const std::string&)>(),
             "getName", &MeshComponent::GetName,
             "hasMesh", &MeshComponent::HasMesh,
-            "generateMesh", [](MeshComponent& meshComp, sol::table vertices, sol::table indices) {
-                std::vector<float> verts;
-                std::vector<unsigned int> inds;
-
-                for (auto& pair : vertices) {
-                    verts.push_back(pair.second.as<float>());
-                }
-
-                for (auto& pair : indices) {
-                    inds.push_back(pair.second.as<unsigned int>());
-                }
-
-                meshComp.GenerateMesh(verts, inds);
+            "generateMesh", [](MeshComponent& mc,
+                std::vector<float> verts,
+                std::vector<unsigned int> inds) {
+                    mc.GenerateMesh(verts, inds);
             }
         );
 
@@ -723,7 +714,6 @@ namespace QuasarEngine
             "size", &BoxColliderComponent::m_Size,
             "Init", &BoxColliderComponent::Init
         );
-
 	}
 
     void ScriptSystem::BindPhysicsToLua(sol::state& lua_state)
@@ -735,7 +725,8 @@ namespace QuasarEngine
             ),
             "set_body_type", [](RigidBodyComponent& c, const std::string& t) { c.bodyTypeString = t; c.UpdateBodyType(); },
             "set_linear_damping", [](RigidBodyComponent& c, float v) { c.linearDamping = v; c.UpdateDamping(); },
-            "set_angular_damping", [](RigidBodyComponent& c, float v) { c.angularDamping = v; c.UpdateDamping(); }
+            "set_angular_damping", [](RigidBodyComponent& c, float v) { c.angularDamping = v; c.UpdateDamping(); },
+			"enable_gravity", & RigidBodyComponent::enableGravity
         );
 
         sol::table physics = lua_state.create_table();

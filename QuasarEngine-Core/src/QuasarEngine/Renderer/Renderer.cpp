@@ -402,8 +402,9 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->Reset();
 		}
 
-		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<
-			TransformComponent, MaterialComponent, TerrainComponent, MeshRendererComponent>())
+		//std::cout << entityDraw << "/" << totalEntity << std::endl;
+
+		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, TerrainComponent, MeshRendererComponent>())
 		{
 			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
 
@@ -414,9 +415,6 @@ namespace QuasarEngine
 
 			if (!mr.m_Rendered)
 				continue;
-
-			if (!tc.IsGenerated())
-				tc.GenerateTerrain();
 
 			auto mesh = tc.GetMesh();
 			if (!mesh || !mesh->IsMeshGenerated())
@@ -429,11 +427,6 @@ namespace QuasarEngine
 			}
 
 			Material& material = matc.GetMaterial();
-
-			if (!material.HasTexture(Albedo))
-			{
-				m_SceneData.m_Shader->SetTexture("albedo_texture", &tc.GetHeightMapTexture());
-			}
 
 			m_SceneData.m_Shader->SetUniform("model", &transform, sizeof(glm::mat4));
 
@@ -454,14 +447,16 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasMetallicTexture, sizeof(int));
 			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasAOTexture, sizeof(int));
 
-			if (material.HasTexture(Albedo))    m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(Albedo));
-			if (material.HasTexture(Normal))    m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(Normal));
-			if (material.HasTexture(Roughness)) m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(Roughness));
-			if (material.HasTexture(Metallic))  m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(Metallic));
-			if (material.HasTexture(AO))        m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(AO));
+			m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(Albedo));
+			m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(Normal));
+			m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(Roughness));
+			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(Metallic));
+			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(AO));
 
 			if (!m_SceneData.m_Shader->UpdateObject(&material))
+			{
 				continue;
+			}
 
 			mesh->draw();
 
@@ -469,8 +464,6 @@ namespace QuasarEngine
 		}
 
 		m_SceneData.m_Shader->Unuse();
-
-		//std::cout << entityDraw << "/" << totalEntity << std::endl;
 	}
 
 	void Renderer::RenderDebug(BaseCamera& camera)

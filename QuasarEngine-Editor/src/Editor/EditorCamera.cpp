@@ -96,7 +96,7 @@ namespace QuasarEngine
 
 	void EditorCamera::Update()
 	{
-		m_projectionMatrix = glm::perspectiveRH_ZO(glm::radians(getFov()), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 1000.0f);
+		m_projectionMatrix = glm::perspectiveRH_ZO(glm::radians(getFov()), m_ViewportSize.x / m_ViewportSize.y, 0.1f, 10000.0f);
 
 		updateViewMatrix();
 		UpdateCameraVectors();

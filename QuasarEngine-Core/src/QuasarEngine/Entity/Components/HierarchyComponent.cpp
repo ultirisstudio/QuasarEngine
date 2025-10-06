@@ -17,11 +17,6 @@ namespace QuasarEngine
 			{
 				entity.value().GetComponent<HierarchyComponent>().m_Parent = parent;
 			}
-			else
-			{
-				//entity.value().AddComponent<HierarchyComponent>();
-				//entity.value().GetComponent<HierarchyComponent>().m_Parent = parent;
-			}
 		}
 	}
 }

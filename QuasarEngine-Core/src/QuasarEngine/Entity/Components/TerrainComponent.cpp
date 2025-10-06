@@ -53,7 +53,7 @@ namespace QuasarEngine
     {
         m_Generated = false;
         m_Mesh.reset();
-        m_MatSpec.reset();
+        //m_MatSpec.reset();
         m_HeightPixels.clear();
         m_ImgW = m_ImgH = m_ImgC = 0;
 
@@ -155,21 +155,21 @@ namespace QuasarEngine
             }
         }
 
-        MaterialSpecification matSpec{};
+        /*MaterialSpecification matSpec{};
         matSpec.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
         matSpec.Roughness = 0.9f;
         matSpec.Metallic = 0.0f;
-        matSpec.AO = 1.0f;
+        matSpec.AO = 1.0f;*/
 
         m_Mesh = std::make_shared<Mesh>(
             vertices,
             indices,
             std::nullopt,
-            DrawMode::TRIANGLES,
-            matSpec
+            DrawMode::TRIANGLES//,
+            //matSpec
         );
 
-        m_MatSpec = matSpec;
+        //m_MatSpec = matSpec;
         m_Generated = true;
         //Q_INFO("Terrain generated: " + std::to_string(m_ImgW) + "x" + std::to_string(m_ImgH) + ", rez=" + std::to_string(rez) + " -> " + std::to_string(vertices.size() / 8) + " vertices, " + std::to_string(indices.size()) + " indices");
     }

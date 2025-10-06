@@ -59,17 +59,18 @@ namespace QuasarEngine::Math {
 	Frustum CalculateFrustum(const glm::mat4& VP)
 	{
 		Frustum f;
-		const glm::vec4 c0 = VP[0];
-		const glm::vec4 c1 = VP[1];
-		const glm::vec4 c2 = VP[2];
-		const glm::vec4 c3 = VP[3];
 
-		f.planes[0] = MakePlane(c3 + c0);
-		f.planes[1] = MakePlane(c3 - c0);
-		f.planes[2] = MakePlane(c3 + c1);
-		f.planes[3] = MakePlane(c3 - c1);
-		f.planes[4] = MakePlane(c3 + c2);
-		f.planes[5] = MakePlane(c3 - c2);
+		const glm::vec4 r0 = glm::vec4(VP[0][0], VP[1][0], VP[2][0], VP[3][0]);
+		const glm::vec4 r1 = glm::vec4(VP[0][1], VP[1][1], VP[2][1], VP[3][1]);
+		const glm::vec4 r2 = glm::vec4(VP[0][2], VP[1][2], VP[2][2], VP[3][2]);
+		const glm::vec4 r3 = glm::vec4(VP[0][3], VP[1][3], VP[2][3], VP[3][3]);
+
+		f.planes[0] = MakePlane(r3 + r0); // Left
+		f.planes[1] = MakePlane(r3 - r0); // Right
+		f.planes[2] = MakePlane(r3 + r1); // Bottom
+		f.planes[3] = MakePlane(r3 - r1); // Top
+		f.planes[4] = MakePlane(r3 + r2); // Near
+		f.planes[5] = MakePlane(r3 - r2); // Far
 
 		return f;
 	}
