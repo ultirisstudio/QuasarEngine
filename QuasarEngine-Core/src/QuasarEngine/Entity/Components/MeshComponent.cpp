@@ -33,11 +33,5 @@ namespace QuasarEngine
 	void MeshComponent::GenerateMesh(std::vector<float>& vertices, std::vector<unsigned int>& indices, std::optional<BufferLayout> layout, DrawMode drawMode)
 	{
 		m_Mesh = new Mesh(vertices, indices, layout, drawMode);
-		std::cout << "Generated mesh with " << m_Mesh->GetVerticesCount() << " vertices and " << m_Mesh->GetIndicesCount() << " indices.\n";
 	}
-
-	/*void MeshComponent::GenerateMesh(std::vector<Vertex>& vertices, std::vector<unsigned int>& indices, DrawMode drawMode)
-	{
-		m_Mesh = new Mesh(vertices, indices, drawMode);
-	}*/
 }
