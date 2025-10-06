@@ -24,6 +24,7 @@ namespace QuasarEngine {
 			case DrawMode::LINE_STRIP: return GL_LINE_STRIP;
 			case DrawMode::LINE_LOOP: return GL_LINE_LOOP;
 			case DrawMode::POINTS: return GL_POINTS;
+			case DrawMode::PATCHES: return GL_PATCHES;
 			}
 			return GL_TRIANGLES;
 		}

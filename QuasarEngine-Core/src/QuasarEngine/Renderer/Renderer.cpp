@@ -21,6 +21,7 @@
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
+#include <glad/glad.h>
 
 namespace QuasarEngine
 {
@@ -222,6 +223,87 @@ namespace QuasarEngine
 
 		m_SceneData.m_PhysicDebugShader = Shader::Create(phyDebDesc);
 
+		Shader::ShaderDescription terrainDesc;
+
+		terrainDesc.cullMode = Shader::CullMode::Back;
+
+		std::string tVertPath = basePath + "gpuheight.vs";
+		std::string tTcsPath = basePath + "gpuheight.tcs";
+		std::string tTesPath = basePath + "gpuheight.tes";
+		std::string tFragPath = basePath + "gpuheight.fs";
+
+		terrainDesc.modules = {
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Vertex,
+				tVertPath,
+				{
+					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
+					{1, Shader::ShaderIOType::Vec3, "inNormal", true, ""},
+					{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""}
+				}
+			},
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::TessControl,
+				tTcsPath,
+				{}
+			},
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::TessEval,
+				tTesPath,
+				{}
+			},
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Fragment,
+				tFragPath,
+				{}
+			}
+		};
+
+		struct alignas(16) TerrainGlobalUniforms {
+			glm::mat4 view;
+			glm::mat4 projection;
+		};
+		terrainDesc.globalUniforms = {
+			{"view",       Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4), offsetof(TerrainGlobalUniforms, view),       0, 0, Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::TessEval)},
+			{"projection", Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4), offsetof(TerrainGlobalUniforms, projection), 0, 0, Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::TessEval)},
+		};
+
+		struct TerrainObjectUniforms {
+			glm::mat4 model;
+			float heightMult;
+			int   uTextureScale;
+		};
+
+		constexpr auto TOFlags = Shader::StageToBit(Shader::ShaderStageType::TessEval) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+		terrainDesc.objectUniforms = {
+			{"model",          Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),          offsetof(TerrainObjectUniforms, model),       1, 0, TOFlags},
+			{"heightMult",     Shader::ShaderUniformType::Float, sizeof(float),              offsetof(TerrainObjectUniforms, heightMult),  1, 0, TOFlags},
+			{"uTextureScale",  Shader::ShaderUniformType::Int,   sizeof(int),                offsetof(TerrainObjectUniforms, uTextureScale),1, 0, TOFlags},
+		};
+
+		terrainDesc.samplers = {
+			{"heightMap", 1, 0, Shader::StageToBit(Shader::ShaderStageType::TessEval)},
+			{"uTexture",  1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+		};
+
+		terrainDesc.blendMode = Shader::BlendMode::None;
+		terrainDesc.cullMode = Shader::CullMode::Back;
+		terrainDesc.fillMode = Shader::FillMode::Solid;
+		terrainDesc.depthFunc = Shader::DepthFunc::Less;
+		terrainDesc.depthTestEnable = true;
+		terrainDesc.depthWriteEnable = true;
+
+		terrainDesc.topology = Shader::PrimitiveTopology::PatchList;
+
+		terrainDesc.patchControlPoints = 4;
+
+		terrainDesc.enableDynamicViewport = true;
+		terrainDesc.enableDynamicScissor = true;
+
+		auto terrainShader = Shader::Create(terrainDesc);
+		m_SceneData.m_TerrainShader = terrainShader;
+
 		m_SceneData.m_AssetManager = std::make_unique<AssetManager>();
 
 		m_SceneData.m_Skybox = BasicSkybox::CreateBasicSkybox();
@@ -411,56 +493,53 @@ namespace QuasarEngine
 			auto& tr = entity.GetComponent<TransformComponent>();
 			auto& tc = entity.GetComponent<TerrainComponent>();
 			auto& mr = entity.GetComponent<MeshRendererComponent>();
-			auto& matc = entity.GetComponent<MaterialComponent>();
+			auto& mat = entity.GetComponent<MaterialComponent>().GetMaterial();
 
-			if (!mr.m_Rendered)
-				continue;
+			if (!mr.m_Rendered) continue;
 
 			auto mesh = tc.GetMesh();
-			if (!mesh || !mesh->IsMeshGenerated())
-				continue;
+			if (!mesh || !mesh->IsMeshGenerated()) continue;
 
 			glm::mat4 transform = tr.GetGlobalTransform();
-			if (!mesh->IsVisible(frustum, transform))
+
+			m_SceneData.m_TerrainShader->Use();
+
+			glm::mat4 viewMatrix = camera.getViewMatrix();
+			glm::mat4 projectionMatrix = camera.getProjectionMatrix();
+			m_SceneData.m_TerrainShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
+			m_SceneData.m_TerrainShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
+			m_SceneData.m_TerrainShader->UpdateGlobalState();
+
+			m_SceneData.m_TerrainShader->SetUniform("model", &transform, sizeof(glm::mat4));
+			m_SceneData.m_TerrainShader->SetUniform("heightMult", &tc.heightMult, sizeof(float));
+			m_SceneData.m_TerrainShader->SetUniform("uTextureScale", &tc.textureScale, sizeof(int));
+
+			if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(tc.GetHeightMapPath()))
 			{
-				//continue;
+				m_SceneData.m_TerrainShader->SetTexture("heightMap", Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(tc.GetHeightMapPath()).get());
+			}
+			else
+			{
+				AssetToLoad tcAsset;
+				tcAsset.id = tc.GetHeightMapPath();
+				tcAsset.type = AssetType::TEXTURE;
+				Renderer::m_SceneData.m_AssetManager->loadAsset(tcAsset);
 			}
 
-			Material& material = matc.GetMaterial();
+			m_SceneData.m_TerrainShader->SetTexture("uTexture", mat.GetTexture(Albedo));
 
-			m_SceneData.m_Shader->SetUniform("model", &transform, sizeof(glm::mat4));
-
-			m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
-			m_SceneData.m_Shader->SetUniform("roughness", &material.GetRoughness(), sizeof(float));
-			m_SceneData.m_Shader->SetUniform("metallic", &material.GetMetallic(), sizeof(float));
-			m_SceneData.m_Shader->SetUniform("ao", &material.GetAO(), sizeof(float));
-
-			int hasAlbedoTexture = material.HasTexture(Albedo) ? 1 : 0;
-			int hasNormalTexture = material.HasTexture(Normal) ? 1 : 0;
-			int hasRougnessTexture = material.HasTexture(Roughness) ? 1 : 0;
-			int hasMetallicTexture = material.HasTexture(Metallic) ? 1 : 0;
-			int hasAOTexture = material.HasTexture(AO) ? 1 : 0;
-
-			m_SceneData.m_Shader->SetUniform("has_albedo_texture", &hasAlbedoTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_normal_texture", &hasNormalTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_roughness_texture", &hasRougnessTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasMetallicTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasAOTexture, sizeof(int));
-
-			m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(Albedo));
-			m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(Normal));
-			m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(Roughness));
-			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(Metallic));
-			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(AO));
-
-			if (!m_SceneData.m_Shader->UpdateObject(&material))
-			{
+			if (!m_SceneData.m_TerrainShader->UpdateObject(&mat)) {
+				m_SceneData.m_TerrainShader->Unuse();
 				continue;
 			}
+
+			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 			mesh->draw();
 
-			m_SceneData.m_Shader->Reset();
+			//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+			m_SceneData.m_TerrainShader->Unuse();
 		}
 
 		m_SceneData.m_Shader->Unuse();

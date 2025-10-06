@@ -90,7 +90,7 @@ namespace QuasarEngine
         std::vector<float> vertices;
         std::vector<unsigned int> indices;
         vertices.reserve(vxCountX * vxCountZ * 8);
-        indices.reserve(rez * rez * 6);
+        indices.reserve(rez * rez * 4);
 
         auto heightAt = [&](int ix, int iz) -> float {
             float u = static_cast<float>(ix) / static_cast<float>(rez);
@@ -107,16 +107,8 @@ namespace QuasarEngine
 
                 float x = -halfX + u * sizeX;
                 float z = -halfZ + v * sizeZ;
-                float y = heightAt(ix, iz);
-
-                float hxL = heightAt(std::max(ix - 1, 0), iz);
-                float hxR = heightAt(std::min(ix + 1, rez), iz);
-                float hzD = heightAt(ix, std::max(iz - 1, 0));
-                float hzU = heightAt(ix, std::min(iz + 1, rez));
-
-                glm::vec3 dx(2.0f, hxR - hxL, 0.0f);
-                glm::vec3 dz(0.0f, hzU - hzD, 2.0f);
-                glm::vec3 n = glm::normalize(glm::cross(dz, dx));
+                float y = 0.0f;
+                glm::vec3 n(0.0f, 1.0f, 0.0f);
 
                 float uu = u * static_cast<float>(textureScale);
                 float vv = v * static_cast<float>(textureScale);
@@ -136,41 +128,27 @@ namespace QuasarEngine
 
         auto idx = [&](int ix, int iz) { return static_cast<unsigned int>(iz * vxCountX + ix); };
 
-        for (int iz = 0; iz < rez; ++iz)
-        {
-            for (int ix = 0; ix < rez; ++ix)
-            {
+        for (int iz = 0; iz < rez; ++iz) {
+            for (int ix = 0; ix < rez; ++ix) {
                 unsigned int i0 = idx(ix, iz);
                 unsigned int i1 = idx(ix + 1, iz);
                 unsigned int i2 = idx(ix, iz + 1);
                 unsigned int i3 = idx(ix + 1, iz + 1);
 
                 indices.push_back(i0);
-                indices.push_back(i2);
-                indices.push_back(i1);
-                
                 indices.push_back(i1);
                 indices.push_back(i2);
                 indices.push_back(i3);
             }
         }
 
-        /*MaterialSpecification matSpec{};
-        matSpec.Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
-        matSpec.Roughness = 0.9f;
-        matSpec.Metallic = 0.0f;
-        matSpec.AO = 1.0f;*/
-
         m_Mesh = std::make_shared<Mesh>(
             vertices,
             indices,
             std::nullopt,
-            DrawMode::TRIANGLES//,
-            //matSpec
+            DrawMode::PATCHES
         );
 
-        //m_MatSpec = matSpec;
         m_Generated = true;
-        //Q_INFO("Terrain generated: " + std::to_string(m_ImgW) + "x" + std::to_string(m_ImgH) + ", rez=" + std::to_string(rez) + " -> " + std::to_string(vertices.size() / 8) + " vertices, " + std::to_string(indices.size()) + " indices");
     }
 }

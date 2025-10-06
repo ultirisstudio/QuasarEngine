@@ -10,6 +10,7 @@ namespace QuasarEngine
 		LINES,
 		LINE_STRIP,
 		LINE_LOOP,
-		POINTS
+		POINTS,
+		PATCHES
 	};
 }

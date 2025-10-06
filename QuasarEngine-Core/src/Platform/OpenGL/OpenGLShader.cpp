@@ -34,12 +34,17 @@ namespace QuasarEngine
         }
     }
 
+    static void SetPatchVertices(const GLPipelineState& s) {
+        glPatchParameteri(GL_PATCH_VERTICES, s.patchVertices);
+    }
+
     void RendererGLState::Apply(const GLPipelineState& s) {
         if (!m_hasCached) {
             SetDepthAll(s);
             SetCullAll(s);
             SetPolyAll(s);
             SetBlendAll(s);
+            SetPatchVertices(s);
 
             m_cached = s;
             m_hasCached = true;
@@ -68,6 +73,10 @@ namespace QuasarEngine
             glBlendFuncSeparate(s.blendSrcRGB, s.blendDstRGB, s.blendSrcA, s.blendDstA);
         }
 
+        if (s.patchVertices != m_cached.patchVertices) {
+            glPatchParameteri(GL_PATCH_VERTICES, s.patchVertices);
+        }
+
         m_cached = s;
         m_hasCached = true;
     }
@@ -79,6 +88,7 @@ namespace QuasarEngine
         s.polygonMode = GL_FILL;
         s.blendEnabled = false;
         s.blendSrcRGB = GL_ONE; s.blendDstRGB = GL_ZERO; s.blendSrcA = GL_ONE; s.blendDstA = GL_ZERO;
+        s.patchVertices = 1;
         Apply(s);
     }
 
@@ -317,6 +327,7 @@ namespace QuasarEngine
         ps.depthTest = m_Description.depthTestEnable;
         ps.depthWrite = m_Description.depthWriteEnable;
         ps.depthFunc = DepthFuncToGL(m_Description.depthFunc);
+        ps.patchVertices = m_Description.patchControlPoints;
 
         ps.cullEnabled = (m_Description.cullMode != CullMode::None);
         ps.cullFace = (m_Description.cullMode == CullMode::Back ? GL_BACK : GL_FRONT);

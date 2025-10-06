@@ -112,7 +112,7 @@ namespace QuasarEngine
         };
 
         enum class PrimitiveTopology {
-            TriangleList, LineList, PointList
+            TriangleList, LineList, PointList, PatchList
         };
 
         struct ShaderDescription {
@@ -134,6 +134,8 @@ namespace QuasarEngine
             bool enableDynamicViewport = true;
             bool enableDynamicScissor = true;
             bool enableDynamicLineWidth = false;
+
+            int patchControlPoints = 1;
 
             Framebuffer* framebuffer = nullptr;
         };

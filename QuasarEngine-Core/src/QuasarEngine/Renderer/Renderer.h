@@ -25,8 +25,8 @@ namespace QuasarEngine
 			std::unique_ptr<AssetManager> m_AssetManager;
 
 			std::shared_ptr<Shader> m_Shader;
-
 			std::shared_ptr<Shader> m_PhysicDebugShader;
+			std::shared_ptr<Shader> m_TerrainShader;
 
 			std::shared_ptr<BasicSkybox> m_Skybox;
 

@@ -31,6 +31,8 @@ namespace QuasarEngine
         GLenum blendDstRGB = GL_ZERO;
         GLenum blendSrcA = GL_ONE;
         GLenum blendDstA = GL_ZERO;
+
+        GLuint patchVertices = 1;
     };
 
     class RendererGLState {
