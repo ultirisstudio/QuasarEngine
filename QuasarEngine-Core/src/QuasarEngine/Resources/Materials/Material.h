@@ -26,6 +26,12 @@ namespace QuasarEngine
 		std::optional<std::string> RoughnessTexture;
 		std::optional<std::string> AOTexture;
 
+		std::optional<TextureSpecification> AlbedoTextureSpec;
+		std::optional<TextureSpecification> NormalTextureSpec;
+		std::optional<TextureSpecification> MetallicTextureSpec;
+		std::optional<TextureSpecification> RoughnessTextureSpec;
+		std::optional<TextureSpecification> AOTextureSpec;
+
 		glm::vec4 Albedo = glm::vec4(1.0f);
 
 		float Metallic = 0.0f;

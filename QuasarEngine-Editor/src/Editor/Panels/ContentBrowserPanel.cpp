@@ -233,8 +233,14 @@ namespace QuasarEngine
             }
             else if (fileType == AssetType::TEXTURE)
             {
-                const std::filesystem::path p(itemPath);
-                const std::string id = p.filename().string();
+                const std::filesystem::path absPath = path;
+
+                std::error_code ec{};
+                std::string id;
+                if (auto rel = std::filesystem::relative(absPath, m_BaseDirectory, ec); !ec)
+                    id = "Assets/" + rel.generic_string();
+                else
+                    id = "Assets/" + absPath.filename().generic_string();
 
                 if (AssetManager::Instance().isAssetLoaded(id))
                 {
@@ -248,16 +254,15 @@ namespace QuasarEngine
                     {
                         loadingMap[id] = true;
 
-                        TextureSpecification spec = TextureConfigImporter::ImportTextureConfig(itemPath);
+                        TextureSpecification spec = TextureConfigImporter::ImportTextureConfig(absPath.generic_string());
 
                         AssetToLoad asset{};
                         asset.id = id;
-                        asset.path = p.string();
+                        asset.path = absPath.generic_string();
                         asset.type = AssetType::TEXTURE;
                         asset.spec = spec;
 
                         AssetManager::Instance().loadAsset(asset);
-                        
                         // AssetManager::Instance().LoadTextureAsync(asset);
                     }
 
@@ -388,7 +393,6 @@ namespace QuasarEngine
 
         ImGui::Columns(1);
 
-        // Menu contextuel sur fond vide de la fenêtre
         if (ImGui::BeginPopupContextWindow("ContentBrowserContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
         {
             if (ImGui::MenuItem("New Folder"))

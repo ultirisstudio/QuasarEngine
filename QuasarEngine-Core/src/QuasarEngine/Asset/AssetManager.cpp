@@ -171,6 +171,7 @@ namespace QuasarEngine
 					std::lock_guard<std::mutex> lock(m_AssetMutex);
 					m_LoadedAssets[asset.id] = std::move(texture);
 				}
+
 				break;
 			}
 			case AssetType::MODEL:

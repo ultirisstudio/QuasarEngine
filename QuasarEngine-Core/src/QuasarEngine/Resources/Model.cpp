@@ -4,6 +4,7 @@
 
 #include <QuasarEngine/Resources/Model.h>
 #include <QuasarEngine/Resources/Materials/Material.h>
+#include <QuasarEngine/Asset/AssetManager.h>
 
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
@@ -79,57 +80,75 @@ namespace QuasarEngine
         {
             aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-            auto loadTexture = [&](aiTextureType type, std::optional<std::string>& target) {
-                if (material->GetTextureCount(type) > 0) {
-                    aiString str;
-                    material->GetTexture(type, 0, &str);
-                    std::filesystem::path texPath = str.C_Str();
-                    std::filesystem::path finalPath = "textures" / texPath.filename();
-                    target = finalPath.generic_string();
-                }
+            auto projectRoot = AssetManager::Instance().getAssetPath();
+            auto toAbs = [&](const std::filesystem::path& p) -> std::filesystem::path {
+                if (p.is_absolute()) return p;
+                std::error_code ec;
+                auto cand = std::filesystem::weakly_canonical(m_SourceDir / p, ec);
+                return ec ? (m_SourceDir / p) : cand;
+                };
+            auto toIdIfExists = [&](const std::filesystem::path& abs) -> std::optional<std::string> {
+                std::error_code ec;
+                if (!std::filesystem::exists(abs, ec)) return std::nullopt;
+                auto rel = std::filesystem::relative(abs, projectRoot, ec);
+                if (ec || rel.empty()) return std::nullopt;
+                return rel.generic_string();
+                };
+            auto isEmbedded = [](const aiString& s) {
+                return !s.C_Str() ? false : (s.C_Str()[0] == '*');
                 };
 
-            loadTexture(aiTextureType_DIFFUSE, mat.AlbedoTexture);
-            loadTexture(aiTextureType_NORMALS, mat.NormalTexture);
-            if (!mat.NormalTexture) loadTexture(aiTextureType_HEIGHT, mat.NormalTexture);
+            auto loadTextureType = [&](aiTextureType type, std::optional<std::string>& target) {
+                if (material->GetTextureCount(type) == 0) return;
+                aiString str;
+                material->GetTexture(type, 0, &str);
+                if (isEmbedded(str)) return;
 
-            aiString path;
+                std::filesystem::path fromAssimp = str.C_Str();
+                auto abs = toAbs(fromAssimp);
+                if (auto id = toIdIfExists(abs)) target = *id;
+                };
+
+            loadTextureType(aiTextureType_DIFFUSE, mat.AlbedoTexture);
+            loadTextureType(aiTextureType_NORMALS, mat.NormalTexture);
+            if (!mat.NormalTexture) loadTextureType(aiTextureType_HEIGHT, mat.NormalTexture);
+
             if (material->GetTextureCount(aiTextureType_UNKNOWN) > 0) {
                 for (unsigned int i = 0; i < material->GetTextureCount(aiTextureType_UNKNOWN); ++i) {
+                    aiString path;
                     material->GetTexture(aiTextureType_UNKNOWN, i, &path);
-                    std::string texName = path.C_Str();
-                    std::filesystem::path texPath = path.C_Str();
-                    std::filesystem::path finalPath = "textures" / texPath.filename();
-                    if (texName.find("metal") != std::string::npos)
-                        mat.MetallicTexture = finalPath.generic_string();
-                    if (texName.find("rough") != std::string::npos)
-                        mat.RoughnessTexture = finalPath.generic_string();
+                    if (isEmbedded(path)) continue;
+
+                    std::string s = path.C_Str();
+                    std::filesystem::path abs = toAbs(s);
+                    if (!std::filesystem::exists(abs)) continue;
+
+                    std::string lower = s;
+                    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+                    if (lower.find("metal") != std::string::npos) {
+                        //if (auto id = toIdIfExists(abs)) mat.MetallicTexture = *id;
+                    }
+                    if (lower.find("rough") != std::string::npos) {
+                        //if (auto id = toIdIfExists(abs)) mat.RoughnessTexture = *id;
+                    }
                 }
             }
 
-            loadTexture(aiTextureType_LIGHTMAP, mat.AOTexture);
+            loadTextureType(aiTextureType_LIGHTMAP, mat.AOTexture);
 
             aiColor3D color(1.f, 1.f, 1.f);
-            if (material->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS) {
+            if (material->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
                 mat.Albedo = glm::vec4(color.r, color.g, color.b, 1.0f);
-            }
-            else {
-                mat.Albedo = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-            }
+            else
+                mat.Albedo = glm::vec4(1.0f);
 
-            float metallic = 0.0f, roughness = 0.0f;
-            material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic);
-            material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness);
-
+            float metallic = 0.0f, roughness = 1.0f;
+            //material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic);
+            //material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness);
             mat.Metallic = metallic;
             mat.Roughness = roughness;
         }
-
-        /*std::cout << "Albedo :    " << mat.AlbedoTexture.value_or("") << std::endl;
-        std::cout << "Normal :    " << mat.NormalTexture.value_or("") << std::endl;
-        std::cout << "Roughness : " << mat.RoughnessTexture.value_or("") << std::endl;
-        std::cout << "Metallic :  " << mat.MetallicTexture.value_or("") << std::endl;
-        std::cout << "AO :        " << mat.AOTexture.value_or("") << std::endl;*/
 
         return new Mesh(vertices, indices, {}, DrawMode::TRIANGLES, mat);
     }
@@ -149,21 +168,25 @@ namespace QuasarEngine
             loadNode(node->mChildren[i], scene, globalTransform);
     }
 
-	Model::Model(const std::string& path) : m_Name("Unamed")
-	{
-		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_OptimizeMeshes | aiProcess_GenUVCoords | aiProcess_ImproveCacheLocality); // aiProcess_PreTransformVertices | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_FixInfacingNormals | aiProcess_FlipUVs //
+    Model::Model(const std::string& path) : m_Name("Unamed")
+    {
+        m_SourcePath = std::filesystem::path(path);
+        m_SourceDir = m_SourcePath.parent_path();
 
-		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-		{
-			std::cout << "Failed to load model at " << path << " : " << importer.GetErrorString() << std::endl;
-			return;
-		}
+        Assimp::Importer importer;
+        const aiScene* scene = importer.ReadFile(path,
+            aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_OptimizeMeshes |
+            aiProcess_GenUVCoords | aiProcess_ImproveCacheLocality);
 
-		m_Name = scene->mRootNode->mName.C_Str();
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+        {
+            std::cout << "Failed to load model at " << path << " : " << importer.GetErrorString() << std::endl;
+            return;
+        }
 
+        m_Name = scene->mRootNode->mName.C_Str();
         loadNode(scene->mRootNode, scene, glm::mat4(1.0f));
-	}
+    }
 
 	Model::Model(std::string name, std::vector<float>& vertices, std::vector<unsigned int>& indices) : m_Name(name)
 	{

@@ -9,7 +9,7 @@ namespace QuasarEngine
 {
 	TextureSpecification TextureConfigImporter::ImportTextureConfig(std::filesystem::path path)
 	{
-		std::string filePath = path.parent_path().string() + "\\" + path.stem().string() + ".ultconf";
+		std::string filePath = path.parent_path().string() + "/" + path.stem().string() + ".ultconf";
 
 		TextureSpecification spec;
 

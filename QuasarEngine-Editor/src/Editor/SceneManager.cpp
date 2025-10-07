@@ -8,6 +8,7 @@
 
 #include "SceneSerializer.h"
 #include "Tools/Utils.h"
+#include "Editor/Importer/TextureConfigImporter.h"
 
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Entity/Components/CameraComponent.h>
@@ -82,149 +83,64 @@ namespace QuasarEngine
 				ModelToLoad model = m_ModelsToLoad.front();
 				m_ModelsToLoad.pop();
 
-				const std::filesystem::path p(model.path);
-				const std::string id = p.filename().string();
+				std::string id = std::filesystem::path(model.path).filename().string();
+				std::filesystem::path full = AssetManager::Instance().ResolvePath(id);
 
 				if (!AssetManager::Instance().isAssetLoaded(id))
 				{
-					m_ModelsToLoad.push(model);
-
 					QuasarEngine::AssetToLoad toLoad{};
 					toLoad.id = id;
-					toLoad.path = p.string();
+					toLoad.path = full.generic_string();
 					toLoad.type = QuasarEngine::AssetType::MODEL;
 
 					AssetManager::Instance().loadAsset(toLoad);
+
+					m_ModelsToLoad.push(model);
+					continue;
 				}
 
-				std::shared_ptr<Model> modelPtr = AssetManager::Instance().getAsset<Model>(model.path);
-
+				std::shared_ptr<Model> modelPtr = AssetManager::Instance().getAsset<Model>(id);
 				if (!modelPtr)
 				{
 					m_ModelsToLoad.push(model);
 					break;
 				}
 
-				const size_t slash = model.path.find_last_of("/\\");
-				const std::string m_SelectedFile = model.path.substr(slash + 1);
+				const std::string fileName = std::filesystem::path(id).stem().string();
+				Entity entity = GetActiveScene().CreateEntity(fileName);
 
-				size_t lastindex = m_SelectedFile.find_last_of(".");
-				const std::string m_FileName = m_SelectedFile.substr(0, lastindex);
+				auto fillTexSpec = [&](const std::optional<std::string>& texId,
+					std::optional<TextureSpecification>& outSpec)
+					{
+						if (!texId || texId->empty()) return;
 
-				const std::string m_FolderPath = model.path.substr(0, slash);
-
-				std::filesystem::path path(m_FolderPath);
-
-				Entity entity = GetActiveScene().CreateEntity(m_FileName);
+						const std::filesystem::path texPath = AssetManager::Instance().ResolvePath(*texId);
+						TextureSpecification spec = TextureConfigImporter::ImportTextureConfig(texPath.generic_string());
+						outSpec = spec;
+					};
 
 				for (auto& [name, mesh] : modelPtr->GetMeshes())
 				{
 					Entity child = GetActiveScene().CreateEntity(name);
 					child.AddComponent<MeshRendererComponent>();
-					auto& mc = child.AddComponent<MeshComponent>(name, mesh, model.path);
+
+					auto& mc = child.AddComponent<MeshComponent>(name, mesh, id);
 
 					if (mesh->GetMaterial().has_value())
 					{
 						MaterialSpecification material = mesh->GetMaterial().value();
-						if (material.AlbedoTexture.has_value())
-						{
-							//std::cout << "Albedo" << std::endl;
-							std::filesystem::path finalPath(path.generic_string() + "/" + material.AlbedoTexture.value());
-							//std::cout << finalPath << std::endl;
 
-							/*if (!std::filesystem::exists(finalPath)) {
-								std::cout << "Le fichier N'EXISTE PAS (filesystem) !" << std::endl;
-							}
-							else {
-								std::cout << "Le fichier existe (filesystem) !" << std::endl;
-							}*/
-
-							std::ifstream file(finalPath);
-							if (!file.is_open())
-							{
-								//std::cout << "ifstream NOT OPEN (direct path)" << std::endl;
-								material.AlbedoTexture = std::nullopt;
-							}
-							else
-							{
-								//std::cout << "ifstream OK (direct path) !" << std::endl;
-								material.AlbedoTexture = finalPath.generic_string();
-							}
-							file.close();
-						}
-						else
-						{
-							material.AlbedoTexture = std::nullopt;
-						}
-
-						if (material.NormalTexture.has_value())
-						{
-							std::filesystem::path finalPath(path.generic_string() + "/" + material.NormalTexture.value());
-							std::ifstream file(finalPath.generic_string());
-							if (!file.is_open())
-							{
-								material.NormalTexture = std::nullopt;
-							}
-							else
-							{
-								material.NormalTexture = finalPath.generic_string();
-							}
-							file.close();
-						}
-
-						if (material.MetallicTexture.has_value())
-						{
-							std::filesystem::path finalPath(path.generic_string() + "/" + material.MetallicTexture.value());
-							std::ifstream file(finalPath.generic_string());
-							if (!file.is_open())
-							{
-								material.MetallicTexture = std::nullopt;
-							}
-							else
-							{
-								material.MetallicTexture = finalPath.generic_string();
-							}
-							file.close();
-						}
-
-						if (material.RoughnessTexture.has_value())
-						{
-							std::filesystem::path finalPath(path.generic_string() + "/" + material.RoughnessTexture.value());
-							std::ifstream file(finalPath.generic_string());
-							if (!file.is_open())
-							{
-								material.RoughnessTexture = std::nullopt;
-							}
-							else
-							{
-								material.RoughnessTexture = finalPath.generic_string();
-							}
-							file.close();
-						}
-
-						if (material.AOTexture.has_value())
-						{
-							std::filesystem::path finalPath(path.generic_string() + "/" + material.AOTexture.value());
-							std::ifstream file(finalPath.generic_string());
-							if (!file.is_open())
-							{
-								material.AOTexture = std::nullopt;
-							}
-							else
-							{
-								material.AOTexture = finalPath.generic_string();
-							}
-							file.close();
-						}
+						fillTexSpec(material.AlbedoTexture, material.AlbedoTextureSpec);
+						fillTexSpec(material.NormalTexture, material.NormalTextureSpec);
+						fillTexSpec(material.MetallicTexture, material.MetallicTextureSpec);
+						fillTexSpec(material.RoughnessTexture, material.RoughnessTextureSpec);
+						fillTexSpec(material.AOTexture, material.AOTextureSpec);
 
 						child.AddComponent<MaterialComponent>(material);
 					}
 					else
 					{
-						MaterialSpecification material;
-						//material.AlbedoTexture = "Assets/Textures/white_texture.jpg";
-
-						child.AddComponent<MaterialComponent>(material);
+						child.AddComponent<MaterialComponent>(MaterialSpecification{});
 					}
 
 					entity.GetComponent<HierarchyComponent>().AddChild(entity.GetUUID(), child.GetUUID());
@@ -236,7 +152,8 @@ namespace QuasarEngine
 	void SceneManager::LoadModel(const ModelToLoad& modelToLoad)
 	{
 		AssetToLoad asset;
-		asset.id = modelToLoad.path;
+		asset.id = std::filesystem::path(modelToLoad.path).filename().string();
+		asset.path = modelToLoad.path;
 		asset.type = MODEL;
 
 		AssetManager::Instance().loadAsset(asset);

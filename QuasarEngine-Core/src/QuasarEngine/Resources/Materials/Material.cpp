@@ -11,16 +11,23 @@ namespace QuasarEngine
 	Material::Material(const MaterialSpecification& specification)
 		: m_Specification(specification), m_ID(INVALID_ID), m_Generation(INVALID_ID)
 	{
-		auto queueTex = [](const std::optional<std::string>& idOpt, bool albedoGamma = false)
+		auto queueTex = [](const std::optional<std::string>& idOpt,
+			const std::optional<TextureSpecification>& texSpecOpt,
+			bool albedoGamma = false)
 			{
-				if (!idOpt.has_value() || idOpt->empty()) return;
+				if (!idOpt.has_value() || idOpt->empty())
+					return;
 
 				AssetToLoad asset;
 				asset.id = *idOpt;
 				asset.path = AssetManager::Instance().ResolvePath(*idOpt).generic_string();
 				asset.type = AssetType::TEXTURE;
 
-				if (albedoGamma)
+				if (texSpecOpt.has_value())
+				{
+					asset.spec = texSpecOpt.value();
+				}
+				else if (albedoGamma)
 				{
 					TextureSpecification ts;
 					ts.gamma = true;
@@ -30,11 +37,11 @@ namespace QuasarEngine
 				AssetManager::Instance().loadAsset(asset);
 			};
 
-		queueTex(m_Specification.AlbedoTexture, true);
-		queueTex(m_Specification.NormalTexture);
-		queueTex(m_Specification.MetallicTexture);
-		queueTex(m_Specification.RoughnessTexture);
-		queueTex(m_Specification.AOTexture);
+		queueTex(m_Specification.AlbedoTexture, m_Specification.AlbedoTextureSpec, true);
+		queueTex(m_Specification.NormalTexture, m_Specification.NormalTextureSpec);
+		queueTex(m_Specification.MetallicTexture, m_Specification.MetallicTextureSpec);
+		queueTex(m_Specification.RoughnessTexture, m_Specification.RoughnessTextureSpec);
+		queueTex(m_Specification.AOTexture, m_Specification.AOTextureSpec);
 
 		m_Generation++;
 	}
@@ -57,10 +64,9 @@ namespace QuasarEngine
 		{
 		case Albedo:
 			m_Specification.AlbedoTexture = idProject;
+			if (m_Specification.AlbedoTextureSpec.has_value())
 			{
-				TextureSpecification ts;
-				ts.gamma = true;
-				asset.spec = ts;
+				asset.spec = m_Specification.AlbedoTextureSpec.value();
 			}
 			AssetManager::Instance().loadAsset(asset);
 			m_Generation++;
@@ -68,24 +74,40 @@ namespace QuasarEngine
 
 		case Normal:
 			m_Specification.NormalTexture = idProject;
+			if (m_Specification.NormalTextureSpec.has_value())
+			{
+				asset.spec = m_Specification.NormalTextureSpec.value();
+			}
 			AssetManager::Instance().loadAsset(asset);
 			m_Generation++;
 			break;
 
 		case Metallic:
 			m_Specification.MetallicTexture = idProject;
+			if (m_Specification.MetallicTextureSpec.has_value())
+			{
+				asset.spec = m_Specification.MetallicTextureSpec.value();
+			}
 			AssetManager::Instance().loadAsset(asset);
 			m_Generation++;
 			break;
 
 		case Roughness:
 			m_Specification.RoughnessTexture = idProject;
+			if (m_Specification.RoughnessTextureSpec.has_value())
+			{
+				asset.spec = m_Specification.RoughnessTextureSpec.value();
+			}
 			AssetManager::Instance().loadAsset(asset);
 			m_Generation++;
 			break;
 
 		case AO:
 			m_Specification.AOTexture = idProject;
+			if (m_Specification.AOTextureSpec.has_value())
+			{
+				asset.spec = m_Specification.AOTextureSpec.value();
+			}
 			AssetManager::Instance().loadAsset(asset);
 			m_Generation++;
 			break;

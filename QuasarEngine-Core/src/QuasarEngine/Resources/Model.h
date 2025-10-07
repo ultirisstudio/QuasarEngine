@@ -1,7 +1,7 @@
 #pragma once
 
-#include <list>
 #include <unordered_map>
+#include <filesystem>
 
 #include <QuasarEngine/Resources/Mesh.h>
 #include <QuasarEngine/Asset/Asset.h>
@@ -18,6 +18,9 @@ namespace QuasarEngine
 		std::unordered_map<std::string, Mesh*> m_meshesMap;
 
 		std::string m_Name;
+
+		std::filesystem::path m_SourcePath;
+		std::filesystem::path m_SourceDir;
 
 		Mesh* loadMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
 		void loadNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
