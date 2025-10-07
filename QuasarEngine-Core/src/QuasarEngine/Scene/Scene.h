@@ -63,7 +63,6 @@ namespace QuasarEngine
         NameMap m_NameMap;
 
         std::unique_ptr<Registry> m_Registry;
-        //std::unique_ptr<Skybox> m_Skybox;
 
         bool m_OnRuntime;
         UUID m_PrimaryCameraUUID;

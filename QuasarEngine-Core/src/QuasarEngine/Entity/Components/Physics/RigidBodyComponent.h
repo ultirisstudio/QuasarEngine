@@ -4,8 +4,11 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
-
 #include <PxPhysicsAPI.h>
+
+#include <string>
+#include <algorithm>
+#include <utility>
 
 namespace QuasarEngine
 {
@@ -31,10 +34,11 @@ namespace QuasarEngine
         RigidBodyComponent();
         ~RigidBodyComponent() override;
 
-        RigidBodyComponent(const RigidBodyComponent&) = delete;
-        RigidBodyComponent& operator=(const RigidBodyComponent&) = delete;
-        RigidBodyComponent(RigidBodyComponent&&) = default;
-        RigidBodyComponent& operator=(RigidBodyComponent&&) = default;
+        RigidBodyComponent(const RigidBodyComponent& other);
+        RigidBodyComponent& operator=(const RigidBodyComponent& other);
+
+        RigidBodyComponent(RigidBodyComponent&& other) noexcept;
+        RigidBodyComponent& operator=(RigidBodyComponent&& other) noexcept;
 
         void Destroy();
         void Init();
@@ -46,12 +50,12 @@ namespace QuasarEngine
         void UpdateAngularAxisFactor();
         void UpdateDamping();
 
-        physx::PxRigidActor* GetActor() const noexcept { return mActor; }
+        physx::PxRigidActor* GetActor()   const noexcept { return mActor; }
         physx::PxRigidDynamic* GetDynamic() const noexcept { return mDynamic; }
 
-        bool IsStatic()   const noexcept { return mActor && (mDynamic == nullptr); }
-        bool IsDynamic()  const noexcept { return mDynamic && !mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
-        bool IsKinematic()const noexcept { return mDynamic && mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
+        bool IsStatic()    const noexcept { return mActor && (mDynamic == nullptr); }
+        bool IsDynamic()   const noexcept { return mDynamic && !mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
+        bool IsKinematic() const noexcept { return mDynamic && mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
 
     private:
         enum class BodyType { Dynamic, Static, Kinematic };
@@ -61,8 +65,7 @@ namespace QuasarEngine
 
         physx::PxRigidActor* mActor = nullptr;
         physx::PxRigidDynamic* mDynamic = nullptr;
-        physx::PxShape* mShape = nullptr;
-        physx::PxMaterial* mMaterial = nullptr;
-        BodyType               mCurrentType = BodyType::Dynamic;
+
+        BodyType mCurrentType = BodyType::Dynamic;
     };
 }

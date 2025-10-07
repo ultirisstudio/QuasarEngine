@@ -49,7 +49,7 @@ namespace QuasarEngine {
 
 	}
 
-	void OpenGLRendererAPI::Init()
+	void OpenGLRendererAPI::Initialize()
 	{
 #ifdef DEBUG
 		glEnable(GL_DEBUG_OUTPUT);

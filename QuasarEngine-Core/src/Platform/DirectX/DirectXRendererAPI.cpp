@@ -10,7 +10,7 @@
 
 namespace QuasarEngine
 {
-	void DirectXRendererAPI::Init()
+	void DirectXRendererAPI::Initialize()
 	{
 
 	}

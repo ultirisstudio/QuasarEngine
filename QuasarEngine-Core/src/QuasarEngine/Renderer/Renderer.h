@@ -7,22 +7,21 @@
 #include <QuasarEngine/Asset/AssetManager.h>
 #include <QuasarEngine/Scripting/ScriptSystem.h>
 
-#include <QuasarEngine/Renderer/RenderCommand.h>
-
 #include <QuasarEngine/Resources/Lights/PointLight.h>
 #include <QuasarEngine/Resources/Lights/DirectionalLight.h>
 
 #include <QuasarEngine/UI/UISystem.h>
 
+#include <QuasarEngine/Core/Singleton.h>
+
 namespace QuasarEngine
 {
-	class Renderer
+	class Renderer : public Singleton<Renderer>
 	{
 	public:
 		struct SceneData
 		{
 			Scene* m_Scene;
-			std::unique_ptr<AssetManager> m_AssetManager;
 
 			std::shared_ptr<Shader> m_Shader;
 			std::shared_ptr<Shader> m_PhysicDebugShader;
@@ -38,22 +37,20 @@ namespace QuasarEngine
 			std::array<DirectionalLight, 4> m_DirectionalsBuffer;
 			int nPts = 0, nDirs = 0;
 		};
-		static SceneData m_SceneData;
+		SceneData m_SceneData;
 
-		static void Init();
-		static void Shutdown();
+		void Initialize();
+		void Shutdown();
 
-		static void BeginScene(Scene& scene);
-		static void Render(BaseCamera& camera);
-		static void RenderDebug(BaseCamera& camera);
-		static void RenderSkybox(BaseCamera& camera);
-		static void RenderUI(BaseCamera& camera);
-		static void EndScene();
+		void BeginScene(Scene& scene);
+		void Render(BaseCamera& camera);
+		void RenderDebug(BaseCamera& camera);
+		void RenderSkybox(BaseCamera& camera);
+		void RenderUI(BaseCamera& camera);
+		void EndScene();
 
-		static Scene* GetScene();
+		Scene* GetScene();
 
-		static double GetTime();
-
-		static RendererAPI::API GetAPI();
+		double GetTime();
 	};
 }

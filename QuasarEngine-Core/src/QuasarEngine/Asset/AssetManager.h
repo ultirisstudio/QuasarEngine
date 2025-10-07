@@ -14,10 +14,15 @@
 #include <QuasarEngine/Resources/Texture2D.h>
 #include <QuasarEngine/Resources/Materials/Material.h>
 
+#include <QuasarEngine/Core/Singleton.h>
+#include <filesystem>
+
 namespace QuasarEngine
 {
 	struct AssetToLoad {
 		std::string id;
+		std::string path;
+
 		AssetType type;
 
 		size_t size = 0;
@@ -28,9 +33,13 @@ namespace QuasarEngine
 		std::shared_ptr<std::vector<unsigned char>> hold;
 
 		std::variant<std::monostate, TextureSpecification, MaterialSpecification> spec;
+
+		AssetToLoad() : id(""), path(""), type(AssetType::NONE), size(0), data(nullptr), spec(std::monostate{})
+		{
+		}
 	};
 
-	class AssetManager
+	class AssetManager : public Singleton<AssetManager>
 	{
 	private:
 		std::queue<AssetToLoad> m_AssetsToLoad;
@@ -44,15 +53,24 @@ namespace QuasarEngine
 		std::vector<std::string> m_ValidExtention;
 		std::unordered_map<std::string, AssetType> m_ExtentionAssetTypes;
 
+		std::filesystem::path m_AssetPath;
+
 		mutable std::mutex m_AssetMutex;
+
+		AssetType InferTypeFromPath(const std::filesystem::path& p) const;
 	public:
 		AssetManager();
 		~AssetManager();
 
+		void Initialize(std::filesystem::path assetPath);
+		void Shutdown();
+
 		bool isAssetRegistered(std::string id);
 		void registerAsset(std::string id, AssetType type);
-
 		AssetType getAssetType(std::string id);
+
+		std::filesystem::path getAssetPath() const { return m_AssetPath; }
+		std::filesystem::path ResolvePath(const std::string& path) const;
 
 		void Update();
 
@@ -75,9 +93,7 @@ namespace QuasarEngine
 		void LoadTextureAsync(AssetToLoad asset);
 
 		AssetType getTypeFromExtention(const std::string& str);
-
 		static AssetType getAssetTypeFromString(const char* type);
-
 		static std::string getStringFromAssetType(AssetType type);
 	};
 }

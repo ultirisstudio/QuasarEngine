@@ -4,18 +4,55 @@
 #include <unordered_map>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 #include <QuasarEngine/Asset/AssetHeader.h>
 #include <QuasarEngine/Resources/Model.h>
-
 #include <QuasarEngine/Entity/Components/MeshComponent.h>
-
 #include <QuasarEngine/Thread/JobSystem.h>
 
 namespace QuasarEngine
 {
-	AssetManager::AssetManager()
+	AssetType AssetManager::InferTypeFromPath(const std::filesystem::path& p) const
 	{
+		if (p.empty())
+			return AssetType::NONE;
+
+		const std::string ext = p.extension().string();
+		if (std::find(m_ValidExtention.begin(), m_ValidExtention.end(), ext) == m_ValidExtention.end())
+			return AssetType::NONE;
+
+		if (ext == ".qasset")
+		{
+			std::ifstream file(p, std::ios::binary);
+			if (!file.is_open())
+				return AssetType::NONE;
+
+			AssetHeader assetHeader{};
+			file.read(reinterpret_cast<char*>(&assetHeader), sizeof(assetHeader));
+			file.close();
+
+			return getAssetTypeFromString(assetHeader.assetType.c_str());
+		}
+
+		auto it = m_ExtentionAssetTypes.find(ext);
+		if (it != m_ExtentionAssetTypes.end())
+			return it->second;
+
+		return AssetType::NONE;
+	}
+
+	AssetManager::AssetManager() {}
+
+	AssetManager::~AssetManager()
+	{
+		Shutdown();
+	}
+
+	void AssetManager::Initialize(std::filesystem::path assetPath)
+	{
+		m_AssetPath = std::move(assetPath);
+
 		m_AssetRegistry = std::make_unique<AssetRegistry>();
 
 		m_ValidExtention = {
@@ -43,7 +80,7 @@ namespace QuasarEngine
 		m_ExtentionAssetTypes[m_ValidExtention.at(9)] = AssetType::SCENE;
 	}
 
-	AssetManager::~AssetManager()
+	void AssetManager::Shutdown()
 	{
 		for (auto& pair : m_LoadedAssets)
 		{
@@ -66,36 +103,19 @@ namespace QuasarEngine
 	AssetType AssetManager::getAssetType(std::string id)
 	{
 		if (m_AssetRegistry->isAssetRegistred(id))
-		{
 			return m_AssetRegistry->getAssetType(id);
-		}
-		else
-		{
-			std::string extention = std::filesystem::path(id).extension().string();
-			if (std::find(m_ValidExtention.begin(), m_ValidExtention.end(), extention) != m_ValidExtention.end())
-			{
-				if (strcmp(extention.c_str(), ".qasset") == 0)
-				{
-					std::ifstream file(id, std::ios::binary);
-
-					AssetHeader assetHeader;
-					file.read(reinterpret_cast<char*>(&assetHeader), sizeof(assetHeader));
-
-					std::string type = assetHeader.assetType;
-
-					file.close();
-
-
-					return getAssetTypeFromString(type.c_str());
-				}
-				else
-				{
-					return m_ExtentionAssetTypes.at(extention);
-				}
-			}
-		}
 
 		return AssetType::NONE;
+	}
+
+	std::filesystem::path AssetManager::ResolvePath(const std::string& path) const
+	{
+		if (path.empty())
+			return {};
+
+		std::filesystem::path p(path);
+
+		return p.is_absolute() ? p : (m_AssetPath / p);
 	}
 
 	void AssetManager::Update()
@@ -121,66 +141,72 @@ namespace QuasarEngine
 
 			switch (asset.type)
 			{
-			case TEXTURE:
+			case AssetType::TEXTURE:
 			{
 				if (isAssetLoaded(asset.id))
-				{
-					return;
-				}
+					break;
 
 				TextureSpecification spec;
 				if (std::holds_alternative<TextureSpecification>(asset.spec))
 					spec = std::get<TextureSpecification>(asset.spec);
 
-				std::shared_ptr<Texture2D> texture = Texture2D::CreateTexture2D(spec);
+				auto texture = Texture2D::CreateTexture2D(spec);
+
 				if (asset.data)
 				{
 					texture->LoadFromMemory(static_cast<unsigned char*>(asset.data), asset.size);
 				}
-				else if (!asset.id.empty())
+				else
 				{
-					texture->LoadFromPath(asset.id);
+					if (asset.path.empty())
+					{
+						std::cerr << "[AssetManager] TEXTURE '" << asset.id
+							<< "': path manquant et pas de data.\n";
+						break;
+					}
+					texture->LoadFromPath(asset.path);
 				}
 
-				std::lock_guard<std::mutex> lock(m_AssetMutex);
-				m_LoadedAssets[asset.id] = std::move(texture);
+				{
+					std::lock_guard<std::mutex> lock(m_AssetMutex);
+					m_LoadedAssets[asset.id] = std::move(texture);
+				}
 				break;
 			}
-			case MODEL:
+			case AssetType::MODEL:
 			{
 				if (isAssetLoaded(asset.id))
+					break;
+
+				if (asset.path.empty())
 				{
-					return;
+					std::cerr << "[AssetManager] MODEL '" << asset.id
+						<< "': path manquant.\n";
+					break;
 				}
 
-				std::shared_ptr<Model> model = Model::CreateModel(asset.id);
-				std::lock_guard<std::mutex> lock(m_AssetMutex);
-				m_LoadedAssets[asset.id] = model;
+				auto model = Model::CreateModel(asset.path);
+
+				{
+					std::lock_guard<std::mutex> lock(m_AssetMutex);
+					m_LoadedAssets[asset.id] = model;
+				}
 				break;
 			}
-			case MESH:
+			case AssetType::MESH:
+			{
 				if (asset.handle.has_value())
 				{
 					auto* mc = std::any_cast<MeshComponent*>(asset.handle);
-
-					if (mc)
+					if (mc && isAssetLoaded(asset.id))
 					{
-						if (isAssetLoaded(asset.id))
-						{
-							std::shared_ptr<Model> model = getAsset<Model>(asset.id);
+						std::shared_ptr<Model> model = getAsset<Model>(asset.id);
+						if (model)
 							mc->m_Mesh = model->GetMesh(mc->GetName());
-						}
 					}
-					else
-					{
-						
-					}
-				}
-				else
-				{
-					
 				}
 				break;
+			}
 			default:
 				break;
 			}
@@ -197,29 +223,43 @@ namespace QuasarEngine
 				continue;
 
 			it->second = Texture2D::CreateTexture2D(std::get<TextureSpecification>(asset.spec));
-			std::shared_ptr<Asset> base = it->second;
-			auto texture = std::dynamic_pointer_cast<Texture2D>(base);
+			auto texture = std::dynamic_pointer_cast<Texture2D>(it->second);
+			if (!texture)
+				continue;
 
 			if (asset.data && asset.size > 0)
 			{
 				texture->LoadFromMemory(static_cast<unsigned char*>(asset.data), asset.size);
 			}
-			else if (!asset.id.empty())
+			else
 			{
-				texture->LoadFromPath(asset.id);
+				if (asset.path.empty())
+				{
+					std::cerr << "[AssetManager] Update TEXTURE '" << asset.id
+						<< "': path manquant et pas de data.\n";
+					continue;
+				}
+
+				texture->LoadFromPath(asset.path);
 			}
 		}
 	}
 
 	void AssetManager::loadAsset(AssetToLoad asset)
 	{
+		if (!asset.data && asset.path.empty())
+		{
+			std::cerr << "[AssetManager] loadAsset('" << asset.id
+				<< "'): path manquant et pas de data.\n";
+			return;
+		}
+
 		if (!m_AssetRegistry->isAssetRegistred(asset.id))
 		{
-			if (asset.type == NONE)
+			if (asset.type == AssetType::NONE)
 			{
-				AssetType type = getAssetType(asset.id);
-				asset.type = type;
-				m_AssetRegistry->registerAsset(asset.id, type);
+				asset.type = InferTypeFromPath(asset.path);
+				m_AssetRegistry->registerAsset(asset.id, asset.type);
 			}
 			else
 			{
@@ -232,6 +272,13 @@ namespace QuasarEngine
 
 	void AssetManager::updateAsset(AssetToLoad asset)
 	{
+		if (!asset.data && asset.path.empty())
+		{
+			std::cerr << "[AssetManager] updateAsset('" << asset.id
+				<< "'): path manquant et pas de data.\n";
+			return;
+		}
+
 		m_AssetsToUpdate.push(asset);
 	}
 
@@ -243,9 +290,7 @@ namespace QuasarEngine
 	void AssetManager::instLoadAsset(std::string id, std::shared_ptr<Asset> asset)
 	{
 		if (!m_AssetRegistry->isAssetRegistred(id))
-		{
 			m_AssetRegistry->registerAsset(id, asset->GetType());
-		}
 
 		std::lock_guard<std::mutex> lock(m_AssetMutex);
 		m_LoadedAssets[id] = std::move(asset);
@@ -259,13 +304,19 @@ namespace QuasarEngine
 
 	void AssetManager::LoadTextureAsync(AssetToLoad asset)
 	{
+		if (!asset.data && asset.path.empty())
+		{
+			std::cerr << "[AssetManager] LoadTextureAsync('" << asset.id
+				<< "'): path manquant et pas de data.\n";
+			return;
+		}
+
 		if (!m_AssetRegistry->isAssetRegistred(asset.id))
 		{
-			if (asset.type == NONE)
+			if (asset.type == AssetType::NONE)
 			{
-				AssetType type = getAssetType(asset.id);
-				asset.type = type;
-				m_AssetRegistry->registerAsset(asset.id, type);
+				asset.type = InferTypeFromPath(asset.path);
+				m_AssetRegistry->registerAsset(asset.id, asset.type);
 			}
 			else
 			{
@@ -273,31 +324,26 @@ namespace QuasarEngine
 			}
 		}
 
-		JobSystem::instance().Submit([this, asset]() {
-			if (asset.type != TEXTURE)
-			{
+		JobSystem::Instance().Submit([this, asset]() {
+			if (asset.type != AssetType::TEXTURE)
 				return;
-			}
 
-			{
-				if (isAssetLoaded(asset.id))
-				{
-					return;
-				}
-			}
+			if (isAssetLoaded(asset.id))
+				return;
 
 			TextureSpecification spec;
 			if (std::holds_alternative<TextureSpecification>(asset.spec))
 				spec = std::get<TextureSpecification>(asset.spec);
 
-			std::shared_ptr<Texture2D> texture = Texture2D::CreateTexture2D(spec);
+			auto texture = Texture2D::CreateTexture2D(spec);
+
 			if (asset.data)
 			{
 				texture->LoadFromMemory(static_cast<unsigned char*>(asset.data), asset.size);
 			}
-			else if (!asset.id.empty())
+			else
 			{
-				texture->LoadFromPath(asset.id);
+				texture->LoadFromPath(asset.path);
 			}
 
 			{
@@ -305,7 +351,8 @@ namespace QuasarEngine
 				m_LoadedAssets[asset.id] = std::move(texture);
 			}
 
-			std::cout << "[JOB] Chargement texture lancé : " << asset.id << std::endl;
+			std::cout << "[JOB] Chargement texture : id=" << asset.id
+				<< " path=" << asset.path << std::endl;
 
 			}, JobPriority::HIGH, JobPoolType::IO, {}, "LoadTextureAsync");
 	}
@@ -313,9 +360,7 @@ namespace QuasarEngine
 	AssetType AssetManager::getTypeFromExtention(const std::string& str)
 	{
 		if (std::find(m_ValidExtention.begin(), m_ValidExtention.end(), str) != m_ValidExtention.end())
-		{
 			return m_ExtentionAssetTypes[str];
-		}
 
 		return AssetType::NONE;
 	}
@@ -323,9 +368,9 @@ namespace QuasarEngine
 	AssetType AssetManager::getAssetTypeFromString(const char* type)
 	{
 		if (strcmp(type, "Texture") == 0) return AssetType::TEXTURE;
-		if (strcmp(type, "Mesh") == 0) return AssetType::MESH;
-		if (strcmp(type, "Model") == 0) return AssetType::MODEL;
-		if (strcmp(type, "QAsset") == 0) return AssetType::QASSET;
+		if (strcmp(type, "Mesh") == 0)    return AssetType::MESH;
+		if (strcmp(type, "Model") == 0)   return AssetType::MODEL;
+		if (strcmp(type, "QAsset") == 0)  return AssetType::QASSET;
 		return AssetType::NONE;
 	}
 
@@ -334,12 +379,11 @@ namespace QuasarEngine
 		switch (type)
 		{
 		case AssetType::TEXTURE: return "Texture";
-		case AssetType::MESH: return "Mesh";
-		case AssetType::MODEL: return "Model";
-		case AssetType::QASSET: return "QAsset";
+		case AssetType::MESH:    return "Mesh";
+		case AssetType::MODEL:   return "Model";
+		case AssetType::QASSET:  return "QAsset";
+		default:                 return "None";
 		}
-
-		return "None";
 	}
 
 	std::shared_ptr<Asset> AssetManager::getAsset(std::string id)

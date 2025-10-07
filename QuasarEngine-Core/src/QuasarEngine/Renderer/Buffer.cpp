@@ -1,6 +1,6 @@
 #include "qepch.h"
 #include "QuasarEngine/Renderer/Buffer.h"
-#include "QuasarEngine/Renderer/Renderer.h"
+#include "QuasarEngine/Renderer/RendererAPI.h"
 
 #include "Platform/Vulkan/VulkanBuffer.h"
 #include "Platform/OpenGL/OpenGLBuffer.h"
@@ -10,7 +10,7 @@ namespace QuasarEngine
 {
 	std::shared_ptr<VertexBuffer> VertexBuffer::Create()
 	{
-		switch (Renderer::GetAPI())
+		switch (RendererAPI::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>();
@@ -23,7 +23,7 @@ namespace QuasarEngine
 
 	std::shared_ptr<VertexBuffer> VertexBuffer::Create(uint32_t size)
 	{
-		switch (Renderer::GetAPI())
+		switch (RendererAPI::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>(size);
@@ -36,7 +36,7 @@ namespace QuasarEngine
 
 	std::shared_ptr<VertexBuffer> VertexBuffer::Create(const void* data, uint32_t size)
 	{
-		switch (Renderer::GetAPI())
+		switch (RendererAPI::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanVertexBuffer>(data, size);
@@ -49,7 +49,7 @@ namespace QuasarEngine
 
 	std::shared_ptr<IndexBuffer> IndexBuffer::Create()
 	{
-		switch (Renderer::GetAPI())
+		switch (RendererAPI::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>();
@@ -62,7 +62,7 @@ namespace QuasarEngine
 
 	std::shared_ptr<IndexBuffer> IndexBuffer::Create(uint32_t size)
 	{
-		switch (Renderer::GetAPI())
+		switch (RendererAPI::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>(size);
@@ -75,7 +75,7 @@ namespace QuasarEngine
 
 	std::shared_ptr<IndexBuffer> IndexBuffer::Create(const void* data, uint32_t size)
 	{
-		switch (Renderer::GetAPI())
+		switch (RendererAPI::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanIndexBuffer>(data, size);

@@ -13,6 +13,7 @@
 #include <QuasarEngine/Core/Input.h>
 
 #include "QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h"
+#include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
 
 namespace QuasarEngine
 {
@@ -21,13 +22,13 @@ namespace QuasarEngine
         m_LightsCount(0),
         m_PrimaryCameraUUID(0)
     {
-        //m_Skybox = std::make_unique<Skybox>();
         m_Registry = std::make_unique<Registry>();
     }
 
     Scene::~Scene()
     {
         ClearEntities();
+        ProcessEntityDestructions();
     }
 
     Entity Scene::CreateEntity(const std::string& name)
@@ -200,7 +201,7 @@ namespace QuasarEngine
             entity.GetComponent<RigidBodyComponent>().Update(deltaTime);
         }
 
-        Renderer::m_SceneData.m_ScriptSystem->Update(deltaTime);
+        Renderer::Instance().m_SceneData.m_ScriptSystem->Update(deltaTime);
 
         if (Input::IsKeyJustPressed(Key::Escape))
         {
@@ -214,7 +215,7 @@ namespace QuasarEngine
 
         UpdatePrimaryCameraCache();
 
-        Renderer::m_SceneData.m_ScriptSystem->Start();
+        Renderer::Instance().m_SceneData.m_ScriptSystem->Start();
 
         Application::Get().GetWindow().SetInputMode(true, true);
     }
@@ -223,24 +224,18 @@ namespace QuasarEngine
     {
         m_OnRuntime = false;
 
-        Renderer::m_SceneData.m_ScriptSystem->Stop();
+        Renderer::Instance().m_SceneData.m_ScriptSystem->Stop();
     }
 
     void Scene::ClearEntities()
     {
         std::vector<UUID> uuids;
         uuids.reserve(m_EntityMap.size());
-        for (const auto& [uuid, handle] : m_EntityMap)
-            uuids.push_back(uuid);
-
+        for (auto& [uuid, handle] : m_EntityMap) uuids.push_back(uuid);
         for (UUID uuid : uuids)
-        {
             DestroyEntity(Entity{ m_EntityMap[uuid], m_Registry.get() });
-        }
 
-        //m_EntityMap.clear();
-        //m_NameMap.clear();
-        //m_Registry->ClearRegistry();
+        ProcessEntityDestructions();
         m_PrimaryCameraUUID = UUID::Null();
     }
 

@@ -29,7 +29,7 @@ namespace QuasarEngine
 
 		while (parentID != UUID::Null())
 		{
-			std::optional<Entity> parent = Renderer::m_SceneData.m_Scene->GetEntityByUUID(parentID);
+			std::optional<Entity> parent = Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(parentID);
 			if (parent.has_value())
 			{
 				globalTransform = parent.value().GetComponent<TransformComponent>().GetLocalTransform() * globalTransform;

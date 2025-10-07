@@ -60,9 +60,9 @@ namespace QuasarEngine
 		uint32_t count = indexBuffer ? indexBuffer->GetCount() : 0;
 
 		if (count == 0)
-			RenderCommand::DrawArrays(m_drawMode, size);
+			RenderCommand::Instance().DrawArrays(m_drawMode, size);
 		else
-			RenderCommand::DrawElements(m_drawMode, count);
+			RenderCommand::Instance().DrawElements(m_drawMode, count);
 	}
 
 	void Mesh::GenerateMesh(std::vector<float> vertices, std::vector<unsigned int> indices, std::optional<BufferLayout> layout)

@@ -126,7 +126,7 @@ namespace QuasarEngine
         asset.size = static_cast<uint32_t>(bytes->size());
         asset.hold = bytes;
 
-        Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
+        AssetManager::Instance().loadAsset(asset);
 
         m_Impl->id = asset.id;
         return true;

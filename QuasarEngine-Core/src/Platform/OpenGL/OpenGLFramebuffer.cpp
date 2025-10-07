@@ -288,7 +288,7 @@ namespace QuasarEngine
     {
         glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
         
-        RenderCommand::SetViewport(0, 0, m_Specification.Width, m_Specification.Height);
+        RenderCommand::Instance().SetViewport(0, 0, m_Specification.Width, m_Specification.Height);
     }
 
     void OpenGLFramebuffer::Unbind() const

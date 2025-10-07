@@ -9,6 +9,7 @@
 
 #include <QuasarEngine/Core/Application.h>
 #include <QuasarEngine/Core/Input.h>
+#include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 #include <QuasarEngine/Tools/Math.h>
@@ -41,16 +42,16 @@ namespace QuasarEngine
 
 		m_EditorFrameBuffer->Bind();
 
-		RenderCommand::ClearColor(glm::vec4(0.2f, 0.2f, 0.2f, 1.0f));
-		RenderCommand::Clear();
+		RenderCommand::Instance().ClearColor(glm::vec4(0.2f, 0.2f, 0.2f, 1.0f));
+		RenderCommand::Instance().Clear();
 
-		Renderer::BeginScene(scene);
+		Renderer::Instance().BeginScene(scene);
 
-		Renderer::RenderSkybox(camera);
-		Renderer::Render(camera);
-		Renderer::RenderDebug(camera);
+		Renderer::Instance().RenderSkybox(camera);
+		Renderer::Instance().Render(camera);
+		Renderer::Instance().RenderDebug(camera);
 
-		Renderer::EndScene();
+		Renderer::Instance().EndScene();
 
 		m_EditorFrameBuffer->Unbind();
 	}
@@ -59,7 +60,7 @@ namespace QuasarEngine
 	{
 		ResizeIfNeeded(camera, m_ViewportPanelSize);
 
-		double now = Renderer::GetTime();
+		double now = Renderer::Instance().GetTime();
 		m_LastTime = now;
 
 		auto mouse = ImGui::GetMousePos();
@@ -281,7 +282,7 @@ namespace QuasarEngine
 
 				while (parentID != UUID::Null())
 				{
-					std::optional<Entity> parent = Renderer::m_SceneData.m_Scene->GetEntityByUUID(parentID);
+					std::optional<Entity> parent = Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(parentID);
 					if (parent.has_value())
 					{
 						glm::mat4 parentLocal = parent->GetComponent<TransformComponent>().GetLocalTransform();
@@ -333,7 +334,7 @@ namespace QuasarEngine
 				UUID pixelEntity = UUID(m_EditorFrameBuffer->ReadPixel(1, (int)localX, (int)localY));
 				if (pixelEntity != UUID::Null())
 				{
-					std::optional<Entity> hovered = Renderer::m_SceneData.m_Scene->GetEntityByUUID(pixelEntity);
+					std::optional<Entity> hovered = Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(pixelEntity);
 					m_HoveredEntity = hovered.value_or(Entity{});
 				}
 				else

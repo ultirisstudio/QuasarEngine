@@ -46,7 +46,7 @@ namespace QuasarEngine {
 			asset.spec = spec;
             asset.data = data.data();
 
-			Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
+			AssetManager::Instance().loadAsset(asset);
         }
 
         UITexture t;
@@ -292,9 +292,9 @@ namespace QuasarEngine {
         m_VertexArray->GetIndexBuffer()->Upload(I.data(), ibBytes);
 
         for (const auto& cmd : C) {
-            if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(cmd.tex.id))
+            if (AssetManager::Instance().isAssetLoaded(cmd.tex.id))
             {
-                GetShader()->SetTexture("uTexture", Renderer::m_SceneData.m_AssetManager->getAsset<Texture>(cmd.tex.id).get(), Shader::SamplerType::Sampler2D);
+                GetShader()->SetTexture("uTexture", AssetManager::Instance().getAsset<Texture>(cmd.tex.id).get(), Shader::SamplerType::Sampler2D);
             }
 
             if (!GetShader()->UpdateObject(&GetMaterial()))
@@ -302,7 +302,7 @@ namespace QuasarEngine {
                 return;
             }
 
-            RenderCommand::DrawElements(DrawMode::TRIANGLES, cmd.idxCount, cmd.idxOffset);
+            RenderCommand::Instance().DrawElements(DrawMode::TRIANGLES, cmd.idxCount, cmd.idxOffset);
         }
 
 		m_VertexArray->Unbind();

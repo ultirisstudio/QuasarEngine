@@ -17,6 +17,7 @@
 #include "QuasarEngine/Resources/ResourceManager.h"
 
 #include "QuasarEngine/Asset/AssetManager.h"
+#include "QuasarEngine/Renderer/RenderCommand.h"
 
 #include <QuasarEngine/Memory/MemoryTracker.h>
 
@@ -54,6 +55,11 @@ namespace QuasarEngine
 	{
 		InitImGuiStyle();
 
+		AssetManager::Instance().Initialize(m_Specification.ProjectPath);
+
+		RenderCommand::Instance().Initialize();
+		Renderer::Instance().Initialize();
+		
 		PhysicEngine::Instance().Initialize();
 
 		Logger::initUtf8Console();
@@ -73,7 +79,7 @@ namespace QuasarEngine
 		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
 		m_SceneManager->createNewScene();
 
-		Renderer::BeginScene(m_SceneManager->GetActiveScene());
+		Renderer::Instance().BeginScene(m_SceneManager->GetActiveScene());
 
 		std::filesystem::path base_path = m_Specification.ProjectPath + "\\Assets";
 		SetupAssets(base_path);
@@ -291,10 +297,10 @@ namespace QuasarEngine
 			}
 			else
 			{
-				AssetType type = Renderer::m_SceneData.m_AssetManager->getAssetType(entry.path().string());
+				AssetType type = AssetManager::Instance().getAssetType(entry.path().string());
 				if (type != NONE)
 				{
-					Renderer::m_SceneData.m_AssetManager->registerAsset(entry.path().string(), type);
+					AssetManager::Instance().registerAsset(entry.path().string(), type);
 				}
 			}
 		}
@@ -313,6 +319,9 @@ namespace QuasarEngine
 		//m_HeightMapEditor.reset();
 
 		PhysicEngine::Instance().Shutdown();
+		AssetManager::Instance().Shutdown();
+		Renderer::Instance().Shutdown();
+		RenderCommand::Instance().Shutdown();
 	}
 
 	void Editor::OnUpdate(double dt)
@@ -336,7 +345,7 @@ namespace QuasarEngine
 			}
 		}
 
-		auto& tracker = MemoryTracker::instance();
+		auto& tracker = MemoryTracker::Instance();
 		tracker.Update(dt);
 	}
 
@@ -355,7 +364,7 @@ namespace QuasarEngine
 		static FrameTimeHistory frame_history;
 
 		const ApplicationInfos& infos = Application::Get().GetAppInfos();
-		auto& tracker = MemoryTracker::instance();
+		auto& tracker = MemoryTracker::Instance();
 
 		if (!ImGui::Begin("Performance & Memory Tracker"))
 		{
@@ -710,10 +719,10 @@ namespace QuasarEngine
 
 		ImGui::Begin("Texture Test");
 
-		std::string textureName = Renderer::m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId();
-		if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(textureName))
+		std::string textureName = Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId();
+		if (AssetManager::Instance().isAssetLoaded(textureName))
 		{
-			auto tex = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(textureName);
+			auto tex = AssetManager::Instance().getAsset<Texture2D>(textureName);
 			ImGui::Image((ImTextureID)(intptr_t)tex->GetHandle(), ImVec2(800, 800), ImVec2(0, 1), ImVec2(1, 0));
 		}
 

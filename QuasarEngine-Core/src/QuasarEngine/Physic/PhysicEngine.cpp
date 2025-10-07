@@ -71,6 +71,7 @@ namespace QuasarEngine
         if (enableCCD) sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
         sceneDesc.solverType = PxSolverType::eTGS;
         sceneDesc.flags |= PxSceneFlag::eENABLE_STABILIZATION;
+        sceneDesc.flags |= PxSceneFlag::eREQUIRE_RW_LOCK;
         sceneDesc.broadPhaseType = PxBroadPhaseType::eSAP;
 
         m_Scene = m_Physics->createScene(sceneDesc);
@@ -198,12 +199,18 @@ namespace QuasarEngine
 
     void PhysicEngine::AddActor(PxActor& actor)
     {
-        if (m_Scene) m_Scene->addActor(actor);
+        if (!m_Scene) return;
+        m_Scene->lockWrite();
+        m_Scene->addActor(actor);
+        m_Scene->unlockWrite();
     }
 
     void PhysicEngine::RemoveActor(PxActor& actor)
     {
-        if (m_Scene) m_Scene->removeActor(actor);
+        if (!m_Scene) return;
+        m_Scene->lockWrite();
+        m_Scene->removeActor(actor);
+        m_Scene->unlockWrite();
     }
 
     void PhysicEngine::SetGravity(const PxVec3& g)

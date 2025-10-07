@@ -21,16 +21,11 @@
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
-#include <glad/glad.h>
 
 namespace QuasarEngine
 {
-	Renderer::SceneData Renderer::m_SceneData = Renderer::SceneData();
-
-	void Renderer::Init()
+	void Renderer::Initialize()
 	{
-		RenderCommand::Init();
-
 		Shader::ShaderDescription desc;
 
 		std::string basePath;
@@ -304,8 +299,6 @@ namespace QuasarEngine
 		auto terrainShader = Shader::Create(terrainDesc);
 		m_SceneData.m_TerrainShader = terrainShader;
 
-		m_SceneData.m_AssetManager = std::make_unique<AssetManager>();
-
 		m_SceneData.m_Skybox = BasicSkybox::CreateBasicSkybox();
 
 		m_SceneData.m_Skybox->LoadCubemap({
@@ -355,7 +348,6 @@ namespace QuasarEngine
 		m_SceneData.m_Shader.reset();
 		m_SceneData.m_PhysicDebugShader.reset();
 		m_SceneData.m_UI.reset();
-		m_SceneData.m_AssetManager.reset();
 		m_SceneData.m_ScriptSystem.reset();
 	}
 
@@ -514,16 +506,16 @@ namespace QuasarEngine
 			m_SceneData.m_TerrainShader->SetUniform("heightMult", &tc.heightMult, sizeof(float));
 			m_SceneData.m_TerrainShader->SetUniform("uTextureScale", &tc.textureScale, sizeof(int));
 
-			if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(tc.GetHeightMapPath()))
+			if (AssetManager::Instance().isAssetLoaded(tc.GetHeightMapPath()))
 			{
-				m_SceneData.m_TerrainShader->SetTexture("heightMap", Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(tc.GetHeightMapPath()).get());
+				m_SceneData.m_TerrainShader->SetTexture("heightMap", AssetManager::Instance().getAsset<Texture2D>(tc.GetHeightMapPath()).get());
 			}
 			else
 			{
 				AssetToLoad tcAsset;
 				tcAsset.id = tc.GetHeightMapPath();
 				tcAsset.type = AssetType::TEXTURE;
-				Renderer::m_SceneData.m_AssetManager->loadAsset(tcAsset);
+				AssetManager::Instance().loadAsset(tcAsset);
 			}
 
 			m_SceneData.m_TerrainShader->SetTexture("uTexture", mat.GetTexture(Albedo));
@@ -565,7 +557,7 @@ namespace QuasarEngine
 
 			PhysicEngine::Instance().GetDebugVertexArray()->Bind();
 
-			RenderCommand::DrawArrays(DrawMode::LINES, PhysicEngine::Instance().GetDebugVertexArray()->GetVertexBuffers()[0]->GetSize() / sizeof(float) / 6); //vertices.size() / 6
+			RenderCommand::Instance().DrawArrays(DrawMode::LINES, PhysicEngine::Instance().GetDebugVertexArray()->GetVertexBuffers()[0]->GetSize() / sizeof(float) / 6); //vertices.size() / 6
 
 			m_SceneData.m_PhysicDebugShader->Unuse();
 		}
@@ -611,10 +603,5 @@ namespace QuasarEngine
 	double Renderer::GetTime()
 	{
 		return glfwGetTime();
-	}
-
-	RendererAPI::API Renderer::GetAPI()
-	{
-		return RendererAPI::GetAPI();
 	}
 }

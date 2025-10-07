@@ -321,7 +321,7 @@ namespace QuasarEngine
         spec.channels = m_Params.channels;
         spec.compressed = false;
 
-        if (!Renderer::m_SceneData.m_AssetManager->isAssetLoaded("heightmap_preview"))
+        if (!AssetManager::Instance().isAssetLoaded("heightmap_preview"))
         {
             AssetToLoad asset;
             asset.type = AssetType::TEXTURE;
@@ -329,7 +329,7 @@ namespace QuasarEngine
             asset.data = m_ImageRGBA8.data();
             asset.size = m_ImageRGBA8.size();
             asset.spec = spec;
-            Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
+            AssetManager::Instance().loadAsset(asset);
         }
         else
         {
@@ -339,10 +339,10 @@ namespace QuasarEngine
             asset.data = m_ImageRGBA8.data();
             asset.size = m_ImageRGBA8.size();
             asset.spec = spec;
-            Renderer::m_SceneData.m_AssetManager->updateAsset(asset);
+            AssetManager::Instance().updateAsset(asset);
         }
 
-        m_Texture = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>("heightmap_preview");
+        m_Texture = AssetManager::Instance().getAsset<Texture2D>("heightmap_preview");
     }
 
     void HeightMapEditor::MarkDirty()
@@ -718,10 +718,10 @@ namespace QuasarEngine
 
     void HeightMapEditor::DrawImagePreview()
     {
-        if (!Renderer::m_SceneData.m_AssetManager->isAssetLoaded("heightmap_preview"))
+        if (!AssetManager::Instance().isAssetLoaded("heightmap_preview"))
             return;
 
-        if (!m_Texture) m_Texture = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>("heightmap_preview");
+        if (!m_Texture) m_Texture = AssetManager::Instance().getAsset<Texture2D>("heightmap_preview");
         if (!m_Texture) return;
 
         ImVec2 avail = ImGui::GetContentRegionAvail();

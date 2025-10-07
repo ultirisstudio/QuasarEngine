@@ -9,12 +9,4 @@ namespace QuasarEngine
 		: m_EntityHandle(handle), m_Registry(registry)
 	{
 	}
-
-	/*void Entity::Destroy()
-	{
-		if (HasComponent<QuasarEngine::RigidBodyComponent>())
-		{
-			GetComponent<QuasarEngine::RigidBodyComponent>().Destroy();
-		}
-	}*/
 }

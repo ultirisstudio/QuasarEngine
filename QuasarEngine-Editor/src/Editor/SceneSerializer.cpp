@@ -399,15 +399,37 @@ namespace QuasarEngine
                         else if (key == "MeshComponent")
                         {
                             std::string rel = value["Path"] ? value["Path"].as<std::string>() : "";
-                            std::string path = assetPath + "/" + rel;
                             std::string mname = value["Name"] ? value["Name"].as<std::string>() : "";
-                            if (!Renderer::m_SceneData.m_AssetManager->isAssetLoaded(path)) {
-                                AssetToLoad modelAsset; modelAsset.id = path; modelAsset.type = MODEL;
-                                Renderer::m_SceneData.m_AssetManager->loadAsset(modelAsset);
+
+                            if (rel.empty())
+                            {
+                                std::cerr << "[MeshComponent] Aucun chemin fourni pour la ressource mesh.\n";
+                                continue;
                             }
-                            auto& comp = entity.AddOrReplaceComponent<MeshComponent>(mname, nullptr, path);
-                            AssetToLoad meshAsset; meshAsset.id = path; meshAsset.type = MESH; meshAsset.handle = &comp;
-                            Renderer::m_SceneData.m_AssetManager->loadAsset(meshAsset);
+
+                            std::filesystem::path fullPath = AssetManager::Instance().ResolvePath(rel);
+
+                            std::string id = std::filesystem::path(rel).generic_string();
+
+                            if (!AssetManager::Instance().isAssetLoaded(id))
+                            {
+                                AssetToLoad modelAsset;
+                                modelAsset.id = id;
+                                modelAsset.path = fullPath.generic_string();
+                                modelAsset.type = AssetType::MODEL;
+
+                                AssetManager::Instance().loadAsset(modelAsset);
+                            }
+
+                            auto& comp = entity.AddOrReplaceComponent<MeshComponent>(mname, nullptr, id);
+
+                            AssetToLoad meshAsset;
+                            meshAsset.id = id;
+                            meshAsset.path = fullPath.generic_string();
+                            meshAsset.type = AssetType::MESH;
+                            meshAsset.handle = &comp;
+
+                            AssetManager::Instance().loadAsset(meshAsset);
                         }
                         else if (key == "MaterialComponent")
                         {
@@ -415,22 +437,37 @@ namespace QuasarEngine
                             glm::vec4 alb;
                             if (value["albedo"] && ReadVec4LocaleSafe(value["albedo"], alb)) spec.Albedo = alb; else spec.Albedo = glm::vec4(1.f);
                             float f;
-                            if (value["metallic"] && AsFloatLocaleSafe(value["metallic"], f)) spec.Metallic = f; else spec.Metallic = 0.f;
-                            if (value["roughness"] && AsFloatLocaleSafe(value["roughness"], f)) spec.Roughness = f; else spec.Roughness = 0.5f;
-                            if (value["ao"] && AsFloatLocaleSafe(value["ao"], f)) spec.AO = f; else spec.AO = 1.f;
+                            if (value["metallic"] && AsFloatLocaleSafe(value["metallic"], f)) spec.Metallic = f;   else spec.Metallic = 0.f;
+                            if (value["roughness"] && AsFloatLocaleSafe(value["roughness"], f)) spec.Roughness = f;   else spec.Roughness = 0.5f;
+                            if (value["ao"] && AsFloatLocaleSafe(value["ao"], f)) spec.AO = f;   else spec.AO = 1.f;
 
-                            auto tryLoadTex = [&](const char* k, std::optional<std::string>& outTex) {
-                                if (!value[k]) return;
-                                std::string texRel = value[k].as<std::string>();
-                                //std::string texPath = std::filesystem::path(assetPath + "/" + texRel).generic_string();
-                                std::string texPath = std::filesystem::path(texRel).generic_string();
-                                outTex = texPath;
-                                if (!Renderer::m_SceneData.m_AssetManager->isAssetLoaded(texPath)) {
-                                    TextureSpecification ts = TextureConfigImporter::ImportTextureConfig(texPath);
-                                    AssetToLoad asset; asset.id = texPath; asset.type = TEXTURE; asset.spec = ts;
-                                    Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
-                                }
+                            auto tryLoadTex = [&](const char* k, std::optional<std::string>& outTex)
+                                {
+                                    if (!value[k]) return;
+
+                                    std::string texRel = value[k].as<std::string>();
+
+                                    std::string texId = std::filesystem::path(texRel).generic_string();
+
+                                    std::filesystem::path texFull = AssetManager::Instance().ResolvePath(texRel);
+
+                                    outTex = texId;
+
+                                    if (!AssetManager::Instance().isAssetLoaded(texId))
+                                    {
+                                        TextureSpecification ts = TextureConfigImporter::ImportTextureConfig(texFull.generic_string());
+
+                                        AssetToLoad asset;
+                                        asset.id = texId;
+                                        asset.path = texFull.generic_string();
+                                        asset.type = AssetType::TEXTURE;
+                                        asset.spec = ts;
+
+                                        AssetManager::Instance().loadAsset(asset);
+                                        //AssetManager::Instance().LoadTextureAsync(asset);
+                                    }
                                 };
+
                             tryLoadTex("albedoMap", spec.AlbedoTexture);
                             tryLoadTex("normalMap", spec.NormalTexture);
                             tryLoadTex("metallicMap", spec.MetallicTexture);
@@ -610,9 +647,10 @@ namespace QuasarEngine
                         {
                             auto& sc = entity.AddOrReplaceComponent<ScriptComponent>();
                             if (value["scriptPath"]) {
-                                std::string rel = value["scriptPath"].as<std::string>();
-                                sc.scriptPath = assetPath + "/" + rel;
+                                sc.scriptPath = value["scriptPath"].as<std::string>();
                             }
+
+							sc.Initialize();
                         }
                     }
                 }
@@ -896,7 +934,7 @@ namespace QuasarEngine
 
         const auto& childrens = entity.GetComponent<HierarchyComponent>().m_Childrens;
         for (auto childUUID : childrens) {
-            if (auto childEntity = Renderer::m_SceneData.m_Scene->GetEntityByUUID(childUUID)) {
+            if (auto childEntity = Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(childUUID)) {
                 SerializeEntity(out, *childEntity, assetPath);
             }
         }

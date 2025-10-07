@@ -18,11 +18,11 @@ namespace QuasarEngine
 
     void ScriptComponent::Initialize()
     {
-        Renderer::m_SceneData.m_ScriptSystem->RegisterEntityScript(*this);
+        Renderer::Instance().m_SceneData.m_ScriptSystem->RegisterEntityScript(*this);
     }
 
     void ScriptComponent::Destroy()
     {
-        Renderer::m_SceneData.m_ScriptSystem->UnregisterEntityScript(*this);
+        Renderer::Instance().m_SceneData.m_ScriptSystem->UnregisterEntityScript(*this);
     }
 }

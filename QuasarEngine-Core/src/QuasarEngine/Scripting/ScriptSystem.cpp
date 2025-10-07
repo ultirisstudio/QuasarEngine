@@ -19,7 +19,7 @@ namespace QuasarEngine
         inline sol::object ActorToEntityObject(physx::PxActor* a, sol::state_view lua) {
             if (!a || !a->userData) return sol::nil;
             const auto id = static_cast<entt::entity>(reinterpret_cast<uintptr_t>(a->userData));
-            auto* reg = QuasarEngine::Renderer::m_SceneData.m_Scene->GetRegistry();
+            auto* reg = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
             QuasarEngine::Entity e{ id, reg };
             if (!e.IsValid()) return sol::nil;
             return sol::make_object(lua, e);
@@ -210,7 +210,7 @@ namespace QuasarEngine
         sol::table publicTable = m_Lua.create_table();
         env["public"] = publicTable;
 
-        Entity entityObject{ entity, Renderer::m_SceneData.m_Scene->GetRegistry() };
+        Entity entityObject{ entity, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
         env["entity"] = entityObject;
         env["self"] = entityObject;
 
@@ -219,7 +219,8 @@ namespace QuasarEngine
             });
 
         try {
-            m_Lua.script_file(scriptComponent.scriptPath, env);
+			std::filesystem::path p = AssetManager::Instance().ResolvePath(scriptComponent.scriptPath);
+            m_Lua.script_file(p.generic_string(), env);
 
             sol::object maybePublic = env["public"];
             if (maybePublic.is<sol::table>()) {
@@ -285,7 +286,7 @@ namespace QuasarEngine
         auto view = m_Registry->view<ScriptComponent>();
         
         for (auto e : view) {
-            Entity entity{ e, Renderer::m_SceneData.m_Scene->GetRegistry() };
+            Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
             auto& script = entity.GetComponent<ScriptComponent>();
             
             if (script.updateFunc.valid()) {
@@ -304,7 +305,7 @@ namespace QuasarEngine
         auto view = m_Registry->view<ScriptComponent>();
 
         for (auto e : view) {
-            Entity entity{ e, Renderer::m_SceneData.m_Scene->GetRegistry() };
+            Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
             auto& script = entity.GetComponent<ScriptComponent>();
 
             if (script.startFunc.valid()) {
@@ -318,7 +319,7 @@ namespace QuasarEngine
         auto view = m_Registry->view<ScriptComponent>();
 
         for (auto e : view) {
-            Entity entity{ e, Renderer::m_SceneData.m_Scene->GetRegistry() };
+            Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
             auto& script = entity.GetComponent<ScriptComponent>();
 
             if (script.stopFunc.valid()) {
@@ -582,7 +583,7 @@ namespace QuasarEngine
     void ScriptSystem::BindFunctionToLua(sol::state& lua_state)
     {
         lua_state.set_function("createEntity", [](const std::string& name) -> Entity {
-            auto* scene = Renderer::m_SceneData.m_Scene;
+            auto* scene = Renderer::Instance().m_SceneData.m_Scene;
             if (!scene) return {};
             return scene->CreateEntity(name);
             });
@@ -599,26 +600,26 @@ namespace QuasarEngine
             });
 
         lua_state.set_function("getTime", []() {
-            return Renderer::GetTime();
+            return Renderer::Instance().GetTime();
             });
 
         lua_state.set_function("getScene", []() -> Scene* {
-            return Renderer::m_SceneData.m_Scene;
+            return Renderer::Instance().m_SceneData.m_Scene;
             });
 
         lua_state.set_function("destroyEntity", [](Entity& e) {
-            if (e.IsValid()) Renderer::m_SceneData.m_Scene->DestroyEntity(e);
+            if (e.IsValid()) Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(e);
             });
 
         lua_state.set_function("removeEntityByName", [&lua_state](const std::string& name) -> sol::object {
-            std::optional<Entity> ent = Renderer::m_SceneData.m_Scene->GetEntityByName(name);
+            std::optional<Entity> ent = Renderer::Instance().m_SceneData.m_Scene->GetEntityByName(name);
             if (ent.has_value())
-                Renderer::m_SceneData.m_Scene->DestroyEntity(ent.value());
+                Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(ent.value());
             return sol::nil;
             });
 
         lua_state.set_function("getEntityByName", [&lua_state](const std::string& name) -> sol::object {
-            std::optional<Entity> ent = Renderer::m_SceneData.m_Scene->GetEntityByName(name);
+            std::optional<Entity> ent = Renderer::Instance().m_SceneData.m_Scene->GetEntityByName(name);
             if (ent.has_value())
                 return sol::make_object(lua_state, ent.value());
             return sol::nil;

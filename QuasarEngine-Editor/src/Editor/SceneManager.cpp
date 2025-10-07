@@ -53,7 +53,7 @@ namespace QuasarEngine
 					case PendingAction::LoadSceneWithPath:
 					{
 						m_SceneObject->CreateScene();
-						Renderer::BeginScene(m_SceneObject->GetScene());
+						Renderer::Instance().BeginScene(m_SceneObject->GetScene());
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
 						bool result = serializer.Deserialize(m_PendingActionFile);
 						break;
@@ -82,14 +82,22 @@ namespace QuasarEngine
 				ModelToLoad model = m_ModelsToLoad.front();
 				m_ModelsToLoad.pop();
 
-				if (!Renderer::m_SceneData.m_AssetManager->isAssetLoaded(model.path))
+				const std::filesystem::path p(model.path);
+				const std::string id = p.filename().string();
+
+				if (!AssetManager::Instance().isAssetLoaded(id))
 				{
 					m_ModelsToLoad.push(model);
-					Renderer::m_SceneData.m_AssetManager->loadAsset({ model.path, MODEL });
-					break;
+
+					QuasarEngine::AssetToLoad toLoad{};
+					toLoad.id = id;
+					toLoad.path = p.string();
+					toLoad.type = QuasarEngine::AssetType::MODEL;
+
+					AssetManager::Instance().loadAsset(toLoad);
 				}
 
-				std::shared_ptr<Model> modelPtr = Renderer::m_SceneData.m_AssetManager->getAsset<Model>(model.path);
+				std::shared_ptr<Model> modelPtr = AssetManager::Instance().getAsset<Model>(model.path);
 
 				if (!modelPtr)
 				{
@@ -231,7 +239,7 @@ namespace QuasarEngine
 		asset.id = modelToLoad.path;
 		asset.type = MODEL;
 
-		Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
+		AssetManager::Instance().loadAsset(asset);
 
 		m_ModelsToLoad.push(modelToLoad);
 	}

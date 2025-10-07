@@ -9,19 +9,51 @@
 #include <QuasarEngine/Entity/Components/MaterialComponent.h>
 #include <QuasarEngine/Resources/Texture2D.h>
 
+#include "Editor/Importer/TextureConfigImporter.h"
+
 namespace QuasarEngine
 {
-	MaterialComponentPanel::MaterialComponentPanel()
-	{
+    static std::string ToProjectId(const std::filesystem::path& pAbsOrRel)
+    {
+        std::filesystem::path p = pAbsOrRel;
+        if (p.is_absolute())
+        {
+            const auto root = AssetManager::Instance().getAssetPath();
+            std::error_code ec;
+            auto rel = std::filesystem::relative(p, root, ec);
+            if (!ec && !rel.empty() && rel.native()[0] != '.')
+                p = rel;
+        }
+        
+        std::string s = p.generic_string();
+        if (s.rfind("Assets/", 0) != 0 && s.rfind("Assets\\", 0) != 0)
+            s = "Assets/" + s;
+        return s;
+    }
+
+    static std::string StripAssetsPrefix(std::string s)
+    {
+        if (s.rfind("Assets/", 0) == 0)  return s.substr(7);
+        if (s.rfind("Assets\\", 0) == 0) return s.substr(7);
+        return s;
+    }
+
+    MaterialComponentPanel::MaterialComponentPanel()
+    {
+        const std::string noTexId = "no_texture.png";
+        const std::string noTexRel = "Assets/Icons/no_texture.png";
+
         AssetToLoad asset;
         asset.type = AssetType::TEXTURE;
-        asset.id = "Assets/Icons/no_texture.png";
-        Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
-	}
+        asset.id = noTexId;
+        asset.path = noTexRel;
+        AssetManager::Instance().loadAsset(asset);
+    }
 
     void MaterialComponentPanel::Render(Entity entity)
     {
-        Texture2D* noTexture = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>("Assets/Icons/no_texture.png").get();
+        Texture2D* noTexture = AssetManager::Instance()
+            .getAsset<Texture2D>("no_texture.png").get();
 
         if (!entity.HasComponent<MaterialComponent>())
             return;
@@ -75,12 +107,31 @@ namespace QuasarEngine
                 {
                     ImGui::PushID(s.imguiId);
                     ImGui::ImageButton(s.imguiId, (ImTextureID)handle, imgBtnSize, { 0,1 }, { 1,0 });
+
                     if (ImGui::BeginDragDropTarget())
                     {
-                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(s.dragdropId))
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
                         {
-                            const wchar_t* path = (const wchar_t*)payload->Data;
-                            mat.SetTexture(s.slot, std::filesystem::path(path).generic_string());
+                            const wchar_t* wpath = (const wchar_t*)payload->Data;
+                            std::filesystem::path dropped(wpath);
+
+                            std::string texId = ToProjectId(dropped);
+                            auto full = AssetManager::Instance().ResolvePath(texId);
+
+                            mat.SetTexture(s.slot, texId);
+
+                            if (!AssetManager::Instance().isAssetLoaded(texId))
+                            {
+                                TextureSpecification ts = TextureConfigImporter::ImportTextureConfig(full.generic_string());
+
+                                AssetToLoad a{};
+                                a.id = texId;
+                                a.path = full.generic_string();
+                                a.type = AssetType::TEXTURE;
+                                a.spec = ts;
+
+                                AssetManager::Instance().loadAsset(a);
+                            }
                         }
                         ImGui::EndDragDropTarget();
                     }
@@ -92,12 +143,17 @@ namespace QuasarEngine
                 {
                     auto pathOpt = mat.GetTexturePath(s.slot);
                     if (!pathOpt.has_value())
-                        return;
+                    {
+                        ImGui::Columns(1);
+                        ImGui::EndGroup();
+                        ImGui::Separator();
+                        continue;
+                    }
 
-                    const std::string& path = pathOpt.value();
-                    size_t slash = path.find_last_of("/\\");
-                    std::string file = (slash == std::string::npos) ? path : path.substr(slash + 1);
-                    size_t lastDot = file.find_last_of(".");
+                    const std::string& idProj = pathOpt.value();
+                    std::filesystem::path fname = std::filesystem::path(idProj).filename();
+                    std::string file = fname.string();
+                    size_t lastDot = file.find_last_of('.');
                     std::string name = (lastDot == std::string::npos) ? file : file.substr(0, lastDot);
 
                     ImGui::TextColored(ImVec4(0.2f, 0.7f, 1.0f, 1.0f), "%s", name.c_str());

@@ -29,19 +29,19 @@ namespace QuasarEngine
 
 		m_ViewportFrameBuffer->Bind();
 
-		RenderCommand::ClearColor(m_ClearColor);
-		RenderCommand::Clear();
+		RenderCommand::Instance().ClearColor(m_ClearColor);
+		RenderCommand::Instance().Clear();
 
 		if (scene.HasPrimaryCamera())
 		{
-			Renderer::BeginScene(scene);
+			Renderer::Instance().BeginScene(scene);
 
 			Camera& camera = scene.GetPrimaryCamera();
-			Renderer::RenderSkybox(camera);
-			Renderer::Render(camera);
+			Renderer::Instance().RenderSkybox(camera);
+			Renderer::Instance().Render(camera);
 			//Renderer::RenderUI(camera);
 
-			Renderer::EndScene();
+			Renderer::Instance().EndScene();
 		}
 
 		m_ViewportFrameBuffer->Unbind();
@@ -138,7 +138,7 @@ namespace QuasarEngine
 		ev.down = true;
 		ev.button = e.GetMouseButton();
 
-		Renderer::m_SceneData.m_UI->Input().FeedPointer(ev);
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 
 		//std::cout << "Mouse button pressed: " << e.GetMouseButton() << " at (" << ev.x << ", " << ev.y << ")\n";
 
@@ -150,7 +150,7 @@ namespace QuasarEngine
 	{
 		glm::vec2 mousePos = Input::GetMousePosition() - m_ViewportBounds[0];
 		UIPointerEvent ev; ev.x = mousePos.x; ev.y = mousePos.y; ev.up = true; ev.button = e.GetMouseButton();
-		Renderer::m_SceneData.m_UI->Input().FeedPointer(ev);
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 
 		return false;
 	}
@@ -158,7 +158,7 @@ namespace QuasarEngine
 	bool Viewport::OnMouseMoved(MouseMovedEvent& e)
 	{
 		UIPointerEvent ev; ev.x = e.GetX(); ev.y = e.GetY(); ev.move = true;
-		Renderer::m_SceneData.m_UI->Input().FeedPointer(ev);
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 
 		return false;
 	}

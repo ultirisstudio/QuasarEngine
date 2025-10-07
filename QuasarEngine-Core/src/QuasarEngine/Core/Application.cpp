@@ -48,8 +48,6 @@ namespace QuasarEngine
 			m_ImGuiLayer = ImGuiLayer::Create();
 			PushOverlay(m_ImGuiLayer.get());
 		}
-
-		Renderer::Init();
 	}
 
 	Application::~Application()
@@ -58,8 +56,6 @@ namespace QuasarEngine
 		{
 			m_ImGuiLayer.reset();
 		}
-
-		Renderer::Shutdown();
 
 		s_Instance = nullptr;
 	}
@@ -220,8 +216,7 @@ namespace QuasarEngine
 #if QE_PROFILE_APP_TIMERS
             auto ta0 = clock::now();
 #endif
-            if (Renderer::m_SceneData.m_AssetManager)
-                Renderer::m_SceneData.m_AssetManager->Update();
+            AssetManager::Instance().Update();
 #if QE_PROFILE_APP_TIMERS
             auto ta1 = clock::now();
             nextInfos.asset_latency = std::chrono::duration<double, std::milli>(ta1 - ta0).count();

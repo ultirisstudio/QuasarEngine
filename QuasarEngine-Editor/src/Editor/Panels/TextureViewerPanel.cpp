@@ -19,7 +19,7 @@ namespace QuasarEngine
 	{
 		if (!m_Texture)
 		{
-			m_Texture = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(m_TexturePath.generic_string());
+			m_Texture = AssetManager::Instance().getAsset<Texture2D>(m_TexturePath.filename().string());
 
 			if (m_Texture)
 			{
@@ -136,30 +136,39 @@ namespace QuasarEngine
 
 			if (ImGui::Button("Apply"))
 			{
-				if (m_TexturePath.extension().string() == ".qasset")
+				const std::filesystem::path p = m_TexturePath;
+				const std::string id = p.filename().string();
+
+				if (p.extension() == ".qasset")
 				{
-					TextureImporter::updateTexture(m_TexturePath.generic_string(), m_Specification);
+					TextureImporter::updateTexture(p.generic_string(), m_Specification);
 
-					const AssetToLoad asset = TextureImporter::importTexture(m_TexturePath.generic_string());
+					AssetToLoad asset = TextureImporter::importTexture(p.generic_string());
 
-					Renderer::m_SceneData.m_AssetManager->updateAsset(asset);
+					if (asset.id.empty())   asset.id = id;
+					if (asset.path.empty()) asset.path = p.generic_string();
+					asset.type = AssetType::TEXTURE;
+
+					AssetManager::Instance().updateAsset(asset);
 
 					m_Texture = nullptr;
 				}
 				else
 				{
-					AssetToLoad asset;
-					asset.id = m_TexturePath.generic_string();
-					asset.type = TEXTURE;
+					AssetToLoad asset{};
+					asset.id = id;
+					asset.path = p.generic_string();
+					asset.type = AssetType::TEXTURE;
 					asset.spec = m_Specification;
 
-					Renderer::m_SceneData.m_AssetManager->updateAsset(asset);
+					AssetManager::Instance().updateAsset(asset);
 
-					TextureConfigImporter::ExportTextureConfig(m_TexturePath, m_Specification);
+					TextureConfigImporter::ExportTextureConfig(p, m_Specification);
 
 					m_Texture = nullptr;
 				}
 			}
+
 
 			if (ImGui::Button("Close"))
 			{

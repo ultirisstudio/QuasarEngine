@@ -13,11 +13,11 @@
 
 namespace QuasarEngine
 {
-	ScriptComponentPanel::ScriptComponentPanel(const std::string& projectPath)
-		: m_ProjectPath(projectPath), m_LastEntityID(0), m_LastFullPath("")
-	{
-		m_LocalBuffer[0] = '\0';
-	}
+    ScriptComponentPanel::ScriptComponentPanel(const std::string& projectPath)
+        : m_ProjectPath(projectPath), m_LastEntityID(0), m_LastFullPath("")
+    {
+        m_LocalBuffer[0] = '\0';
+    }
 
     void ScriptComponentPanel::Render(Entity entity)
     {
@@ -31,17 +31,9 @@ namespace QuasarEngine
 
         if (m_LastEntityID != entity.GetUUID() || sc.scriptPath != m_LastFullPath)
         {
-            try
-            {
-                std::filesystem::path fullPath(sc.scriptPath);
-                std::filesystem::path relativePath = std::filesystem::relative(fullPath, m_ProjectPath);
-                std::strncpy(m_LocalBuffer, relativePath.string().c_str(), sizeof(m_LocalBuffer) - 1);
-            }
-            catch (...)
-            {
-                std::strncpy(m_LocalBuffer, sc.scriptPath.c_str(), sizeof(m_LocalBuffer) - 1);
-            }
+            std::strncpy(m_LocalBuffer, sc.scriptPath.c_str(), sizeof(m_LocalBuffer) - 1);
             m_LocalBuffer[sizeof(m_LocalBuffer) - 1] = '\0';
+
             m_LastEntityID = entity.GetUUID();
             m_LastFullPath = sc.scriptPath;
         }
@@ -50,8 +42,30 @@ namespace QuasarEngine
         {
             if (ImGui::InputText("Script Path", m_LocalBuffer, sizeof(m_LocalBuffer)))
             {
-                sc.scriptPath = (std::filesystem::path(m_ProjectPath) / m_LocalBuffer).string();
+                sc.scriptPath = m_LocalBuffer;
                 m_LastFullPath = sc.scriptPath;
+            }
+
+            {
+                std::string relativeInfo;
+                try
+                {
+                    if (!m_ProjectPath.empty() && !sc.scriptPath.empty())
+                    {
+                        std::filesystem::path full(sc.scriptPath);
+                        std::error_code ec{};
+                        auto rel = std::filesystem::relative(full, m_ProjectPath, ec);
+                        if (!ec) relativeInfo = rel.generic_string();
+                    }
+                }
+                catch (...) {  }
+
+                /*if (!relativeInfo.empty())
+                {
+                    ImGui::BeginDisabled(true);
+                    ImGui::InputText("Project-relative (info)", relativeInfo.data(), relativeInfo.size() + 1);
+                    ImGui::EndDisabled();
+                }*/
             }
 
             if (ImGui::Button("Reload Script"))

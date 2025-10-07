@@ -28,7 +28,7 @@ namespace QuasarEngine
 		}
 	}
 
-	void VulkanRendererAPI::Init()
+	void VulkanRendererAPI::Initialize()
 	{
 		
 	}

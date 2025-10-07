@@ -54,6 +54,6 @@ namespace QuasarEngine
 		float m_SnapR = 5.0f;
 		float m_SnapS = 0.1f;
 
-		double m_LastTime = Renderer::GetTime();
+		double m_LastTime = Renderer::Instance().GetTime();
 	};
 }

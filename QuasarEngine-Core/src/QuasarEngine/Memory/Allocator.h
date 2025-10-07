@@ -7,7 +7,7 @@ namespace QuasarEngine
     inline void* alignedAlloc(std::size_t alignment, std::size_t size) {
 #if defined(_MSC_VER) || defined(_WIN32)
         void* ptr = _aligned_malloc(size, alignment);
-        auto& tracker = MemoryTracker::instance();
+        auto& tracker = MemoryTracker::Instance();
         tracker.Allocate(size);
         if (!ptr) return nullptr;
         return ptr;
@@ -33,7 +33,7 @@ namespace QuasarEngine
         free(ptr);
 #endif
 
-        auto& tracker = MemoryTracker::instance();
+        auto& tracker = MemoryTracker::Instance();
         tracker.Free(size);
     }
 }

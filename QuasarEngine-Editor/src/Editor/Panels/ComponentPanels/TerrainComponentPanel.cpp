@@ -39,20 +39,20 @@ namespace QuasarEngine
 
             if (tc.GetHeightMapPath().empty())
             {
-                texture = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>("Assets/Icons/no_texture.png");
+                texture = AssetManager::Instance().getAsset<Texture2D>("no_texture.png");
             }
             else
             {
-                if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(tc.GetHeightMapPath()))
+                if (AssetManager::Instance().isAssetLoaded(tc.GetHeightMapPath()))
                 {
-                    texture = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(tc.GetHeightMapPath());
+                    texture = AssetManager::Instance().getAsset<Texture2D>(tc.GetHeightMapPath());
                 }
                 else
                 {
                     AssetToLoad tcAsset;
                     tcAsset.id = tc.GetHeightMapPath();
                     tcAsset.type = AssetType::TEXTURE;
-                    Renderer::m_SceneData.m_AssetManager->loadAsset(tcAsset);
+                    AssetManager::Instance().loadAsset(tcAsset);
                 }
             }
 

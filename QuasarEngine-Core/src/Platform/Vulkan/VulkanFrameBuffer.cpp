@@ -250,7 +250,7 @@ namespace QuasarEngine
         info.clearValueCount = 2;
         info.pClearValues = clearValues;
 
-        RenderCommand::SetViewport(0, 0, m_Specification.Width, m_Specification.Height);
+        RenderCommand::Instance().SetViewport(0, 0, m_Specification.Width, m_Specification.Height);
 
         vkCmdBeginRenderPass(VulkanContext::Context.frameCommandBuffers.back()->handle, &info, VK_SUBPASS_CONTENTS_INLINE);
     }

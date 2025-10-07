@@ -177,7 +177,7 @@ namespace QuasarEngine
 
     EntityPropertiePanel::~EntityPropertiePanel()
     {
-        Renderer::m_SceneData.m_AssetManager->unloadAsset("Assets/Icons/no_texture.png");
+        AssetManager::Instance().unloadAsset("no_texture.png");
     }
 
     void EntityPropertiePanel::buildPanels(const std::string& projectPath)

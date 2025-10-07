@@ -4,7 +4,7 @@
 #include "QuasarEngine/Events/ApplicationEvent.h"
 #include "QuasarEngine/Events/MouseEvent.h"
 #include "QuasarEngine/Events/KeyEvent.h"
-#include "QuasarEngine/Renderer/Renderer.h"
+#include "QuasarEngine/Renderer/RendererAPI.h"
 #include "Logger.h"
 
 #include <GLFW/glfw3.h>

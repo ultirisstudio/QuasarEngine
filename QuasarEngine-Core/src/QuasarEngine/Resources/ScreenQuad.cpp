@@ -1,7 +1,7 @@
 #include "qepch.h"
 #include "ScreenQuad.h"
 
-#include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/Buffer.h>
 
 namespace QuasarEngine
@@ -40,13 +40,13 @@ namespace QuasarEngine
 
     void ScreenQuad::Draw() const
     {
-        RenderCommand::Clear();
-        RenderCommand::ClearColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        RenderCommand::Instance().Clear();
+        RenderCommand::Instance().ClearColor({ 1.0f, 1.0f, 1.0f, 1.0f });
 
         m_vertexArray->Bind();
 
         uint32_t count = m_vertexArray->GetIndexBuffer()->GetCount();
 
-        RenderCommand::DrawElements(DrawMode::TRIANGLES, count);
+        RenderCommand::Instance().DrawElements(DrawMode::TRIANGLES, count);
     }
 }

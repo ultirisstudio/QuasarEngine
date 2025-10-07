@@ -1,7 +1,7 @@
 #include "qepch.h"
 #include "Framebuffer.h"
 
-#include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Renderer/RendererAPI.h>
 #include <Platform/Vulkan/VulkanFramebuffer.h>
 #include <Platform/OpenGL/OpenGLFramebuffer.h>
 #include <Platform/DirectX/DirectXFramebuffer.h>
@@ -10,7 +10,7 @@ namespace QuasarEngine
 {
 	std::shared_ptr<Framebuffer> Framebuffer::Create(const FramebufferSpecification& spec)
 	{
-		switch (Renderer::GetAPI())
+		switch (RendererAPI::GetAPI())
 		{
 		case RendererAPI::API::None:    return nullptr;
 		case RendererAPI::API::Vulkan:  return std::make_shared<VulkanFramebuffer>(spec);

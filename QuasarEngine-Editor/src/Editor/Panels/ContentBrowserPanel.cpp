@@ -221,7 +221,7 @@ namespace QuasarEngine
 
             std::shared_ptr<Texture2D> icon;
 
-            AssetType fileType = Renderer::m_SceneData.m_AssetManager->getTypeFromExtention(extension);
+            AssetType fileType = AssetManager::Instance().getTypeFromExtention(extension);
 
             if (directoryEntry.is_directory())
             {
@@ -233,28 +233,36 @@ namespace QuasarEngine
             }
             else if (fileType == AssetType::TEXTURE)
             {
-                if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(itemPath))
+                const std::filesystem::path p(itemPath);
+                const std::string id = p.filename().string();
+
+                if (AssetManager::Instance().isAssetLoaded(id))
                 {
-                    icon = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(itemPath);
+                    icon = AssetManager::Instance().getAsset<Texture2D>(id);
                 }
                 else
                 {
                     static std::unordered_map<std::string, bool> loadingMap;
-                    if (!loadingMap[itemPath])
+
+                    if (!loadingMap[id])
                     {
-                        loadingMap[itemPath] = true;
+                        loadingMap[id] = true;
+
                         TextureSpecification spec = TextureConfigImporter::ImportTextureConfig(itemPath);
-                        AssetToLoad asset;
-                        asset.id = itemPath;
+
+                        AssetToLoad asset{};
+                        asset.id = id;
+                        asset.path = p.string();
                         asset.type = AssetType::TEXTURE;
                         asset.spec = spec;
-                        Renderer::m_SceneData.m_AssetManager->loadAsset(asset);
 
-                        //Renderer::m_SceneData.m_AssetManager->LoadTextureAsync(asset);
+                        AssetManager::Instance().loadAsset(asset);
+                        
+                        // AssetManager::Instance().LoadTextureAsync(asset);
                     }
 
-                    if (Renderer::m_SceneData.m_AssetManager->isAssetLoaded(itemPath))
-                        icon = Renderer::m_SceneData.m_AssetManager->getAsset<Texture2D>(itemPath);
+                    if (AssetManager::Instance().isAssetLoaded(id))
+                        icon = AssetManager::Instance().getAsset<Texture2D>(id);
                     else
                         icon = m_FileOtherIcon;
                 }
@@ -337,6 +345,7 @@ namespace QuasarEngine
                 }
                 else if (fileType == AssetType::TEXTURE)
                 {
+					std::cout << "Open Texture: " << filenameString << std::endl;
                     m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(relativePath);
                 }
                 else if (fileType == AssetType::SCRIPT)

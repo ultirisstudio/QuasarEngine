@@ -10,7 +10,7 @@ namespace QuasarEngine
 	void HierarchyComponent::AddChild(UUID parent, UUID child)
 	{
 		m_Childrens.emplace_back(child);
-		std::optional<Entity> entity = Renderer::m_SceneData.m_Scene->GetEntityByUUID(child);
+		std::optional<Entity> entity = Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(child);
 		if (entity.has_value())
 		{
 			if (entity.value().HasComponent<HierarchyComponent>())

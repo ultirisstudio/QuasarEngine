@@ -1,43 +1,50 @@
 #pragma once
 
-#include "QuasarEngine/Renderer/RendererAPI.h"
+#include <QuasarEngine/Core/Singleton.h>
+#include <QuasarEngine/Renderer/RendererAPI.h>
 
-namespace QuasarEngine {
-
-	class RenderCommand
+namespace QuasarEngine
+{
+	class RenderCommand : public Singleton<RenderCommand>
 	{
 	public:
-		static void Init()
+		void Initialize()
 		{
-			s_RendererAPI->Init();
+			s_RendererAPI = RendererAPI::Create();
+
+			s_RendererAPI->Initialize();
 		}
 
-		static void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+		void Shutdown()
+		{
+			s_RendererAPI->Shutdown();
+		}
+
+		void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 		{
 			s_RendererAPI->SetViewport(x, y, width, height);
 		}
 
-		static void ClearColor(const glm::vec4& color)
+		void ClearColor(const glm::vec4& color)
 		{
 			s_RendererAPI->ClearColor(color);
 		}
 
-		static void Clear()
+		void Clear()
 		{
 			s_RendererAPI->Clear();
 		}
 
-		static void DrawArrays(DrawMode drawMode, uint32_t size)
+		void DrawArrays(DrawMode drawMode, uint32_t size)
 		{
 			s_RendererAPI->DrawArrays(drawMode, size);
 		}
 
-		static void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex = 0, int32_t baseVertex = 0)
+		void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex = 0, int32_t baseVertex = 0)
 		{
 			s_RendererAPI->DrawElements(drawMode, count, firstIndex, baseVertex);
 		}
 	private:
-		static std::unique_ptr<RendererAPI> s_RendererAPI;
+		std::unique_ptr<RendererAPI> s_RendererAPI;
 	};
-
 }
