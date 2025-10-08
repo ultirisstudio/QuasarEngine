@@ -92,7 +92,6 @@ namespace QuasarEngine
 					toLoad.id = id;
 					toLoad.path = full.generic_string();
 					toLoad.type = QuasarEngine::AssetType::MODEL;
-
 					AssetManager::Instance().loadAsset(toLoad);
 
 					m_ModelsToLoad.push(model);
@@ -113,38 +112,36 @@ namespace QuasarEngine
 					std::optional<TextureSpecification>& outSpec)
 					{
 						if (!texId || texId->empty()) return;
-
 						const std::filesystem::path texPath = AssetManager::Instance().ResolvePath(*texId);
 						TextureSpecification spec = TextureConfigImporter::ImportTextureConfig(texPath.generic_string());
 						outSpec = spec;
 					};
 
-				for (auto& [name, mesh] : modelPtr->GetMeshes())
-				{
-					Entity child = GetActiveScene().CreateEntity(name);
-					child.AddComponent<MeshRendererComponent>();
-
-					auto& mc = child.AddComponent<MeshComponent>(name, mesh, id);
-
-					if (mesh->GetMaterial().has_value())
+				modelPtr->ForEachInstance(
+					[&](const MeshInstance& inst, const glm::mat4& nodeLocal, const std::string& nodePath)
 					{
-						MaterialSpecification material = mesh->GetMaterial().value();
+						Entity child = GetActiveScene().CreateEntity(inst.name);
+						child.AddComponent<MeshRendererComponent>();
 
-						fillTexSpec(material.AlbedoTexture, material.AlbedoTextureSpec);
-						fillTexSpec(material.NormalTexture, material.NormalTextureSpec);
-						fillTexSpec(material.MetallicTexture, material.MetallicTextureSpec);
-						fillTexSpec(material.RoughnessTexture, material.RoughnessTextureSpec);
-						fillTexSpec(material.AOTexture, material.AOTextureSpec);
+						auto& mc = child.AddComponent<MeshComponent>(inst.name);
+						mc.SetMesh(inst.mesh.get());
+						mc.SetModelPath(id);
+						mc.SetNodePath(nodePath);
+						mc.SetLocalNodeTransform(nodeLocal);
 
-						child.AddComponent<MaterialComponent>(material);
+						MaterialSpecification matSpec = inst.material;
+
+						fillTexSpec(matSpec.AlbedoTexture, matSpec.AlbedoTextureSpec);
+						fillTexSpec(matSpec.NormalTexture, matSpec.NormalTextureSpec);
+						fillTexSpec(matSpec.MetallicTexture, matSpec.MetallicTextureSpec);
+						fillTexSpec(matSpec.RoughnessTexture, matSpec.RoughnessTextureSpec);
+						fillTexSpec(matSpec.AOTexture, matSpec.AOTextureSpec);
+
+						child.AddComponent<MaterialComponent>(matSpec);
+
+						entity.GetComponent<HierarchyComponent>().AddChild(entity.GetUUID(), child.GetUUID());
 					}
-					else
-					{
-						child.AddComponent<MaterialComponent>(MaterialSpecification{});
-					}
-
-					entity.GetComponent<HierarchyComponent>().AddChild(entity.GetUUID(), child.GetUUID());
-				}
+				);
 			}
 		}
 	}

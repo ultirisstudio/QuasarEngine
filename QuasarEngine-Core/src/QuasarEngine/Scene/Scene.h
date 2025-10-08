@@ -26,7 +26,7 @@ namespace QuasarEngine
         Entity CreateEntity(const std::string& name = std::string());
         Entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
 
-        void DestroyEntity(Entity entity);
+        void DestroyEntity(UUID uuid);
 
         std::optional<Entity> GetEntityByUUID(UUID uuid) const;
 		std::optional<Entity> GetEntityByName(const std::string& name) const;

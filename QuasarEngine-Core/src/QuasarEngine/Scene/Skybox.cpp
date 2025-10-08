@@ -297,7 +297,7 @@ namespace QuasarEngine
 		//glActiveTexture(GL_TEXTURE0);
 		//glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 
-		m_Model->draw();
+		//m_Model->draw();
 
 		//m_BackgroundShader->Unuse();
 

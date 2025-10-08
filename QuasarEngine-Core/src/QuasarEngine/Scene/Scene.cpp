@@ -56,49 +56,9 @@ namespace QuasarEngine
         return entity;
     }
 
-    void Scene::DestroyEntity(Entity entity)
+    void Scene::DestroyEntity(UUID uuid)
     {
-        /*RenderCommand::WaitDevice();
-
-        if (entity == Entity::Null() || !entity.IsValid())
-            return;
-
-        if (entity.HasComponent<HierarchyComponent>())
-        {
-            auto& hierarchy = entity.GetComponent<HierarchyComponent>();
-            std::vector<UUID> childrenCopy = hierarchy.m_Childrens;
-            for (auto childUUID : childrenCopy)
-            {
-                auto it = m_EntityMap.find(childUUID);
-                if (it != m_EntityMap.end())
-                {
-                    Entity childEntity{ it->second, m_Registry.get() };
-                    if (childEntity != entity && childEntity.IsValid())
-                        DestroyEntity(childEntity);
-                }
-            }
-        }
-
-        if (entity.HasComponent<TagComponent>())
-        {
-            const std::string& tag = entity.GetComponent<TagComponent>().Tag;
-            UnregisterEntityName(tag);
-        }
-
-        UUID uuid = entity.GetUUID();
-
-        if (m_PrimaryCameraUUID == uuid)
-            m_PrimaryCameraUUID = 0;
-
-        m_EntityMap.erase(uuid);
-
-        if (entity.IsValid())
-            m_Registry->DestroyEntity(entity);*/
-
-        if (entity == Entity::Null() || !entity.IsValid())
-            return;
-
-        UUID uuid = entity.GetUUID();
+        if (uuid == UUID::Null()) return;
         m_PendingEntityDestructions.insert(uuid);
     }
 
@@ -113,10 +73,40 @@ namespace QuasarEngine
         for (UUID uuid : toDelete)
         {
             auto it = m_EntityMap.find(uuid);
-            if (it != m_EntityMap.end())
+            if (it == m_EntityMap.end()) continue;
+
+            std::vector<UUID> stack;
+            std::vector<UUID> order;
+            stack.push_back(uuid);
+
+            while (!stack.empty())
             {
-                Entity entity{ it->second, m_Registry.get() };
-                DestroyEntityNow(entity);
+                UUID cur = stack.back(); stack.pop_back();
+                auto itc = m_EntityMap.find(cur);
+                if (itc == m_EntityMap.end()) continue;
+
+                Entity e{ itc->second, m_Registry.get() };
+                if (!e.IsValid()) { m_EntityMap.erase(cur); continue; }
+
+                order.push_back(cur);
+
+                if (e.HasComponent<HierarchyComponent>())
+                {
+                    auto& h = e.GetComponent<HierarchyComponent>();
+                    
+                    for (auto childUUID : h.m_Childrens)
+                        stack.push_back(childUUID);
+                }
+            }
+
+            for (auto itU = order.rbegin(); itU != order.rend(); ++itU)
+            {
+                auto itc = m_EntityMap.find(*itU);
+                if (itc == m_EntityMap.end()) continue;
+
+                Entity e{ itc->second, m_Registry.get() };
+                if (e.IsValid()) DestroyEntityNow(e);
+                else             m_EntityMap.erase(*itU);
             }
         }
     }
@@ -126,30 +116,18 @@ namespace QuasarEngine
         if (entity == Entity::Null() || !entity.IsValid())
             return;
 
-        if (entity.HasComponent<HierarchyComponent>())
-        {
-            auto& hierarchy = entity.GetComponent<HierarchyComponent>();
-            std::vector<UUID> childrenCopy = hierarchy.m_Childrens;
-            for (auto childUUID : childrenCopy)
-            {
-                auto it = m_EntityMap.find(childUUID);
-                if (it != m_EntityMap.end())
-                {
-                    Entity childEntity{ it->second, m_Registry.get() };
-                    if (childEntity != entity && childEntity.IsValid())
-                        DestroyEntityNow(childEntity);
-                }
-            }
-        }
-
         if (entity.HasComponent<TagComponent>())
         {
             const std::string& tag = entity.GetComponent<TagComponent>().Tag;
             UnregisterEntityName(tag);
         }
 
-        UUID uuid = entity.GetUUID();
+        if (entity.HasComponent<HierarchyComponent>())
+        {
+            auto& h = entity.GetComponent<HierarchyComponent>();
+        }
 
+        UUID uuid = entity.GetUUID();
         if (m_PrimaryCameraUUID == uuid)
             m_PrimaryCameraUUID = UUID::Null();
 
@@ -233,7 +211,7 @@ namespace QuasarEngine
         uuids.reserve(m_EntityMap.size());
         for (auto& [uuid, handle] : m_EntityMap) uuids.push_back(uuid);
         for (UUID uuid : uuids)
-            DestroyEntity(Entity{ m_EntityMap[uuid], m_Registry.get() });
+            DestroyEntity(uuid);
 
         ProcessEntityDestructions();
         m_PrimaryCameraUUID = UUID::Null();

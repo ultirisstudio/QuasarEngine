@@ -420,6 +420,9 @@ namespace QuasarEngine
 			auto& matc = entity.GetComponent<MaterialComponent>();
 			auto& mr = entity.GetComponent<MeshRendererComponent>();
 
+			if (mc.HasLocalNodeTransform())
+				transform *= mc.GetLocalNodeTransform();
+
 			//totalEntity++;
 
 			if (!mc.HasMesh())

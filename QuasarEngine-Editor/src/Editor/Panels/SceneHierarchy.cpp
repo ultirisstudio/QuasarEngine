@@ -100,7 +100,7 @@ namespace QuasarEngine
 			if (ImGui::MenuItem("Supprimer")) {
 				if (m_SelectedEntity == entity)
 					m_SelectedEntity = {};
-				scene.DestroyEntity(entity);
+				scene.DestroyEntity(entity.GetUUID());
 			}
 			ImGui::EndPopup();
 		}
@@ -179,7 +179,7 @@ namespace QuasarEngine
 		ImGui::PopID();
 
 		if (deleteEntity) {
-			scene.DestroyEntity(entity);
+			scene.DestroyEntity(entity.GetUUID());
 		}
 	}
 }

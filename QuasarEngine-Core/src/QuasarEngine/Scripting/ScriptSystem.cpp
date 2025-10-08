@@ -608,13 +608,13 @@ namespace QuasarEngine
             });
 
         lua_state.set_function("destroyEntity", [](Entity& e) {
-            if (e.IsValid()) Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(e);
+            if (e.IsValid()) Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(e.GetUUID());
             });
 
         lua_state.set_function("removeEntityByName", [&lua_state](const std::string& name) -> sol::object {
             std::optional<Entity> ent = Renderer::Instance().m_SceneData.m_Scene->GetEntityByName(name);
             if (ent.has_value())
-                Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(ent.value());
+                Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(ent->GetUUID());
             return sol::nil;
             });
 

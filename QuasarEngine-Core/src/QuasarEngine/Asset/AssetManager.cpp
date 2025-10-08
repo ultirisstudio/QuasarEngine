@@ -203,7 +203,19 @@ namespace QuasarEngine
 					{
 						std::shared_ptr<Model> model = getAsset<Model>(asset.id);
 						if (model)
-							mc->m_Mesh = model->GetMesh(mc->GetName());
+						{
+							auto meshPtr = model->FindMeshByInstanceName(mc->GetName());
+							//auto meshPtr = model->FindMeshByPathAndName(mc->GetNodePath(), mc->GetName());
+							if (meshPtr)
+							{
+								mc->m_Mesh = meshPtr.get();
+							}
+							else
+							{
+								std::cerr << "[AssetManager] MESH: instance '" << mc->GetName()
+									<< "' introuvable dans le Model '" << asset.id << "'.\n";
+							}
+						}
 					}
 				}
 				break;
