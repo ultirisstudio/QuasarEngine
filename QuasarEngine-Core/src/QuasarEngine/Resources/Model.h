@@ -62,6 +62,8 @@ namespace QuasarEngine
         const std::string& GetName() const { return m_Name; }
         const std::filesystem::path& GetSourcePath() const { return m_SourcePath; }
 
+        const glm::mat4& GetGlobalInverse() const { return m_GlobalInverse; }
+
         static AssetType GetStaticType() { return AssetType::MODEL; }
         AssetType GetType() override { return GetStaticType(); }
 
@@ -87,6 +89,8 @@ namespace QuasarEngine
 
         std::unordered_map<std::string, BoneInfo> m_boneInfoMap;
         int m_boneCount = 0;
+
+        glm::mat4 m_GlobalInverse{ 1.0f };
 
         std::string m_Name = "Unnamed";
         std::filesystem::path m_SourcePath;

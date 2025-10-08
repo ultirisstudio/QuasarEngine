@@ -16,6 +16,8 @@
 
 namespace QuasarEngine
 {
+	static constexpr int QE_MAX_BONES = 100;
+
 	class Renderer : public Singleton<Renderer>
 	{
 	public:
@@ -26,6 +28,9 @@ namespace QuasarEngine
 			std::shared_ptr<Shader> m_Shader;
 			std::shared_ptr<Shader> m_PhysicDebugShader;
 			std::shared_ptr<Shader> m_TerrainShader;
+			std::shared_ptr<Shader> m_SkinnedShader;
+
+			std::array<glm::mat4, QE_MAX_BONES> m_IdentityBones;
 
 			std::shared_ptr<BasicSkybox> m_Skybox;
 

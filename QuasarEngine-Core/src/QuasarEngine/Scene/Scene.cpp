@@ -13,7 +13,7 @@
 #include <QuasarEngine/Core/Input.h>
 
 #include "QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h"
-#include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
 
 namespace QuasarEngine
 {
@@ -164,6 +164,12 @@ namespace QuasarEngine
     void Scene::Update(double deltaTime)
     {
         ProcessEntityDestructions();
+
+        for (auto e : GetAllEntitiesWith<AnimationComponent>())
+        {
+            Entity entity = { e, m_Registry.get() };
+            entity.GetComponent<AnimationComponent>().Update(deltaTime);
+        }
 
         if (m_OnRuntime)
             UpdateRuntime(deltaTime);

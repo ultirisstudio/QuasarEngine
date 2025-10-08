@@ -58,6 +58,7 @@ namespace QuasarEngine
 		m_ValidExtention = {
 			".obj",
 			".fbx",
+			".dae",
 			".glb",
 			".gltf",
 			".png",
@@ -72,12 +73,13 @@ namespace QuasarEngine
 		m_ExtentionAssetTypes[m_ValidExtention.at(1)] = AssetType::MESH;
 		m_ExtentionAssetTypes[m_ValidExtention.at(2)] = AssetType::MESH;
 		m_ExtentionAssetTypes[m_ValidExtention.at(3)] = AssetType::MESH;
-		m_ExtentionAssetTypes[m_ValidExtention.at(4)] = AssetType::TEXTURE;
+		m_ExtentionAssetTypes[m_ValidExtention.at(4)] = AssetType::MESH;
 		m_ExtentionAssetTypes[m_ValidExtention.at(5)] = AssetType::TEXTURE;
 		m_ExtentionAssetTypes[m_ValidExtention.at(6)] = AssetType::TEXTURE;
-		m_ExtentionAssetTypes[m_ValidExtention.at(7)] = AssetType::QASSET;
-		m_ExtentionAssetTypes[m_ValidExtention.at(8)] = AssetType::SCRIPT;
-		m_ExtentionAssetTypes[m_ValidExtention.at(9)] = AssetType::SCENE;
+		m_ExtentionAssetTypes[m_ValidExtention.at(7)] = AssetType::TEXTURE;
+		m_ExtentionAssetTypes[m_ValidExtention.at(8)] = AssetType::QASSET;
+		m_ExtentionAssetTypes[m_ValidExtention.at(9)] = AssetType::SCRIPT;
+		m_ExtentionAssetTypes[m_ValidExtention.at(10)] = AssetType::SCENE;
 	}
 
 	void AssetManager::Shutdown()

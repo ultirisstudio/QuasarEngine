@@ -97,12 +97,14 @@ namespace QuasarEngine
         if (boneIDs.empty() || boneWeights.empty()) return;
 
         m_boneIdBuffer = VertexBuffer::Create(boneIDs.data(), static_cast<uint32_t>(boneIDs.size() * sizeof(int)));
-        m_boneIdBuffer->SetLayout({ { ShaderDataType::Int4, "inBoneIDs" } });
+        m_boneIdBuffer->SetLayout({ { ShaderDataType::IVec4, "inBoneIDs" } });
         m_vertexArray->AddVertexBuffer(m_boneIdBuffer);
 
         m_boneWeightBuffer = VertexBuffer::Create(boneWeights.data(), static_cast<uint32_t>(boneWeights.size() * sizeof(float)));
         m_boneWeightBuffer->SetLayout({ { ShaderDataType::Vec4, "inWeights" } });
         m_vertexArray->AddVertexBuffer(m_boneWeightBuffer);
+
+		m_hasSkinning = true;
 
         (void)maxInfluencesPerVertex;
     }

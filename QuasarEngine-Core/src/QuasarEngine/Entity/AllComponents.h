@@ -21,3 +21,5 @@
 #include <QuasarEngine/Entity/Components/Physics/HeightfieldColliderComponent.h>
 
 #include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>
+
+#include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>

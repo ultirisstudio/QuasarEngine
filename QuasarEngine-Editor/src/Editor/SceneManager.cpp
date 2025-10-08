@@ -20,6 +20,7 @@
 #include <QuasarEngine/Entity/Components/MeshRendererComponent.h>
 
 #include <QuasarEngine/Physic/PhysicEngine.h>
+#include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
 
 namespace QuasarEngine
 {
@@ -80,33 +81,59 @@ namespace QuasarEngine
 
 			while (!m_ModelsToLoad.empty())
 			{
-				ModelToLoad model = m_ModelsToLoad.front();
+				ModelToLoad modelReq = m_ModelsToLoad.front();
 				m_ModelsToLoad.pop();
 
-				std::string id = std::filesystem::path(model.path).filename().string();
-				std::filesystem::path full = AssetManager::Instance().ResolvePath(id);
+				std::filesystem::path absPath;
+				try {
+					absPath = std::filesystem::weakly_canonical(modelReq.path);
+				}
+				catch (...) {
+					absPath = std::filesystem::absolute(modelReq.path);
+				}
+				absPath = absPath.lexically_normal();
+
+				const std::filesystem::path assetsRoot = (m_AssetPath / "Assets").lexically_normal();
+
+				std::error_code ec{};
+				std::string id;
+				if (auto rel = std::filesystem::relative(absPath, assetsRoot, ec); !ec && !rel.empty())
+					id = "Assets/" + rel.generic_string();
+				else
+					id = "Assets/" + absPath.filename().generic_string();
+
+				const std::string full = absPath.generic_string();
 
 				if (!AssetManager::Instance().isAssetLoaded(id))
 				{
 					QuasarEngine::AssetToLoad toLoad{};
 					toLoad.id = id;
-					toLoad.path = full.generic_string();
+					toLoad.path = full;
 					toLoad.type = QuasarEngine::AssetType::MODEL;
+
 					AssetManager::Instance().loadAsset(toLoad);
 
-					m_ModelsToLoad.push(model);
-					continue;
+					m_ModelsToLoad.push(modelReq);
+					break;
 				}
 
 				std::shared_ptr<Model> modelPtr = AssetManager::Instance().getAsset<Model>(id);
 				if (!modelPtr)
 				{
-					m_ModelsToLoad.push(model);
+					m_ModelsToLoad.push(modelReq);
 					break;
 				}
 
 				const std::string fileName = std::filesystem::path(id).stem().string();
 				Entity entity = GetActiveScene().CreateEntity(fileName);
+
+				auto clips = QuasarEngine::LoadAnimationClips(full);
+				if (!clips.empty())
+				{
+					auto& anim = entity.AddComponent<QuasarEngine::AnimationComponent>(id);
+					anim.SetClips(std::move(clips));
+					anim.Play(0, true, 1.0f);
+				}
 
 				auto fillTexSpec = [&](const std::optional<std::string>& texId,
 					std::optional<TextureSpecification>& outSpec)
@@ -125,12 +152,11 @@ namespace QuasarEngine
 
 						auto& mc = child.AddComponent<MeshComponent>(inst.name);
 						mc.SetMesh(inst.mesh.get());
-						mc.SetModelPath(id);
+						mc.SetModelPath(full);
 						mc.SetNodePath(nodePath);
 						mc.SetLocalNodeTransform(nodeLocal);
 
 						MaterialSpecification matSpec = inst.material;
-
 						fillTexSpec(matSpec.AlbedoTexture, matSpec.AlbedoTextureSpec);
 						fillTexSpec(matSpec.NormalTexture, matSpec.NormalTextureSpec);
 						fillTexSpec(matSpec.MetallicTexture, matSpec.MetallicTextureSpec);
@@ -148,13 +174,6 @@ namespace QuasarEngine
 
 	void SceneManager::LoadModel(const ModelToLoad& modelToLoad)
 	{
-		AssetToLoad asset;
-		asset.id = std::filesystem::path(modelToLoad.path).filename().string();
-		asset.path = modelToLoad.path;
-		asset.type = MODEL;
-
-		AssetManager::Instance().loadAsset(asset);
-
 		m_ModelsToLoad.push(modelToLoad);
 	}
 

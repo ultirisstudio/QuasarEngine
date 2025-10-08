@@ -32,6 +32,8 @@
 
 #include "ComponentPanels/Scripting/ScriptComponentPanel.h"
 
+#include "ComponentPanels/Animation/AnimationComponentPanel.h"
+
 #include <QuasarEngine/Entity/AllComponents.h>
 #include <QuasarEngine/Core/UUID.h>
 #include <QuasarEngine/Renderer/Renderer.h>
@@ -155,6 +157,12 @@ namespace QuasarEngine
         const char* Name() const override { return "Script"; }
         void Render(Entity& e, Scene*) override { p.Render(e); }
     };
+    struct AnimationPanelAdapter : public IComponentPanel
+    {
+        AnimationComponentPanel p;
+        const char* Name() const override { return "Animation"; }
+        void Render(Entity& e, Scene*) override { p.Render(e); }
+	};
 
     static std::string toLower(std::string s)
     {
@@ -199,6 +207,7 @@ namespace QuasarEngine
         m_Panels.push_back({ std::make_unique<TriangleMeshColliderPanelAdapter>(), "Triangle Mesh Collider" });
         m_Panels.push_back({ std::make_unique<HeightfieldColliderPanelAdapter>(), "Heightfield Collider" });
         m_Panels.push_back({ std::make_unique<ScriptPanelAdapter>(projectPath), "Script" });
+		m_Panels.push_back({ std::make_unique<AnimationPanelAdapter>(), "Animation" });
     }
 
     void EntityPropertiePanel::buildMenuItems(const std::string& projectPath)
@@ -290,6 +299,10 @@ namespace QuasarEngine
         add("Scripting Component", "Scripting", "script csharp lua behavior",
             [](Entity& e) { return e.HasComponent<ScriptComponent>(); },
             [](Entity& e) { e.AddComponent<ScriptComponent>(); });
+
+		add("Animation Component", "Animation", "animation animator clip",
+			[](Entity& e) { return e.HasComponent<AnimationComponent>(); },
+			[](Entity& e) { e.AddComponent<AnimationComponent>(); });
     }
 
     void EntityPropertiePanel::renderPanels(Entity& entity, Scene& scene)

@@ -48,6 +48,8 @@ namespace QuasarEngine
         const std::vector<float>& GetVertices() const { return m_vertices; }
         const std::vector<unsigned int>& GetIndices() const { return m_indices; }
 
+        bool HasSkinning() const { return m_hasSkinning; }
+
         static AssetType GetStaticType() { return AssetType::MESH; }
         AssetType GetType() override { return GetStaticType(); }
 
@@ -60,6 +62,8 @@ namespace QuasarEngine
         std::shared_ptr<VertexBuffer> m_boneIdBuffer;
         std::shared_ptr<VertexBuffer> m_boneWeightBuffer;
         std::shared_ptr<IndexBuffer>  m_indexBuffer;
+
+        bool m_hasSkinning = false;
 
         DrawMode m_drawMode = DrawMode::TRIANGLES;
 

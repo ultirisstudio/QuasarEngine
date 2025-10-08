@@ -47,7 +47,6 @@ namespace QuasarEngine
 
         void ClearEntities();
 
-        //Skybox& getSkybox() { return *m_Skybox; }
         Registry* GetRegistry() { return m_Registry.get(); }
 
         bool IsEmpty() const { return m_EntityMap.empty(); }

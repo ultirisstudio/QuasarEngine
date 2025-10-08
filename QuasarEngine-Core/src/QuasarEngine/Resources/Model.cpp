@@ -110,7 +110,6 @@ namespace QuasarEngine
 
         if (mesh->mNumBones > 0)
         {
-			std::cout << "Mesh " << mesh->mName.C_Str() << " has " << mesh->mNumBones << " bones.\n";
             out.skinned = true;
             const size_t vcount = mesh->mNumVertices;
             out.boneIDs.assign(vcount * QE_MAX_BONE_INFLUENCE, -1);
@@ -215,23 +214,81 @@ namespace QuasarEngine
         m_SourcePath = std::filesystem::path(path);
         m_SourceDir = m_SourcePath.parent_path();
 
-        Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(
-            path,
-            aiProcess_Triangulate |
-            aiProcess_JoinIdenticalVertices |
-            aiProcess_GenUVCoords |
-            aiProcess_ImproveCacheLocality |
-            aiProcess_LimitBoneWeights |
-            aiProcess_CalcTangentSpace |
-            aiProcess_OptimizeMeshes |
-            aiProcess_SortByPType
-        );
+        std::string ext = m_SourcePath.extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+        const bool isGLTF = (ext == ".gltf" || ext == ".glb");
+        const bool isDAE = (ext == ".dae");
+        const bool isFBX = (ext == ".fbx");
 
-        if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
-        {
-            std::cout << "Failed to load model at " << path << " : " << importer.GetErrorString() << std::endl;
-            m_root = std::make_unique<ModelNode>(); m_root->name = "<invalid>"; m_Name = m_root->name; return;
+        Assimp::Importer importer;
+
+        importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, QE_MAX_BONE_INFLUENCE);
+
+        if (isFBX) {
+            importer.SetPropertyInteger(AI_CONFIG_IMPORT_FBX_READ_ANIMATIONS, 1);
+            importer.SetPropertyInteger(AI_CONFIG_IMPORT_FBX_READ_ALL_GEOMETRY_LAYERS, 1);
+            importer.SetPropertyInteger(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, 0);
+            importer.SetPropertyInteger(AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES, 1);
+        }
+        if (isDAE) {
+            importer.SetPropertyInteger(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION, 0);
+        }
+
+        const unsigned int ppGLTFSafe =
+            aiProcess_Triangulate
+            | aiProcess_JoinIdenticalVertices
+            | aiProcess_ImproveCacheLocality
+            | aiProcess_LimitBoneWeights;
+
+        const unsigned int ppGeneral =
+            aiProcess_Triangulate
+            | aiProcess_JoinIdenticalVertices
+            | aiProcess_GenUVCoords
+            | aiProcess_ImproveCacheLocality
+            | aiProcess_LimitBoneWeights;
+
+        const unsigned int flags = isGLTF ? ppGLTFSafe : ppGeneral;
+
+        const aiScene* scene = importer.ReadFile(path, flags);
+
+        if (!scene) {
+            const unsigned int ppMinimal =
+                aiProcess_Triangulate
+                | aiProcess_JoinIdenticalVertices
+                | aiProcess_LimitBoneWeights;
+            scene = importer.ReadFile(path, ppMinimal);
+        }
+
+        if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode) {
+            const char* err = importer.GetErrorString();
+            std::string msg = err ? err : "(no error message)";
+            std::cerr << "[Model] Failed to load \"" << path << "\": " << msg << "\n";
+            if (isGLTF && (msg.find("draco") != std::string::npos || msg.find("KHR_draco") != std::string::npos)) {
+                std::cerr << "[Model] Hint: asset uses KHR_draco_mesh_compression; use Assimp with Draco or re-export without Draco.\n";
+            }
+            m_root = std::make_unique<ModelNode>();
+            m_root->name = "<invalid>";
+            m_Name = m_root->name;
+            return;
+        }
+
+        size_t skinnedMeshes = 0;
+        size_t totalBones = 0;
+        for (unsigned mi = 0; mi < scene->mNumMeshes; ++mi) {
+            const aiMesh* m = scene->mMeshes[mi];
+            if (m->mNumBones > 0) {
+                ++skinnedMeshes;
+                totalBones += m->mNumBones;
+            }
+        }
+
+        glm::mat4 rootM = AiToGlmLocal(scene->mRootNode->mTransformation);
+        m_GlobalInverse = glm::inverse(rootM);
+
+        //std::cout << "[Model] Loaded \"" << path << "\": meshes=" << scene->mNumMeshes << " (skinned=" << skinnedMeshes << ", bones=" << totalBones << "), animations=" << scene->mNumAnimations << "\n";
+
+        if (scene->mNumAnimations > 0 && totalBones == 0) {
+            std::cout << "[Model] Note: animations present but no skinned meshes (likely node animations).\n";
         }
 
         m_Name = scene->mRootNode->mName.C_Str();

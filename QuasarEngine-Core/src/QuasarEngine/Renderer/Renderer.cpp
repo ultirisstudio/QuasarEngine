@@ -296,8 +296,78 @@ namespace QuasarEngine
 		terrainDesc.enableDynamicViewport = true;
 		terrainDesc.enableDynamicScissor = true;
 
-		auto terrainShader = Shader::Create(terrainDesc);
-		m_SceneData.m_TerrainShader = terrainShader;
+		m_SceneData.m_TerrainShader = Shader::Create(terrainDesc);
+
+		Shader::ShaderDescription skinnedDesc;
+
+		std::string sVertPath = basePath + "basic_anim" + vertExt;
+		std::string sFragPath = basePath + "basic_anim" + fragExt;
+
+		skinnedDesc.modules = {
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Vertex,
+				sVertPath,
+				{
+					{0, Shader::ShaderIOType::Vec3,  "inPosition", true, ""},
+					{1, Shader::ShaderIOType::Vec3,  "inNormal",   true, ""},
+					{2, Shader::ShaderIOType::Vec2,  "inTexCoord", true, ""},
+					{3, Shader::ShaderIOType::IVec4, "inBoneIds",  true, ""},
+					{4, Shader::ShaderIOType::Vec4,  "inWeights",  true, ""},
+				}
+			},
+			Shader::ShaderModuleInfo{
+				Shader::ShaderStageType::Fragment,
+				sFragPath,
+				{}
+			}
+		};
+
+		struct alignas(16) SkinnedGlobalUniforms {
+			glm::mat4 view;
+			glm::mat4 projection;
+		};
+		constexpr auto SkinnedGlobalStages = Shader::StageToBit(Shader::ShaderStageType::Vertex)
+			| Shader::StageToBit(Shader::ShaderStageType::Fragment);
+		skinnedDesc.globalUniforms = {
+			{"view",       Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, view),       0, 0, SkinnedGlobalStages},
+			{"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, projection), 0, 0, SkinnedGlobalStages},
+		};
+
+		struct alignas(16) SkinnedObjectUniforms {
+			glm::mat4 model;
+			glm::vec4 albedo;
+			int has_albedo_texture;
+			int _pad0[3];
+			glm::mat4 finalBonesMatrices[QE_MAX_BONES];
+		};
+		constexpr auto VOnly = Shader::StageToBit(Shader::ShaderStageType::Vertex);
+		constexpr auto VF = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+		skinnedDesc.objectUniforms = {
+			{"model",               Shader::ShaderUniformType::Mat4,   sizeof(glm::mat4),                                       offsetof(SkinnedObjectUniforms, model),               1, 0, VF},
+			{"albedo",              Shader::ShaderUniformType::Vec4,   sizeof(glm::vec4),                                       offsetof(SkinnedObjectUniforms, albedo),              1, 0, VF},
+			{"has_albedo_texture",  Shader::ShaderUniformType::Int,    sizeof(int),                                             offsetof(SkinnedObjectUniforms, has_albedo_texture),  1, 0, VF},
+			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES,                        offsetof(SkinnedObjectUniforms, finalBonesMatrices),  1, 0, VOnly},
+		};
+
+		skinnedDesc.samplers = {
+			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+		};
+
+		skinnedDesc.blendMode = Shader::BlendMode::None;
+		skinnedDesc.cullMode = Shader::CullMode::Back;
+		skinnedDesc.fillMode = Shader::FillMode::Solid;
+		skinnedDesc.depthFunc = Shader::DepthFunc::Less;
+		skinnedDesc.depthTestEnable = true;
+		skinnedDesc.depthWriteEnable = true;
+		skinnedDesc.topology = Shader::PrimitiveTopology::TriangleList;
+		skinnedDesc.enableDynamicViewport = true;
+		skinnedDesc.enableDynamicScissor = true;
+
+		m_SceneData.m_SkinnedShader = Shader::Create(skinnedDesc);
+
+		for (int i = 0; i < QE_MAX_BONES; ++i)
+			m_SceneData.m_IdentityBones[i] = glm::mat4(1.0f);
 
 		m_SceneData.m_Skybox = BasicSkybox::CreateBasicSkybox();
 
@@ -358,6 +428,23 @@ namespace QuasarEngine
 
 	void Renderer::Render(BaseCamera& camera)
 	{
+		auto FindAnimatorForEntity = [&](Entity e) -> AnimationComponent*
+			{
+				if (e.HasComponent<AnimationComponent>())
+					return &e.GetComponent<AnimationComponent>();
+
+				if (e.HasComponent<HierarchyComponent>()) {
+					const auto& h = e.GetComponent<HierarchyComponent>();
+					if (h.m_Parent != UUID::Null()) {
+						if (auto parentOpt = m_SceneData.m_Scene->GetEntityByUUID(h.m_Parent)) {
+							if (parentOpt->HasComponent<AnimationComponent>())
+								return &parentOpt->GetComponent<AnimationComponent>();
+						}
+					}
+				}
+				return nullptr;
+			};
+
 		const glm::mat4 VP = camera.getProjectionMatrix() * camera.getViewMatrix();
 		Math::Frustum frustum = Math::CalculateFrustum(VP);
 
@@ -410,58 +497,49 @@ namespace QuasarEngine
 
 		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, MeshComponent, MeshRendererComponent>())
 		{
-			Entity entity{ e, m_SceneData.m_Scene->GetRegistry()};
+			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
 
 			auto& tr = entity.GetComponent<TransformComponent>();
-
-			glm::mat4 transform = tr.GetGlobalTransform();
-
 			auto& mc = entity.GetComponent<MeshComponent>();
 			auto& matc = entity.GetComponent<MaterialComponent>();
 			auto& mr = entity.GetComponent<MeshRendererComponent>();
 
-			if (mc.HasLocalNodeTransform())
-				transform *= mc.GetLocalNodeTransform();
+			if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
-			//totalEntity++;
+			if (mc.GetMesh().HasSkinning()) continue; // <-- on saute les skinnés ici
 
-			if (!mc.HasMesh())
-			{
-				continue;
+			glm::mat4 model = tr.GetGlobalTransform();
+			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
+
+			// Frustum (optionnel)
+			if (!mc.GetMesh().IsVisible(frustum, model)) {
+				// continue;
 			}
-
-			if (!mr.m_Rendered)
-			{
-				continue;
-			}
-
-			if (!mc.GetMesh().IsVisible(frustum, transform))
-			{
-				//continue;
-			}
-
-			//entityDraw++;
 
 			Material& material = matc.GetMaterial();
 
-			m_SceneData.m_Shader->SetUniform("model", &transform, sizeof(glm::mat4));
-
+			// Object uniforms
+			m_SceneData.m_Shader->SetUniform("model", &model, sizeof(glm::mat4));
 			m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
-			m_SceneData.m_Shader->SetUniform("roughness", &material.GetRoughness(), sizeof(float));
-			m_SceneData.m_Shader->SetUniform("metallic", &material.GetMetallic(), sizeof(float));
-			m_SceneData.m_Shader->SetUniform("ao", &material.GetAO(), sizeof(float));
 
-			int hasAlbedoTexture = material.HasTexture(Albedo) ? 1 : 0;
-			int hasNormalTexture = material.HasTexture(Normal) ? 1 : 0;
-			int hasRougnessTexture = material.HasTexture(Roughness) ? 1 : 0;
-			int hasMetallicTexture = material.HasTexture(Metallic) ? 1 : 0;
-			int hasAOTexture = material.HasTexture(AO) ? 1 : 0;
+			float rough = material.GetRoughness();
+			float metal = material.GetMetallic();
+			float ao = material.GetAO();
+			m_SceneData.m_Shader->SetUniform("roughness", &rough, sizeof(float));
+			m_SceneData.m_Shader->SetUniform("metallic", &metal, sizeof(float));
+			m_SceneData.m_Shader->SetUniform("ao", &ao, sizeof(float));
 
-			m_SceneData.m_Shader->SetUniform("has_albedo_texture", &hasAlbedoTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_normal_texture", &hasNormalTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_roughness_texture", &hasRougnessTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasMetallicTexture, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasAOTexture, sizeof(int));
+			int hasA = material.HasTexture(Albedo) ? 1 : 0;
+			int hasN = material.HasTexture(Normal) ? 1 : 0;
+			int hasR = material.HasTexture(Roughness) ? 1 : 0;
+			int hasM = material.HasTexture(Metallic) ? 1 : 0;
+			int hasO = material.HasTexture(AO) ? 1 : 0;
+
+			m_SceneData.m_Shader->SetUniform("has_albedo_texture", &hasA, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_normal_texture", &hasN, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_roughness_texture", &hasR, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasM, sizeof(int));
+			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasO, sizeof(int));
 
 			m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(Albedo));
 			m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(Normal));
@@ -469,17 +547,91 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(Metallic));
 			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(AO));
 
-			if (!m_SceneData.m_Shader->UpdateObject(&material))
-			{
-				continue;
-			}
+			if (!m_SceneData.m_Shader->UpdateObject(&material)) continue;
 
 			mc.GetMesh().draw();
 
 			m_SceneData.m_Shader->Reset();
 		}
 
-		//std::cout << entityDraw << "/" << totalEntity << std::endl;
+		m_SceneData.m_Shader->Unuse();
+
+		m_SceneData.m_SkinnedShader->Use();
+
+		m_SceneData.m_SkinnedShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
+		m_SceneData.m_SkinnedShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
+
+		if (!m_SceneData.m_SkinnedShader->UpdateGlobalState())
+		{
+			return;
+		}
+
+		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, MeshComponent, MeshRendererComponent>())
+		{
+			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
+
+			auto& tr = entity.GetComponent<TransformComponent>();
+			auto& mc = entity.GetComponent<MeshComponent>();
+			auto& matc = entity.GetComponent<MaterialComponent>();
+			auto& mr = entity.GetComponent<MeshRendererComponent>();
+
+			if (!mr.m_Rendered || !mc.HasMesh()) continue;
+
+			if (!mc.GetMesh().HasSkinning()) continue;
+
+			glm::mat4 model = tr.GetGlobalTransform();
+			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
+
+			if (!mc.GetMesh().IsVisible(frustum, model)) {
+				// continue;
+			}
+
+			m_SceneData.m_SkinnedShader->SetUniform("model", &model, sizeof(glm::mat4));
+
+			Material& material = matc.GetMaterial();
+			m_SceneData.m_SkinnedShader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
+
+			int hasA = material.HasTexture(Albedo) ? 1 : 0;
+			m_SceneData.m_SkinnedShader->SetUniform("has_albedo_texture", &hasA, sizeof(int));
+			m_SceneData.m_SkinnedShader->SetTexture("albedo_texture", material.GetTexture(Albedo));
+
+			const AnimationComponent* anim = FindAnimatorForEntity(entity);
+			if (anim && !anim->GetFinalBoneMatrices().empty()) {
+				std::vector<glm::mat4> mats = anim->GetFinalBoneMatrices();
+				const size_t n = std::min(mats.size(), (size_t)QE_MAX_BONES);
+				if (n == (size_t)QE_MAX_BONES) {
+					m_SceneData.m_SkinnedShader->SetUniform("finalBonesMatrices", mats.data(), sizeof(glm::mat4) * QE_MAX_BONES);
+				}
+				else {
+					std::array<glm::mat4, QE_MAX_BONES> tmp = m_SceneData.m_IdentityBones;
+					std::memcpy(tmp.data(), mats.data(), sizeof(glm::mat4) * n);
+					m_SceneData.m_SkinnedShader->SetUniform("finalBonesMatrices", tmp.data(), sizeof(glm::mat4) * QE_MAX_BONES);
+				}
+			}
+			else {
+				m_SceneData.m_SkinnedShader->SetUniform("finalBonesMatrices",
+					m_SceneData.m_IdentityBones.data(),
+					sizeof(glm::mat4) * QE_MAX_BONES);
+			}
+
+			if (!m_SceneData.m_SkinnedShader->UpdateObject(&material)) continue;
+
+			mc.GetMesh().draw();
+
+			m_SceneData.m_SkinnedShader->Reset();
+		}
+
+		m_SceneData.m_SkinnedShader->Unuse();
+
+		m_SceneData.m_TerrainShader->Use();
+
+		m_SceneData.m_TerrainShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
+		m_SceneData.m_TerrainShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
+
+		if (!m_SceneData.m_TerrainShader->UpdateGlobalState())
+		{
+			return;
+		}
 
 		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, TerrainComponent, MeshRendererComponent>())
 		{
@@ -496,14 +648,6 @@ namespace QuasarEngine
 			if (!mesh || !mesh->IsMeshGenerated()) continue;
 
 			glm::mat4 transform = tr.GetGlobalTransform();
-
-			m_SceneData.m_TerrainShader->Use();
-
-			glm::mat4 viewMatrix = camera.getViewMatrix();
-			glm::mat4 projectionMatrix = camera.getProjectionMatrix();
-			m_SceneData.m_TerrainShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
-			m_SceneData.m_TerrainShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
-			m_SceneData.m_TerrainShader->UpdateGlobalState();
 
 			m_SceneData.m_TerrainShader->SetUniform("model", &transform, sizeof(glm::mat4));
 			m_SceneData.m_TerrainShader->SetUniform("heightMult", &tc.heightMult, sizeof(float));
@@ -534,10 +678,50 @@ namespace QuasarEngine
 
 			//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-			m_SceneData.m_TerrainShader->Unuse();
+			m_SceneData.m_TerrainShader->Reset();
 		}
 
-		m_SceneData.m_Shader->Unuse();
+		m_SceneData.m_TerrainShader->Unuse();
+
+		//std::cout << entityDraw << "/" << totalEntity << std::endl;
+
+		/*
+		if (entity.HasComponent<AnimationComponent>() && instIsSkinned) {
+			auto& ac = entity.GetComponent<AnimationComponent>();
+			const auto& mats = ac.GetFinalBoneMatrices();
+			for (int i = 0; i < (int)mats.size(); ++i) {
+				m_SceneData.m_Shader->SetUniform(
+					("finalBonesMatrices[" + std::to_string(i) + "]").c_str(),
+					&mats[i], sizeof(glm::mat4)
+				);
+			}
+		}
+
+		// Option A: animation sur l'entité elle-même
+		QuasarEngine::AnimationComponent* anim = nullptr;
+		if (entity.HasComponent<QuasarEngine::AnimationComponent>())
+			anim = &entity.GetComponent<QuasarEngine::AnimationComponent>();
+		else if (entity.HasComponent<HierarchyComponent>()) {
+			// Option B: remonter au parent (animation mise sur l'entité racine du modèle)
+			auto& h = entity.GetComponent<HierarchyComponent>();
+			if (h.m_Parent != UUID::Null()) {
+				auto parentOpt = m_SceneData.m_Scene->GetEntityByUUID(h.m_Parent);
+				if (parentOpt && parentOpt->HasComponent<QuasarEngine::AnimationComponent>())
+					anim = &parentOpt->GetComponent<QuasarEngine::AnimationComponent>();
+			}
+		}
+
+		if (anim && mc.HasMesh() && mc.GetMesh().HasSkinning()) // HasSkinning() à exposer sur Mesh si pas déjà
+		{
+			const auto& bones = anim->GetFinalBoneMatrices();
+			const int boneCount = (int)bones.size();
+			// (optionnel) m_SceneData.m_Shader->SetUniform("boneCount", &boneCount, sizeof(int));
+			for (int i = 0; i < boneCount; ++i)
+				m_SceneData.m_Shader->SetUniform(
+					("finalBonesMatrices[" + std::to_string(i) + "]").c_str(),
+					&bones[i], sizeof(glm::mat4));
+		}
+		*/
 	}
 
 	void Renderer::RenderDebug(BaseCamera& camera)
