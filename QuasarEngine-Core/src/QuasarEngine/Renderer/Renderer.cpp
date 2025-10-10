@@ -325,33 +325,65 @@ namespace QuasarEngine
 		struct alignas(16) SkinnedGlobalUniforms {
 			glm::mat4 view;
 			glm::mat4 projection;
+			glm::vec3 camera_position;
+			int usePointLight;
+			int useDirLight;
+			PointLight pointLights[4];
+			DirectionalLight dirLights[4];
 		};
-		constexpr auto SkinnedGlobalStages = Shader::StageToBit(Shader::ShaderStageType::Vertex)
-			| Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+		constexpr auto SkinnedGlobalStages = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
 		skinnedDesc.globalUniforms = {
-			{"view",       Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, view),       0, 0, SkinnedGlobalStages},
+			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, view), 0, 0, SkinnedGlobalStages},
 			{"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, projection), 0, 0, SkinnedGlobalStages},
+			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3), offsetof(SkinnedGlobalUniforms, camera_position), 0, 0, SkinnedGlobalStages},
+			{"usePointLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, usePointLight), 0, 0, SkinnedGlobalStages},
+			{"useDirLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, useDirLight), 0, 0, SkinnedGlobalStages},
+			{"pointLights", Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4, offsetof(SkinnedGlobalUniforms, pointLights), 0, 0, SkinnedGlobalStages},
+			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(SkinnedGlobalUniforms, dirLights), 0, 0, SkinnedGlobalStages},
 		};
 
 		struct alignas(16) SkinnedObjectUniforms {
 			glm::mat4 model;
+
 			glm::vec4 albedo;
+			float roughness;
+			float metallic;
+			float ao;
+
 			int has_albedo_texture;
-			int _pad0[3];
+			int has_normal_texture;
+			int has_roughness_texture;
+			int has_metallic_texture;
+			int has_ao_texture;
+
 			glm::mat4 finalBonesMatrices[QE_MAX_BONES];
 		};
-		constexpr auto VOnly = Shader::StageToBit(Shader::ShaderStageType::Vertex);
-		constexpr auto VF = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		skinnedDesc.objectUniforms = {
-			{"model",               Shader::ShaderUniformType::Mat4,   sizeof(glm::mat4),                                       offsetof(SkinnedObjectUniforms, model),               1, 0, VF},
-			{"albedo",              Shader::ShaderUniformType::Vec4,   sizeof(glm::vec4),                                       offsetof(SkinnedObjectUniforms, albedo),              1, 0, VF},
-			{"has_albedo_texture",  Shader::ShaderUniformType::Int,    sizeof(int),                                             offsetof(SkinnedObjectUniforms, has_albedo_texture),  1, 0, VF},
-			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES,                        offsetof(SkinnedObjectUniforms, finalBonesMatrices),  1, 0, VOnly},
+			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedObjectUniforms, model), 1, 0, SkinnedGlobalStages},
+
+			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(SkinnedObjectUniforms, albedo), 1, 0, SkinnedGlobalStages},
+			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, roughness), 1, 0, SkinnedGlobalStages},
+			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, metallic), 1, 0, SkinnedGlobalStages},
+			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, ao), 1, 0, SkinnedGlobalStages},
+
+			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_albedo_texture), 1, 0, SkinnedGlobalStages},
+			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_normal_texture), 1, 0, SkinnedGlobalStages},
+			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_roughness_texture), 1, 0, SkinnedGlobalStages},
+			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_metallic_texture), 1, 0, SkinnedGlobalStages},
+			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_ao_texture), 1, 0, SkinnedGlobalStages},
+
+			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES, offsetof(SkinnedObjectUniforms, finalBonesMatrices),  1, 0, SkinnedGlobalStages},
 		};
 
 		skinnedDesc.samplers = {
-			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
 		};
 
 		skinnedDesc.blendMode = Shader::BlendMode::None;
@@ -518,8 +550,8 @@ namespace QuasarEngine
 			Material& material = matc.GetMaterial();
 
 			m_SceneData.m_Shader->SetUniform("model", &model, sizeof(glm::mat4));
-			m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
 
+			m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
 			float rough = material.GetRoughness();
 			float metal = material.GetMetallic();
 			float ao = material.GetAO();
@@ -558,6 +590,13 @@ namespace QuasarEngine
 
 		m_SceneData.m_SkinnedShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
 		m_SceneData.m_SkinnedShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
+		m_SceneData.m_SkinnedShader->SetUniform("camera_position", &camera.GetPosition(), sizeof(glm::vec3));
+
+		m_SceneData.m_SkinnedShader->SetUniform("usePointLight", &m_SceneData.nPts, sizeof(int));
+		m_SceneData.m_SkinnedShader->SetUniform("useDirLight", &m_SceneData.nDirs, sizeof(int));
+
+		m_SceneData.m_SkinnedShader->SetUniform("pointLights", m_SceneData.m_PointsBuffer.data(), sizeof(PointLight) * 4);
+		m_SceneData.m_SkinnedShader->SetUniform("dirLights", m_SceneData.m_DirectionalsBuffer.data(), sizeof(DirectionalLight) * 4);
 
 		if (!m_SceneData.m_SkinnedShader->UpdateGlobalState())
 		{
@@ -586,11 +625,32 @@ namespace QuasarEngine
 			m_SceneData.m_SkinnedShader->SetUniform("model", &model, sizeof(glm::mat4));
 
 			Material& material = matc.GetMaterial();
+
 			m_SceneData.m_SkinnedShader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
+			float rough = material.GetRoughness();
+			float metal = material.GetMetallic();
+			float ao = material.GetAO();
+			m_SceneData.m_SkinnedShader->SetUniform("roughness", &rough, sizeof(float));
+			m_SceneData.m_SkinnedShader->SetUniform("metallic", &metal, sizeof(float));
+			m_SceneData.m_SkinnedShader->SetUniform("ao", &ao, sizeof(float));
 
 			int hasA = material.HasTexture(Albedo) ? 1 : 0;
+			int hasN = material.HasTexture(Normal) ? 1 : 0;
+			int hasR = material.HasTexture(Roughness) ? 1 : 0;
+			int hasM = material.HasTexture(Metallic) ? 1 : 0;
+			int hasO = material.HasTexture(AO) ? 1 : 0;
+
 			m_SceneData.m_SkinnedShader->SetUniform("has_albedo_texture", &hasA, sizeof(int));
+			m_SceneData.m_SkinnedShader->SetUniform("has_normal_texture", &hasN, sizeof(int));
+			m_SceneData.m_SkinnedShader->SetUniform("has_roughness_texture", &hasR, sizeof(int));
+			m_SceneData.m_SkinnedShader->SetUniform("has_metallic_texture", &hasM, sizeof(int));
+			m_SceneData.m_SkinnedShader->SetUniform("has_ao_texture", &hasO, sizeof(int));
+
 			m_SceneData.m_SkinnedShader->SetTexture("albedo_texture", material.GetTexture(Albedo));
+			m_SceneData.m_SkinnedShader->SetTexture("normal_texture", material.GetTexture(Normal));
+			m_SceneData.m_SkinnedShader->SetTexture("roughness_texture", material.GetTexture(Roughness));
+			m_SceneData.m_SkinnedShader->SetTexture("metallic_texture", material.GetTexture(Metallic));
+			m_SceneData.m_SkinnedShader->SetTexture("ao_texture", material.GetTexture(AO));
 
 			const AnimationComponent* anim = FindAnimatorForEntity(entity);
 			if (anim && !anim->GetFinalBoneMatrices().empty()) {

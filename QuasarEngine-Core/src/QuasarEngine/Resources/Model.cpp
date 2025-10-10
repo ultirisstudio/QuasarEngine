@@ -282,9 +282,6 @@ namespace QuasarEngine
             }
         }
 
-        glm::mat4 rootM = AiToGlmLocal(scene->mRootNode->mTransformation);
-        m_GlobalInverse = glm::inverse(rootM);
-
         //std::cout << "[Model] Loaded \"" << path << "\": meshes=" << scene->mNumMeshes << " (skinned=" << skinnedMeshes << ", bones=" << totalBones << "), animations=" << scene->mNumAnimations << "\n";
 
         if (scene->mNumAnimations > 0 && totalBones == 0) {
@@ -293,6 +290,9 @@ namespace QuasarEngine
 
         m_Name = scene->mRootNode->mName.C_Str();
         m_root = buildNode(scene->mRootNode, scene);
+
+        glm::mat4 rootM = AiToGlmLocal(scene->mRootNode->mTransformation);
+        m_GlobalInverse = glm::inverse(rootM);
     }
 
     void Model::ForEachInstance(const std::function<void(const MeshInstance&, const glm::mat4&, const std::string&)>& fn) const

@@ -9,23 +9,55 @@ layout(location = 2) in vec2 inTexCoord;
 layout(location = 3) in ivec4 inBoneIds;
 layout(location = 4) in vec4  inWeights;
 
+layout(location = 0) out vec2 outTexCoord;
+layout(location = 1) out vec3 outWorldPos;
+layout(location = 2) out vec3 outNormal;
+
+struct PointLight {    
+    vec3 position;
+    vec3 color;
+	
+    float attenuation;
+    float power;
+};
+#define NR_POINT_LIGHTS 4
+
+struct DirLight {    
+    vec3 direction;
+	vec3 color;
+	
+    float power;
+};
+#define NR_DIR_LIGHTS 4
+
 layout(std140, binding = 0) uniform global_uniform_object  {
     mat4 view;
 	mat4 projection;
+	vec3 camera_position;
+	
+	int usePointLight;
+	int useDirLight;
+	
+	PointLight pointLights[NR_POINT_LIGHTS];
+	DirLight dirLights[NR_DIR_LIGHTS];
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object  {
     mat4 model;
+	
     vec4 albedo;
+    float roughness;
+    float metallic;
+    float ao;
+	
     int has_albedo_texture;
+    int has_normal_texture;
+    int has_roughness_texture;
+    int has_metallic_texture;
+    int has_ao_texture;
+	
 	mat4 finalBonesMatrices[MAX_BONES];
 } object_ubo;
-
-out VS_OUT {
-    vec2 uv;
-    vec3 worldNormal;
-    vec3 worldPos;
-} vs_out;
 
 void main()
 {
@@ -47,13 +79,13 @@ void main()
         skinnedNorm = inNormal;
     }
 
-    vec4 worldPos = object_ubo.model * skinnedPos;
-    vs_out.worldPos = worldPos.xyz;
+    outWorldPos = vec4(object_ubo.model * skinnedPos).xyz;
 
-    mat3 normalMat = mat3(transpose(inverse(object_ubo.model)));
-    vs_out.worldNormal = normalize(normalMat * normalize(skinnedNorm));
-
-    vs_out.uv = inTexCoord;
-
-    gl_Position = global_ubo.projection * global_ubo.view * worldPos;
+    outTexCoord = inTexCoord;
+	
+    vec3 nrm = (skinnedNorm == vec3(0.0)) ? inNormal : skinnedNorm;
+	mat3 normalMatrix = transpose(inverse(mat3(object_ubo.model)));
+	outNormal = normalize(normalMatrix * normalize(nrm));
+	
+	gl_Position = global_ubo.projection * global_ubo.view * vec4(outWorldPos, 1.0);
 }
