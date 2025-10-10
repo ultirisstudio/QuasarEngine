@@ -15,45 +15,54 @@
 
 namespace QuasarEngine
 {
-	ContentBrowserPanel::ContentBrowserPanel(const std::string& projectPath, AssetImporter* importer) : m_BaseDirectory(projectPath + "\\Assets"), m_CurrentDirectory(m_BaseDirectory), m_AssetImporter(importer)
-	{
-		TextureSpecification spec;
+    std::filesystem::path WeakCanonical(const std::filesystem::path& p)
+    {
+        std::filesystem::path out;
+        try { out = std::filesystem::weakly_canonical(p); }
+        catch (...) { out = std::filesystem::absolute(p); }
+        return out.lexically_normal();
+    }
 
-		m_DirectoryIcon = Texture2D::CreateTexture2D(spec);
-		//m_DirectoryIcon->LoadFromPath("Assets/Icons/texture_dossier.png");
+    std::string BuildAssetIdFromAbs(const std::filesystem::path& absPath,
+        const std::filesystem::path& assetsRoot)
+    {
+        std::error_code ec{};
+        if (!assetsRoot.empty()) {
+            auto rel = std::filesystem::relative(absPath, assetsRoot, ec);
+            if (!ec && !rel.empty())
+                return "Assets/" + rel.generic_string();
+        }
+        return "Assets/" + absPath.filename().generic_string();
+    }
+
+    ContentBrowserPanel::ContentBrowserPanel(const std::string& projectPath, AssetImporter* importer)
+        : m_BaseDirectory((std::filesystem::path(projectPath) / "Assets").lexically_normal())
+        , m_CurrentDirectory(m_BaseDirectory)
+        , m_AssetImporter(importer)
+    {
+        TextureSpecification spec;
+
+        m_DirectoryIcon = Texture2D::CreateTexture2D(spec);
         m_DirectoryIcon->LoadFromMemory(img_texture_dossier, img_texture_dossier_size);
 
-		m_FilePNGIcon = Texture2D::CreateTexture2D(spec);
-		//m_FilePNGIcon->LoadFromPath("Assets/Icons/texture_png.png");
-		m_FilePNGIcon->LoadFromMemory(img_texture_png, img_texture_png_size);
+        m_FilePNGIcon = Texture2D::CreateTexture2D(spec);
+        m_FilePNGIcon->LoadFromMemory(img_texture_png, img_texture_png_size);
 
-		m_FileJPGIcon = Texture2D::CreateTexture2D(spec);
-		//m_FileJPGIcon->LoadFromPath("Assets/Icons/texture_jpg.png");
-		m_FileJPGIcon->LoadFromMemory(img_texture_jpg, img_texture_jpg_size);
+        m_FileJPGIcon = Texture2D::CreateTexture2D(spec);
+        m_FileJPGIcon->LoadFromMemory(img_texture_jpg, img_texture_jpg_size);
 
-		m_FileOBJIcon = Texture2D::CreateTexture2D(spec);
-		//m_FileOBJIcon->LoadFromPath("Assets/Icons/texture_obj.png");
-		m_FileOBJIcon->LoadFromMemory(img_texture_obj, img_texture_obj_size);
+        m_FileOBJIcon = Texture2D::CreateTexture2D(spec);
+        m_FileOBJIcon->LoadFromMemory(img_texture_obj, img_texture_obj_size);
 
-		m_FileSceneIcon = Texture2D::CreateTexture2D(spec);
-		//m_FileSceneIcon->LoadFromPath("Assets/Icons/texture_scene.png");
-		m_FileSceneIcon->LoadFromMemory(img_texture_scene, img_texture_scene_size);
+        m_FileSceneIcon = Texture2D::CreateTexture2D(spec);
+        m_FileSceneIcon->LoadFromMemory(img_texture_scene, img_texture_scene_size);
 
-		m_FileOtherIcon = Texture2D::CreateTexture2D(spec);
-		//m_FileOtherIcon->LoadFromPath("Assets/Icons/texture_texte.png");
-		m_FileOtherIcon->LoadFromMemory(img_texture_texte, img_texture_texte_size);
+        m_FileOtherIcon = Texture2D::CreateTexture2D(spec);
+        m_FileOtherIcon->LoadFromMemory(img_texture_texte, img_texture_texte_size);
 
-		m_FileLuaIcon = Texture2D::CreateTexture2D(spec);
-		//m_FileLuaIcon->LoadFromPath("Assets/Icons/texture_lua.png");
-		m_FileLuaIcon->LoadFromMemory(img_texture_lua, img_texture_lua_size);
-
-        //AssetToLoad asset;
-        //asset.id = "Assets/Textures/1001_albedo.png";
-        //asset.type = TEXTURE;
-
-        //asset.spec = spec;
-        //Renderer::m_SceneData.m_AssetManager->LoadTextureAsync(asset);
-	}
+        m_FileLuaIcon = Texture2D::CreateTexture2D(spec);
+        m_FileLuaIcon->LoadFromMemory(img_texture_lua, img_texture_lua_size);
+    }
 
 	ContentBrowserPanel::~ContentBrowserPanel()
 	{
@@ -315,7 +324,7 @@ namespace QuasarEngine
                 {
                     if (ImGui::MenuItem("Modify"))
                     {
-                        m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(relativePath);
+                        m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(WeakCanonical(relativePath));
                     }
                     ImGui::Separator();
                 }
@@ -350,8 +359,7 @@ namespace QuasarEngine
                 }
                 else if (fileType == AssetType::TEXTURE)
                 {
-					std::cout << "Open Texture: " << filenameString << std::endl;
-                    m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(relativePath);
+                    m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(WeakCanonical(relativePath));
                 }
                 else if (fileType == AssetType::SCRIPT)
                 {

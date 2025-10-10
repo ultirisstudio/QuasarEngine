@@ -27,9 +27,12 @@ namespace QuasarEngine
         std::string name;
         float duration = 0.0f;
         float ticksPerSecond = 25.0f;
+
         std::unordered_map<std::string, Channel> channels;
 
         float WrapTime(float seconds) const;
+
+        float TimeToTicks(float seconds, bool loop) const;
     };
 
     std::vector<AnimationClip> LoadAnimationClips(const std::string& path);

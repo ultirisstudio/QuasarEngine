@@ -1,26 +1,30 @@
 #include "qepch.h"
 #include "AnimationComponent.h"
 
+#include <cstring>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <QuasarEngine/Asset/AssetManager.h>
 #include <glm/gtx/quaternion.hpp>
+#include <QuasarEngine/Asset/AssetManager.h>
 
 namespace QuasarEngine
 {
-    static inline void DecomposeTRS(const glm::mat4& m, glm::vec3& T, glm::quat& R, glm::vec3& S) {
+    void AnimationComponent::DecomposeTRS(const glm::mat4& m, glm::vec3& T, glm::quat& R, glm::vec3& S)
+    {
         T = glm::vec3(m[3]);
         glm::vec3 c0(m[0]), c1(m[1]), c2(m[2]);
         S = { glm::length(c0), glm::length(c1), glm::length(c2) };
         if (S.x) c0 /= S.x; if (S.y) c1 /= S.y; if (S.z) c2 /= S.z;
         R = glm::quat_cast(glm::mat3(c0, c1, c2));
     }
-    static inline glm::mat4 ComposeTRS(const glm::vec3& T, const glm::quat& R, const glm::vec3& S) {
+
+    glm::mat4 AnimationComponent::ComposeTRS(const glm::vec3& T, const glm::quat& R, const glm::vec3& S)
+    {
         return glm::translate(glm::mat4(1), T) * glm::toMat4(R) * glm::scale(glm::mat4(1), S);
     }
 
     AnimationComponent::AnimationComponent(std::string modelAssetId)
-        : m_ModelAssetId(std::move(modelAssetId)) {
+        : m_ModelAssetId(std::move(modelAssetId))
+    {
     }
 
     void AnimationComponent::SetModelAssetId(std::string id)
@@ -71,6 +75,39 @@ namespace QuasarEngine
             m_FinalBoneMatrices.assign(count > 0 ? count : 1, glm::mat4(1.0f));
     }
 
+    std::string AnimationComponent::ResolveRootMotionNode(const AnimationClip& clip) const
+    {
+        if (!m_RootMotionBone.empty())
+            if (clip.channels.find(m_RootMotionBone) != clip.channels.end())
+                return m_RootMotionBone;
+
+        static const char* kCandidates[] = {
+            "Hips","hips",
+            "mixamorig:Hips","mixamorig:hips",
+            "Root","root",
+            "Armature","armature"
+        };
+        for (const char* n : kCandidates)
+        {
+            if (clip.channels.find(n) != clip.channels.end())
+                return n;
+        }
+
+        std::string best;
+        float bestDist = 0.0f;
+        for (const auto& [name, ch] : clip.channels)
+        {
+            if (ch.positions.size() >= 2)
+            {
+                float d = glm::length(ch.positions.back().value - ch.positions.front().value);
+                if (d > bestDist) { bestDist = d; best = name; }
+            }
+        }
+        if (!best.empty()) return best;
+
+        return std::string();
+    }
+
     void AnimationComponent::Update(double dtSeconds)
     {
         EnsureModel();
@@ -83,44 +120,16 @@ namespace QuasarEngine
         const AnimationClip& clip = m_Clips[m_CurrentClip];
 
         m_TimeSec += dtSeconds * (double)m_Speed;
-        const float tTicks = clip.WrapTime((float)m_TimeSec);
+
+        const float tTicks = clip.TimeToTicks((float)m_TimeSec, m_Loop);
 
         std::fill(m_FinalBoneMatrices.begin(), m_FinalBoneMatrices.end(), glm::mat4(1.0f));
 
-        std::string effectiveRootBone;
-        if (m_InPlace)
-        {
-            if (!m_RootMotionBone.empty())
-            {
-                effectiveRootBone = m_RootMotionBone;
-            }
-            else
-            {
-                static const char* kCandidates[] = {
-                    "Hips", "hips",
-                    "mixamorig:Hips", "mixamorig:hips",
-                    "Root", "root",
-                    "Armature", "armature"
-                };
+        std::string effectiveRoot = m_InPlace ? ResolveRootMotionNode(clip) : std::string();
 
-                const auto& bim = sp->GetBoneInfoMap();
-                
-                for (const char* n : kCandidates)
-                {
-                    if (bim.find(n) != bim.end()) { effectiveRootBone = n; break; }
-                }
-                
-                if (effectiveRootBone.empty() && !bim.empty())
-                    effectiveRootBone = bim.begin()->first;
-                
-                if (effectiveRootBone.empty() && sp->GetRoot())
-                    effectiveRootBone = sp->GetRoot()->name;
-            }
-        }
+        ComputePoseRecursive(sp->GetRoot(), glm::mat4(1.0f), tTicks, m_InPlace, effectiveRoot);
 
-        ComputePoseRecursive(sp->GetRoot(), glm::mat4(1.0f), tTicks, m_InPlace, effectiveRootBone);
-
-        if (!m_Loop && m_TimeSec * clip.ticksPerSecond >= clip.duration)
+        if (!m_Loop && clip.duration > 0.0f && (m_TimeSec * clip.ticksPerSecond) >= clip.duration)
             m_Playing = false;
     }
 
@@ -134,18 +143,30 @@ namespace QuasarEngine
         if (!node) return;
 
         glm::mat4 local = node->localTransform;
+
         if (m_CurrentClip != (size_t)-1) {
             const AnimationClip& clip = m_Clips[m_CurrentClip];
             if (auto it = clip.channels.find(node->name); it != clip.channels.end())
                 local = it->second.Sample(animTimeTicks);
         }
 
-        if (inPlace && !rootBoneName.empty() && node->name == rootBoneName) {
-            glm::vec3 T, S; glm::quat R;
-            DecomposeTRS(local, T, R, S);
+        if (inPlace && !rootBoneName.empty() && node->name == rootBoneName)
+        {
+            const AnimationClip& clip = m_Clips[m_CurrentClip];
 
-            T = glm::vec3(0.0f);
-            // T.x = 0.0f; T.z = 0.0f;
+            glm::mat4 base = node->localTransform;
+            if (auto it = clip.channels.find(node->name); it != clip.channels.end())
+            {
+                base = it->second.Sample(0.0f);
+            }
+
+            glm::vec3 T, S; glm::quat R;
+            glm::vec3 T0, S0; glm::quat R0;
+
+            DecomposeTRS(local, T, R, S);
+            DecomposeTRS(base, T0, R0, S0);
+
+            T = T0;
 
             local = ComposeTRS(T, R, S);
         }

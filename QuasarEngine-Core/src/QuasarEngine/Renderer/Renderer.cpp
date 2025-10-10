@@ -617,6 +617,7 @@ namespace QuasarEngine
 			if (!mc.GetMesh().HasSkinning()) continue;
 
 			glm::mat4 model = tr.GetGlobalTransform();
+			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
 
 			if (!mc.GetMesh().IsVisible(frustum, model)) {
 				// continue;

@@ -1,11 +1,13 @@
 #include "qepch.h"
 #include "Animation.h"
 
+#include <cmath>
+
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 namespace QuasarEngine
@@ -13,46 +15,63 @@ namespace QuasarEngine
     static inline glm::vec3 ToGlm(const aiVector3D& v) { return { v.x, v.y, v.z }; }
     static inline glm::quat ToGlm(const aiQuaternion& q) { return { q.w, q.x, q.y, q.z }; }
 
-    static float scaleFactor(float t0, float t1, float t)
+    static inline float scaleFactor(float t0, float t1, float t)
     {
         const float denom = (t1 - t0);
         if (denom <= 1e-6f) return 0.0f;
         return (t - t0) / denom;
     }
 
+    template <class Key>
+    static inline int FindKeyIndex(const std::vector<Key>& keys, float t)
+    {
+        if (keys.size() <= 1) return 0;
+
+        auto it = std::upper_bound(
+            keys.begin(), keys.end(), t,
+            [](float v, const Key& k) { return v < k.time; }
+        );
+        int hi = static_cast<int>(it - keys.begin());
+        int idx = std::max(0, std::min(hi - 1, static_cast<int>(keys.size()) - 2));
+        return idx;
+    }
+
     glm::mat4 Channel::Sample(float t) const
     {
-        glm::vec3 T(0.0f);
-        if (positions.empty()) { }
-        else if (positions.size() == 1) T = positions[0].value;
-        else {
-            int idx = 0;
-            while (idx + 1 < (int)positions.size() && t >= positions[idx + 1].time) ++idx;
-            const int i1 = std::min(idx + 1, (int)positions.size() - 1);
-            const float a = scaleFactor(positions[idx].time, positions[i1].time, t);
-            T = glm::mix(positions[idx].value, positions[i1].value, a);
-        }
-
+        glm::vec3 T(0.0f), S(1.0f);
         glm::quat R(1, 0, 0, 0);
-        if (rotations.empty()) { }
-        else if (rotations.size() == 1) R = glm::normalize(rotations[0].value);
-        else {
-            int idx = 0;
-            while (idx + 1 < (int)rotations.size() && t >= rotations[idx + 1].time) ++idx;
-            const int i1 = std::min(idx + 1, (int)rotations.size() - 1);
-            const float a = scaleFactor(rotations[idx].time, rotations[i1].time, t);
-            R = glm::normalize(glm::slerp(rotations[idx].value, rotations[i1].value, a));
+
+        if (!positions.empty())
+        {
+            if (positions.size() == 1) T = positions[0].value;
+            else {
+                int i0 = FindKeyIndex(positions, t);
+                int i1 = i0 + 1;
+                float a = scaleFactor(positions[i0].time, positions[i1].time, t);
+                T = glm::mix(positions[i0].value, positions[i1].value, a);
+            }
         }
 
-        glm::vec3 S(1.0f);
-        if (scales.empty()) { }
-        else if (scales.size() == 1) S = scales[0].value;
-        else {
-            int idx = 0;
-            while (idx + 1 < (int)scales.size() && t >= scales[idx + 1].time) ++idx;
-            const int i1 = std::min(idx + 1, (int)scales.size() - 1);
-            const float a = scaleFactor(scales[idx].time, scales[i1].time, t);
-            S = glm::mix(scales[idx].value, scales[i1].value, a);
+        if (!rotations.empty())
+        {
+            if (rotations.size() == 1) R = glm::normalize(rotations[0].value);
+            else {
+                int i0 = FindKeyIndex(rotations, t);
+                int i1 = i0 + 1;
+                float a = scaleFactor(rotations[i0].time, rotations[i1].time, t);
+                R = glm::normalize(glm::slerp(rotations[i0].value, rotations[i1].value, a));
+            }
+        }
+
+        if (!scales.empty())
+        {
+            if (scales.size() == 1) S = scales[0].value;
+            else {
+                int i0 = FindKeyIndex(scales, t);
+                int i1 = i0 + 1;
+                float a = scaleFactor(scales[i0].time, scales[i1].time, t);
+                S = glm::mix(scales[i0].value, scales[i1].value, a);
+            }
         }
 
         return glm::translate(glm::mat4(1.0f), T) * glm::toMat4(R) * glm::scale(glm::mat4(1.0f), S);
@@ -66,6 +85,27 @@ namespace QuasarEngine
         return t;
     }
 
+    float AnimationClip::TimeToTicks(float seconds, bool loop) const
+    {
+        const float tps = (ticksPerSecond > 0.0f ? ticksPerSecond : 25.0f);
+        float t = seconds * tps;
+
+        if (duration > 0.0f)
+        {
+            if (loop)
+            {
+                t = std::fmod(std::fmod(t, duration) + duration, duration);
+            }
+            else
+            {
+                const float end = std::max(0.0f, duration - 1e-4f);
+                if (t < 0.0f) t = 0.0f;
+                else if (t > end) t = end;
+            }
+        }
+        return t;
+    }
+
     std::vector<AnimationClip> LoadAnimationClips(const std::string& path)
     {
         std::vector<AnimationClip> clips;
@@ -73,8 +113,11 @@ namespace QuasarEngine
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
             path,
-            aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_LimitBoneWeights
+            aiProcess_JoinIdenticalVertices |
+            aiProcess_Triangulate |
+            aiProcess_LimitBoneWeights
         );
+
         if (!scene || !scene->mRootNode || scene->mNumAnimations == 0)
             return clips;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <memory>
 
 #include <QuasarEngine/Resources/Texture2D.h>
 
@@ -17,6 +18,12 @@ namespace QuasarEngine
 		bool IsOpen() { return m_IsOpen; }
 
 		void OnImGuiRender();
+
+	private:
+		std::string BuildTextureIdFromPath(const std::filesystem::path& absOrRelPath) const;
+
+		static std::filesystem::path FindAssetsRoot(const std::filesystem::path& p);
+
 	private:
 		std::filesystem::path m_TexturePath;
 
