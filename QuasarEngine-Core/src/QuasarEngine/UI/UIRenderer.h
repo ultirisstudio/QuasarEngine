@@ -76,20 +76,18 @@ namespace QuasarEngine {
 
 		Shader* GetShader() const { return m_Shader.get(); }
 
-		Material& GetMaterial() { return m_Material; }
-
 		void FlushToEngine();
 
 	private:
-		int fbW_ = 0, fbH_ = 0;
+		int m_FbW = 0, m_FbH = 0;
 		UIRenderContext m_Context{};
 		UIBatcher m_Batcher{};
 
 		std::shared_ptr<Shader> m_Shader;
 
-		Material m_Material = Material(MaterialSpecification());
-
 		std::shared_ptr<VertexArray> m_VertexArray;
 		std::shared_ptr<VertexBuffer> m_VertexBuffer;
+
+		std::unique_ptr<UIFont> m_DefaultFont;
 	};
 }

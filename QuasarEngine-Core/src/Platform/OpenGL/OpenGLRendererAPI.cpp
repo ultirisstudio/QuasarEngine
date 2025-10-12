@@ -55,22 +55,21 @@ namespace QuasarEngine {
 		glEnable(GL_DEBUG_OUTPUT);
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 		glDebugMessageCallback(OpenGLMessageCallback, nullptr);
-
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
 #endif
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		glCullFace(GL_BACK);
-
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
 		glEnable(GL_LINE_SMOOTH);
+
+		glDisable(GL_SCISSOR_TEST);
 	}
 
 	void OpenGLRendererAPI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 	{
-		glViewport(x, y, width, height);
+		glViewport((GLint)x, (GLint)y, (GLsizei)width, (GLsizei)height);
 	}
 
 	void OpenGLRendererAPI::ClearColor(const glm::vec4& color)
@@ -91,16 +90,24 @@ namespace QuasarEngine {
 	void OpenGLRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
 	{
 		GLenum glMode = Utils::DrawModeToGLenum(drawMode);
-
 		const void* offsetBytes = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex) * sizeof(uint32_t));
 
 		if (baseVertex == 0)
-		{
 			glDrawElements(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes);
-		}
 		else
-		{
 			glDrawElementsBaseVertex(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes, baseVertex);
-		}
+	}
+
+	void OpenGLRendererAPI::EnableScissor(bool enable)
+	{
+		if (enable)
+			glEnable(GL_SCISSOR_TEST);
+		else
+			glDisable(GL_SCISSOR_TEST);
+	}
+
+	void OpenGLRendererAPI::SetScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+	{
+		glScissor((GLint)x, (GLint)y, (GLsizei)width, (GLsizei)height);
 	}
 }

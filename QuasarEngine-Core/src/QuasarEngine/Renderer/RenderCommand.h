@@ -44,6 +44,17 @@ namespace QuasarEngine
 		{
 			s_RendererAPI->DrawElements(drawMode, count, firstIndex, baseVertex);
 		}
+
+		void EnableScissor(bool enable)
+		{
+			s_RendererAPI->EnableScissor(enable);
+		}
+
+		void SetScissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+		{
+			s_RendererAPI->SetScissorRect(x, y, width, height);
+		}
+
 	private:
 		std::unique_ptr<RendererAPI> s_RendererAPI;
 	};

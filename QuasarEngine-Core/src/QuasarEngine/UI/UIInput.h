@@ -13,6 +13,9 @@ namespace QuasarEngine {
 
 	private:
 		std::weak_ptr<UIElement> m_Root;
+
+		UIElement* m_Captured = nullptr;
+
 		UIElement* dispatchPointer(UIElement* node, const UIPointerEvent& ev);
 		UIElement* dispatchKey(UIElement* node, const UIKeyEvent& ev);
 	};

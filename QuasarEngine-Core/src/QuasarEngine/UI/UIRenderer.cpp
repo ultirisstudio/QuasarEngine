@@ -1,8 +1,9 @@
 #include "qepch.h"
 
+#include "UIDebug.h"
+#include "UIStyle.h"
 #include "UIRenderer.h"
 #include "UITransform.h"
-#include "UIStyle.h"
 
 #include <QuasarEngine/Renderer/Buffer.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
@@ -11,6 +12,34 @@
 #include <QuasarEngine/Core/Logger.h>
 
 namespace QuasarEngine {
+    static bool DecodeUTF8(const char*& p, const char* end, uint32_t& cp) {
+        if (p >= end) return false;
+        unsigned char c0 = (unsigned char)*p++;
+        if (c0 < 0x80) { cp = c0; return true; }
+        if ((c0 >> 5) == 0x6) {
+            if (p >= end) return false;
+            unsigned char c1 = (unsigned char)*p++;
+            cp = ((c0 & 0x1F) << 6) | (c1 & 0x3F);
+            return true;
+        }
+        if ((c0 >> 4) == 0xE) {
+            if (p + 1 >= end) return false;
+            unsigned char c1 = (unsigned char)*p++;
+            unsigned char c2 = (unsigned char)*p++;
+            cp = ((c0 & 0x0F) << 12) | ((c1 & 0x3F) << 6) | (c2 & 0x3F);
+            return true;
+        }
+        if ((c0 >> 3) == 0x1E) {
+            if (p + 2 >= end) return false;
+            unsigned char c1 = (unsigned char)*p++;
+            unsigned char c2 = (unsigned char)*p++;
+            unsigned char c3 = (unsigned char)*p++;
+            cp = ((c0 & 0x07) << 18) | ((c1 & 0x3F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
+            return true;
+        }
+        return false;
+    }
+
     static void UnpackColor(uint32_t rgba, float& r, float& g, float& b, float& a) {
         r = ((rgba >> 0) & 0xFF) / 255.0f;
         g = ((rgba >> 8) & 0xFF) / 255.0f;
@@ -19,39 +48,40 @@ namespace QuasarEngine {
     }
 
     static UITexture MakeWhiteTexOnce() {
-        static std::string id = "";
-        if (id.empty()) {
-			std::vector<unsigned char> data = { 255, 255, 255, 255 };
+        static bool s_initialized = false;
+        if (!s_initialized) {
+            auto bytes = std::make_shared<std::vector<unsigned char>>(4, 255);
 
-			TextureSpecification spec{};
-			spec.width = 1;
-			spec.height = 1;
-			spec.format = TextureFormat::RGBA;
-			spec.internal_format = TextureFormat::RGBA;
-			spec.wrap_s = TextureWrap::CLAMP_TO_EDGE;
-			spec.wrap_t = TextureWrap::CLAMP_TO_EDGE;
-			spec.min_filter_param = TextureFilter::NEAREST;
-			spec.mag_filter_param = TextureFilter::NEAREST;
-			spec.mipmap = false;
-			spec.gamma = false;
-			spec.flip = false;
-			spec.channels = 4;
-			spec.compressed = false;
-			spec.Samples = 1;
+            TextureSpecification spec{};
+            spec.width = 1;
+            spec.height = 1;
+            spec.format = TextureFormat::RGBA;
+            spec.internal_format = TextureFormat::RGBA8;
+            spec.wrap_s = TextureWrap::CLAMP_TO_EDGE;
+            spec.wrap_t = TextureWrap::CLAMP_TO_EDGE;
+            spec.min_filter_param = TextureFilter::NEAREST;
+            spec.mag_filter_param = TextureFilter::NEAREST;
+            spec.mipmap = false;
+            spec.gamma = false;
+            spec.flip = false;
+            spec.channels = 4;
+            spec.compressed = false;
+            spec.Samples = 1;
 
-			AssetToLoad asset{};
-			asset.id = "ui:white";
-			asset.size = 4;
-			asset.type = AssetType::TEXTURE;
-			asset.spec = spec;
-            asset.data = data.data();
+            AssetToLoad asset{};
+            asset.id = "ui:white";
+            asset.type = AssetType::TEXTURE;
+            asset.spec = spec;
+            asset.size = (uint32_t)bytes->size();
+            asset.data = bytes->data();
+            asset.hold = bytes;
 
-			AssetManager::Instance().loadAsset(asset);
+            AssetManager::Instance().loadAsset(asset);
+            s_initialized = true;
         }
 
         UITexture t;
         t.id = "ui:white";
-        
         return t;
     }
 
@@ -101,18 +131,17 @@ namespace QuasarEngine {
             glm::mat4 model;
         };
 
-        Shader::ShaderStageFlags uiUniformFlags =
-            Shader::StageToBit(Shader::ShaderStageType::Vertex);
+        Shader::ShaderStageFlags uiUniformFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
         desc.globalUniforms = {
-            {"proj", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, proj), 0, 0, uiUniformFlags}
+            {"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, proj), 0, 0, uiUniformFlags}
         };
 
         desc.objectUniforms = {
-            {"model", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, model), 0, 0, uiUniformFlags}
+            {"model", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(UIUniforms, model), 1, 0, uiUniformFlags}
         };
         desc.samplers = {
-            {"uTexture", 1, 0, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+            {"uTexture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
         };
 
         desc.blendMode = Shader::BlendMode::AlphaBlend;
@@ -126,8 +155,6 @@ namespace QuasarEngine {
         desc.enableDynamicScissor = true;
 
         m_Shader = Shader::Create(desc);
-
-		m_Shader->AcquireResources(&m_Material);
 
         m_VertexArray = VertexArray::Create();
 
@@ -143,24 +170,28 @@ namespace QuasarEngine {
         std::shared_ptr<IndexBuffer> indexBuffer = IndexBuffer::Create(32 * 1024);
         m_VertexArray->SetIndexBuffer(indexBuffer);
 
-		m_Context.defaultFont = new UIFont();
-        if (!m_Context.defaultFont->LoadTTF("Assets/Fonts/Monocraft.ttf", 16.f))
-        {
+        m_DefaultFont = std::make_unique<UIFont>();
+        if (!m_DefaultFont->LoadTTF("Assets/Fonts/Monocraft.ttf", 16.f))
             Q_ERROR("Failed to load default font: Monocraft.ttf");
-        }
         else
-        {
-			Q_INFO("Default font loaded: Monocraft.ttf");
-        }
+            Q_INFO("Default font loaded: Monocraft.ttf");
+
+        m_Context.defaultFont = m_DefaultFont.get();
+
+        if (!m_Context.defaultFont)
+            UI_DIAG_ERROR("UIRenderer: defaultFont is null.");
+
+        m_Context.whiteTex = MakeWhiteTexOnce();
     }
 
     UIRenderer::~UIRenderer()
     {
-		m_Shader->ReleaseResources(&m_Material);
-
         m_VertexArray.reset();
         m_VertexBuffer.reset();
 		m_Shader.reset();
+
+        m_DefaultFont.reset();
+        m_Context.defaultFont = nullptr;
     }
 
     void UIBatcher::Clear() {
@@ -204,51 +235,61 @@ namespace QuasarEngine {
         if (!defaultFont) return;
 
         uint32_t rgba = PackRGBA8(color);
-
-        UITexture tex;
-        tex.id = defaultFont->GetTextureId();
+        UITexture tex; tex.id = defaultFont->GetTextureId();
 
         float penX = x;
         float penY = y + defaultFont->Ascent();
-
         unsigned int prev_cp = 0;
 
-        for (const unsigned char* p = reinterpret_cast<const unsigned char*>(s); *p; ++p)
-        {
-            unsigned int cp = *p;
+        const char* p = s;
+        const char* end = s + std::strlen(s);
+
+        while (p < end) {
+            uint32_t cp = 0;
+            if (!DecodeUTF8(p, end, cp)) break;
 
             if (cp == '\n') {
-                penY += (defaultFont->Ascent() - defaultFont->Descent() + defaultFont->LineGap());
+                penY += defaultFont->LineHeight();
                 penX = x;
                 prev_cp = 0;
                 continue;
             }
 
-            if (prev_cp != 0) {
-                penX += defaultFont->GetKerning(prev_cp, cp) * defaultFont->GetScale();
-            }
+            if (prev_cp) penX += defaultFont->GetKerning(prev_cp, cp) * defaultFont->GetScale();
 
             const UIFontGlyph* g = defaultFont->GetGlyph(cp);
             if (!g) {
-                prev_cp = 0;
-                continue;
+                static std::unordered_set<uint32_t> s_LoggedMissing;
+                if (!s_LoggedMissing.count(cp)) {
+                    s_LoggedMissing.insert(cp);
+                    char buf[64]; snprintf(buf, sizeof(buf), "UIFont: missing glyph U+%04X", cp);
+                    UI_DIAG_WARN(buf);
+                }
+
+                g = defaultFont->GetGlyph((uint32_t)'?');
+                if (!g) { prev_cp = 0; continue; }
             }
 
-            const float gx = penX + g->offsetX;
-            const float gy = penY - g->offsetY;
-
-            batcher->PushQuadUV(gx, gy, g->w, g->h,
-                g->u0, g->v0, g->u1, g->v1,
-                tex, rgba, nullptr);
+            if (g->w > 0.0f && g->h > 0.0f) {
+                const float gx = penX + g->offsetX;
+                const float gy = penY - g->offsetY;
+                batcher->PushQuadUV(gx, gy, g->w, g->h, g->u0, g->v0, g->u1, g->v1, tex, rgba, nullptr);
+            }
 
             penX += g->advance;
-
             prev_cp = cp;
         }
     }
 
     void UIRenderer::Begin(int fbW, int fbH) {
-        fbW_ = fbW; fbH_ = fbH;
+        if (fbW <= 0 || fbH <= 0) {
+            UI_DIAG_WARN("UIRenderer::Begin: invalid framebuffer size.");
+        }
+
+        if (m_Context.whiteTex.id.empty())
+            UI_DIAG_WARN("UIRenderer::Begin: whiteTex not initialized yet.");
+
+        m_FbW = fbW; m_FbH = fbH;
         m_Batcher.Clear();
         m_Context.batcher = &m_Batcher;
         if (m_Context.whiteTex.id.empty()) m_Context.whiteTex = MakeWhiteTexOnce();
@@ -259,10 +300,24 @@ namespace QuasarEngine {
     }
 
     void UIRenderer::FlushToEngine() {
+        if (!GetShader()) {
+            UI_DIAG_ERROR("UIRenderer: shader is null.");
+            return;
+        }
+
+        if (!m_VertexArray || !m_VertexBuffer || !m_VertexArray->GetIndexBuffer()) {
+            UI_DIAG_ERROR("UIRenderer: vertex array/buffer/index buffer is null.");
+            return;
+		}
+
         const auto& V = m_Batcher.Vertices();
         const auto& I = m_Batcher.Indices();
         const auto& C = m_Batcher.Commands();
-        if (V.empty() || I.empty() || C.empty()) return;
+
+        if (V.empty() || I.empty() || C.empty()) {
+            UI_DIAG_INFO("UIRenderer: nothing to draw (V/I/C empty).");
+            return;
+        }
 
         std::vector<float> interleaved;
         interleaved.reserve(V.size() * 8);
@@ -292,19 +347,58 @@ namespace QuasarEngine {
         m_VertexArray->GetIndexBuffer()->Upload(I.data(), ibBytes);
 
         for (const auto& cmd : C) {
-            if (AssetManager::Instance().isAssetLoaded(cmd.tex.id))
-            {
-                GetShader()->SetTexture("uTexture", AssetManager::Instance().getAsset<Texture>(cmd.tex.id).get(), Shader::SamplerType::Sampler2D);
+            if (AssetManager::Instance().isAssetLoaded(cmd.tex.id)) {
+                GetShader()->SetTexture(
+                    "uTexture",
+                    AssetManager::Instance().getAsset<Texture>(m_Context.whiteTex.id).get(),
+                    Shader::SamplerType::Sampler2D
+                );
+            }
+            else {
+                UI_DIAG_WARN(std::string("UIRenderer: texture not loaded: ") + cmd.tex.id);
+
+                GetShader()->SetTexture(
+                    "uTexture",
+                    AssetManager::Instance().getAsset<Texture>(m_Context.whiteTex.id).get(),
+                    Shader::SamplerType::Sampler2D
+                );
             }
 
-            if (!GetShader()->UpdateObject(&GetMaterial()))
-            {
+            if (!GetShader()->UpdateObject(nullptr)) {
+                UI_DIAG_ERROR("UIRenderer: UpdateObject() failed.");
                 return;
+            }
+
+            if (cmd.scissor.w > 0 && cmd.scissor.h > 0) {
+                int x = cmd.scissor.x;
+                int y = m_FbH - (cmd.scissor.y + cmd.scissor.h);
+                int w = cmd.scissor.w;
+                int h = cmd.scissor.h;
+
+                int x0 = std::max(0, x);
+                int y0 = std::max(0, y);
+                int x1 = std::min(m_FbW, x + w);
+                int y1 = std::min(m_FbH, y + h);
+                int cw = std::max(0, x1 - x0);
+                int ch = std::max(0, y1 - y0);
+
+                if (cw > 0 && ch > 0) {
+                    RenderCommand::Instance().EnableScissor(true);
+                    RenderCommand::Instance().SetScissor((uint32_t)x0, (uint32_t)y0, (uint32_t)cw, (uint32_t)ch);
+                }
+                else {
+                    RenderCommand::Instance().EnableScissor(false);
+                }
+            }
+            else {
+                RenderCommand::Instance().EnableScissor(false);
             }
 
             RenderCommand::Instance().DrawElements(DrawMode::TRIANGLES, cmd.idxCount, cmd.idxOffset);
         }
 
-		m_VertexArray->Unbind();
+        RenderCommand::Instance().EnableScissor(false);
+
+        m_VertexArray->Unbind();
     }
 }

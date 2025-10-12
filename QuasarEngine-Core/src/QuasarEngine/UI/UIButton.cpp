@@ -1,5 +1,6 @@
 #include "qepch.h"
 
+#include "UIDebug.h"
 #include "UIButton.h"
 #include "UIRenderer.h"
 
@@ -18,10 +19,22 @@ namespace QuasarEngine {
     }
 
     void UIButton::Measure(UILayoutContext& ctx) {
-        float textW = 8.f * (float)label.size();
-        float textH = 18.f;
-        if (Transform().size.x <= 0) Transform().size.x = textW + m_Style.padding * 2.f;
-        if (Transform().size.y <= 0) Transform().size.y = textH + m_Style.padding * 2.f;
+        float textW = 0.f, textH = 0.f;
+
+        if (ctx.font) {
+            textW = ctx.font->MeasureTextWidthUTF8(label);
+            textH = ctx.font->Ascent() - ctx.font->Descent();
+        }
+        else {
+            UI_DIAG_WARN("UIButton: no font in layout context; using fallback metrics.");
+
+            textW = 8.f * (float)label.size();
+            textH = 18.f;
+        }
+
+        const float pad = m_Style.padding;
+        if (Transform().size.x <= 0) Transform().size.x = textW + pad * 2.f;
+        if (Transform().size.y <= 0) Transform().size.y = textH + pad * 2.f;
     }
 
     void UIButton::BuildDraw(UIRenderContext& ctx) {

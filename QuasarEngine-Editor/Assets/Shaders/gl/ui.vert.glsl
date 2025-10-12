@@ -8,7 +8,7 @@ layout(location = 0) out vec2 vUV;
 layout(location = 1) out vec4 vColor;
 
 layout(std140, binding = 0) uniform global_uniform_object {
-	mat4 uProj;
+	mat4 projection;
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object {
@@ -19,5 +19,5 @@ void main()
 {
     vUV    = inTexCoord;
     vColor = inColor;
-    gl_Position = global_ubo.uProj * vec4(inPosition, 0.0, 1.0);
+    gl_Position = global_ubo.projection * vec4(inPosition, 0.0, 1.0);
 }

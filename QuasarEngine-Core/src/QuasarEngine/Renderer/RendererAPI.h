@@ -29,6 +29,9 @@ namespace QuasarEngine {
 		virtual void DrawArrays(DrawMode drawMode, uint32_t size) = 0;
 		virtual void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex) = 0;
 
+		virtual void EnableScissor(bool enable) = 0;
+		virtual void SetScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
+
 		static API GetAPI() { return s_API; }
 		static std::unique_ptr<RendererAPI> Create();
 	private:

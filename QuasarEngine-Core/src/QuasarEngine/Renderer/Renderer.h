@@ -51,7 +51,7 @@ namespace QuasarEngine
 		void Render(BaseCamera& camera);
 		void RenderDebug(BaseCamera& camera);
 		void RenderSkybox(BaseCamera& camera);
-		void RenderUI(BaseCamera& camera);
+		void RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi);
 		void EndScene();
 
 		Scene* GetScene();

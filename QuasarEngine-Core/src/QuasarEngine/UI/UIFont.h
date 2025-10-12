@@ -32,6 +32,9 @@ namespace QuasarEngine {
         float LineGap() const;
         float GetScale() const;
 
+        float LineHeight() const;
+        float MeasureTextWidthUTF8(const std::string& utf8) const;
+
         const UIFontGlyph* GetGlyph(uint32_t codepoint) const;
         float GetKerning(uint32_t prev, uint32_t curr) const;
 

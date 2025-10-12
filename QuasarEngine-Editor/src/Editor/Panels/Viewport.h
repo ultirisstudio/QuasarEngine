@@ -37,14 +37,16 @@ namespace QuasarEngine
 		bool OnMouseButtonReleased(MouseButtonReleasedEvent& e);
 		bool OnMouseMoved(MouseMovedEvent& e);
 
+		glm::vec2 ToUi(const ImVec2& imguiPos);
+
 	private:
 		std::shared_ptr<Framebuffer> m_ViewportFrameBuffer;
 
-		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
+		glm::vec2 m_ViewportSize;
 		glm::vec2 m_ViewportBounds[2];
-		ImVec2    m_ViewportPanelSize = { 0, 0 };
+		ImVec2    m_ViewportPanelSize;
 
-		glm::vec4 m_ClearColor = { 0.2f, 0.2f, 0.2f, 1.0f };
+		glm::vec4 m_ClearColor;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;

@@ -26,7 +26,7 @@ namespace QuasarEngine {
 		UIRenderer& Renderer() { return m_Renderer; }
 
 	private:
-		void MeasureLayout();
+		void MeasureLayout(const UIFBInfo& fb);
 		void Arrange(const UIFBInfo& fb);
 
 		std::shared_ptr<UIElement> m_Root;

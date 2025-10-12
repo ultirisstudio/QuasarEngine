@@ -829,9 +829,9 @@ namespace QuasarEngine
 		m_SceneData.m_Skybox->Unbind();
 	}
 
-	void Renderer::RenderUI(BaseCamera& camera)
+	void Renderer::RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi)
 	{
-		UIFBInfo fb{ 1920.0f, 1080.0f, 1.0 };
+		UIFBInfo fb{ fbW, fbH, dpi };
 		m_SceneData.m_UI->Render(camera, fb);
 	}
 

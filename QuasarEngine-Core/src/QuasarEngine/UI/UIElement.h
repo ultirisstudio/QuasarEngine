@@ -7,6 +7,7 @@
 
 #include "UITransform.h"
 #include "UIStyle.h"
+#include "UIFont.h"
 
 namespace QuasarEngine {
 	struct UIPointerEvent {
@@ -26,6 +27,7 @@ namespace QuasarEngine {
 
 	struct UILayoutContext {
 		float dpiScale = 1.f;
+		UIFont* font = nullptr;
 	};
 
 	class UIElement {

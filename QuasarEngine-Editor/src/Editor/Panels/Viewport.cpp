@@ -4,11 +4,13 @@
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
 
+#include <QuasarEngine/UI/UIDebugOverlay.h>
+
 #include <QuasarEngine/Core/Input.h>
 
 namespace QuasarEngine
 {
-	Viewport::Viewport()
+	Viewport::Viewport() : m_ViewportBounds{ {0,0}, {0,0} }, m_ViewportSize({ 0.0f, 0.0f }), m_ViewportPanelSize({ 0.0f, 0.0f }), m_ClearColor({ 0.2f, 0.2f, 0.2f, 1.0f })
 	{
 		FramebufferSpecification spec;
 		spec.Width = Application::Get().GetWindow().GetWidth();
@@ -29,6 +31,9 @@ namespace QuasarEngine
 
 		m_ViewportFrameBuffer->Bind();
 
+		const auto& spec = m_ViewportFrameBuffer->GetSpecification();
+		RenderCommand::Instance().SetViewport(0, 0, spec.Width, spec.Height);
+
 		RenderCommand::Instance().ClearColor(m_ClearColor);
 		RenderCommand::Instance().Clear();
 
@@ -37,9 +42,20 @@ namespace QuasarEngine
 			Renderer::Instance().BeginScene(scene);
 
 			Camera& camera = scene.GetPrimaryCamera();
+			const auto& spec = m_ViewportFrameBuffer->GetSpecification();
+			const int fbW = (int)spec.Width;
+			const int fbH = (int)spec.Height;
+
+			float dpiScale = 1.0f;
+
+			if (ImGui::GetMainViewport())
+				dpiScale = ImGui::GetMainViewport()->DpiScale;
+			else
+				dpiScale = ImGui::GetIO().DisplayFramebufferScale.x;
+
 			Renderer::Instance().RenderSkybox(camera);
 			Renderer::Instance().Render(camera);
-			//Renderer::RenderUI(camera);
+			Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
 
 			Renderer::Instance().EndScene();
 		}
@@ -100,6 +116,8 @@ namespace QuasarEngine
 			}
 		}
 
+		QuasarEngine::UIDebugOverlay::Instance().DrawImGui(vpMin);
+
 		ImGui::End();
 		ImGui::PopStyleVar();
 	}
@@ -114,52 +132,71 @@ namespace QuasarEngine
 
 	bool Viewport::OnMouseButtonPressed(MouseButtonPressedEvent& e)
 	{
-		const ImVec2 mouseImGui = ImGui::GetIO().MousePos;
-
-		if (mouseImGui.x < m_ViewportBounds[0].x || mouseImGui.x > m_ViewportBounds[1].x ||
-			mouseImGui.y < m_ViewportBounds[0].y || mouseImGui.y > m_ViewportBounds[1].y) {
-			return false;
-		}
-
-		glm::vec2 local = {
-			mouseImGui.x - m_ViewportBounds[0].x,
-			mouseImGui.y - m_ViewportBounds[0].y
-		};
+		const ImVec2 imguiPos = ImGui::GetIO().MousePos;
+		const glm::vec2 uiPos = ToUi(imguiPos);
 
 		const auto fbW = (float)m_ViewportFrameBuffer->GetSpecification().Width;
 		const auto fbH = (float)m_ViewportFrameBuffer->GetSpecification().Height;
-		const float sx = fbW / m_ViewportPanelSize.x;
-		const float sy = fbH / m_ViewportPanelSize.y;
-		glm::vec2 uiPos = { local.x * sx, local.y * sy };
 
-		UIPointerEvent ev;
+		if (uiPos.x < 0.0f || uiPos.y < 0.0f || uiPos.x >= fbW || uiPos.y >= fbH)
+			return false;
+
+		UIPointerEvent ev{};
 		ev.x = uiPos.x;
 		ev.y = uiPos.y;
 		ev.down = true;
 		ev.button = e.GetMouseButton();
 
 		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
-
-		//std::cout << "Mouse button pressed: " << e.GetMouseButton() << " at (" << ev.x << ", " << ev.y << ")\n";
-
-		return true;
+		return false;
 	}
-
 
 	bool Viewport::OnMouseButtonReleased(MouseButtonReleasedEvent& e)
 	{
-		glm::vec2 mousePos = Input::GetMousePosition() - m_ViewportBounds[0];
-		UIPointerEvent ev; ev.x = mousePos.x; ev.y = mousePos.y; ev.up = true; ev.button = e.GetMouseButton();
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		const ImVec2 imguiPos = ImGui::GetIO().MousePos;
+		const glm::vec2 uiPos = ToUi(imguiPos);
 
+		const auto fbW = (float)m_ViewportFrameBuffer->GetSpecification().Width;
+		const auto fbH = (float)m_ViewportFrameBuffer->GetSpecification().Height;
+
+		if (uiPos.x < 0.0f || uiPos.y < 0.0f || uiPos.x >= fbW || uiPos.y >= fbH)
+			return false;
+
+		UIPointerEvent ev{};
+		ev.x = uiPos.x;
+		ev.y = uiPos.y;
+		ev.up = true;
+		ev.button = e.GetMouseButton();
+
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
 	}
 
-	bool Viewport::OnMouseMoved(MouseMovedEvent& e)
+	bool Viewport::OnMouseMoved(MouseMovedEvent& /*e*/)
 	{
-		UIPointerEvent ev; ev.x = e.GetX(); ev.y = e.GetY(); ev.move = true;
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		const ImVec2 imguiPos = ImGui::GetIO().MousePos;
+		const glm::vec2 uiPos = ToUi(imguiPos);
 
+		const auto fbW = (float)m_ViewportFrameBuffer->GetSpecification().Width;
+		const auto fbH = (float)m_ViewportFrameBuffer->GetSpecification().Height;
+
+		if (uiPos.x < 0.0f || uiPos.y < 0.0f || uiPos.x >= fbW || uiPos.y >= fbH)
+			return false;
+
+		UIPointerEvent ev{};
+		ev.x = uiPos.x;
+		ev.y = uiPos.y;
+		ev.move = true;
+
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
+	}
+
+	glm::vec2 Viewport::ToUi(const ImVec2& imguiPos)
+	{
+		const float sx = (float)m_ViewportFrameBuffer->GetSpecification().Width / m_ViewportPanelSize.x;
+		const float sy = (float)m_ViewportFrameBuffer->GetSpecification().Height / m_ViewportPanelSize.y;
+		return { (imguiPos.x - m_ViewportBounds[0].x) * sx,
+				 (imguiPos.y - m_ViewportBounds[0].y) * sy };
 	}
 }

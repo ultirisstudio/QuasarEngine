@@ -16,6 +16,34 @@
 
 namespace QuasarEngine
 {
+    static bool DecodeUTF8(const char*& p, const char* end, uint32_t& cp) {
+        if (p >= end) return false;
+        unsigned char c0 = (unsigned char)*p++;
+        if (c0 < 0x80) { cp = c0; return true; }
+        if ((c0 >> 5) == 0x6) {
+            if (p >= end) return false;
+            unsigned char c1 = (unsigned char)*p++;
+            cp = ((c0 & 0x1F) << 6) | (c1 & 0x3F);
+            return true;
+        }
+        if ((c0 >> 4) == 0xE) {
+            if (p + 1 >= end) return false;
+            unsigned char c1 = (unsigned char)*p++;
+            unsigned char c2 = (unsigned char)*p++;
+            cp = ((c0 & 0x0F) << 12) | ((c1 & 0x3F) << 6) | (c2 & 0x3F);
+            return true;
+        }
+        if ((c0 >> 3) == 0x1E) {
+            if (p + 2 >= end) return false;
+            unsigned char c1 = (unsigned char)*p++;
+            unsigned char c2 = (unsigned char)*p++;
+            unsigned char c3 = (unsigned char)*p++;
+            cp = ((c0 & 0x07) << 18) | ((c1 & 0x3F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
+            return true;
+        }
+        return false;
+    }
+
     struct UIFont::Impl {
         std::string                 id;
         std::vector<unsigned char>  ttf;
@@ -32,41 +60,47 @@ namespace QuasarEngine
             return true;
         }
 
-        void PackGlyph(uint32_t cp, std::vector<unsigned char>& atlas,
-            int& penX, int& penY, int& rowH)
+        void PackGlyph(uint32_t cp, std::vector<unsigned char>& atlas, int& penX, int& penY, int& rowH)
         {
-            int w, h, xoff, yoff;
+            int w = 0, h = 0, xoff = 0, yoff = 0;
             unsigned char* bmp = stbtt_GetCodepointBitmap(&info, scale, scale, (int)cp, &w, &h, &xoff, &yoff);
-            if (!bmp) return;
 
-            if (penX + w >= atlasW) { penX = 0; penY += rowH; rowH = 0; }
-            if (penY + h >= atlasH) { stbtt_FreeBitmap(bmp, nullptr); return; }
-
-            for (int j = 0; j < h; ++j) {
-                const int dstRow = (atlasH - 1) - (penY + j);
-                std::memcpy(&atlas[dstRow * atlasW + penX], &bmp[j * w], w);
-            }
-
-            int adv, lsb;
+            int adv = 0, lsb = 0;
             stbtt_GetCodepointHMetrics(&info, (int)cp, &adv, &lsb);
 
             UIFontGlyph g{};
             g.advance = adv * scale;
-            g.offsetX = static_cast<float>(xoff);
-            g.offsetY = -static_cast<float>(yoff);
-            g.w = static_cast<float>(w);
-            g.h = static_cast<float>(h);
-            g.u0 = float(penX) / float(atlasW);
-            g.v0 = float(penY) / float(atlasH);
-            g.u1 = float(penX + w) / float(atlasW);
-            g.v1 = float(penY + h) / float(atlasH);
+            g.offsetX = (float)xoff;
+            g.offsetY = -(float)yoff;
+            g.w = (float)w;
+            g.h = (float)h;
+
+            if (bmp && w > 0 && h > 0) {
+                if (penX + w >= atlasW) { penX = 0; penY += rowH; rowH = 0; }
+                if (penY + h < atlasH) {
+                    for (int j = 0; j < h; ++j) {
+                        const int dstRow = (atlasH - 1) - (penY + j);
+                        std::memcpy(&atlas[dstRow * atlasW + penX], &bmp[j * w], w);
+                    }
+                    g.u0 = float(penX) / float(atlasW);
+                    g.v0 = float(penY) / float(atlasH);
+                    g.u1 = float(penX + w) / float(atlasW);
+                    g.v1 = float(penY + h) / float(atlasH);
+
+                    penX += w + 1;
+                    rowH = std::max(rowH, h);
+                }
+                else {
+                    g.u0 = g.v0 = g.u1 = g.v1 = 0.0f;
+                }
+            }
+            else {
+                g.u0 = g.v0 = g.u1 = g.v1 = 0.0f;
+            }
+
+            if (bmp) stbtt_FreeBitmap(bmp, nullptr);
 
             glyphs[cp] = g;
-
-            penX += w + 1;
-            rowH = std::max(rowH, h);
-
-            stbtt_FreeBitmap(bmp, nullptr);
         }
     };
 
@@ -137,6 +171,33 @@ namespace QuasarEngine
     float UIFont::Descent() const { return m_Impl->descent; }
     float UIFont::LineGap() const { return m_Impl->lineGap; }
     float UIFont::GetScale() const { return m_Impl->scale; }
+
+    float UIFont::LineHeight() const
+    {
+        return (m_Impl->ascent - m_Impl->descent + m_Impl->lineGap);
+    }
+
+    float UIFont::MeasureTextWidthUTF8(const std::string& utf8) const
+    {
+        const char* p = utf8.data();
+        const char* end = utf8.data() + utf8.size();
+
+        float penX = 0.f;
+        uint32_t prev = 0;
+
+        while (p < end) {
+            uint32_t cp = 0;
+            if (!DecodeUTF8(p, end, cp)) break;
+            if (cp == '\n') {
+                break;
+            }
+            if (prev) penX += GetKerning(prev, cp) * GetScale();
+            if (auto* g = GetGlyph(cp)) penX += g->advance;
+            else if (auto* s = GetGlyph(' ')) penX += s->advance;
+            prev = cp;
+        }
+        return penX;
+    }
 
     const UIFontGlyph* UIFont::GetGlyph(uint32_t codepoint) const {
         auto it = m_Impl->glyphs.find(codepoint);

@@ -32,7 +32,6 @@ namespace QuasarEngine
 
     private:
         uint32_t m_ID;
-        FramebufferSpecification m_Specification;
 
         std::vector<FramebufferTextureSpecification> m_ColorAttachmentSpecifications;
         FramebufferTextureSpecification m_DepthAttachmentSpecification;
