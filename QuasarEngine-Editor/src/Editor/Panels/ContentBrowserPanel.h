@@ -38,7 +38,5 @@ namespace QuasarEngine
 		std::shared_ptr<CodeEditor> m_CodeEditor;
 
 		AssetImporter* m_AssetImporter;
-
-		std::future<std::shared_ptr<Texture2D>> text;
 	};
 }

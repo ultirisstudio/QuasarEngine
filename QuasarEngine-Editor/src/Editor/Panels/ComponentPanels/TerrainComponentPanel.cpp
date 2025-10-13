@@ -36,7 +36,6 @@ namespace QuasarEngine
             ImGui::Text("Heightmap:");
             std::weak_ptr<Texture2D> texture;
 
-            // Affiche une vignette : si pas d’id -> placeholder
             if (tc.GetHeightMapId().empty())
             {
                 texture = AssetManager::Instance().getAsset<Texture2D>("no_texture.png");

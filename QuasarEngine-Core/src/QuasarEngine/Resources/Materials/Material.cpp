@@ -152,13 +152,14 @@ namespace QuasarEngine
 
 	bool Material::HasTexture(TextureType type)
 	{
-		switch (type)
-		{
-		case Albedo:   return m_Specification.AlbedoTexture.has_value() || (m_Textures.find(type) != m_Textures.end());
-		case Normal:   return m_Specification.NormalTexture.has_value();
-		case Metallic: return m_Specification.MetallicTexture.has_value();
-		case Roughness:return m_Specification.RoughnessTexture.has_value();
-		case AO:       return m_Specification.AOTexture.has_value();
+		auto hasInMap = [this](TextureType t) { return m_Textures.find(t) != m_Textures.end(); };
+
+		switch (type) {
+		case Albedo:    return m_Specification.AlbedoTexture.has_value() || hasInMap(Albedo);
+		case Normal:    return m_Specification.NormalTexture.has_value() || hasInMap(Normal);
+		case Metallic:  return m_Specification.MetallicTexture.has_value() || hasInMap(Metallic);
+		case Roughness: return m_Specification.RoughnessTexture.has_value() || hasInMap(Roughness);
+		case AO:        return m_Specification.AOTexture.has_value() || hasInMap(AO);
 		}
 		return false;
 	}

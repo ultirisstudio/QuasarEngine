@@ -15,26 +15,6 @@
 
 namespace QuasarEngine
 {
-    /*std::filesystem::path WeakCanonical(const std::filesystem::path& p)
-    {
-        std::filesystem::path out;
-        try { out = std::filesystem::weakly_canonical(p); }
-        catch (...) { out = std::filesystem::absolute(p); }
-        return out.lexically_normal();
-    }
-
-    std::string BuildAssetIdFromAbs(const std::filesystem::path& absPath,
-        const std::filesystem::path& assetsRoot)
-    {
-        std::error_code ec{};
-        if (!assetsRoot.empty()) {
-            auto rel = std::filesystem::relative(absPath, assetsRoot, ec);
-            if (!ec && !rel.empty())
-                return "Assets/" + rel.generic_string();
-        }
-        return "Assets/" + absPath.filename().generic_string();
-    }*/
-
     ContentBrowserPanel::ContentBrowserPanel(const std::string& projectPath, AssetImporter* importer)
         : m_BaseDirectory((std::filesystem::path(projectPath) / "Assets").lexically_normal())
         , m_CurrentDirectory(m_BaseDirectory)
@@ -169,7 +149,7 @@ namespace QuasarEngine
 
         static bool listView = false;
         ImGui::SameLine();
-        if (ImGui::Button(listView ? "<-" : "->")) // FontAwesome icons (si dispo) // ICON_FA_TH_LARGE : ICON_FA_LIST
+        if (ImGui::Button(listView ? "<-" : "->"))
         {
             listView = !listView;
         }
@@ -272,7 +252,6 @@ namespace QuasarEngine
                         asset.spec = spec;
 
                         AssetManager::Instance().loadAsset(asset);
-                        // AssetManager::Instance().LoadTextureAsync(asset);
                     }
 
                     if (AssetManager::Instance().isAssetLoaded(id))
