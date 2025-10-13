@@ -717,7 +717,7 @@ namespace QuasarEngine
 			ImGui::EndMenuBar();
 		}
 
-		ImGui::Begin("Texture Test");
+		/*ImGui::Begin("Texture Test");
 
 		std::string textureName = Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId();
 		if (AssetManager::Instance().isAssetLoaded(textureName))
@@ -726,7 +726,7 @@ namespace QuasarEngine
 			ImGui::Image((ImTextureID)(intptr_t)tex->GetHandle(), ImVec2(800, 800), ImVec2(0, 1), ImVec2(1, 0));
 		}
 
-		ImGui::End();
+		ImGui::End();*/
 
 		//m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());

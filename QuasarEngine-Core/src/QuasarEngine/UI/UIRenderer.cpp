@@ -348,13 +348,13 @@ namespace QuasarEngine {
         m_VertexArray->GetIndexBuffer()->Upload(I.data(), ibBytes);
 
         for (const auto& cmd : C) {
-            /*const std::string& wantedId = (!cmd.tex.id.empty() && AssetManager::Instance().isAssetLoaded(cmd.tex.id))
+            const std::string& wantedId = (!cmd.tex.id.empty() && AssetManager::Instance().isAssetLoaded(cmd.tex.id))
                 ? cmd.tex.id
-                : m_Context.whiteTex.id;*/
-
-            const std::string& wantedId = (!Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId().empty() && AssetManager::Instance().isAssetLoaded(Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId()))
-                ? Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId()
                 : m_Context.whiteTex.id;
+
+            /*const std::string& wantedId = (!Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId().empty() && AssetManager::Instance().isAssetLoaded(Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId()))
+                ? Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId()
+                : m_Context.whiteTex.id;*/
 
             auto tex = AssetManager::Instance().getAsset<Texture2D>(wantedId);
             if (!tex) {

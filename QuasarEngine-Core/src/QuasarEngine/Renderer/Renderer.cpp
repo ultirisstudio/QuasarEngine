@@ -143,7 +143,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_Shader = Shader::Create(desc);
 
-		Shader::ShaderDescription phyDebDesc;
+		/*Shader::ShaderDescription phyDebDesc;
 
 		std::string phyDebVertExt;
 		std::string phyDebFragExt;
@@ -216,9 +216,9 @@ namespace QuasarEngine
 		phyDebDesc.enableDynamicScissor = true;
 		phyDebDesc.enableDynamicLineWidth = false;
 
-		m_SceneData.m_PhysicDebugShader = Shader::Create(phyDebDesc);
+		m_SceneData.m_PhysicDebugShader = Shader::Create(phyDebDesc);*/
 
-		Shader::ShaderDescription terrainDesc;
+		/*Shader::ShaderDescription terrainDesc;
 
 		terrainDesc.cullMode = Shader::CullMode::Back;
 
@@ -296,9 +296,9 @@ namespace QuasarEngine
 		terrainDesc.enableDynamicViewport = true;
 		terrainDesc.enableDynamicScissor = true;
 
-		m_SceneData.m_TerrainShader = Shader::Create(terrainDesc);
+		m_SceneData.m_TerrainShader = Shader::Create(terrainDesc);*/
 
-		Shader::ShaderDescription skinnedDesc;
+		/*Shader::ShaderDescription skinnedDesc;
 
 		std::string sVertPath = basePath + "basic_anim" + vertExt;
 		std::string sFragPath = basePath + "basic_anim" + fragExt;
@@ -396,10 +396,10 @@ namespace QuasarEngine
 		skinnedDesc.enableDynamicViewport = true;
 		skinnedDesc.enableDynamicScissor = true;
 
-		m_SceneData.m_SkinnedShader = Shader::Create(skinnedDesc);
+		m_SceneData.m_SkinnedShader = Shader::Create(skinnedDesc);*/
 
-		for (int i = 0; i < QE_MAX_BONES; ++i)
-			m_SceneData.m_IdentityBones[i] = glm::mat4(1.0f);
+		//for (int i = 0; i < QE_MAX_BONES; ++i)
+			//m_SceneData.m_IdentityBones[i] = glm::mat4(1.0f);
 
 		m_SceneData.m_Skybox = BasicSkybox::CreateBasicSkybox();
 
@@ -418,7 +418,7 @@ namespace QuasarEngine
 		m_SceneData.m_PointsBuffer.fill(PointLight());
 		m_SceneData.m_DirectionalsBuffer.fill(DirectionalLight());
 
-		m_SceneData.m_UI = std::make_unique<UISystem>();
+		/*m_SceneData.m_UI = std::make_unique<UISystem>();
 
 		auto root = std::make_shared<UIContainer>("Root");
 		root->layout = UILayoutType::Vertical;
@@ -441,15 +441,15 @@ namespace QuasarEngine
 		btn->Transform().size = { 100.f, 50.f };
 		root->AddChild(btn);
 
-		m_SceneData.m_UI->SetRoot(root);
+		m_SceneData.m_UI->SetRoot(root);*/
 	}
 
 	void Renderer::Shutdown()
 	{
 		m_SceneData.m_Skybox.reset();
 		m_SceneData.m_Shader.reset();
-		m_SceneData.m_PhysicDebugShader.reset();
-		m_SceneData.m_UI.reset();
+		//m_SceneData.m_PhysicDebugShader.reset();
+		//m_SceneData.m_UI.reset();
 		m_SceneData.m_ScriptSystem.reset();
 	}
 
@@ -586,7 +586,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_Shader->Unuse();
 
-		m_SceneData.m_SkinnedShader->Use();
+		/*m_SceneData.m_SkinnedShader->Use();
 
 		m_SceneData.m_SkinnedShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
 		m_SceneData.m_SkinnedShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
@@ -679,9 +679,9 @@ namespace QuasarEngine
 			m_SceneData.m_SkinnedShader->Reset();
 		}
 
-		m_SceneData.m_SkinnedShader->Unuse();
+		m_SceneData.m_SkinnedShader->Unuse();*/
 
-		m_SceneData.m_TerrainShader->Use();
+		/*m_SceneData.m_TerrainShader->Use();
 
 		m_SceneData.m_TerrainShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
 		m_SceneData.m_TerrainShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
@@ -746,14 +746,14 @@ namespace QuasarEngine
 			m_SceneData.m_TerrainShader->Reset();
 		}
 
-		m_SceneData.m_TerrainShader->Unuse();
+		m_SceneData.m_TerrainShader->Unuse();*/
 
 		//std::cout << entityDraw << "/" << totalEntity << std::endl;
 	}
 
 	void Renderer::RenderDebug(BaseCamera& camera)
 	{
-		if (PhysicEngine::Instance().GetDebugVertexArray())
+		/*if (PhysicEngine::Instance().GetDebugVertexArray())
 		{
 			glm::mat4 viewMatrix = camera.getViewMatrix();
 			glm::mat4 projectionMatrix = camera.getProjectionMatrix();
@@ -774,7 +774,7 @@ namespace QuasarEngine
 			RenderCommand::Instance().DrawArrays(DrawMode::LINES, PhysicEngine::Instance().GetDebugVertexArray()->GetVertexBuffers()[0]->GetSize() / sizeof(float) / 6); //vertices.size() / 6
 
 			m_SceneData.m_PhysicDebugShader->Unuse();
-		}
+		}*/
 	}
 
 	void Renderer::RenderSkybox(BaseCamera& camera)
@@ -800,8 +800,8 @@ namespace QuasarEngine
 
 	void Renderer::RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi)
 	{
-		UIFBInfo fb{ fbW, fbH, dpi };
-		m_SceneData.m_UI->Render(camera, fb);
+		//UIFBInfo fb{ fbW, fbH, dpi };
+		//m_SceneData.m_UI->Render(camera, fb);
 	}
 
 	void Renderer::EndScene()
