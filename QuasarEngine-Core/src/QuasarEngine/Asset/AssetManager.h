@@ -39,6 +39,24 @@ namespace QuasarEngine
 		}
 	};
 
+	inline std::filesystem::path WeakCanonical(const std::filesystem::path& p) {
+		namespace fs = std::filesystem;
+		try { return fs::weakly_canonical(p).lexically_normal(); }
+		catch (...) { return fs::absolute(p).lexically_normal(); }
+	}
+
+	inline std::string BuildAssetIdFromAbs(const std::filesystem::path& absPath,
+		const std::filesystem::path& assetsRoot) {
+		namespace fs = std::filesystem;
+		std::error_code ec{};
+		if (!assetsRoot.empty()) {
+			auto rel = fs::relative(absPath, assetsRoot, ec);
+			if (!ec && !rel.empty())
+				return std::string("Assets/") + rel.generic_string();
+		}
+		return std::string("Assets/") + absPath.filename().generic_string();
+	}
+
 	class AssetManager : public Singleton<AssetManager>
 	{
 	private:

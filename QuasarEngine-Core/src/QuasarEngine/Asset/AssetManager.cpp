@@ -148,6 +148,8 @@ namespace QuasarEngine
 				if (isAssetLoaded(asset.id))
 					break;
 
+				std::cout << "[AssetManager] Loading TEXTURE '" << asset.id << "'...\n";
+
 				TextureSpecification spec;
 				if (std::holds_alternative<TextureSpecification>(asset.spec))
 					spec = std::get<TextureSpecification>(asset.spec);

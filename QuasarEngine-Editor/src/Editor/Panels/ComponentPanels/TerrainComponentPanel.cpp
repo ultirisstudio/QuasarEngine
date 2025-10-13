@@ -22,7 +22,6 @@ namespace QuasarEngine
     void TerrainComponentPanel::Render(Entity entity)
     {
         if (!entity.HasComponent<TerrainComponent>()) return;
-
         auto& tc = entity.GetComponent<TerrainComponent>();
 
         if (ImGui::TreeNodeEx("Terrain", ImGuiTreeNodeFlags_DefaultOpen, "Terrain"))
@@ -37,47 +36,57 @@ namespace QuasarEngine
             ImGui::Text("Heightmap:");
             std::weak_ptr<Texture2D> texture;
 
-            if (tc.GetHeightMapPath().empty())
+            // Affiche une vignette : si pas d’id -> placeholder
+            if (tc.GetHeightMapId().empty())
             {
                 texture = AssetManager::Instance().getAsset<Texture2D>("no_texture.png");
             }
             else
             {
-                if (AssetManager::Instance().isAssetLoaded(tc.GetHeightMapPath()))
+                if (AssetManager::Instance().isAssetLoaded(tc.GetHeightMapId()))
                 {
-                    texture = AssetManager::Instance().getAsset<Texture2D>(tc.GetHeightMapPath());
+                    texture = AssetManager::Instance().getAsset<Texture2D>(tc.GetHeightMapId());
                 }
                 else
                 {
-                    AssetToLoad tcAsset;
-                    tcAsset.id = tc.GetHeightMapPath();
-                    tcAsset.type = AssetType::TEXTURE;
-                    AssetManager::Instance().loadAsset(tcAsset);
+                    AssetToLoad asset;
+                    asset.id = tc.GetHeightMapId();
+                    asset.path = tc.GetHeightMapPath();
+                    asset.type = AssetType::TEXTURE;
+                    AssetManager::Instance().loadAsset(asset);
                 }
             }
 
-            bool changed = false;
+            bool meshChanged = false;
+            bool uniformsChanged = false;
 
             if (auto tex = texture.lock())
             {
                 ImGui::BeginGroup();
-                ImGui::ImageButton("##height_map_texture", (ImTextureID)tex->GetHandle(), { 64.0f, 64.0f }, { 0,1 }, { 1,0 });
+                ImGui::ImageButton("##height_map_texture",
+                    (ImTextureID)tex->GetHandle(), { 64.0f, 64.0f }, { 0,1 }, { 1,0 });
+
                 if (ImGui::BeginDragDropTarget())
                 {
-                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+                    if (const ImGuiPayload* pPath = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
                     {
-                        const wchar_t* path = (const wchar_t*)payload->Data;
-                        std::filesystem::path filesys = path;
-                        std::string file = filesys.string();
-                        tc.SetHeightMap(file);
-                        changed = true;
+                        const wchar_t* wpath = (const wchar_t*)pPath->Data;
+
+                        std::filesystem::path abs = WeakCanonical(wpath);
+                        std::string id = BuildAssetIdFromAbs(abs, AssetManager::Instance().getAssetPath());
+
+                        tc.SetHeightMap(id, abs.generic_string());
+                        meshChanged = true;
                     }
                     ImGui::EndDragDropTarget();
                 }
-                if (ImGui::IsItemHovered() && !tc.GetHeightMapPath().empty())
+
+                if (ImGui::IsItemHovered() && !tc.GetHeightMapId().empty())
                 {
                     ImGui::BeginTooltip();
-                    ImGui::TextUnformatted(tc.GetHeightMapPath().c_str());
+                    ImGui::TextUnformatted(tc.GetHeightMapId().c_str());
+                    if (!tc.GetHeightMapPath().empty())
+                        ImGui::TextDisabled("%s", tc.GetHeightMapPath().c_str());
                     ImGui::Separator();
                     const auto& spec = tex->GetSpecification();
                     ImGui::Text("Size: %d x %d", spec.width, spec.height);
@@ -87,13 +96,15 @@ namespace QuasarEngine
                 ImGui::SameLine();
 
                 ImGui::BeginGroup();
-                if (!tc.GetHeightMapPath().empty())
+                if (!tc.GetHeightMapId().empty())
                 {
-                    ImGui::TextWrapped("%s", tc.GetHeightMapPath().c_str());
+                    ImGui::TextWrapped("%s", tc.GetHeightMapId().c_str());
+                    if (!tc.GetHeightMapPath().empty())
+                        ImGui::TextDisabled("%s", tc.GetHeightMapPath().c_str());
                     if (ImGui::SmallButton("Clear"))
                     {
-                        tc.SetHeightMap(std::string{});
-                        changed = true;
+                        tc.ClearHeightMap();
+                        meshChanged = true;
                     }
                 }
                 else
@@ -110,27 +121,18 @@ namespace QuasarEngine
             ImGui::SameLine();
             ImGui::Checkbox("Wireframe", &tc.m_PolygonMode);
 
-            {
-                int rezBefore = tc.rez;
-                int texScaleBefore = tc.textureScale;
-                float hMulBefore = tc.heightMult;
-
-                if (ImGui::SliderInt("Resolution", &tc.rez, 1, 1024)) changed = true;
-
-                if (ImGui::SliderInt("Texture scale", &tc.textureScale, 1, 100)) changed = true;
-
-                if (ImGui::SliderFloat("Height multiply", &tc.heightMult, 1.0f, 1024.0f)) changed = true;
-
-                tc.rez = std::max(1, tc.rez);
-                tc.textureScale = std::max(1, tc.textureScale);
-                tc.heightMult = std::max(0.0f, tc.heightMult);
-            }
+            if (ImGui::SliderInt("Resolution", &tc.rez, 1, 1024)) meshChanged = true;
+            if (ImGui::SliderInt("Texture scale", &tc.textureScale, 1, 100)) uniformsChanged = true;
+            if (ImGui::SliderFloat("Height multiply", &tc.heightMult, 0.0f, 1024.0f)) meshChanged = true;
+            tc.rez = std::max(1, tc.rez);
+            tc.textureScale = std::max(1, tc.textureScale);
+            tc.heightMult = std::max(0.0f, tc.heightMult);
 
             {
                 const int vxCountX = tc.rez + 1;
                 const int vxCountZ = tc.rez + 1;
-                const size_t estVerts = static_cast<size_t>(vxCountX) * static_cast<size_t>(vxCountZ);
-                const size_t estIdx = static_cast<size_t>(tc.rez) * static_cast<size_t>(tc.rez) * 6;
+                const size_t estVerts = size_t(vxCountX) * size_t(vxCountZ);
+                const size_t estIdx = size_t(tc.rez) * size_t(tc.rez) * 4;
                 ImGui::TextDisabled("Estimated mesh: %zu verts, %zu indices", estVerts, estIdx);
                 if (tc.IsGenerated())
                     ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Status: Generated");
@@ -141,19 +143,13 @@ namespace QuasarEngine
             {
                 bool canGenerate = !tc.GetHeightMapPath().empty();
                 if (!canGenerate) ImGui::BeginDisabled();
-
                 if (ImGui::Button(tc.IsGenerated() ? "Regenerate terrain" : "Generate terrain"))
-                {
                     tc.GenerateTerrain();
-                }
-
                 if (!canGenerate) ImGui::EndDisabled();
             }
 
-            if (s_autoRegen && changed && !tc.GetHeightMapPath().empty())
-            {
+            if (s_autoRegen && meshChanged && !tc.GetHeightMapPath().empty())
                 tc.GenerateTerrain();
-            }
 
             ImGui::TreePop();
         }

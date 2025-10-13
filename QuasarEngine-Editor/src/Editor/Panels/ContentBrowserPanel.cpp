@@ -15,7 +15,7 @@
 
 namespace QuasarEngine
 {
-    std::filesystem::path WeakCanonical(const std::filesystem::path& p)
+    /*std::filesystem::path WeakCanonical(const std::filesystem::path& p)
     {
         std::filesystem::path out;
         try { out = std::filesystem::weakly_canonical(p); }
@@ -33,7 +33,7 @@ namespace QuasarEngine
                 return "Assets/" + rel.generic_string();
         }
         return "Assets/" + absPath.filename().generic_string();
-    }
+    }*/
 
     ContentBrowserPanel::ContentBrowserPanel(const std::string& projectPath, AssetImporter* importer)
         : m_BaseDirectory((std::filesystem::path(projectPath) / "Assets").lexically_normal())

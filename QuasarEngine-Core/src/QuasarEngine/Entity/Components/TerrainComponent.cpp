@@ -18,23 +18,21 @@ namespace QuasarEngine
         u = glm::clamp(u, 0.0f, 1.0f);
         v = glm::clamp(v, 0.0f, 1.0f);
 
-        float x = u * (m_ImgW - 1);
-        float y = v * (m_ImgH - 1);
+        float x = u * float(m_ImgW - 1);
+        float y = v * float(m_ImgH - 1);
 
-        int x0 = static_cast<int>(floorf(x));
-        int y0 = static_cast<int>(floorf(y));
-        int x1 = glm::min(x0 + 1, m_ImgW - 1);
-        int y1 = glm::min(y0 + 1, m_ImgH - 1);
+        int x0 = int(floorf(x)), y0 = int(floorf(y));
+        int x1 = std::min(x0 + 1, m_ImgW - 1);
+        int y1 = std::min(y0 + 1, m_ImgH - 1);
 
-        float tx = x - x0;
-        float ty = y - y0;
+        float tx = x - float(x0);
+        float ty = y - float(y0);
 
         auto readPix = [&](int px, int py) -> float {
             const unsigned char* p = &m_HeightPixels[(py * m_ImgW + px) * m_ImgC];
-            float val = 0.0f;
-            if (m_ImgC == 1) val = p[0] / 255.0f;
-            else if (m_ImgC >= 3) val = (p[0] + p[1] + p[2]) / (3.0f * 255.0f);
-            return val;
+            if (m_ImgC == 1) return p[0] / 255.0f;
+            if (m_ImgC >= 3) return (p[0] + p[1] + p[2]) / (3.0f * 255.0f);
+            return 0.0f;
             };
 
         float h00 = readPix(x0, y0);
@@ -44,16 +42,14 @@ namespace QuasarEngine
 
         float hx0 = Math::lerp(h00, h10, tx);
         float hx1 = Math::lerp(h01, h11, tx);
-        float h = Math::lerp(hx0, hx1, ty);
-
-        return h;
+        return Math::lerp(hx0, hx1, ty);
     }
 
     void TerrainComponent::GenerateTerrain()
     {
         m_Generated = false;
         m_Mesh.reset();
-        //m_MatSpec.reset();
+
         m_HeightPixels.clear();
         m_ImgW = m_ImgH = m_ImgC = 0;
 
@@ -63,77 +59,63 @@ namespace QuasarEngine
             return;
         }
 
-        stbi_uc* data = stbi_load(m_HeightMapPath.c_str(), &m_ImgW, &m_ImgH, &m_ImgC, 0);
+        int w = 0, h = 0, c = 0;
+        stbi_uc* data = stbi_load(m_HeightMapPath.c_str(), &w, &h, &c, 0);
         if (!data)
         {
             Q_ERROR("TerrainComponent: failed to load heightmap " + m_HeightMapPath);
             return;
         }
+        m_ImgW = w; m_ImgH = h; m_ImgC = c;
         m_HeightPixels.assign(data, data + (m_ImgW * m_ImgH * m_ImgC));
         stbi_image_free(data);
-
-        TextureSpecification spec;
-        spec.min_filter_param = TextureFilter::LINEAR_MIPMAP_LINEAR;
-        spec.mag_filter_param = TextureFilter::LINEAR;
-        m_HeightMapTexture = Texture2D::CreateTexture2D(spec);
-        m_HeightMapTexture->LoadFromPath(m_HeightMapPath);
 
         const int vxCountX = rez + 1;
         const int vxCountZ = rez + 1;
 
-        const float sizeX = static_cast<float>(m_ImgW);
-        const float sizeZ = static_cast<float>(m_ImgH);
-
+        const float sizeX = float(m_ImgW);
+        const float sizeZ = float(m_ImgH);
         const float halfX = 0.5f * sizeX;
         const float halfZ = 0.5f * sizeZ;
 
         std::vector<float> vertices;
         std::vector<unsigned int> indices;
-        vertices.reserve(vxCountX * vxCountZ * 8);
-        indices.reserve(rez * rez * 4);
-
-        auto heightAt = [&](int ix, int iz) -> float {
-            float u = static_cast<float>(ix) / static_cast<float>(rez);
-            float v = static_cast<float>(iz) / static_cast<float>(rez);
-            return sampleHeightBilinear(u, v) * heightMult;
-            };
+        vertices.reserve(size_t(vxCountX) * size_t(vxCountZ) * 8);
+        indices.reserve(size_t(rez) * size_t(rez) * 4);
 
         for (int iz = 0; iz < vxCountZ; ++iz)
         {
             for (int ix = 0; ix < vxCountX; ++ix)
             {
-                float u = static_cast<float>(ix) / static_cast<float>(rez);
-                float v = static_cast<float>(iz) / static_cast<float>(rez);
+                float u = float(ix) / float(rez);
+                float v = float(iz) / float(rez);
 
                 float x = -halfX + u * sizeX;
                 float z = -halfZ + v * sizeZ;
+
                 float y = 0.0f;
                 glm::vec3 n(0.0f, 1.0f, 0.0f);
 
-                float uu = u * static_cast<float>(textureScale);
-                float vv = v * static_cast<float>(textureScale);
+                //float uu = u * float(textureScale);
+                //float vv = v * float(textureScale);
 
-                vertices.push_back(x);
-                vertices.push_back(y);
-                vertices.push_back(z);
+                float uu = u;
+                float vv = v;
 
-                vertices.push_back(n.x);
-                vertices.push_back(n.y);
-                vertices.push_back(n.z);
-
-                vertices.push_back(uu);
-                vertices.push_back(vv);
+                vertices.push_back(x); vertices.push_back(y); vertices.push_back(z);
+                vertices.push_back(n.x); vertices.push_back(n.y); vertices.push_back(n.z);
+                vertices.push_back(uu); vertices.push_back(vv);
             }
         }
 
-        auto idx = [&](int ix, int iz) { return static_cast<unsigned int>(iz * vxCountX + ix); };
+        auto idx = [&](int ix, int iz) { return unsigned(iz * vxCountX + ix); };
 
         for (int iz = 0; iz < rez; ++iz) {
             for (int ix = 0; ix < rez; ++ix) {
-                unsigned int i0 = idx(ix, iz);
-                unsigned int i1 = idx(ix + 1, iz);
-                unsigned int i2 = idx(ix, iz + 1);
-                unsigned int i3 = idx(ix + 1, iz + 1);
+                unsigned i0 = idx(ix, iz);
+                unsigned i1 = idx(ix + 1, iz);
+                unsigned i2 = idx(ix, iz + 1);
+                unsigned i3 = idx(ix + 1, iz + 1);
 
                 indices.push_back(i0);
                 indices.push_back(i1);

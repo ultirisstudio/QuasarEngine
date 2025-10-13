@@ -108,26 +108,26 @@ namespace QuasarEngine
 		constexpr Shader::ShaderStageFlags objectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		desc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(ObjectUniforms, model), 1, 0, objectUniformsFlags},
+			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(ObjectUniforms, model), 0, 1, objectUniformsFlags},
 
-			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(ObjectUniforms, albedo), 1, 0, objectUniformsFlags},
-			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, roughness), 1, 0, objectUniformsFlags},
-			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, metallic), 1, 0, objectUniformsFlags},
-			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, ao), 1, 0, objectUniformsFlags},
+			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(ObjectUniforms, albedo), 0, 1, objectUniformsFlags},
+			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, roughness), 0, 1, objectUniformsFlags},
+			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, metallic), 0, 1, objectUniformsFlags},
+			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, ao), 0, 1, objectUniformsFlags},
 
-			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_albedo_texture), 1, 0, objectUniformsFlags},
-			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_normal_texture), 1, 0, objectUniformsFlags},
-			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_roughness_texture), 1, 0, objectUniformsFlags},
-			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_metallic_texture), 1, 0, objectUniformsFlags},
-			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_ao_texture), 1, 0, objectUniformsFlags},
+			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_albedo_texture), 0, 1, objectUniformsFlags},
+			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_normal_texture), 0, 1, objectUniformsFlags},
+			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_roughness_texture), 0, 1, objectUniformsFlags},
+			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_metallic_texture), 0, 1, objectUniformsFlags},
+			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_ao_texture), 0, 1, objectUniformsFlags},
 		};
 
 		desc.samplers = {
-			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+			{"albedo_texture", 0, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"normal_texture", 0, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"roughness_texture", 0, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"metallic_texture", 0, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"ao_texture", 0, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
 		};
 
 		desc.blendMode = Shader::BlendMode::None;
@@ -198,7 +198,7 @@ namespace QuasarEngine
 		constexpr Shader::ShaderStageFlags phyDebObjectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		phyDebDesc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebObjectUniforms, model), 1, 0, phyDebObjectUniformsFlags},
+			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebObjectUniforms, model), 0, 1, phyDebObjectUniformsFlags},
 		};
 
 		phyDebDesc.samplers = {
@@ -272,14 +272,14 @@ namespace QuasarEngine
 		constexpr auto TOFlags = Shader::StageToBit(Shader::ShaderStageType::TessEval) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		terrainDesc.objectUniforms = {
-			{"model",          Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),          offsetof(TerrainObjectUniforms, model),       1, 0, TOFlags},
-			{"heightMult",     Shader::ShaderUniformType::Float, sizeof(float),              offsetof(TerrainObjectUniforms, heightMult),  1, 0, TOFlags},
-			{"uTextureScale",  Shader::ShaderUniformType::Int,   sizeof(int),                offsetof(TerrainObjectUniforms, uTextureScale),1, 0, TOFlags},
+			{"model",          Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),          offsetof(TerrainObjectUniforms, model),       0, 1, TOFlags},
+			{"heightMult",     Shader::ShaderUniformType::Float, sizeof(float),              offsetof(TerrainObjectUniforms, heightMult),  0, 1, TOFlags},
+			{"uTextureScale",  Shader::ShaderUniformType::Int,   sizeof(int),                offsetof(TerrainObjectUniforms, uTextureScale), 0, 1, TOFlags},
 		};
 
 		terrainDesc.samplers = {
-			{"heightMap", 1, 0, Shader::StageToBit(Shader::ShaderStageType::TessEval)},
-			{"uTexture",  1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"heightMap", 0, 2, Shader::StageToBit(Shader::ShaderStageType::TessEval)},
+			{"uTexture",  0, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 		};
 
 		terrainDesc.blendMode = Shader::BlendMode::None;
@@ -362,28 +362,28 @@ namespace QuasarEngine
 		};
 
 		skinnedDesc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedObjectUniforms, model), 1, 0, SkinnedGlobalStages},
+			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedObjectUniforms, model), 0, 1, SkinnedGlobalStages},
 
-			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(SkinnedObjectUniforms, albedo), 1, 0, SkinnedGlobalStages},
-			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, roughness), 1, 0, SkinnedGlobalStages},
-			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, metallic), 1, 0, SkinnedGlobalStages},
-			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, ao), 1, 0, SkinnedGlobalStages},
+			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(SkinnedObjectUniforms, albedo), 0, 1, SkinnedGlobalStages},
+			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, roughness), 0, 1, SkinnedGlobalStages},
+			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, metallic), 0, 1, SkinnedGlobalStages},
+			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, ao), 0, 1, SkinnedGlobalStages},
 
-			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_albedo_texture), 1, 0, SkinnedGlobalStages},
-			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_normal_texture), 1, 0, SkinnedGlobalStages},
-			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_roughness_texture), 1, 0, SkinnedGlobalStages},
-			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_metallic_texture), 1, 0, SkinnedGlobalStages},
-			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_ao_texture), 1, 0, SkinnedGlobalStages},
+			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_albedo_texture), 0, 1, SkinnedGlobalStages},
+			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_normal_texture), 0, 1, SkinnedGlobalStages},
+			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_roughness_texture), 0, 1, SkinnedGlobalStages},
+			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_metallic_texture), 0, 1, SkinnedGlobalStages},
+			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_ao_texture), 0, 1, SkinnedGlobalStages},
 
-			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES, offsetof(SkinnedObjectUniforms, finalBonesMatrices),  1, 0, SkinnedGlobalStages},
+			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES, offsetof(SkinnedObjectUniforms, finalBonesMatrices),  0, 1, SkinnedGlobalStages},
 		};
 
 		skinnedDesc.samplers = {
-			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+			{"albedo_texture", 0, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"normal_texture", 0, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"roughness_texture", 0, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"metallic_texture", 0, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"ao_texture", 0, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
 		};
 
 		skinnedDesc.blendMode = Shader::BlendMode::None;
@@ -686,8 +686,8 @@ namespace QuasarEngine
 		m_SceneData.m_TerrainShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
 		m_SceneData.m_TerrainShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
 
-		if (!m_SceneData.m_TerrainShader->UpdateGlobalState())
-		{
+		if (!m_SceneData.m_TerrainShader->UpdateGlobalState()) {
+			m_SceneData.m_TerrainShader->Unuse();
 			return;
 		}
 
@@ -711,30 +711,37 @@ namespace QuasarEngine
 			m_SceneData.m_TerrainShader->SetUniform("heightMult", &tc.heightMult, sizeof(float));
 			m_SceneData.m_TerrainShader->SetUniform("uTextureScale", &tc.textureScale, sizeof(int));
 
-			if (AssetManager::Instance().isAssetLoaded(tc.GetHeightMapPath()))
+			if (AssetManager::Instance().isAssetLoaded(tc.GetHeightMapId()))
 			{
-				m_SceneData.m_TerrainShader->SetTexture("heightMap", AssetManager::Instance().getAsset<Texture2D>(tc.GetHeightMapPath()).get());
+				m_SceneData.m_TerrainShader->SetTexture(
+					"heightMap",
+					AssetManager::Instance().getAsset<Texture2D>(tc.GetHeightMapId()).get()
+				);
 			}
 			else
 			{
 				AssetToLoad tcAsset;
-				tcAsset.id = tc.GetHeightMapPath();
+				tcAsset.id = tc.GetHeightMapId();
+				tcAsset.path = tc.GetHeightMapPath();
 				tcAsset.type = AssetType::TEXTURE;
 				AssetManager::Instance().loadAsset(tcAsset);
 			}
 
 			m_SceneData.m_TerrainShader->SetTexture("uTexture", mat.GetTexture(Albedo));
 
+			//if (tc.m_PolygonMode)
+				//RenderCommand::Instance().SetFillMode(FillMode::Wireframe);
+
 			if (!m_SceneData.m_TerrainShader->UpdateObject(&mat)) {
-				m_SceneData.m_TerrainShader->Unuse();
+				//if (tc.m_PolygonMode)
+					//RenderCommand::Instance().SetFillMode(FillMode::Solid);
 				continue;
 			}
 
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
 			mesh->draw();
 
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			//if (tc.m_PolygonMode)
+				//RenderCommand::Instance().SetFillMode(FillMode::Solid);
 
 			m_SceneData.m_TerrainShader->Reset();
 		}
@@ -742,44 +749,6 @@ namespace QuasarEngine
 		m_SceneData.m_TerrainShader->Unuse();
 
 		//std::cout << entityDraw << "/" << totalEntity << std::endl;
-
-		/*
-		if (entity.HasComponent<AnimationComponent>() && instIsSkinned) {
-			auto& ac = entity.GetComponent<AnimationComponent>();
-			const auto& mats = ac.GetFinalBoneMatrices();
-			for (int i = 0; i < (int)mats.size(); ++i) {
-				m_SceneData.m_Shader->SetUniform(
-					("finalBonesMatrices[" + std::to_string(i) + "]").c_str(),
-					&mats[i], sizeof(glm::mat4)
-				);
-			}
-		}
-
-		// Option A: animation sur l'entité elle-même
-		QuasarEngine::AnimationComponent* anim = nullptr;
-		if (entity.HasComponent<QuasarEngine::AnimationComponent>())
-			anim = &entity.GetComponent<QuasarEngine::AnimationComponent>();
-		else if (entity.HasComponent<HierarchyComponent>()) {
-			// Option B: remonter au parent (animation mise sur l'entité racine du modèle)
-			auto& h = entity.GetComponent<HierarchyComponent>();
-			if (h.m_Parent != UUID::Null()) {
-				auto parentOpt = m_SceneData.m_Scene->GetEntityByUUID(h.m_Parent);
-				if (parentOpt && parentOpt->HasComponent<QuasarEngine::AnimationComponent>())
-					anim = &parentOpt->GetComponent<QuasarEngine::AnimationComponent>();
-			}
-		}
-
-		if (anim && mc.HasMesh() && mc.GetMesh().HasSkinning()) // HasSkinning() à exposer sur Mesh si pas déjà
-		{
-			const auto& bones = anim->GetFinalBoneMatrices();
-			const int boneCount = (int)bones.size();
-			// (optionnel) m_SceneData.m_Shader->SetUniform("boneCount", &boneCount, sizeof(int));
-			for (int i = 0; i < boneCount; ++i)
-				m_SceneData.m_Shader->SetUniform(
-					("finalBonesMatrices[" + std::to_string(i) + "]").c_str(),
-					&bones[i], sizeof(glm::mat4));
-		}
-		*/
 	}
 
 	void Renderer::RenderDebug(BaseCamera& camera)
