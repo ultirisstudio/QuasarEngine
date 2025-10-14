@@ -321,6 +321,8 @@ namespace QuasarEngine
             s_CurrentProgram = m_ID;
         }
 
+        m_BoundPerUnit.clear();
+
         RendererGLState::I().PushCurrent();
 
         GLPipelineState ps{};

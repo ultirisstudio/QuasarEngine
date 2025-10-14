@@ -147,7 +147,7 @@ namespace QuasarEngine
 		ev.down = true;
 		ev.button = e.GetMouseButton();
 
-		//Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
 	}
 
@@ -168,7 +168,7 @@ namespace QuasarEngine
 		ev.up = true;
 		ev.button = e.GetMouseButton();
 
-		//Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
 	}
 
@@ -188,7 +188,7 @@ namespace QuasarEngine
 		ev.y = uiPos.y;
 		ev.move = true;
 
-		//Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
 	}
 

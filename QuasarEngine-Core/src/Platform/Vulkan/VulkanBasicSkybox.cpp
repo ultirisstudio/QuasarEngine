@@ -24,7 +24,7 @@ namespace QuasarEngine
 		desc.modules = {
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
-				"Assets/Shaders/vk/spvbasic_skybox.vert.spv",
+				"Assets/Shaders/vk/spv/basic_skybox.vert.spv",
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
@@ -71,7 +71,7 @@ namespace QuasarEngine
 
 		shader->AcquireResources(material.get());
 
-		material->m_Generation++;
+		material->MarkDirty();
 
 		TextureSpecification textureSpec;
 		textureSpec.width = 2048;
@@ -234,7 +234,7 @@ namespace QuasarEngine
 			info.unnormalizedCoordinates = VK_FALSE;
 			vkCreateSampler(VulkanContext::Context.device->device, &info, VulkanContext::Context.allocator->GetCallbacks(), &texture->sampler);
 
-			material->SetTexture(TextureType::Albedo, texture.get());
+			material->SetTexture(TextureType::Albedo, texture);
 
 			texture->generation++;
 	}

@@ -9,7 +9,6 @@ namespace QuasarEngine
 	class Material;
 
 	struct MaterialSpecification;
-	enum TextureType;
 
 	class MaterialComponentPanel
 	{

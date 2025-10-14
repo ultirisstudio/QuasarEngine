@@ -26,17 +26,17 @@ namespace QuasarEngine
 			Scene* m_Scene;
 
 			std::shared_ptr<Shader> m_Shader;
-			//std::shared_ptr<Shader> m_PhysicDebugShader;
-			//std::shared_ptr<Shader> m_TerrainShader;
-			//std::shared_ptr<Shader> m_SkinnedShader;
+			std::shared_ptr<Shader> m_PhysicDebugShader;
+			std::shared_ptr<Shader> m_TerrainShader;
+			std::shared_ptr<Shader> m_SkinnedShader;
 
-			//std::array<glm::mat4, QE_MAX_BONES> m_IdentityBones;
+			std::array<glm::mat4, QE_MAX_BONES> m_IdentityBones;
 
 			std::shared_ptr<BasicSkybox> m_Skybox;
 
 			std::unique_ptr<ScriptSystem> m_ScriptSystem;
 
-			//std::unique_ptr<UISystem> m_UI;
+			std::unique_ptr<UISystem> m_UI;
 
 			std::array<PointLight, 4> m_PointsBuffer;
 			std::array<DirectionalLight, 4> m_DirectionalsBuffer;

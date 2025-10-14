@@ -1,96 +1,113 @@
 #pragma once
 
 #include "VulkanTypes.h"
-
 #include <QuasarEngine/Shader/Shader.h>
+
+#include <memory>
+#include <vector>
+#include <unordered_map>
+#include <string>
+#include <cstdint>
 
 namespace QuasarEngine
 {
-	struct DescriptorState
-	{
-		uint32_t generations[3];
-		uint32_t ids[3];
-	};
+    struct DescriptorState
+    {
+        uint32_t generations[3]{};
+        uint32_t ids[3]{};
+    };
 
-	struct ObjectShaderObjectState
-	{
-		std::vector<VkDescriptorSet> descriptorSets;
-		std::vector<DescriptorState> descriptorStates;
-	};
+    struct ObjectShaderObjectState
+    {
+        std::vector<VkDescriptorSet> descriptorSets;
+        std::vector<DescriptorState> descriptorStates;
 
-	struct VulkanShaderStage
-	{
-		VkShaderModule handle = VK_NULL_HANDLE;
-		VkPipelineShaderStageCreateInfo stage_info{};
-		Shader::ShaderStageType stage_type{};
-		std::string path;
-	};
+        std::vector<uint32_t> lastMaterialGenerationPerImage;
 
-	class VulkanPipeline;
-	class VulkanBuffer;
+        std::vector<class VulkanTexture2D*> boundSamplers;
+    };
 
-	class VulkanTexture2D;
+    struct VulkanShaderStage
+    {
+        VkShaderModule handle = VK_NULL_HANDLE;
+        VkPipelineShaderStageCreateInfo stage_info{};
+        Shader::ShaderStageType stage_type{};
+        std::string path;
+    };
 
-	class Material;
+    class VulkanPipeline;
+    class VulkanBuffer;
+    class VulkanTexture2D;
+    class Material;
 
-	class VulkanShader : public Shader
-	{
-	public:
-		VulkanShader(const ShaderDescription& desc);
-		~VulkanShader() override;
+    class VulkanShader : public Shader
+    {
+    public:
+        VulkanShader(const ShaderDescription& desc);
+        ~VulkanShader() override;
 
-		void Use() override;
-		void Unuse() override;
-		void Reset() override;
+        void Use() override;
+        void Unuse() override;
+        void Reset() override;
 
-		bool AcquireResources(Material* material) override;
-		void ReleaseResources(Material* material) override;
+        bool AcquireResources(Material* material) override;
+        void ReleaseResources(Material* material) override;
 
-		std::vector<VulkanShaderStage> CreateShaderStages(VkDevice device);
-		VkShaderModule CreateVkShaderModule(VkDevice device, const std::vector<uint32_t>& code);
+        std::vector<VulkanShaderStage> CreateShaderStages(VkDevice device);
+        VkShaderModule CreateVkShaderModule(VkDevice device, const std::vector<uint32_t>& code);
 
-		bool UpdateGlobalState() override;
-		bool UpdateObject(Material* material) override;
+        bool UpdateGlobalState() override;
+        bool UpdateObject(Material* material) override;
 
-		void PushConstant(const void* data, size_t size, VkShaderStageFlags stageFlags, uint32_t offset);
+        void PushConstant(const void* data, size_t size, VkShaderStageFlags stageFlags, uint32_t offset);
 
-		std::vector<VulkanShaderStage> m_Stages;
+        std::vector<VulkanShaderStage> m_Stages;
+        std::unique_ptr<VulkanPipeline> pipeline;
 
-		std::unique_ptr<VulkanPipeline> pipeline;
+        VkDescriptorPool          globalDescriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSetLayout     globalDescriptorSetLayout = VK_NULL_HANDLE;
+        std::unique_ptr<VulkanBuffer> globalUniformBuffer;
+        std::vector<VkDescriptorSet>  globalDescriptorSets;
 
-		VkDescriptorPool globalDescriptorPool = VK_NULL_HANDLE;
-		VkDescriptorSetLayout globalDescriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorPool          objectDescriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSetLayout     objectDescriptorSetLayout = VK_NULL_HANDLE;
+        std::unique_ptr<VulkanBuffer> objectUniformBuffer;
 
-		std::unique_ptr<VulkanBuffer> globalUniformBuffer;
+        uint32_t objectUniformBufferIndex = 0;
 
-		std::vector<VkDescriptorSet> globalDescriptorSets;
+        std::vector<ObjectShaderObjectState> objectStates;
 
-		VkDescriptorPool objectDescriptorPool = VK_NULL_HANDLE;
-		VkDescriptorSetLayout objectDescriptorSetLayout = VK_NULL_HANDLE;
+        uint32_t c_offset = 0;
 
-		std::unique_ptr<VulkanBuffer> objectUniformBuffer;
+        ShaderDescription m_Description;
 
-		uint32_t objectUniformBufferIndex;
+        std::unordered_map<std::string, VulkanTexture2D*> m_ObjectTextures;
+        std::unordered_map<std::string, Shader::SamplerType> m_ObjectTextureTypes;
 
-		std::vector<ObjectShaderObjectState> objectStates;
+        std::unordered_map<std::string, const ShaderUniformDesc*> m_GlobalUniformMap;
+        std::unordered_map<std::string, const ShaderUniformDesc*> m_ObjectUniformMap;
 
-		uint32_t c_offset;
+        std::vector<uint8_t> m_GlobalUniformData;
+        std::vector<uint8_t> m_ObjectUniformData;
 
-		ShaderDescription m_Description;
+        VulkanTexture2D* defaultBlueTexture = nullptr;
 
-		std::unordered_map<std::string, VulkanTexture2D*> m_ObjectTextures;
-		std::unordered_map<std::string, Shader::SamplerType> m_ObjectTextureTypes;
+        void SetUniform(const std::string& name, void* data, size_t size) override;
+        void SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
 
-		std::unordered_map<std::string, const ShaderUniformDesc*> m_GlobalUniformMap;
-		std::unordered_map<std::string, const ShaderUniformDesc*> m_ObjectUniformMap;
+    private:
+        bool   m_HasGlobalUBO = false;
+        bool   m_HasObjectUBO = false;
+        bool   m_HasObjectSet = false;
 
-		std::vector<uint8_t> m_GlobalUniformData;
-		std::vector<uint8_t> m_ObjectUniformData;
+        size_t m_ObjectStride = 0;
 
-		VulkanTexture2D* defaultBlueTexture;
+        uint32_t              m_NextObjectId = 0;
+        std::vector<uint32_t> m_FreeIds;
 
-		void SetUniform(const std::string& name, void* data, size_t size) override;
-
-		void SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
-	};
+        static size_t AlignUBOOffset(size_t offset, size_t alignment)
+        {
+            return alignment ? (offset + alignment - 1) & ~(alignment - 1) : offset;
+        }
+    };
 }
