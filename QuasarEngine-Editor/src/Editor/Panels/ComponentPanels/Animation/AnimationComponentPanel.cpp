@@ -64,6 +64,31 @@ namespace QuasarEngine
                         if (m_SelectedClip >= 0) ac.Play((size_t)m_SelectedClip, ac.GetLoop(), ac.GetSpeed());
                     }
                 }
+
+                ImGui::SeparatorText("Append animations");
+
+                static char s_AnimAssetToAppend[256] = {};
+                ImGui::InputText("Animation Asset ID", s_AnimAssetToAppend, sizeof(s_AnimAssetToAppend));
+
+                static bool s_Dedupe = true;
+                ImGui::Checkbox("Dedoublonner les noms", &s_Dedupe);
+                ImGui::SameLine();
+                static char s_NamePrefix[64] = {};
+                ImGui::SetNextItemWidth(160.0f);
+                ImGui::InputText("Prefixe (optionnel)", s_NamePrefix, sizeof(s_NamePrefix));
+
+                if (ImGui::Button("Append depuis l'asset")) {
+                    if (s_AnimAssetToAppend[0] != '\0') {
+                        ac.AppendClipsFromAsset(std::string(s_AnimAssetToAppend), s_Dedupe, std::string(s_NamePrefix));
+                        if (ac.GetClipCount() > 0 && (ac.IsPaused() || !ac.IsPlaying())) {
+                            size_t idx = (m_SelectedClip >= 0) ? (size_t)m_SelectedClip : 0;
+                            ac.Play(idx, ac.GetLoop(), ac.GetSpeed());
+                        }
+                    }
+                }
+
+                ImGui::SameLine();
+                ImGui::TextDisabled("(Le squelette doit matcher par noms de bones)");
             }
 
             ImGui::SeparatorText("Info");

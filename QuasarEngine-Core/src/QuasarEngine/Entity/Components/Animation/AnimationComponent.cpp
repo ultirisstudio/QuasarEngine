@@ -42,6 +42,59 @@ namespace QuasarEngine
         m_TimeSec = 0.0;
     }
 
+#include <unordered_set>
+#include <filesystem>
+
+    // ... le reste inchangé ...
+
+    void AnimationComponent::AppendClips(std::vector<AnimationClip> clips, bool dedupeByName, const std::string& namePrefix)
+    {
+        if (m_Clips.empty()) {
+            m_CurrentClip = (size_t)-1;
+            m_Playing = false;
+            m_TimeSec = 0.0;
+        }
+
+        std::unordered_set<std::string> used;
+        used.reserve(m_Clips.size() + clips.size());
+        for (auto& c : m_Clips) used.insert(c.name);
+
+        for (auto& c : clips)
+        {
+            if (!namePrefix.empty())
+                c.name = namePrefix + c.name;
+
+            if (dedupeByName)
+            {
+                std::string base = c.name.empty() ? std::string("Clip") : c.name;
+                std::string unique = base;
+                int idx = 1;
+                while (used.count(unique)) {
+                    unique = base + " (" + std::to_string(idx++) + ")";
+                }
+                c.name = std::move(unique);
+            }
+
+            used.insert(c.name);
+            m_Clips.push_back(std::move(c));
+        }
+
+        if (m_CurrentClip == (size_t)-1 && !m_Clips.empty()) {
+            m_CurrentClip = 0;
+        }
+    }
+
+    void AnimationComponent::AppendClipsFromAsset(std::string animationAssetId, bool dedupeByName, const std::string& namePrefix)
+    {
+        if (animationAssetId.empty()) return;
+
+        std::filesystem::path full = AssetManager::Instance().ResolvePath(animationAssetId);
+        auto newClips = LoadAnimationClips(full.generic_string());
+        if (!newClips.empty()) {
+            AppendClips(std::move(newClips), dedupeByName, namePrefix);
+        }
+    }
+
     void AnimationComponent::Play(size_t clipIndex, bool loop, float speed)
     {
         if (clipIndex >= m_Clips.size()) return;

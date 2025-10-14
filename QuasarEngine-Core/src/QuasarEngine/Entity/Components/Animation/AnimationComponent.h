@@ -24,6 +24,10 @@ namespace QuasarEngine {
         void SetClips(std::vector<AnimationClip> clips);
         const std::vector<AnimationClip>& GetClips() const { return m_Clips; }
 
+        void AppendClips(std::vector<AnimationClip> clips, bool dedupeByName = true, const std::string& namePrefix = "");
+
+        void AppendClipsFromAsset(std::string animationAssetId, bool dedupeByName = true, const std::string& namePrefix = "");
+
         void Play(size_t clipIndex, bool loop = true, float speed = 1.0f);
         void Stop();
         void Pause() { m_Playing = false; }
