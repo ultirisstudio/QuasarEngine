@@ -4,193 +4,154 @@
 #include <QuasarEngine/Renderer/Renderer.h>
 #include "QuasarEngine/Core/Logger.h"
 
-#define INVALID_ID 4294967295U
-
 namespace QuasarEngine
 {
-	Material::Material(const MaterialSpecification& specification)
-		: m_Specification(specification), m_ID(INVALID_ID), m_Generation(INVALID_ID)
-	{
-		auto queueTex = [](const std::optional<std::string>& idOpt,
-			const std::optional<TextureSpecification>& texSpecOpt,
-			bool albedoGamma = false)
-			{
-				if (!idOpt.has_value() || idOpt->empty())
-					return;
+    std::optional<std::string>& Material::idRef(TextureType type) noexcept
+    {
+        switch (type)
+        {
+        case TextureType::Albedo:   return m_Specification.AlbedoTexture;
+        case TextureType::Normal:   return m_Specification.NormalTexture;
+        case TextureType::Metallic: return m_Specification.MetallicTexture;
+        case TextureType::Roughness:return m_Specification.RoughnessTexture;
+        case TextureType::AO:       return m_Specification.AOTexture;
+        default:                    return m_Specification.AlbedoTexture;
+        }
+    }
 
-				AssetToLoad asset;
-				asset.id = *idOpt;
-				asset.path = AssetManager::Instance().ResolvePath(*idOpt).generic_string();
-				asset.type = AssetType::TEXTURE;
+    const std::optional<std::string>& Material::idRef(TextureType type) const noexcept
+    {
+        switch (type)
+        {
+        case TextureType::Albedo:   return m_Specification.AlbedoTexture;
+        case TextureType::Normal:   return m_Specification.NormalTexture;
+        case TextureType::Metallic: return m_Specification.MetallicTexture;
+        case TextureType::Roughness:return m_Specification.RoughnessTexture;
+        case TextureType::AO:       return m_Specification.AOTexture;
+        default:                    return m_Specification.AlbedoTexture;
+        }
+    }
 
-				if (texSpecOpt.has_value())
-				{
-					asset.spec = texSpecOpt.value();
-				}
-				else if (albedoGamma)
-				{
-					TextureSpecification ts;
-					ts.gamma = true;
-					asset.spec = ts;
-				}
+    std::optional<TextureSpecification>& Material::specRef(TextureType type) noexcept
+    {
+        switch (type)
+        {
+        case TextureType::Albedo:   return m_Specification.AlbedoTextureSpec;
+        case TextureType::Normal:   return m_Specification.NormalTextureSpec;
+        case TextureType::Metallic: return m_Specification.MetallicTextureSpec;
+        case TextureType::Roughness:return m_Specification.RoughnessTextureSpec;
+        case TextureType::AO:       return m_Specification.AOTextureSpec;
+        default:                    return m_Specification.AlbedoTextureSpec;
+        }
+    }
 
-				AssetManager::Instance().loadAsset(asset);
-			};
+    const std::optional<TextureSpecification>& Material::specRef(TextureType type) const noexcept
+    {
+        switch (type)
+        {
+        case TextureType::Albedo:   return m_Specification.AlbedoTextureSpec;
+        case TextureType::Normal:   return m_Specification.NormalTextureSpec;
+        case TextureType::Metallic: return m_Specification.MetallicTextureSpec;
+        case TextureType::Roughness:return m_Specification.RoughnessTextureSpec;
+        case TextureType::AO:       return m_Specification.AOTextureSpec;
+        default:                    return m_Specification.AlbedoTextureSpec;
+        }
+    }
 
-		queueTex(m_Specification.AlbedoTexture, m_Specification.AlbedoTextureSpec, true);
-		queueTex(m_Specification.NormalTexture, m_Specification.NormalTextureSpec);
-		queueTex(m_Specification.MetallicTexture, m_Specification.MetallicTextureSpec);
-		queueTex(m_Specification.RoughnessTexture, m_Specification.RoughnessTextureSpec);
-		queueTex(m_Specification.AOTexture, m_Specification.AOTextureSpec);
+    Material::Material(const MaterialSpecification& specification)
+        : m_Specification(specification)
+    {
+        auto queueTex = [](const std::optional<std::string>& idOpt,
+            const std::optional<TextureSpecification>& texSpecOpt,
+            bool albedoGamma = false)
+            {
+                if (!idOpt || idOpt->empty())
+                    return;
 
-		m_Generation++;
-	}
+                AssetToLoad asset;
+                asset.id = *idOpt;
+                asset.path = AssetManager::Instance().ResolvePath(*idOpt).generic_string();
+                asset.type = AssetType::TEXTURE;
 
-	Material::~Material() {}
+                if (texSpecOpt)
+                {
+                    asset.spec = *texSpecOpt;
+                }
+                else if (albedoGamma)
+                {
+                    TextureSpecification ts;
+                    ts.gamma = true;
+                    asset.spec = ts;
+                }
 
-	void Material::SetTexture(TextureType type, Texture2D* texture)
-	{
-		m_Textures[type] = texture;
-	}
+                AssetManager::Instance().loadAsset(asset);
+            };
 
-	void Material::SetTexture(TextureType type, std::string idProject)
-	{
-		AssetToLoad asset;
-		asset.id = idProject;
-		asset.path = AssetManager::Instance().ResolvePath(idProject).generic_string();
-		asset.type = AssetType::TEXTURE;
+        queueTex(m_Specification.AlbedoTexture, m_Specification.AlbedoTextureSpec, true);
+        queueTex(m_Specification.NormalTexture, m_Specification.NormalTextureSpec);
+        queueTex(m_Specification.MetallicTexture, m_Specification.MetallicTextureSpec);
+        queueTex(m_Specification.RoughnessTexture, m_Specification.RoughnessTextureSpec);
+        queueTex(m_Specification.AOTexture, m_Specification.AOTextureSpec);
+    }
 
-		switch (type)
-		{
-		case Albedo:
-			m_Specification.AlbedoTexture = idProject;
-			if (m_Specification.AlbedoTextureSpec.has_value())
-			{
-				asset.spec = m_Specification.AlbedoTextureSpec.value();
-			}
-			AssetManager::Instance().loadAsset(asset);
-			m_Generation++;
-			break;
+    void Material::SetTexture(TextureType type, Texture2D* texture) noexcept
+    {
+        m_Overrides[idx(type)] = texture;
+        touch();
+    }
 
-		case Normal:
-			m_Specification.NormalTexture = idProject;
-			if (m_Specification.NormalTextureSpec.has_value())
-			{
-				asset.spec = m_Specification.NormalTextureSpec.value();
-			}
-			AssetManager::Instance().loadAsset(asset);
-			m_Generation++;
-			break;
+    void Material::SetTexture(TextureType type, std::string_view idProject)
+    {
+        idRef(type) = std::string{ idProject };
 
-		case Metallic:
-			m_Specification.MetallicTexture = idProject;
-			if (m_Specification.MetallicTextureSpec.has_value())
-			{
-				asset.spec = m_Specification.MetallicTextureSpec.value();
-			}
-			AssetManager::Instance().loadAsset(asset);
-			m_Generation++;
-			break;
+        AssetToLoad asset;
+        asset.id = *idRef(type);
+        asset.path = AssetManager::Instance().ResolvePath(*idRef(type)).generic_string();
+        asset.type = AssetType::TEXTURE;
 
-		case Roughness:
-			m_Specification.RoughnessTexture = idProject;
-			if (m_Specification.RoughnessTextureSpec.has_value())
-			{
-				asset.spec = m_Specification.RoughnessTextureSpec.value();
-			}
-			AssetManager::Instance().loadAsset(asset);
-			m_Generation++;
-			break;
+        if (specRef(type))
+        {
+            asset.spec = *specRef(type);
+        }
+        else if (type == TextureType::Albedo)
+        {
+            TextureSpecification ts;
+            ts.gamma = true;
+            asset.spec = ts;
+        }
 
-		case AO:
-			m_Specification.AOTexture = idProject;
-			if (m_Specification.AOTextureSpec.has_value())
-			{
-				asset.spec = m_Specification.AOTextureSpec.value();
-			}
-			AssetManager::Instance().loadAsset(asset);
-			m_Generation++;
-			break;
-		}
-	}
+        AssetManager::Instance().loadAsset(asset);
+        touch();
+    }
 
-	Texture* Material::GetTexture(TextureType type)
-	{
-		switch (type)
-		{
-		case Albedo:
-			if (HasTexture(type))
-			{
-				if (m_Textures.find(type) != m_Textures.end())
-					return m_Textures[type];
-				return AssetManager::Instance().getAsset<Texture>(m_Specification.AlbedoTexture.value()).get();
-			}
-			break;
+    Texture* Material::GetTexture(TextureType type) const noexcept
+    {
+        if (auto* overridePtr = m_Overrides[idx(type)]; overridePtr)
+            return overridePtr;
 
-		case Normal:
-			if (HasTexture(type))
-				return AssetManager::Instance().getAsset<Texture>(m_Specification.NormalTexture.value()).get();
-			break;
+        const auto& idOpt = idRef(type);
+        if (idOpt)
+            return AssetManager::Instance().getAsset<Texture>(*idOpt).get();
 
-		case Metallic:
-			if (HasTexture(type))
-				return AssetManager::Instance().getAsset<Texture>(m_Specification.MetallicTexture.value()).get();
-			break;
+        return nullptr;
+    }
 
-		case Roughness:
-			if (HasTexture(type))
-				return AssetManager::Instance().getAsset<Texture>(m_Specification.RoughnessTexture.value()).get();
-			break;
+    bool Material::HasTexture(TextureType type) const noexcept
+    {
+        if (m_Overrides[idx(type)] != nullptr)
+            return true;
+        return idRef(type).has_value();
+    }
 
-		case AO:
-			if (HasTexture(type))
-				return AssetManager::Instance().getAsset<Texture>(m_Specification.AOTexture.value()).get();
-			break;
-		}
-		return nullptr;
-	}
+    std::optional<std::string> Material::GetTexturePath(TextureType type) const
+    {
+        return idRef(type);
+    }
 
-	bool Material::HasTexture(TextureType type)
-	{
-		auto hasInMap = [this](TextureType t) { return m_Textures.find(t) != m_Textures.end(); };
-
-		switch (type) {
-		case Albedo:    return m_Specification.AlbedoTexture.has_value() || hasInMap(Albedo);
-		case Normal:    return m_Specification.NormalTexture.has_value() || hasInMap(Normal);
-		case Metallic:  return m_Specification.MetallicTexture.has_value() || hasInMap(Metallic);
-		case Roughness: return m_Specification.RoughnessTexture.has_value() || hasInMap(Roughness);
-		case AO:        return m_Specification.AOTexture.has_value() || hasInMap(AO);
-		}
-		return false;
-	}
-
-	std::optional<std::string> Material::GetTexturePath(TextureType type)
-	{
-		switch (type)
-		{
-		case Albedo:    return (HasTexture(type) ? m_Specification.AlbedoTexture : std::nullopt);
-		case Normal:    return (HasTexture(type) ? m_Specification.NormalTexture : std::nullopt);
-		case Metallic:  return (HasTexture(type) ? m_Specification.MetallicTexture : std::nullopt);
-		case Roughness: return (HasTexture(type) ? m_Specification.RoughnessTexture : std::nullopt);
-		case AO:        return (HasTexture(type) ? m_Specification.AOTexture : std::nullopt);
-		}
-		return std::nullopt;
-	}
-
-	void Material::ResetTexture(TextureType type)
-	{
-		switch (type)
-		{
-		case TextureType::Albedo:    m_Specification.AlbedoTexture.reset();    m_Generation++; break;
-		case TextureType::Normal:    m_Specification.NormalTexture.reset();    m_Generation++; break;
-		case TextureType::Metallic:  m_Specification.MetallicTexture.reset();  m_Generation++; break;
-		case TextureType::Roughness: m_Specification.RoughnessTexture.reset(); m_Generation++; break;
-		case TextureType::AO:        m_Specification.AOTexture.reset();        m_Generation++; break;
-		}
-	}
-
-	std::shared_ptr<Material> Material::CreateMaterial(const MaterialSpecification& specification)
-	{
-		return std::make_shared<Material>(specification);
-	}
+    void Material::ResetTexture(TextureType type) noexcept
+    {
+        m_Overrides[idx(type)] = nullptr;
+        idRef(type).reset();
+        touch();
+    }
 }

@@ -1,21 +1,25 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <optional>
 #include <array>
 #include <memory>
+#include <cstdint>
+#include <limits>
 #include <glm/glm.hpp>
 #include <QuasarEngine/Resources/Texture2D.h>
 
 namespace QuasarEngine
 {
-    enum TextureType
+    enum class TextureType : std::uint8_t
     {
-        Albedo,
+        Albedo = 0,
         Normal,
         Metallic,
         Roughness,
-        AO
+        AO,
+        Count
     };
 
     struct MaterialSpecification
@@ -43,34 +47,55 @@ namespace QuasarEngine
     class Material
     {
     private:
+        static constexpr std::size_t kTexCount = static_cast<std::size_t>(TextureType::Count);
+        static constexpr std::size_t idx(TextureType t) noexcept { return static_cast<std::size_t>(t); }
+
         MaterialSpecification m_Specification;
 
-        std::unordered_map<TextureType, Texture2D*> m_Textures;
+        std::array<Texture2D*, kTexCount> m_Overrides{};
+
+        std::optional<std::string>& idRef(TextureType type) noexcept;
+        const std::optional<std::string>& idRef(TextureType type) const noexcept;
+
+        std::optional<TextureSpecification>& specRef(TextureType type) noexcept;
+        const std::optional<TextureSpecification>& specRef(TextureType type) const noexcept;
+
+        void touch() noexcept { ++m_Generation; }
 
     public:
-        Material(const MaterialSpecification& specification);
-        ~Material();
+        explicit Material(const MaterialSpecification& specification);
+        ~Material() = default;
 
-        void SetTexture(TextureType type, Texture2D* texture);
-        void SetTexture(TextureType type, std::string path);
-        Texture* GetTexture(TextureType type);
+        void SetTexture(TextureType type, Texture2D* texture) noexcept;
+        void SetTexture(TextureType type, std::string_view idProject);
 
-        bool HasTexture(TextureType type);
+        [[nodiscard]] Texture* GetTexture(TextureType type) const noexcept;
+        [[nodiscard]] bool HasTexture(TextureType type) const noexcept;
 
-        glm::vec4& GetAlbedo() { return m_Specification.Albedo; }
-        float& GetMetallic() { return m_Specification.Metallic; }
-        float& GetRoughness() { return m_Specification.Roughness; }
-        float& GetAO() { return m_Specification.AO; }
+        glm::vec4& GetAlbedo() noexcept { return m_Specification.Albedo; }
+        const glm::vec4& GetAlbedo() const noexcept { return m_Specification.Albedo; }
 
-        const MaterialSpecification& GetSpecification() { return m_Specification; }
+        float& GetMetallic() noexcept { return m_Specification.Metallic; }
+        const float& GetMetallic() const noexcept { return m_Specification.Metallic; }
 
-        std::optional<std::string> GetTexturePath(TextureType type);
+        float& GetRoughness() noexcept { return m_Specification.Roughness; }
+        const float& GetRoughness() const noexcept { return m_Specification.Roughness; }
 
-        void ResetTexture(TextureType type);
+        float& GetAO() noexcept { return m_Specification.AO; }
+        const float& GetAO() const noexcept { return m_Specification.AO; }
 
-        static std::shared_ptr<Material> CreateMaterial(const MaterialSpecification& specification);
+        [[nodiscard]] const MaterialSpecification& GetSpecification() const noexcept { return m_Specification; }
 
-        uint32_t m_ID;
-        uint32_t m_Generation;
+        [[nodiscard]] std::optional<std::string> GetTexturePath(TextureType type) const;
+
+        void ResetTexture(TextureType type) noexcept;
+
+        static std::shared_ptr<Material> CreateMaterial(const MaterialSpecification& specification)
+        {
+            return std::make_shared<Material>(specification);
+        }
+
+        std::uint32_t m_ID = std::numeric_limits<std::uint32_t>::max();
+        std::uint32_t m_Generation = 0;
     };
 }
