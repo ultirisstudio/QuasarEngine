@@ -94,7 +94,7 @@ namespace QuasarEngine
             for (auto& s : slots)
             {
                 bool hasTexture = mat.HasTexture(s.slot);
-                Texture* tex = mat.GetTexture(s.slot).get();
+                Texture* tex = mat.GetTexture(s.slot);
                 void* handle = (hasTexture && tex) ? tex->GetHandle() : (noTexture ? noTexture->GetHandle() : nullptr);
 
                 ImGui::BeginGroup();

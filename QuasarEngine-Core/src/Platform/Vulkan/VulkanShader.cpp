@@ -562,12 +562,12 @@ namespace QuasarEngine
     bool VulkanShader::UpdateObject(Material* material)
     {
         if (!material) return false;
-        if (material->GetObjectId() == INVALID_ID) {
+        if (material->m_ID == INVALID_ID) {
             Q_ERROR("Material has INVALID_ID (resources not acquired or released).");
             return false;
         }
 
-        const uint32_t id = material->GetObjectId();
+        const uint32_t id = material->m_ID;
         if (id >= MAX_OBJECTS) {
             Q_ERROR("Object ID exceeds maximum limit");
             return false;
@@ -626,7 +626,7 @@ namespace QuasarEngine
             descriptorWrites.push_back(uboWrite);
         }
 
-        bool needSamplerUpdate = (objectState->lastMaterialGenerationPerImage[imageIndex] != material->GetGeneration());
+        bool needSamplerUpdate = (objectState->lastMaterialGenerationPerImage[imageIndex] != material->m_Generation);
         std::vector<VkDescriptorImageInfo> imageInfos;
 
         if (!m_Description.samplers.empty()) {
@@ -697,7 +697,7 @@ namespace QuasarEngine
             0, nullptr);
 
         if (needSamplerUpdate)
-            objectState->lastMaterialGenerationPerImage[imageIndex] = material->GetGeneration();
+            objectState->lastMaterialGenerationPerImage[imageIndex] = material->m_Generation;
 
         return true;
     }
@@ -790,7 +790,7 @@ namespace QuasarEngine
         if (objectStates.size() <= id) objectStates.resize(id + 1);
         objectStates[id] = std::move(object_state);
 
-        material->SetObjectId(id);
+        material->m_ID;
         return true;
     }
 
@@ -798,7 +798,7 @@ namespace QuasarEngine
     {
         if (!material) return;
 
-        const uint32_t id = material->GetObjectId();
+        const uint32_t id = material->m_ID;
         if (id == INVALID_ID || id >= objectStates.size())
             return;
 
@@ -818,7 +818,7 @@ namespace QuasarEngine
         objectStates[id] = {};
         m_FreeIds.push_back(id);
 
-        material->SetObjectId(INVALID_ID);
+        material->m_ID = INVALID_ID;
     }
 
     void VulkanShader::SetUniform(const std::string& name, void* data, size_t size)

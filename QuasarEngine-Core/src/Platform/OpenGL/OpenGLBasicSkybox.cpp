@@ -65,7 +65,7 @@ namespace QuasarEngine
 
 		shader->AcquireResources(material.get());
 
-		material->MarkDirty();;
+		material->m_Generation++;
 
 		TextureSpecification textureSpec;
 		textureSpec.width = 2048;
@@ -187,7 +187,7 @@ namespace QuasarEngine
 			throw std::runtime_error("Failed to load one or more faces of the cubemap");
 		}
 
-		material->SetTexture(TextureType::Albedo, texture);
+		material->SetTexture(TextureType::Albedo, texture.get());
 	}
 
 	Shader* OpenGLBasicSkybox::GetShader()

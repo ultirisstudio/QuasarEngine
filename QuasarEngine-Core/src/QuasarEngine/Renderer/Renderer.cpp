@@ -622,11 +622,11 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasM, sizeof(int));
 			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasO, sizeof(int));
 
-			m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(TextureType::Albedo).get());
-			m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(TextureType::Normal).get());
-			m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness).get());
-			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic).get());
-			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(TextureType::AO).get());
+			m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(TextureType::Albedo));
+			m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(TextureType::Normal));
+			m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness));
+			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic));
+			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(TextureType::AO));
 
 			if (!m_SceneData.m_Shader->UpdateObject(&material)) continue;
 
@@ -698,11 +698,11 @@ namespace QuasarEngine
 			m_SceneData.m_SkinnedShader->SetUniform("has_metallic_texture", &hasM, sizeof(int));
 			m_SceneData.m_SkinnedShader->SetUniform("has_ao_texture", &hasO, sizeof(int));
 
-			m_SceneData.m_SkinnedShader->SetTexture("albedo_texture", material.GetTexture(TextureType::Albedo).get());
-			m_SceneData.m_SkinnedShader->SetTexture("normal_texture", material.GetTexture(TextureType::Normal).get());
-			m_SceneData.m_SkinnedShader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness).get());
-			m_SceneData.m_SkinnedShader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic).get());
-			m_SceneData.m_SkinnedShader->SetTexture("ao_texture", material.GetTexture(TextureType::AO).get());
+			m_SceneData.m_SkinnedShader->SetTexture("albedo_texture", material.GetTexture(TextureType::Albedo));
+			m_SceneData.m_SkinnedShader->SetTexture("normal_texture", material.GetTexture(TextureType::Normal));
+			m_SceneData.m_SkinnedShader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness));
+			m_SceneData.m_SkinnedShader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic));
+			m_SceneData.m_SkinnedShader->SetTexture("ao_texture", material.GetTexture(TextureType::AO));
 
 			const AnimationComponent* anim = FindAnimatorForEntity(entity);
 			if (anim && !anim->GetFinalBoneMatrices().empty()) {
@@ -805,11 +805,11 @@ namespace QuasarEngine
 				AssetManager::Instance().loadAsset(tcAsset);
 			}
 
-			m_SceneData.m_TerrainShader->SetTexture("albedo_texture", mat.GetTexture(TextureType::Albedo).get());
-			m_SceneData.m_TerrainShader->SetTexture("normal_texture", mat.GetTexture(TextureType::Normal).get());
-			m_SceneData.m_TerrainShader->SetTexture("roughness_texture", mat.GetTexture(TextureType::Roughness).get());
-			m_SceneData.m_TerrainShader->SetTexture("metallic_texture", mat.GetTexture(TextureType::Metallic).get());
-			m_SceneData.m_TerrainShader->SetTexture("ao_texture", mat.GetTexture(TextureType::AO).get());
+			m_SceneData.m_TerrainShader->SetTexture("albedo_texture", mat.GetTexture(TextureType::Albedo));
+			m_SceneData.m_TerrainShader->SetTexture("normal_texture", mat.GetTexture(TextureType::Normal));
+			m_SceneData.m_TerrainShader->SetTexture("roughness_texture", mat.GetTexture(TextureType::Roughness));
+			m_SceneData.m_TerrainShader->SetTexture("metallic_texture", mat.GetTexture(TextureType::Metallic));
+			m_SceneData.m_TerrainShader->SetTexture("ao_texture", mat.GetTexture(TextureType::AO));
 
 			if (!m_SceneData.m_TerrainShader->UpdateObject(&mat)) {
 				continue;
@@ -863,7 +863,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_Skybox->GetShader()->UpdateGlobalState();
 
-		m_SceneData.m_Skybox->GetShader()->SetTexture("skybox", m_SceneData.m_Skybox->GetMaterial()->GetTexture(TextureType::Albedo).get(), Shader::SamplerType::SamplerCube);
+		m_SceneData.m_Skybox->GetShader()->SetTexture("skybox", m_SceneData.m_Skybox->GetMaterial()->GetTexture(TextureType::Albedo), Shader::SamplerType::SamplerCube);
 
 		m_SceneData.m_Skybox->GetShader()->UpdateObject(m_SceneData.m_Skybox->GetMaterial());
 

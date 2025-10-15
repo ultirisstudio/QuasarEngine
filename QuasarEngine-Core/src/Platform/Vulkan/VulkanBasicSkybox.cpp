@@ -71,7 +71,7 @@ namespace QuasarEngine
 
 		shader->AcquireResources(material.get());
 
-		material->MarkDirty();
+		material->m_Generation++;
 
 		TextureSpecification textureSpec;
 		textureSpec.width = 2048;
@@ -234,7 +234,7 @@ namespace QuasarEngine
 			info.unnormalizedCoordinates = VK_FALSE;
 			vkCreateSampler(VulkanContext::Context.device->device, &info, VulkanContext::Context.allocator->GetCallbacks(), &texture->sampler);
 
-			material->SetTexture(TextureType::Albedo, texture);
+			material->SetTexture(TextureType::Albedo, texture.get());
 
 			texture->generation++;
 	}
