@@ -42,8 +42,6 @@ namespace QuasarEngine
         float AO = 1.0f;
     };
 
-    using TextureHandle = std::shared_ptr<Texture>;
-
     class Material
     {
     private:

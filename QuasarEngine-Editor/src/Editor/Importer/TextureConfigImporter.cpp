@@ -5,6 +5,8 @@
 
 #include <QuasarEngine/Renderer/Renderer.h>
 
+#include <QuasarEngine/Resources/TextureUtils.h>
+
 namespace QuasarEngine
 {
 	TextureSpecification TextureConfigImporter::ImportTextureConfig(std::filesystem::path path)

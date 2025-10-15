@@ -1,216 +1,147 @@
 #include "qepch.h"
+
 #include "OpenGLTexture2D.h"
+#include "OpenGLTextureUtils.h"
 
 #include <stb_image.h>
-#include <glad/glad.h>
 
 #include <QuasarEngine/File/FileUtils.h>
 #include <QuasarEngine/Core/Logger.h>
 
 namespace QuasarEngine
 {
-	namespace Utils
-	{
-		static GLenum TextureTarget(bool multisampled)
-		{
-			return multisampled ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
-		}
-
-		static GLenum TextureFormatToGL(TextureFormat format)
-		{
-			switch (format)
-			{
-			case TextureFormat::RGB:   return GL_RGB;
-			case TextureFormat::RGBA:  return GL_RGBA;
-			case TextureFormat::SRGB:  return GL_SRGB;
-			case TextureFormat::SRGBA: return GL_SRGB_ALPHA;
-			case TextureFormat::RED:   return GL_RED;
-			case TextureFormat::RED8:  return GL_R8;
-			}
-			return 0;
-		}
-
-		static GLenum TextureWrapToGL(TextureWrap wrap)
-		{
-			switch (wrap)
-			{
-			case TextureWrap::REPEAT:          return GL_REPEAT;
-			case TextureWrap::MIRRORED_REPEAT: return GL_MIRRORED_REPEAT;
-			case TextureWrap::CLAMP_TO_EDGE:   return GL_CLAMP_TO_EDGE;
-			case TextureWrap::CLAMP_TO_BORDER: return GL_CLAMP_TO_BORDER;
-			}
-			return 0;
-		}
-
-		static GLenum TextureFilterToGL(TextureFilter filter)
-		{
-			switch (filter)
-			{
-			case TextureFilter::NEAREST:               return GL_NEAREST;
-			case TextureFilter::LINEAR:                return GL_LINEAR;
-			case TextureFilter::NEAREST_MIPMAP_NEAREST:return GL_NEAREST_MIPMAP_NEAREST;
-			case TextureFilter::LINEAR_MIPMAP_NEAREST: return GL_LINEAR_MIPMAP_NEAREST;
-			case TextureFilter::NEAREST_MIPMAP_LINEAR: return GL_NEAREST_MIPMAP_LINEAR;
-			case TextureFilter::LINEAR_MIPMAP_LINEAR:  return GL_LINEAR_MIPMAP_LINEAR;
-			}
-			return GL_LINEAR;
-		}
-
-		static int DesiredChannelFromTextureFormat(TextureFormat format)
-		{
-			switch (format)
-			{
-			case TextureFormat::RGB:  return 3;
-			case TextureFormat::RGB8: return 3;
-			case TextureFormat::SRGB: return 3;
-			case TextureFormat::SRGB8:return 3;
-			case TextureFormat::RGBA: return 4;
-			case TextureFormat::RGBA8:return 4;
-			case TextureFormat::SRGBA:return 4;
-			case TextureFormat::RED:  return 1;
-			case TextureFormat::RED8: return 1;
-			default: return 0;
-			}
-		}
-
-		static uint32_t BytesPerPixel(GLenum format) {
-			switch (format)
-			{
-			case GL_RGB:          return 3;
-			case GL_RGBA:         return 4;
-			case GL_SRGB:         return 3;
-			case GL_SRGB_ALPHA:   return 4;
-			case GL_RED:          return 1;
-			case GL_R8:           return 1;
-			default:              return 0;
-			}
-		}
-	}
-
-	OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification)
-		: Texture2D(specification), m_ID(0)
-	{
-	}
+	OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification) : Texture2D(specification) {}
 
 	OpenGLTexture2D::~OpenGLTexture2D()
 	{
-		glDeleteTextures(1, &m_ID);
+		if (m_ID) glDeleteTextures(1, &m_ID);
 	}
 
-	void OpenGLTexture2D::LoadFromPath(const std::string& path)
-	{
-		std::vector<unsigned char> buffer;
-		std::ifstream file(path, std::ios::binary);
-		if (file)
-		{
-			file.seekg(0, std::ios::end);
-			buffer.resize(file.tellg());
-			file.seekg(0, std::ios::beg);
-			file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
-		}
-		else
-		{
-			Q_ERROR("Failed to load texture from path: " + path);
-			return;
-		}
+    bool OpenGLTexture2D::LoadFromPath(const std::string& path) {
+        auto bytes = FileUtils::ReadFileBinary(path);
+        if (bytes.empty()) {
+            Q_ERROR("OpenGLTexture2D: failed to read file: " + path);
+            return false;
+        }
+        return LoadFromMemory(ByteView{ bytes.data(), bytes.size() });
+    }
 
-		LoadFromMemory(buffer.data(), buffer.size());
-	}
+    bool OpenGLTexture2D::LoadFromMemory(ByteView data) {
+        if (data.empty()) {
+            Q_ERROR("OpenGLTexture2D: empty memory buffer");
+            return false;
+        }
 
-	void OpenGLTexture2D::LoadFromMemory(unsigned char* image_data, size_t size)
-	{
-		if (m_Specification.compressed)
-		{
-			if (m_Specification.flip)
-			{
-				stbi_set_flip_vertically_on_load(true);
-			}
-			else
-			{
-				stbi_set_flip_vertically_on_load(false);
-			}
+        if (m_Specification.flip)  stbi_set_flip_vertically_on_load(true);
+        else                       stbi_set_flip_vertically_on_load(false);
 
-			if (m_Specification.alpha)
-			{
-				m_Specification.format = TextureFormat::RGBA;
-				m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGBA : TextureFormat::RGBA;
-			}
-			else
-			{
-				m_Specification.format = TextureFormat::RGB;
-				m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB : TextureFormat::RGB;
-			}
+        if (m_Specification.alpha) {
+            m_Specification.format = TextureFormat::RGBA;
+            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8A8 : TextureFormat::RGBA8;
+        }
+        else {
+            m_Specification.format = TextureFormat::RGB;
+            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8 : TextureFormat::RGB8;
+        }
 
-			int width, height, channels;
-			unsigned char* data = stbi_load_from_memory(image_data, static_cast<int>(size), &width, &height, &channels,
-				Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format));
+        int w = 0, h = 0, actualChannels = 0;
+        const int desired = Utils::DesiredChannels(m_Specification.internal_format);
+        unsigned char* decoded = stbi_load_from_memory(
+            reinterpret_cast<const stbi_uc*>(data.data),
+            static_cast<int>(data.size),
+            &w, &h, &actualChannels, desired
+        );
 
-			if (!data)
-			{
-				Q_ERROR(std::string("Failed to decode image from memory: ") + stbi_failure_reason());
-				return;
-			}
+        if (!decoded) {
+            Q_ERROR(std::string("stb_image decode failed: ") + stbi_failure_reason());
+            return false;
+        }
 
-			m_Specification.width = width;
-			m_Specification.height = height;
-			m_Specification.channels = channels;
+        m_Specification.width = static_cast<uint32_t>(w);
+        m_Specification.height = static_cast<uint32_t>(h);
+        m_Specification.channels = static_cast<uint32_t>(desired ? desired : actualChannels);
 
-			LoadFromData(data, width * height * Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format));
+        const bool ok = LoadFromData(ByteView{ decoded, static_cast<std::size_t>(w * h * m_Specification.channels) });
+        stbi_image_free(decoded);
+        return ok;
+    }
 
-			stbi_image_free(data);
-		}
-		else
-		{
-			LoadFromData(image_data, m_Specification.width * m_Specification.height * Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format));
-		}
-	}
+    bool OpenGLTexture2D::LoadFromData(ByteView pixels) {
+        if (pixels.empty()) { Q_ERROR("OpenGLTexture2D: no pixel data"); return false; }
+        if (m_Specification.width == 0 || m_Specification.height == 0) {
+            Q_ERROR("OpenGLTexture2D: width/height must be set before LoadFromData()");
+            return false;
+        }
+        return UploadPixelsDSA(pixels);
+    }
 
-	void OpenGLTexture2D::LoadFromData(unsigned char* data, size_t)
-	{
-		bool multisample = m_Specification.Samples > 1;
+    bool OpenGLTexture2D::UploadPixelsDSA(ByteView pixels) {
+        const GLenum target = Utils::TargetFromSamples(m_Specification.Samples);
+        const auto   glInt = Utils::ToGLFormat(m_Specification.internal_format);
+        const auto   glExt = Utils::ToGLFormat(m_Specification.format);
 
-		glCreateTextures(Utils::TextureTarget(multisample), 1, &m_ID);
-		glBindTexture(Utils::TextureTarget(multisample), m_ID);
+        if (glInt.internal == 0 || glExt.external == 0) {
+            Q_ERROR("OpenGLTexture2D: unsupported texture format mapping");
+            return false;
+        }
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, Utils::TextureWrapToGL(m_Specification.wrap_s));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, Utils::TextureWrapToGL(m_Specification.wrap_t));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, Utils::TextureFilterToGL(m_Specification.min_filter_param));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, Utils::TextureFilterToGL(m_Specification.mag_filter_param));
+        if (m_ID) { glDeleteTextures(1, &m_ID); m_ID = 0; m_Loaded = false; }
 
-		if (Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format) == 1)
-		{
-			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glCreateTextures(target, 1, &m_ID);
 
-			GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_RED };
-			glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-		}
+        if (target == GL_TEXTURE_2D) {
+            glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(m_Specification.wrap_s));
+            glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(m_Specification.wrap_t));
+            glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(m_Specification.min_filter_param));
+            glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(m_Specification.mag_filter_param));
 
-		glTexImage2D(
-			GL_TEXTURE_2D,
-			0,
-			Utils::TextureFormatToGL(m_Specification.internal_format),
-			m_Specification.width,
-			m_Specification.height,
-			0,
-			Utils::TextureFormatToGL(m_Specification.format),
-			GL_UNSIGNED_BYTE,
-			data
-		);
+            if (glInt.channels == 1) {
+                const GLint swizzle[4] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+                glTextureParameteriv(m_ID, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+            }
 
-		if (m_Specification.mipmap)
-		{
-			glGenerateMipmap(GL_TEXTURE_2D);
-		}
-	}
+            const GLint levels = Utils::CalcMipmapLevels(static_cast<GLint>(m_Specification.width),
+                static_cast<GLint>(m_Specification.height),
+                m_Specification.mipmap);
 
-	void OpenGLTexture2D::Bind(int index) const
-	{
-		glActiveTexture(GL_TEXTURE0 + index);
-		glBindTexture(GL_TEXTURE_2D, m_ID);
-	}
+            glTextureStorage2D(m_ID, levels, glInt.internal,
+                static_cast<GLint>(m_Specification.width),
+                static_cast<GLint>(m_Specification.height));
 
-	void OpenGLTexture2D::Unbind() const
-	{
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
+            GLint oldUnpack = 4;
+            glGetIntegerv(GL_UNPACK_ALIGNMENT, &oldUnpack);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+            glTextureSubImage2D(m_ID, 0, 0, 0,
+                static_cast<GLint>(m_Specification.width),
+                static_cast<GLint>(m_Specification.height),
+                glExt.external, glExt.type, pixels.data);
+
+            glPixelStorei(GL_UNPACK_ALIGNMENT, oldUnpack);
+
+            if (m_Specification.mipmap && levels > 1) {
+                glGenerateTextureMipmap(m_ID);
+            }
+        }
+        else {
+            glTextureStorage2DMultisample(m_ID,
+                static_cast<GLint>(m_Specification.Samples),
+                glInt.internal,
+                static_cast<GLint>(m_Specification.width),
+                static_cast<GLint>(m_Specification.height),
+                GL_FALSE);
+        }
+
+        m_Loaded = true;
+        return true;
+    }
+
+    void OpenGLTexture2D::Bind(int index) const {
+        if (!m_ID) return;
+        glBindTextureUnit(index, m_ID);
+    }
+
+    void OpenGLTexture2D::Unbind() const {
+        //glBindTextureUnit(0, 0);
+    }
 }

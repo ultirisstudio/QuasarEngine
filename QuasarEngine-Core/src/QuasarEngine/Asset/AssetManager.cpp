@@ -154,11 +154,11 @@ namespace QuasarEngine
 				if (std::holds_alternative<TextureSpecification>(asset.spec))
 					spec = std::get<TextureSpecification>(asset.spec);
 
-				auto texture = Texture2D::CreateTexture2D(spec);
+				auto texture = Texture2D::Create(spec);
 
 				if (asset.data)
 				{
-					texture->LoadFromMemory(static_cast<unsigned char*>(asset.data), asset.size);
+					texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
 				}
 				else
 				{
@@ -239,14 +239,14 @@ namespace QuasarEngine
 			if (it == m_LoadedAssets.end())
 				continue;
 
-			it->second = Texture2D::CreateTexture2D(std::get<TextureSpecification>(asset.spec));
+			it->second = Texture2D::Create(std::get<TextureSpecification>(asset.spec));
 			auto texture = std::dynamic_pointer_cast<Texture2D>(it->second);
 			if (!texture)
 				continue;
 
 			if (asset.data && asset.size > 0)
 			{
-				texture->LoadFromMemory(static_cast<unsigned char*>(asset.data), asset.size);
+				texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
 			}
 			else
 			{
@@ -352,11 +352,11 @@ namespace QuasarEngine
 			if (std::holds_alternative<TextureSpecification>(asset.spec))
 				spec = std::get<TextureSpecification>(asset.spec);
 
-			auto texture = Texture2D::CreateTexture2D(spec);
+			auto texture = Texture2D::Create(spec);
 
 			if (asset.data)
 			{
-				texture->LoadFromMemory(static_cast<unsigned char*>(asset.data), asset.size);
+				texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
 			}
 			else
 			{

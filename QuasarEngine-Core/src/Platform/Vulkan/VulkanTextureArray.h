@@ -3,33 +3,37 @@
 #include "VulkanTypes.h"
 
 #include <QuasarEngine/Resources/TextureArray.h>
+#include <vulkan/vulkan.h>
+#include <memory>
 
-namespace QuasarEngine
-{
-	class VulkanImage;
+namespace QuasarEngine {
 
-	class VulkanTextureArray : public TextureArray
-	{
-	public:
-		VulkanTextureArray(const TextureSpecification& specification);
-		~VulkanTextureArray() override;
+    class VulkanImage;
 
-		void Bind(int index = 0) const override {};
-		void Unbind() const override {};
+    class VulkanTextureArray : public TextureArray {
+    public:
+        explicit VulkanTextureArray(const TextureSpecification& specification);
+        ~VulkanTextureArray() override;
 
-		void* GetHandle() const override { return nullptr; };
+        TextureHandle GetHandle() const noexcept override { return static_cast<TextureHandle>(reinterpret_cast<uintptr_t>(descriptor)); }
+        bool IsLoaded() const noexcept override { return m_Loaded; }
 
-		void LoadFromFiles(const std::vector<std::string>& paths) override;
+        bool LoadFromPath(const std::string& path) override;
+        bool LoadFromMemory(ByteView data) override;
+        bool LoadFromData(ByteView pixels) override;
 
-		void LoadFromPath(const std::string& path) override {};
-		void LoadFromMemory(unsigned char* image_data, size_t size) override {};
-		void LoadFromData(unsigned char* image_data, size_t size) override {};
+        void Bind(int index = 0) const override;
+        void Unbind() const override;
 
-	private:
-		std::unique_ptr<VulkanImage> image;
-		VkSampler sampler;
-		VkDescriptorSet descriptor;
-		uint32_t arrayLayers;
-		uint32_t generation;
-	};
+    public:
+        std::unique_ptr<VulkanImage> image{};
+        VkSampler        sampler{ VK_NULL_HANDLE };
+        uint32_t         generation{ 0 };
+        VkDescriptorSet  descriptor{ VK_NULL_HANDLE };
+
+    private:
+        bool Upload(ByteView pixels, uint32_t layers);
+
+        bool m_Loaded{ false };
+    };
 }

@@ -1,242 +1,204 @@
 #include "qepch.h"
 
-#include "VulkanContext.h"
-#include "VulkanDevice.h"
 #include "VulkanTextureArray.h"
-#include "VulkanImage.h"
+#include "VulkanTextureUtils.h"
+
 #include "VulkanBuffer.h"
 #include "VulkanContext.h"
+#include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
+#include "VulkanImage.h"
 
-#include <stb_image.h>
+#include <QuasarEngine/File/FileUtils.h>
+#include <QuasarEngine/Core/Logger.h>
+
 #include <backends/imgui_impl_vulkan.h>
+
+#include <algorithm>
+#include <cmath>
 
 namespace QuasarEngine
 {
-    namespace Utils
-    {
-        static VkFormat TextureFormatToVulkan(TextureFormat format)
-        {
-            switch (format)
-            {
-            case TextureFormat::RGB:   return VK_FORMAT_R8G8B8_UNORM;
-            case TextureFormat::RGBA:  return VK_FORMAT_R8G8B8A8_UNORM;
-            case TextureFormat::SRGB:  return VK_FORMAT_R8G8B8_SRGB;
-            case TextureFormat::SRGBA: return VK_FORMAT_R8G8B8A8_SRGB;
-            case TextureFormat::RED:   return VK_FORMAT_R8_UNORM;
-            }
-            return VK_FORMAT_UNDEFINED;
-        }
-
-        static VkSamplerAddressMode TextureWrapToVulkan(TextureWrap wrap)
-        {
-            switch (wrap)
-            {
-            case TextureWrap::REPEAT:          return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            case TextureWrap::MIRRORED_REPEAT: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-            case TextureWrap::CLAMP_TO_EDGE:   return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            case TextureWrap::CLAMP_TO_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-            }
-            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        }
-
-        static VkFilter TextureFilterToVulkan(TextureFilter filter)
-        {
-            switch (filter)
-            {
-            case TextureFilter::NEAREST:               return VK_FILTER_NEAREST;
-            case TextureFilter::LINEAR:                return VK_FILTER_LINEAR;
-            case TextureFilter::NEAREST_MIPMAP_NEAREST:
-            case TextureFilter::LINEAR_MIPMAP_NEAREST:
-            case TextureFilter::NEAREST_MIPMAP_LINEAR:
-            case TextureFilter::LINEAR_MIPMAP_LINEAR:
-                return (filter == TextureFilter::NEAREST_MIPMAP_NEAREST || filter == TextureFilter::NEAREST_MIPMAP_LINEAR)
-                    ? VK_FILTER_NEAREST
-                    : VK_FILTER_LINEAR;
-            }
-            return VK_FILTER_LINEAR;
-        }
-
-        static VkSamplerMipmapMode TextureMipmapModeToVulkan(TextureFilter filter)
-        {
-            switch (filter)
-            {
-            case TextureFilter::NEAREST_MIPMAP_NEAREST:
-            case TextureFilter::LINEAR_MIPMAP_NEAREST:
-                return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-            case TextureFilter::NEAREST_MIPMAP_LINEAR:
-            case TextureFilter::LINEAR_MIPMAP_LINEAR:
-                return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            default:
-                return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            }
-        }
+    VulkanTextureArray::VulkanTextureArray(const TextureSpecification& specification)
+        : TextureArray(specification) {
     }
 
-	VulkanTextureArray::VulkanTextureArray(const TextureSpecification& specification)
-		: TextureArray(specification), sampler(VK_NULL_HANDLE), descriptor(VK_NULL_HANDLE), generation(0)
-	{
-		
-	}
+    VulkanTextureArray::~VulkanTextureArray() {
+        vkDeviceWaitIdle(VulkanContext::Context.device->device);
 
-	VulkanTextureArray::~VulkanTextureArray()
-	{
-		vkDeviceWaitIdle(VulkanContext::Context.device->device);
+        image.reset();
 
-		image.reset();
-
-		if (sampler != VK_NULL_HANDLE)
-		{
-			vkDestroySampler(VulkanContext::Context.device->device, sampler, VulkanContext::Context.allocator->GetCallbacks());
-		}
-	}
-
-	void VulkanTextureArray::LoadFromFiles(const std::vector<std::string>& paths)
-	{
-        std::vector<unsigned char*> pixels;
-        int texWidth = 0, texHeight = 0, channels = 0;
-
-        if (m_Specification.flip)
-        {
-            stbi_set_flip_vertically_on_load(true);
-        }
-        else
-        {
-            stbi_set_flip_vertically_on_load(false);
+        if (sampler != VK_NULL_HANDLE) {
+            vkDestroySampler(VulkanContext::Context.device->device, sampler, VulkanContext::Context.allocator->GetCallbacks());
+            sampler = VK_NULL_HANDLE;
         }
 
-        if (m_Specification.alpha)
-        {
-            m_Specification.format = TextureFormat::RGBA;
-            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGBA : TextureFormat::RGBA;
-        }
-        else
-        {
-            m_Specification.format = TextureFormat::RGBA; // TODO:  TextureFormat::RGB
-            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGBA : TextureFormat::RGBA; // TODO: TextureFormat::SRGB : TextureFormat::RGB
-        }
+        if (descriptor) { ImGui_ImplVulkan_RemoveTexture(descriptor); descriptor = VK_NULL_HANDLE; }
+    }
 
-        arrayLayers = static_cast<uint32_t>(paths.size());
-        for (size_t i = 0; i < paths.size(); ++i)
-        {
-            int width, height, nbChannels;
-            //stbi_set_flip_vertically_on_load(false);
-            unsigned char* data = stbi_load(paths[i].c_str(), &width, &height, &nbChannels, STBI_rgb_alpha); // TODO: Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format)
-            if (!data)
-            {
-                for (auto p : pixels) stbi_image_free(p);
-                throw std::runtime_error("Erreur lors du chargement d'une texture array : " + paths[i]);
-            }
-            if (i == 0)
-            {
-                texWidth = width; texHeight = height; channels = nbChannels;
-            }
-            else if (width != texWidth || height != texHeight)
-            {
-                stbi_image_free(data);
-                for (auto p : pixels) stbi_image_free(p);
-                throw std::runtime_error("Toutes les textures d'un array doivent avoir la même taille !");
-            }
-            pixels.push_back(data);
+    bool VulkanTextureArray::LoadFromPath(const std::string& path) {
+        auto bytes = FileUtils::ReadFileBinary(path);
+        if (bytes.empty()) {
+            Q_ERROR("VulkanTextureArray: failed to read file: " + path);
+            return false;
+        }
+        return LoadFromMemory(ByteView{ bytes.data(), bytes.size() });
+    }
+
+    bool VulkanTextureArray::LoadFromMemory(ByteView data) {
+        return LoadFromData(data);
+    }
+
+    bool VulkanTextureArray::LoadFromData(ByteView pixels) {
+        if (pixels.empty()) {
+            Q_ERROR("VulkanTextureArray: no pixel data");
+            return false;
+        }
+        if (m_Specification.width == 0 || m_Specification.height == 0) {
+            Q_ERROR("VulkanTextureArray: width/height must be set before LoadFromData()");
+            return false;
         }
 
-        m_Specification.width = texWidth;
-        m_Specification.height = texHeight;
-        m_Specification.channels = channels;
+        VkFormat vkFormat = Utils::TextureFormatToVulkan(m_Specification.internal_format);
+        if (vkFormat == VK_FORMAT_UNDEFINED) {
+            Q_ERROR("VulkanTextureArray: unsupported internal format");
+            return false;
+        }
+        const uint32_t bpp = Utils::BytesPerPixel(vkFormat);
 
-        uint32_t mipLevels = m_Specification.mipmap ? static_cast<uint32_t>(std::floor(std::log2(std::max(m_Specification.width, m_Specification.height)))) + 1 : 1;
+        const std::size_t layerSize =
+            static_cast<std::size_t>(m_Specification.width) *
+            static_cast<std::size_t>(m_Specification.height) *
+            static_cast<std::size_t>(bpp);
 
-        VkFormat image_format = Utils::TextureFormatToVulkan(m_Specification.internal_format);
+        if (layerSize == 0) {
+            Q_ERROR("VulkanTextureArray: invalid layer size");
+            return false;
+        }
+        if (pixels.size % layerSize != 0) {
+            Q_ERROR("VulkanTextureArray: data size doesn't match width*height*bpp*layers");
+            return false;
+        }
 
-        VkDevice device = VulkanContext::Context.device->device;
-        VkPhysicalDevice physicalDevice = VulkanContext::Context.device->physicalDevice;
-        VkCommandPool pool = VulkanContext::Context.device->graphicsCommandPool;
-        VkQueue queue = VulkanContext::Context.device->graphicsQueue;
+        const uint32_t layers = static_cast<uint32_t>(pixels.size / layerSize);
+        m_Specification.channels = Utils::DesiredChannels(m_Specification.internal_format);
 
-        VkDeviceSize layerSize = texWidth * texHeight * channels;
-        VkDeviceSize totalSize = layerSize * arrayLayers;
+        return Upload(pixels, layers);
+    }
 
-        VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        VkMemoryPropertyFlags memory_prop_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    bool VulkanTextureArray::Upload(ByteView pixels, uint32_t layers) {
+        const VkDevice device = VulkanContext::Context.device->device;
+        const VkQueue  queue = VulkanContext::Context.device->graphicsQueue;
+        const VkCommandPool pool = VulkanContext::Context.device->graphicsCommandPool;
 
-        std::unique_ptr<VulkanBuffer> staging = std::make_unique<VulkanBuffer>(
+        VkFormat vkFormat = Utils::TextureFormatToVulkan(m_Specification.internal_format);
+        if (vkFormat == VK_FORMAT_UNDEFINED) {
+            Q_ERROR("VulkanTextureArray: unsupported internal format");
+            return false;
+        }
+
+        const uint32_t mipLevels =
+            Utils::CalcMipmapLevels(m_Specification.width, m_Specification.height, m_Specification.mipmap);
+
+        const std::size_t totalBytes =
+            static_cast<std::size_t>(m_Specification.width) *
+            static_cast<std::size_t>(m_Specification.height) *
+            static_cast<std::size_t>(Utils::BytesPerPixel(vkFormat)) *
+            static_cast<std::size_t>(layers);
+
+        const VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        const VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+        auto staging = std::make_unique<VulkanBuffer>(
             device,
-            physicalDevice,
-            totalSize,
+            VulkanContext::Context.device->physicalDevice,
+            totalBytes,
             usage,
-            memory_prop_flags,
+            memFlags,
             true
         );
-
-        std::vector<unsigned char> temp(totalSize);
-        for (uint32_t layer = 0; layer < arrayLayers; ++layer)
-            memcpy(temp.data() + layer * layerSize, pixels[layer], layerSize);
-
-        staging->LoadData(0, totalSize, 0, temp.data());
+        staging->LoadData(0, totalBytes, 0, pixels.data);
 
         image = std::make_unique<VulkanImage>(
             VK_IMAGE_TYPE_2D,
             VK_IMAGE_VIEW_TYPE_2D_ARRAY,
             m_Specification.width,
             m_Specification.height,
-            image_format,
+            vkFormat,
             VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            Utils::DefaultTextureUsage(m_Specification.mipmap),
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             true,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            arrayLayers,
+            layers,
             0,
-            mipLevels);
+            mipLevels
+        );
 
-        std::unique_ptr<VulkanCommandBuffer> temp_buffer = std::make_unique<VulkanCommandBuffer>(device, pool);
+        auto cmd = std::make_unique<VulkanCommandBuffer>(device, pool);
+        cmd->AllocateAndBeginSingleUse();
 
-        temp_buffer->AllocateAndBeginSingleUse();
+        image->ImageTransitionLayout(cmd->handle, vkFormat,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, mipLevels,
+            0, layers);
 
-        image->ImageTransitionLayout(temp_buffer->handle, image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, mipLevels, 0, arrayLayers);
-        image->CopyFromBuffer(temp_buffer->handle, staging->handle, arrayLayers);
+        image->CopyFromBuffer(cmd->handle, staging->handle, layers);
 
-        if (m_Specification.mipmap)
-        {
-            image->GenerateMipmaps(temp_buffer->handle, image_format, m_Specification.width, m_Specification.height, mipLevels, arrayLayers);
+        if (m_Specification.mipmap && mipLevels > 1) {
+            image->GenerateMipmaps(cmd->handle, vkFormat,
+                m_Specification.width, m_Specification.height,
+                mipLevels, layers);
         }
-        else
-        {
-            image->ImageTransitionLayout(temp_buffer->handle, image_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, mipLevels, 0, arrayLayers);
+        else {
+            image->ImageTransitionLayout(cmd->handle, vkFormat,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                0, mipLevels,
+                0, layers);
         }
 
-        temp_buffer->EndSingleUse(queue);
-
-        temp_buffer.reset();
+        cmd->EndSingleUse(queue);
+        cmd.reset();
         staging.reset();
 
-        VkSamplerCreateInfo sampler_info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-        sampler_info.magFilter = Utils::TextureFilterToVulkan(m_Specification.mag_filter_param);
-        sampler_info.minFilter = Utils::TextureFilterToVulkan(m_Specification.min_filter_param);
-        sampler_info.addressModeU = Utils::TextureWrapToVulkan(m_Specification.wrap_r);
-        sampler_info.addressModeV = Utils::TextureWrapToVulkan(m_Specification.wrap_s);
-        sampler_info.addressModeW = Utils::TextureWrapToVulkan(m_Specification.wrap_t);
-        sampler_info.anisotropyEnable = VK_TRUE;
-        sampler_info.maxAnisotropy = VulkanContext::Context.device->physicalDeviceInfo.limits.maxSamplerAnisotropy;
-        sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        sampler_info.unnormalizedCoordinates = VK_FALSE;
-        sampler_info.compareEnable = VK_FALSE;
-        sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
-        sampler_info.mipmapMode = Utils::TextureMipmapModeToVulkan(TextureFilter::LINEAR_MIPMAP_LINEAR);
-        sampler_info.mipLodBias = 0.0f;
-        sampler_info.minLod = 0.0f;
-        sampler_info.maxLod = m_Specification.mipmap ? static_cast<float>(mipLevels) : 0.0f;
+        VkSamplerCreateInfo sInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+        sInfo.magFilter = Utils::ToVkFilter(m_Specification.mag_filter_param);
+        sInfo.minFilter = Utils::ToVkFilter(m_Specification.min_filter_param);
+        sInfo.mipmapMode = Utils::ToVkMipmapMode(m_Specification.min_filter_param);
+        sInfo.addressModeU = Utils::ToVkAddress(m_Specification.wrap_s);
+        sInfo.addressModeV = Utils::ToVkAddress(m_Specification.wrap_t);
+        sInfo.addressModeW = Utils::ToVkAddress(m_Specification.wrap_r);
+        sInfo.mipLodBias = 0.0f;
+        sInfo.minLod = 0.0f;
+        sInfo.maxLod = m_Specification.mipmap ? static_cast<float>(mipLevels) : 0.0f;
+        sInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        sInfo.unnormalizedCoordinates = VK_FALSE;
+        sInfo.compareEnable = VK_FALSE;
+        sInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
-        VkResult result = vkCreateSampler(device, &sampler_info, VulkanContext::Context.allocator->GetCallbacks(), &sampler);
-        if (!VulkanResultIsSuccess(result))
-        {
-            std::string str = "Error creating texture sampler: " + VulkanResultString(result);
-            Q_ERROR(str);
-            return;
+        sInfo.anisotropyEnable = VK_TRUE;
+        sInfo.maxAnisotropy = VulkanContext::Context.device->physicalDeviceInfo.limits.maxSamplerAnisotropy;
+
+        VkResult vr = vkCreateSampler(device, &sInfo, VulkanContext::Context.allocator->GetCallbacks(), &sampler);
+        if (!VulkanResultIsSuccess(vr)) {
+            Q_ERROR("VulkanTextureArray: error creating sampler: " + VulkanResultString(vr));
+            return false;
         }
 
         descriptor = ImGui_ImplVulkan_AddTexture(sampler, image->view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        for (auto p : pixels) stbi_image_free(p);
-	}
+        generation++;
+        m_Loaded = true;
+        return true;
+    }
+
+    void VulkanTextureArray::Bind(int index) const {
+        
+    }
+
+    void VulkanTextureArray::Unbind() const {
+        
+    }
 }

@@ -22,26 +22,26 @@ namespace QuasarEngine
     {
         TextureSpecification spec;
 
-        m_DirectoryIcon = Texture2D::CreateTexture2D(spec);
-        m_DirectoryIcon->LoadFromMemory(img_texture_dossier, img_texture_dossier_size);
+        m_DirectoryIcon = Texture2D::Create(spec);
+        m_DirectoryIcon->LoadFromMemory({ img_texture_dossier, img_texture_dossier_size });
 
-        m_FilePNGIcon = Texture2D::CreateTexture2D(spec);
-        m_FilePNGIcon->LoadFromMemory(img_texture_png, img_texture_png_size);
+        m_FilePNGIcon = Texture2D::Create(spec);
+        m_FilePNGIcon->LoadFromMemory({ img_texture_png, img_texture_png_size });
 
-        m_FileJPGIcon = Texture2D::CreateTexture2D(spec);
-        m_FileJPGIcon->LoadFromMemory(img_texture_jpg, img_texture_jpg_size);
+        m_FileJPGIcon = Texture2D::Create(spec);
+        m_FileJPGIcon->LoadFromMemory({ img_texture_jpg, img_texture_jpg_size });
 
-        m_FileOBJIcon = Texture2D::CreateTexture2D(spec);
-        m_FileOBJIcon->LoadFromMemory(img_texture_obj, img_texture_obj_size);
+        m_FileOBJIcon = Texture2D::Create(spec);
+        m_FileOBJIcon->LoadFromMemory({ img_texture_obj, img_texture_obj_size });
 
-        m_FileSceneIcon = Texture2D::CreateTexture2D(spec);
-        m_FileSceneIcon->LoadFromMemory(img_texture_scene, img_texture_scene_size);
+        m_FileSceneIcon = Texture2D::Create(spec);
+        m_FileSceneIcon->LoadFromMemory({ img_texture_scene, img_texture_scene_size });
 
-        m_FileOtherIcon = Texture2D::CreateTexture2D(spec);
-        m_FileOtherIcon->LoadFromMemory(img_texture_texte, img_texture_texte_size);
+        m_FileOtherIcon = Texture2D::Create(spec);
+        m_FileOtherIcon->LoadFromMemory({ img_texture_texte, img_texture_texte_size });
 
-        m_FileLuaIcon = Texture2D::CreateTexture2D(spec);
-        m_FileLuaIcon->LoadFromMemory(img_texture_lua, img_texture_lua_size);
+        m_FileLuaIcon = Texture2D::Create(spec);
+        m_FileLuaIcon->LoadFromMemory({ img_texture_lua, img_texture_lua_size });
     }
 
 	ContentBrowserPanel::~ContentBrowserPanel()

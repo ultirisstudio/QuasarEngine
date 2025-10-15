@@ -10,6 +10,8 @@
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Asset/AssetManager.h>
 
+#include <QuasarEngine/Resources/TextureUtils.h>
+
 namespace QuasarEngine
 {
 	std::filesystem::path TextureViewerPanel::FindAssetsRoot(const std::filesystem::path& p)

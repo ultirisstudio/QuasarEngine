@@ -7,20 +7,19 @@ namespace QuasarEngine
 	class Texture2D : public Texture
 	{
 	public:
-		explicit Texture2D(const TextureSpecification& spec);
-		virtual ~Texture2D() override {};
+		explicit Texture2D(const TextureSpecification& specification);
+		virtual ~Texture2D() override = default;
 
-		virtual void LoadFromPath(const std::string& path) override {};
-		virtual void LoadFromMemory(unsigned char* image_data, size_t size) override {};
-		virtual void LoadFromData(unsigned char* image_data, size_t size) override {};
+		virtual TextureHandle GetHandle() const noexcept override = 0;
+		virtual bool IsLoaded() const noexcept override = 0;
 
-		static unsigned char* LoadDataFromPath(const std::string& path, size_t* file_size);
+		virtual bool LoadFromPath(const std::string& path) override = 0;
+		virtual bool LoadFromMemory(ByteView data) override = 0;
+		virtual bool LoadFromData(ByteView data) override = 0;
 
-		virtual void* GetHandle() const override { return nullptr; };
+		virtual void Bind(int index = 0) const override = 0;
+		virtual void Unbind() const override = 0;
 
-		virtual void Bind(int index = 0) const override {};
-		virtual void Unbind() const override {};
-
-		static std::shared_ptr<Texture2D> CreateTexture2D(const TextureSpecification& specification);
+		static std::shared_ptr<Texture2D> Create(const TextureSpecification& specification);
 	};
 }

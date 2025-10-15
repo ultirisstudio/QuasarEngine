@@ -1,6 +1,8 @@
 #include "qepch.h"
 
 #include "VulkanTexture2D.h"
+#include "VulkanTextureUtils.h"
+
 #include "VulkanBuffer.h"
 #include "VulkanContext.h"
 #include "VulkanDevice.h"
@@ -8,280 +10,207 @@
 #include "VulkanImage.h"
 
 #include <QuasarEngine/File/FileUtils.h>
+#include <QuasarEngine/Core/Logger.h>
 
 #include <backends/imgui_impl_vulkan.h>
-
 #include <stb_image.h>
-
-#define INVALID_ID 4294967295U
+#include <cmath>
+#include <algorithm>
 
 namespace QuasarEngine
 {
-	namespace Utils
-	{
-		static VkImageType TextureImageType(bool multisampled)
-		{
-			return VK_IMAGE_TYPE_2D;
-		}
+    VulkanTexture2D::VulkanTexture2D(const TextureSpecification& specification)
+        : Texture2D(specification) {
+    }
 
-		static VkImageViewType TextureViewType(bool multisampled)
-		{
-			return VK_IMAGE_VIEW_TYPE_2D;
-		}
+    VulkanTexture2D::~VulkanTexture2D() {
+        vkDeviceWaitIdle(VulkanContext::Context.device->device);
 
-		static VkFormat TextureFormatToVulkan(TextureFormat format)
-		{
-			switch (format)
-			{
-			case TextureFormat::RGB:   return VK_FORMAT_R8G8B8_UNORM;
-			case TextureFormat::RGBA:  return VK_FORMAT_R8G8B8A8_UNORM;
-			case TextureFormat::SRGB:  return VK_FORMAT_R8G8B8_SRGB;
-			case TextureFormat::SRGBA: return VK_FORMAT_R8G8B8A8_SRGB;
-			case TextureFormat::RED:   return VK_FORMAT_R8_UNORM;
-			}
-			return VK_FORMAT_UNDEFINED;
-		}
+        image.reset();
 
-		static VkSamplerAddressMode TextureWrapToVulkan(TextureWrap wrap)
-		{
-			switch (wrap)
-			{
-			case TextureWrap::REPEAT:          return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			case TextureWrap::MIRRORED_REPEAT: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-			case TextureWrap::CLAMP_TO_EDGE:   return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			case TextureWrap::CLAMP_TO_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-			}
-			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		}
+        if (sampler != VK_NULL_HANDLE) {
+            vkDestroySampler(VulkanContext::Context.device->device, sampler, VulkanContext::Context.allocator->GetCallbacks());
+            sampler = VK_NULL_HANDLE;
+        }
 
-		static VkFilter TextureFilterToVulkan(TextureFilter filter)
-		{
-			switch (filter)
-			{
-			case TextureFilter::NEAREST:               return VK_FILTER_NEAREST;
-			case TextureFilter::LINEAR:                return VK_FILTER_LINEAR;
-			case TextureFilter::NEAREST_MIPMAP_NEAREST:
-			case TextureFilter::LINEAR_MIPMAP_NEAREST:
-			case TextureFilter::NEAREST_MIPMAP_LINEAR:
-			case TextureFilter::LINEAR_MIPMAP_LINEAR:
-				return (filter == TextureFilter::NEAREST_MIPMAP_NEAREST || filter == TextureFilter::NEAREST_MIPMAP_LINEAR)
-					? VK_FILTER_NEAREST
-					: VK_FILTER_LINEAR;
-			}
-			return VK_FILTER_LINEAR;
-		}
+        if (descriptor) { ImGui_ImplVulkan_RemoveTexture(descriptor); descriptor = VK_NULL_HANDLE; }
+    }
 
-		static VkSamplerMipmapMode TextureMipmapModeToVulkan(TextureFilter filter)
-		{
-			switch (filter)
-			{
-			case TextureFilter::NEAREST_MIPMAP_NEAREST:
-			case TextureFilter::LINEAR_MIPMAP_NEAREST:
-				return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-			case TextureFilter::NEAREST_MIPMAP_LINEAR:
-			case TextureFilter::LINEAR_MIPMAP_LINEAR:
-				return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			default:
-				return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			}
-		}
+    bool VulkanTexture2D::LoadFromPath(const std::string& path) {
+        auto bytes = FileUtils::ReadFileBinary(path);
+        if (bytes.empty()) {
+            Q_ERROR("VulkanTexture2D: failed to read file: " + path);
+            return false;
+        }
+        return LoadFromMemory(ByteView{ bytes.data(), bytes.size() });
+    }
 
-		static int DesiredChannelFromTextureFormat(TextureFormat format)
-		{
-			switch (format)
-			{
-			case TextureFormat::RGB: return 3;
-			case TextureFormat::RGBA: return 4;
-			case TextureFormat::RED: return 1;
-			}
-			return 0;
-		}
+    bool VulkanTexture2D::LoadFromMemory(ByteView data) {
+        if (data.empty()) {
+            Q_ERROR("VulkanTexture2D: empty memory buffer");
+            return false;
+        }
 
-		static uint32_t BytesPerPixel(VkFormat format) {
-			switch (format) {
-			case VK_FORMAT_R8_UNORM: return 1;
-			case VK_FORMAT_R8G8B8_UNORM: return 3;
-			case VK_FORMAT_R8G8B8A8_UNORM:
-			case VK_FORMAT_R8G8B8A8_SRGB: return 4;
-			case VK_FORMAT_R8G8B8_SRGB: return 3;
-			default: return 4;
-			}
-		}
-	}
+        if (m_Specification.flip)  stbi_set_flip_vertically_on_load(true);
+        else                       stbi_set_flip_vertically_on_load(false);
 
-	VulkanTexture2D::VulkanTexture2D(const TextureSpecification& specification) : Texture2D(specification), sampler(VK_NULL_HANDLE), generation(INVALID_ID)
-	{
-		
-	}
+        if (m_Specification.alpha) {
+            m_Specification.format = TextureFormat::RGBA;
+            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8A8 : TextureFormat::RGBA8;
+        }
+        else {
+            m_Specification.format = TextureFormat::RGB;
+            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8 : TextureFormat::RGB8;
+        }
 
-	VulkanTexture2D::~VulkanTexture2D()
-	{
-		vkDeviceWaitIdle(VulkanContext::Context.device->device);
+        int w = 0, h = 0, actual = 0;
+        const int desired = static_cast<int>(Utils::MapTextureFormat(m_Specification.internal_format).channels);
+        unsigned char* decoded = stbi_load_from_memory(
+            reinterpret_cast<const stbi_uc*>(data.data),
+            static_cast<int>(data.size),
+            &w, &h, &actual, desired
+        );
 
-		image.reset();
+        if (!decoded) {
+            Q_ERROR(std::string("stb_image decode failed: ") + stbi_failure_reason());
+            return false;
+        }
 
-		if (sampler != VK_NULL_HANDLE)
-		{
-			vkDestroySampler(VulkanContext::Context.device->device, sampler, VulkanContext::Context.allocator->GetCallbacks());
-		}
+        m_Specification.width = static_cast<uint32_t>(w);
+        m_Specification.height = static_cast<uint32_t>(h);
+        m_Specification.channels = static_cast<uint32_t>(desired ? desired : actual);
 
-		//if (descriptor)
-		//{
-			//ImGui_ImplVulkan_RemoveTexture(descriptor);
-		//}
-	}
+        const bool ok = LoadFromData(ByteView{ decoded, static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * m_Specification.channels });
+        stbi_image_free(decoded);
+        return ok;
+    }
 
-	void VulkanTexture2D::LoadFromPath(const std::string& path)
-	{
-		std::vector<unsigned char> buffer = FileUtils::readBinaryFile(path);
+    bool VulkanTexture2D::LoadFromData(ByteView pixels) {
+        if (pixels.empty()) {
+            Q_ERROR("VulkanTexture2D: no pixel data");
+            return false;
+        }
+        if (m_Specification.width == 0 || m_Specification.height == 0) {
+            Q_ERROR("VulkanTexture2D: width/height must be set before LoadFromData()");
+            return false;
+        }
+        return Upload(pixels);
+    }
 
-		LoadFromMemory(buffer.data(), buffer.size());
-	}
+    bool VulkanTexture2D::Upload(ByteView pixels) {
+        const VkDevice device = VulkanContext::Context.device->device;
+        const VkQueue  queue = VulkanContext::Context.device->graphicsQueue;
+        const VkCommandPool pool = VulkanContext::Context.device->graphicsCommandPool;
 
-	void VulkanTexture2D::LoadFromMemory(unsigned char* image_data, size_t size)
-	{
-		if (m_Specification.compressed)
-		{
-			if (m_Specification.flip)
-			{
-				stbi_set_flip_vertically_on_load(true);
-			}
-			else
-			{
-				stbi_set_flip_vertically_on_load(false);
-			}
+        const auto mapInt = Utils::MapTextureFormat(m_Specification.internal_format);
+        if (mapInt.format == VK_FORMAT_UNDEFINED || mapInt.channels == 0) {
+            Q_ERROR("VulkanTexture2D: unsupported internal format");
+            return false;
+        }
 
-			if (m_Specification.alpha)
-			{
-				m_Specification.format = TextureFormat::RGBA;
-				m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGBA : TextureFormat::RGBA;
-			}
-			else
-			{
-				m_Specification.format = TextureFormat::RGBA; // TODO:  TextureFormat::RGB
-				m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGBA : TextureFormat::RGBA; // TODO: TextureFormat::SRGB : TextureFormat::RGB
-			}
+        const uint32_t bpp = Utils::BytesPerPixel(mapInt.format);
+        const std::size_t expected = static_cast<std::size_t>(m_Specification.width) *
+            static_cast<std::size_t>(m_Specification.height) *
+            static_cast<std::size_t>(bpp);
+        if (pixels.size != expected) {
+            Q_WARNING("VulkanTexture2D: pixel data size mismatch (got " + std::to_string(pixels.size) +
+                ", expected " + std::to_string(expected) + ")");
+            if (pixels.size < expected) return false;
+        }
 
-			int width, height, nbChannels;
-			unsigned char* data = stbi_load_from_memory(image_data, size, &width, &height, &nbChannels, 4); // TODO: Utils::DesiredChannelFromTextureFormat(m_Specification.internal_format)
+        const uint32_t mipLevels = Utils::CalcMipmapLevels(m_Specification.width, m_Specification.height, m_Specification.mipmap);
 
-			if (!data)
-			{
-				Q_ERROR(std::string("Failed to decode image from memory: ") + stbi_failure_reason());
-				return;
-			}
+        const VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        const VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-			m_Specification.width = width;
-			m_Specification.height = height;
-			m_Specification.channels = nbChannels;
+        auto staging = std::make_unique<VulkanBuffer>(
+            device,
+            VulkanContext::Context.device->physicalDevice,
+            expected,
+            usage,
+            memFlags,
+            true
+        );
+        staging->LoadData(0, expected, 0, pixels.data);
 
-			LoadFromData(data, width * height * Utils::BytesPerPixel(Utils::TextureFormatToVulkan(m_Specification.internal_format)));
+        image = std::make_unique<VulkanImage>(
+            VK_IMAGE_TYPE_2D,
+            VK_IMAGE_VIEW_TYPE_2D,
+            m_Specification.width,
+            m_Specification.height,
+            mapInt.format,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            true,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            1,
+            0,
+            mipLevels
+        );
 
-			stbi_image_free(data);
-		}
-		else
-		{
-			LoadFromData(image_data, m_Specification.width * m_Specification.height * 4); // TODO: Utils::BytesPerPixel(Utils::TextureFormatToVulkan(m_Specification.internal_format))
-		}
-	}
+        auto cmd = std::make_unique<VulkanCommandBuffer>(device, pool);
+        cmd->AllocateAndBeginSingleUse();
 
-	void VulkanTexture2D::LoadFromData(unsigned char* image_data, size_t size)
-	{
-		uint32_t mipLevels = m_Specification.mipmap ? static_cast<uint32_t>(std::floor(std::log2(std::max(m_Specification.width, m_Specification.height)))) + 1 : 1;
+        image->ImageTransitionLayout(cmd->handle, mapInt.format,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, mipLevels, 0, 1);
 
-		VkFormat image_format = Utils::TextureFormatToVulkan(m_Specification.internal_format);
+        image->CopyFromBuffer(cmd->handle, staging->handle, 1);
 
-		VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		VkMemoryPropertyFlags memory_prop_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        if (m_Specification.mipmap && mipLevels > 1) {
+            image->GenerateMipmaps(cmd->handle, mapInt.format,
+                m_Specification.width, m_Specification.height,
+                mipLevels, 1);
+        }
+        else {
+            image->ImageTransitionLayout(cmd->handle, mapInt.format,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                0, mipLevels, 0, 1);
+        }
 
-		std::unique_ptr<VulkanBuffer> staging = std::make_unique<VulkanBuffer>(
-			VulkanContext::Context.device->device,
-			VulkanContext::Context.device->physicalDevice,
-			size,
-			usage,
-			memory_prop_flags,
-			true
-		);
+        cmd->EndSingleUse(queue);
+        cmd.reset();
+        staging.reset();
 
-		staging->LoadData(0, size, 0, image_data);
+        VkSamplerCreateInfo sInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+        sInfo.magFilter = Utils::ToVkFilter(m_Specification.mag_filter_param);
+        sInfo.minFilter = Utils::ToVkFilter(m_Specification.min_filter_param);
+        sInfo.mipmapMode = Utils::ToVkMipmapMode(m_Specification.min_filter_param);
+        sInfo.addressModeU = Utils::ToVkAddress(m_Specification.wrap_s);
+        sInfo.addressModeV = Utils::ToVkAddress(m_Specification.wrap_t);
+        sInfo.addressModeW = Utils::ToVkAddress(m_Specification.wrap_r);
+        sInfo.mipLodBias = 0.0f;
+        sInfo.minLod = 0.0f;
+        sInfo.maxLod = m_Specification.mipmap ? static_cast<float>(mipLevels) : 0.0f;
+        sInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        sInfo.unnormalizedCoordinates = VK_FALSE;
+        sInfo.compareEnable = VK_FALSE;
+        sInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
-		image = std::make_unique<VulkanImage>(
-			VK_IMAGE_TYPE_2D,
-			VK_IMAGE_VIEW_TYPE_2D,
-			m_Specification.width,
-			m_Specification.height,
-			image_format,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			true,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			1,
-			0,
-			mipLevels);
+        sInfo.anisotropyEnable = VK_TRUE;
+        sInfo.maxAnisotropy = VulkanContext::Context.device->physicalDeviceInfo.limits.maxSamplerAnisotropy;
 
-		VkDevice device = VulkanContext::Context.device->device;
-		VkCommandPool pool = VulkanContext::Context.device->graphicsCommandPool;
-		VkQueue queue = VulkanContext::Context.device->graphicsQueue;
+        VkResult vr = vkCreateSampler(device, &sInfo, VulkanContext::Context.allocator->GetCallbacks(), &sampler);
+        if (!VulkanResultIsSuccess(vr)) {
+            Q_ERROR("Error creating texture sampler: " + VulkanResultString(vr));
+            return false;
+        }
 
-		std::unique_ptr<VulkanCommandBuffer> temp_buffer = std::make_unique<VulkanCommandBuffer>(device, pool);
+        descriptor = ImGui_ImplVulkan_AddTexture(sampler, image->view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-		temp_buffer->AllocateAndBeginSingleUse();
+        generation++;
+        m_Loaded = true;
+        return true;
+    }
 
-		image->ImageTransitionLayout(temp_buffer->handle, image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, mipLevels, 0, 1);
-		image->CopyFromBuffer(temp_buffer->handle, staging->handle, 1);
+    void VulkanTexture2D::Bind(int index) const {
+        
+    }
 
-		if (m_Specification.mipmap)
-		{
-			image->GenerateMipmaps(temp_buffer->handle, image_format, m_Specification.width, m_Specification.height, mipLevels, 1);
-		}
-		else
-		{
-			image->ImageTransitionLayout(temp_buffer->handle, image_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, mipLevels, 0, 1);
-		}
-
-		temp_buffer->EndSingleUse(queue);
-
-		temp_buffer.reset();
-		staging.reset();
-
-		VkSamplerCreateInfo sampler_info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-		sampler_info.magFilter = Utils::TextureFilterToVulkan(m_Specification.mag_filter_param);
-		sampler_info.minFilter = Utils::TextureFilterToVulkan(m_Specification.min_filter_param);
-		sampler_info.addressModeU = Utils::TextureWrapToVulkan(m_Specification.wrap_r);
-		sampler_info.addressModeV = Utils::TextureWrapToVulkan(m_Specification.wrap_s);
-		sampler_info.addressModeW = Utils::TextureWrapToVulkan(m_Specification.wrap_t);
-		sampler_info.anisotropyEnable = VK_TRUE;
-		sampler_info.maxAnisotropy = VulkanContext::Context.device->physicalDeviceInfo.limits.maxSamplerAnisotropy;
-		sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		sampler_info.unnormalizedCoordinates = VK_FALSE;
-		sampler_info.compareEnable = VK_FALSE;
-		sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
-		sampler_info.mipmapMode = Utils::TextureMipmapModeToVulkan(TextureFilter::LINEAR_MIPMAP_LINEAR);
-		sampler_info.mipLodBias = 0.0f;
-		sampler_info.minLod = 0.0f;
-		sampler_info.maxLod = m_Specification.mipmap ? static_cast<float>(mipLevels) : 0.0f;
-
-		VkResult result = vkCreateSampler(device, &sampler_info, VulkanContext::Context.allocator->GetCallbacks(), &sampler);
-		if (!VulkanResultIsSuccess(result))
-		{
-			std::string str = "Error creating texture sampler: " + VulkanResultString(result);
-			Q_ERROR(str);
-			return;
-		}
-
-		descriptor = ImGui_ImplVulkan_AddTexture(sampler, image->view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		generation++;
-	}
-
-	void VulkanTexture2D::Bind(int index) const
-	{
-		
-	}
-
-	void VulkanTexture2D::Unbind() const
-	{
-		
-	}
+    void VulkanTexture2D::Unbind() const {
+        
+    }
 }

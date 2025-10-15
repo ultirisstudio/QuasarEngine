@@ -303,7 +303,7 @@ namespace QuasarEngine
             bluePixels[i * 4 + 3] = 255; // A
         }
         m_DefaultBlueTexture = new OpenGLTexture2D(spec);
-        m_DefaultBlueTexture->LoadFromData(bluePixels.data(), bluePixels.size());
+        m_DefaultBlueTexture->LoadFromData({ bluePixels.data(), bluePixels.size() });
     }
 
     OpenGLShader::~OpenGLShader()
@@ -411,7 +411,7 @@ namespace QuasarEngine
             const int unit = samplerDesc.binding;
             BoundTex& bound = m_BoundPerUnit[unit];
 
-            const GLuint handle = static_cast<GLuint>(reinterpret_cast<uintptr_t>(tex->GetHandle()));
+            const GLuint handle = static_cast<GLuint>(tex->GetHandle());
             if (bound.handle != handle || bound.target != target) {
                 glActiveTexture(GL_TEXTURE0 + unit);
                 glBindTexture(target, handle);

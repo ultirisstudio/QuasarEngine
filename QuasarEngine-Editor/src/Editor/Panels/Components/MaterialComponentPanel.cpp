@@ -95,7 +95,8 @@ namespace QuasarEngine
             {
                 bool hasTexture = mat.HasTexture(s.slot);
                 Texture* tex = mat.GetTexture(s.slot);
-                void* handle = (hasTexture && tex) ? tex->GetHandle() : (noTexture ? noTexture->GetHandle() : nullptr);
+                void* handle = (hasTexture && tex) ? reinterpret_cast<void*>(static_cast<std::uintptr_t>(tex->GetHandle()))
+                    : (noTexture ? reinterpret_cast<void*>(static_cast<std::uintptr_t>(noTexture->GetHandle())) : nullptr);
 
                 ImGui::BeginGroup();
                 ImGui::Columns(2, nullptr, false);

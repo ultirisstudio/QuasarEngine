@@ -428,7 +428,7 @@ namespace QuasarEngine
             bluePixels[i * 4 + 3] = 255; // A
         }
         defaultBlueTexture = new VulkanTexture2D(spec);
-        defaultBlueTexture->LoadFromData(bluePixels.data(), bluePixels.size());
+        defaultBlueTexture->LoadFromData({ bluePixels.data(), bluePixels.size() });
 
         Q_ASSERT(defaultBlueTexture != nullptr, "defaultBlueTexture nullptr");
         Q_ASSERT(defaultBlueTexture->sampler != VK_NULL_HANDLE, "defaultBlueTexture->sampler nullptr");

@@ -15,11 +15,11 @@ namespace QuasarEngine
 	public:
 		static void exportTexture(const std::string& path, const std::string& out)
 		{
-			size_t size;
-			std::unique_ptr<unsigned char[]> data(Texture2D::LoadDataFromPath(path, &size));
+			size_t size = 0;
+			std::unique_ptr<unsigned char[]> data; // (Texture2D::LoadDataFromPath(path, &size));
 
 			TextureSpecification spec;
-			std::shared_ptr<Texture2D> texture = Texture2D::CreateTexture2D(spec);
+			std::shared_ptr<Texture2D> texture = Texture2D::Create(spec);
 			texture->LoadFromPath(path);
 
 			std::ofstream file(out, std::ios::binary);
