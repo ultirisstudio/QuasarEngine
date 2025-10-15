@@ -16,6 +16,40 @@
 namespace QuasarEngine
 {
     namespace {
+        template <typename C>
+        ScriptSystem::GetFunc MakeGet() {
+            return [](Entity& e, sol::state_view lua) -> sol::object {
+                return e.HasComponent<C>() ? sol::make_object(lua, std::ref(e.GetComponent<C>())) : sol::nil;
+                };
+        }
+
+        template <typename C>
+        ScriptSystem::HasFunc MakeHas() {
+            return [](Entity& e) { return e.HasComponent<C>(); };
+        }
+
+        template <typename C>
+        ScriptSystem::AddFunc MakeAddSimple() {
+            return [](Entity& e, sol::variadic_args, sol::state_view lua) -> sol::object {
+                if (e.HasComponent<C>()) return sol::make_object(lua, std::ref(e.GetComponent<C>()));
+                auto& c = e.AddComponent<C>();
+                return sol::make_object(lua, std::ref(c));
+                };
+        }
+
+        template <typename C, typename Arg0>
+        ScriptSystem::AddFunc MakeAddOptionalArg() {
+            return [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
+                if (e.HasComponent<C>()) return sol::make_object(lua, std::ref(e.GetComponent<C>()));
+                C* comp = nullptr;
+                if (args.size() >= 1 && args[0].is<Arg0>()) comp = &e.AddComponent<C>(args[0].get<Arg0>());
+                else                                        comp = &e.AddComponent<C>();
+                return sol::make_object(lua, std::ref(*comp));
+                };
+        }
+    }
+
+    namespace {
         inline sol::object ActorToEntityObject(physx::PxActor* a, sol::state_view lua) {
             if (!a || !a->userData) return sol::nil;
             const auto id = static_cast<entt::entity>(reinterpret_cast<uintptr_t>(a->userData));
@@ -76,124 +110,57 @@ namespace QuasarEngine
 
     void ScriptSystem::Initialize()
     {
-        g_getComponentFuncs.insert({ "TagComponent", [](Entity& e, sol::state_view lua) -> sol::object {
-            return e.HasComponent<TagComponent>()
-                ? sol::make_object(lua, std::ref(e.GetComponent<TagComponent>()))
-                : sol::nil;
-        } });
+        g_getComponentFuncs["TagComponent"] = MakeGet<TagComponent>();
+        g_hasComponentFuncs["TagComponent"] = MakeHas<TagComponent>();
+        g_addComponentFuncs["TagComponent"] = MakeAddSimple<TagComponent>();
 
-        g_getComponentFuncs.insert({"TransformComponent", [](Entity& e, sol::state_view lua) -> sol::object {
-            return e.HasComponent<TransformComponent>()
-                ? sol::make_object(lua, std::ref(e.GetComponent<TransformComponent>()))
-                : sol::nil;
-        } });
+        g_getComponentFuncs["TransformComponent"] = MakeGet<TransformComponent>();
+        g_hasComponentFuncs["TransformComponent"] = MakeHas<TransformComponent>();
+        g_addComponentFuncs["TransformComponent"] = MakeAddSimple<TransformComponent>();
 
-        g_getComponentFuncs.insert({ "MeshComponent", [](Entity& e, sol::state_view lua) -> sol::object {
-            return e.HasComponent<MeshComponent>()
-                ? sol::make_object(lua, std::ref(e.GetComponent<MeshComponent>()))
-                : sol::nil;
-        } });
+        g_getComponentFuncs["MeshComponent"] = MakeGet<MeshComponent>();
+        g_hasComponentFuncs["MeshComponent"] = MakeHas<MeshComponent>();
+        g_addComponentFuncs["MeshComponent"] = MakeAddOptionalArg<MeshComponent, std::string>();
 
-        g_getComponentFuncs.insert({ "MaterialComponent", [](Entity& e, sol::state_view lua) -> sol::object {
-            return e.HasComponent<MaterialComponent>()
-                ? sol::make_object(lua, std::ref(e.GetComponent<MaterialComponent>()))
-                : sol::nil;
-		} });
+        g_getComponentFuncs["MaterialComponent"] = MakeGet<MaterialComponent>();
+        g_hasComponentFuncs["MaterialComponent"] = MakeHas<MaterialComponent>();
+        g_addComponentFuncs["MaterialComponent"] = MakeAddSimple<MaterialComponent>();
 
-        g_getComponentFuncs.insert({ "MeshRendererComponent", [](Entity& e, sol::state_view lua) -> sol::object {
-            return e.HasComponent<MeshRendererComponent>()
-                ? sol::make_object(lua, std::ref(e.GetComponent<MeshRendererComponent>()))
-                : sol::nil;
-		} });
+        g_getComponentFuncs["MeshRendererComponent"] = MakeGet<MeshRendererComponent>();
+        g_hasComponentFuncs["MeshRendererComponent"] = MakeHas<MeshRendererComponent>();
+        g_addComponentFuncs["MeshRendererComponent"] = MakeAddSimple<MeshRendererComponent>();
 
-        g_getComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e, sol::state_view lua) -> sol::object {
-            return e.HasComponent<RigidBodyComponent>()
-                ? sol::make_object(lua, std::ref(e.GetComponent<RigidBodyComponent>()))
-                : sol::nil;
-        } });
-
-        g_getComponentFuncs.insert({ "BoxColliderComponent", [](Entity& e, sol::state_view lua)->sol::object {
-            return e.HasComponent<BoxColliderComponent>() ? sol::make_object(lua, std::ref(e.GetComponent<BoxColliderComponent>())) : sol::nil;
-        } });
-
-        g_getComponentFuncs.insert({ "ScriptComponent", [](Entity& e, sol::state_view lua)->sol::object {
-            return e.HasComponent<ScriptComponent>() ? sol::make_object(lua, std::ref(e.GetComponent<ScriptComponent>())) : sol::nil;
-        } });
-
-        g_hasComponentFuncs.insert({ "TagComponent", [](Entity& e) { return e.HasComponent<TagComponent>(); } });
-        g_hasComponentFuncs.insert({ "TransformComponent", [](Entity& e) { return e.HasComponent<TransformComponent>(); } });
-        g_hasComponentFuncs.insert({ "MeshComponent", [](Entity& e) { return e.HasComponent<MeshComponent>(); } });
-		g_hasComponentFuncs.insert({ "MaterialComponent", [](Entity& e) { return e.HasComponent<MaterialComponent>(); } });
-		g_hasComponentFuncs.insert({ "MeshRendererComponent", [](Entity& e) { return e.HasComponent<MeshRendererComponent>(); } });
-        g_hasComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e) { return e.HasComponent<RigidBodyComponent>(); } });
-        g_hasComponentFuncs.insert({ "BoxColliderComponent", [](Entity& e) { return e.HasComponent<BoxColliderComponent>(); } });
-        g_hasComponentFuncs.insert({ "ScriptComponent", [](Entity& e) { return e.HasComponent<ScriptComponent>(); } });
-
-        g_addComponentFuncs.insert({ "TagComponent", [](Entity& e, sol::variadic_args, sol::state_view lua) -> sol::object {
-            if (e.HasComponent<TagComponent>())
-                return sol::make_object(lua, std::ref(e.GetComponent<TagComponent>()));
-            auto& c = e.AddComponent<TagComponent>();
-            return sol::make_object(lua, std::ref(c));
-        } });
-
-        g_addComponentFuncs.insert({ "TransformComponent", [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
-            if (e.HasComponent<TransformComponent>())
-                return sol::make_object(lua, std::ref(e.GetComponent<TransformComponent>()));
-            return sol::make_object(lua, std::ref(e.AddComponent<TransformComponent>()));
-        } });
-
-        g_addComponentFuncs.insert({ "MeshComponent", [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
-            if (e.HasComponent<MeshComponent>())
-                return sol::make_object(lua, std::ref(e.GetComponent<MeshComponent>()));
-
-            MeshComponent* comp = nullptr;
-            if (args.size() >= 1 && args[0].is<std::string>()) {
-                comp = &e.AddComponent<MeshComponent>(args[0].get<std::string>());
-            }
-            else {
-                comp = &e.AddComponent<MeshComponent>();
-            }
-            return sol::make_object(lua, std::ref(*comp));
-        } });
-
-        g_addComponentFuncs.insert({ "MaterialComponent", [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
-            if (e.HasComponent<MaterialComponent>())
-                return sol::make_object(lua, std::ref(e.GetComponent<MaterialComponent>()));
-            MaterialComponent* comp = &e.AddComponent<MaterialComponent>();
-            return sol::make_object(lua, std::ref(*comp));
-		} });
-
-        g_addComponentFuncs.insert({ "MeshRendererComponent", [](Entity& e, sol::variadic_args args, sol::state_view lua) -> sol::object {
-            if (e.HasComponent<MeshRendererComponent>())
-                return sol::make_object(lua, std::ref(e.GetComponent<MeshRendererComponent>()));
-            MeshRendererComponent* comp = &e.AddComponent<MeshRendererComponent>();
-			return sol::make_object(lua, std::ref(*comp));
-		} });
-        
-        g_addComponentFuncs.insert({ "RigidBodyComponent", [](Entity& e, sol::variadic_args, sol::state_view lua) -> sol::object {
+        g_getComponentFuncs["RigidBodyComponent"] = MakeGet<RigidBodyComponent>();
+        g_hasComponentFuncs["RigidBodyComponent"] = MakeHas<RigidBodyComponent>();
+        g_addComponentFuncs["RigidBodyComponent"] = [](Entity& e, sol::variadic_args, sol::state_view lua)->sol::object {
             if (e.HasComponent<RigidBodyComponent>())
                 return sol::make_object(lua, std::ref(e.GetComponent<RigidBodyComponent>()));
             auto& c = e.AddComponent<RigidBodyComponent>();
             c.Init();
             return sol::make_object(lua, std::ref(c));
-        } });
+            };
 
-        g_addComponentFuncs.insert({ "BoxColliderComponent", [](Entity& e, sol::variadic_args, sol::state_view lua)->sol::object {
+        g_getComponentFuncs["BoxColliderComponent"] = MakeGet<BoxColliderComponent>();
+        g_hasComponentFuncs["BoxColliderComponent"] = MakeHas<BoxColliderComponent>();
+        g_addComponentFuncs["BoxColliderComponent"] = [](Entity& e, sol::variadic_args, sol::state_view lua)->sol::object {
             auto& c = e.HasComponent<BoxColliderComponent>() ? e.GetComponent<BoxColliderComponent>()
-                                                             : e.AddComponent<BoxColliderComponent>();
+                : e.AddComponent<BoxColliderComponent>();
             c.Init();
             return sol::make_object(lua, std::ref(c));
-        } });
+            };
 
-        g_addComponentFuncs.insert({ "ScriptComponent", [](Entity& e, sol::variadic_args, sol::state_view lua)->sol::object {
-            auto& c = e.HasComponent<ScriptComponent>() ? e.GetComponent<ScriptComponent>() : e.AddComponent<ScriptComponent>();
-            return sol::make_object(lua, std::ref(c));
-        } });
+        g_getComponentFuncs["ScriptComponent"] = MakeGet<ScriptComponent>();
+        g_hasComponentFuncs["ScriptComponent"] = MakeHas<ScriptComponent>();
+        g_addComponentFuncs["ScriptComponent"] = MakeAddSimple<ScriptComponent>();
+
+        g_getComponentFuncs["AnimationComponent"] = MakeGet<AnimationComponent>();
+        g_hasComponentFuncs["AnimationComponent"] = MakeHas<AnimationComponent>();
+        g_addComponentFuncs["AnimationComponent"] = MakeAddOptionalArg<AnimationComponent, std::string>();
 
         BindInputToLua(m_Lua);
         BindMathToLua(m_Lua);
-		BindFunctionToLua(m_Lua);
-		BindEntityToLua(m_Lua);
+        BindFunctionToLua(m_Lua);
+        BindEntityToLua(m_Lua);
         BindPhysicsToLua(m_Lua);
     }
 
@@ -714,6 +681,61 @@ namespace QuasarEngine
             "useEntityScale", &BoxColliderComponent::m_UseEntityScale,
             "size", &BoxColliderComponent::m_Size,
             "Init", &BoxColliderComponent::Init
+        );
+
+        lua_state.new_usertype<AnimationComponent>("AnimationComponent",
+            "isPlaying", &AnimationComponent::IsPlaying,
+            "isPaused", &AnimationComponent::IsPaused,
+            "currentClipIndex", &AnimationComponent::CurrentClipIndex,
+            "clipCount", &AnimationComponent::GetClipCount,
+            "getTime", &AnimationComponent::GetTimeSeconds,
+            "getSpeed", &AnimationComponent::GetSpeed,
+            "getLoop", &AnimationComponent::GetLoop,
+            "getInPlace", &AnimationComponent::GetInPlace,
+            "getRootBoneName", &AnimationComponent::GetRootBoneName,
+
+            "setTime", &AnimationComponent::SetTimeSeconds,
+            "setSpeed", &AnimationComponent::SetSpeed,
+            "setLoop", &AnimationComponent::SetLoop,
+            "setInPlace", &AnimationComponent::SetInPlace,
+            "setRootBoneName", &AnimationComponent::SetRootBoneName,
+            "setModelAssetId", &AnimationComponent::SetModelAssetId,
+
+            "stop", &AnimationComponent::Stop,
+            "pause", &AnimationComponent::Pause,
+            "resume", &AnimationComponent::Resume,
+
+            "play", [](AnimationComponent& c, int clipIndex,
+                sol::optional<bool> loop, sol::optional<float> speed) {
+                    if (clipIndex < 0) return;
+                    c.Play(static_cast<size_t>(clipIndex), loop.value_or(true), speed.value_or(1.0f));
+            },
+
+            "appendClipsFromAsset",
+            [](AnimationComponent& c, const std::string& animAssetId,
+                sol::optional<bool> dedupeByName, sol::optional<std::string> namePrefix) {
+                    c.AppendClipsFromAsset(animAssetId, dedupeByName.value_or(true), namePrefix.value_or(""));
+            },
+
+            "playByName", [](AnimationComponent& c, const std::string& name,
+                sol::optional<bool> loop, sol::optional<float> speed) {
+                    const auto& clips = c.GetClips();
+                    for (size_t i = 0; i < clips.size(); ++i) {
+                        if (clips[i].name == name) {
+                            c.Play(i, loop.value_or(true), speed.value_or(1.0f));
+                            return true;
+                        }
+                    }
+                    return false;
+            },
+
+            "getClipName", [](AnimationComponent& c, int index, sol::this_state ts) -> sol::object {
+                sol::state_view lua(ts);
+                if (index < 0) return sol::nil;
+                size_t i = static_cast<size_t>(index);
+                if (i >= c.GetClips().size()) return sol::nil;
+                return sol::make_object(lua, c.GetClips()[i].name);
+            }
         );
 	}
 

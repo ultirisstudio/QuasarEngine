@@ -38,14 +38,16 @@ namespace QuasarEngine {
 
         void Update(double dtSeconds);
 
-        bool  GetLoop()  const { return m_Loop; }
-        void  SetLoop(bool b) { m_Loop = b; }
+        bool GetLoop()  const { return m_Loop; }
+        void SetLoop(bool b) { m_Loop = b; }
 
         float GetSpeed() const { return m_Speed; }
-        void  SetSpeed(float s) { m_Speed = s; }
+        void SetSpeed(float s) { m_Speed = s; }
 
         double GetTimeSeconds() const { return m_TimeSec; }
-        void   SetTimeSeconds(double t) { m_TimeSec = std::max(0.0, t); }
+        void SetTimeSeconds(double t) { m_TimeSec = std::max(0.0, t); }
+
+        void Resume();
 
         size_t GetClipCount() const { return m_Clips.size(); }
 

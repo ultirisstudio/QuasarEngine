@@ -65,6 +65,7 @@ namespace QuasarEngine
 
         float metallic = 0.0f, roughness = 1.0f;
         mat.Metallic = metallic; mat.Roughness = roughness;
+
         return mat;
     }
 

@@ -1,37 +1,25 @@
 #pragma once
 
 #include <filesystem>
-#include <unordered_map>
 #include <bitset>
 
 #include <QuasarEngine.h>
 #include <QuasarEngine/Events/Event.h>
-#include <QuasarEngine/Events/KeyEvent.h>
 #include <QuasarEngine/Events/MouseEvent.h>
-#include <QuasarEngine/Events/ApplicationEvent.h>
-#include <QuasarEngine/Resources/Texture.h>
-#include <QuasarEngine/Tools/Chronometer.h>
 
-#include <QuasarEngine/Shader/Shader.h>
-#include <QuasarEngine/Resources/Model.h>
-#include <QuasarEngine/Resources/Texture2D.h>
-#include <QuasarEngine/Resources/Materials/Material.h>
+#include <Editor/Panels/ContentBrowser/ContentBrowserPanel.h>
+#include <Editor/Panels/EntityPropertie/EntityPropertiePanel.h>
+#include <Editor/Panels/SceneHierarchy/SceneHierarchy.h>
+#include <Editor/Panels/Viewport/EditorViewport.h>
+#include <Editor/Panels/Viewport/Viewport.h>
+#include <Editor/Panels/NodeEditor/NodeEditor.h>
+#include <Editor/Panels/AnimationEditor/AnimationEditorPanel.h>
+#include <Editor/Panels/HeightMapEditor/HeightMapEditor.h>
+#include <Editor/Panels/UIEditor/UserInterfaceEditor.h>
 
-#include "Panels/ContentBrowserPanel.h"
-#include "Panels/EntityPropertiePanel.h"
-#include "Panels/SceneHierarchy.h"
-#include "Panels/EditorViewport.h"
-#include "Panels/Viewport.h"
-#include "Panels/NodeEditor/NodeEditor.h"
-#include "Panels/AnimationEditorPanel.h"
-#include "Panels/HeightMapEditor/HeightMapEditor.h"
-#include "Panels/UI/UserInterfaceEditor.h"
-
-#include "QuasarEngine/Scene/Scene.h"
-
-#include "Importer/AssetImporter.h"
-
-#include "SceneManager.h"
+#include <Editor/SceneManager.h>
+#include <Editor/EditorCamera.h>
+#include <Editor/Importer/AssetImporter.h>
 
 namespace QuasarEngine
 {

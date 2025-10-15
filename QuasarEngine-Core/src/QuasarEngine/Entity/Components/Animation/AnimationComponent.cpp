@@ -186,6 +186,11 @@ namespace QuasarEngine
             m_Playing = false;
     }
 
+    void AnimationComponent::Resume()
+    {
+        if (m_CurrentClip != (size_t)-1) m_Playing = true;
+    }
+
     void AnimationComponent::ComputePoseRecursive(
         const ModelNode* node,
         const glm::mat4& parent,

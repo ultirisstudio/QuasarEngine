@@ -731,7 +731,7 @@ namespace QuasarEngine
 		//m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_EditorViewport->OnImGuiRender(*m_EditorCamera, *m_SceneManager, *m_SceneHierarchy);
-		m_EntityPropertiePanel->OnImGuiRender(m_SceneManager->GetActiveScene(), *m_SceneHierarchy);
+		m_EntityPropertiePanel->OnImGuiRender(*m_SceneHierarchy);
 		m_SceneHierarchy->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_ContentBrowserPanel->OnImGuiRender();
 		//m_AnimationEditorPanel->OnImGuiRender();
