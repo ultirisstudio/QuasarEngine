@@ -875,6 +875,51 @@ namespace QuasarEngine
                 }
             });
 
+        physics.set_function("set_rotation",
+            [](Entity& e, const glm::vec3& eulerRad)
+            {
+                if (!e.HasComponent<RigidBodyComponent>()) return;
+                auto& rbc = e.GetComponent<RigidBodyComponent>();
+
+                if (physx::PxRigidDynamic* dyn = rbc.GetDynamic())
+                {
+                    physx::PxTransform pose = dyn->getGlobalPose();
+
+                    glm::quat q = glm::quat(eulerRad);
+                    physx::PxQuat pxq(q.x, q.y, q.z, q.w);
+                    pose.q = pxq.getNormalized();
+
+                    if (dyn->getRigidBodyFlags() & physx::PxRigidBodyFlag::eKINEMATIC)
+                        dyn->setKinematicTarget(pose);
+                    else
+                        dyn->setGlobalPose(pose, true);
+
+                    dyn->wakeUp();
+                }
+            });
+
+        physics.set_function("get_linear_velocity",
+            [](Entity& e) -> glm::vec3
+            {
+                if (!e.HasComponent<RigidBodyComponent>()) return glm::vec3(0.0f);
+                auto& rbc = e.GetComponent<RigidBodyComponent>();
+                if (physx::PxRigidDynamic* dyn = rbc.GetDynamic())
+                    return ToGlm(dyn->getLinearVelocity());
+                return glm::vec3(0.0f);
+            });
+
+        physics.set_function("set_angular_velocity",
+            [](Entity& e, const glm::vec3& wRadPerSec)
+            {
+                if (!e.HasComponent<RigidBodyComponent>()) return;
+                auto& rbc = e.GetComponent<RigidBodyComponent>();
+                if (physx::PxRigidDynamic* dyn = rbc.GetDynamic())
+                {
+                    dyn->setAngularVelocity(ToPx(wRadPerSec), true);
+                    dyn->wakeUp();
+                }
+            });
+
         lua_state["physics"] = physics;
     }
 }
