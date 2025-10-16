@@ -22,8 +22,9 @@ namespace QuasarEngine {
 
     void UIElement::BuildDraw(UIRenderContext& ctx) {
         if (m_Style.bg.a > 0.f && m_Transform.rect.w > 0 && m_Transform.rect.h > 0) {
-            auto color = PackRGBA8(m_Style.bg);
-            ctx.batcher->PushRect(m_Transform.rect, ctx.whiteTex, color, nullptr);
+            auto bg = m_Style.bg;
+            if (!m_Enabled) { bg = { bg.r, bg.g, bg.b, bg.a * 0.5f }; }
+            ctx.batcher->PushRect(m_Transform.rect, ctx.whiteTex, PackRGBA8(bg), nullptr);
         }
         for (auto& c : m_Children) c->BuildDraw(ctx);
     }

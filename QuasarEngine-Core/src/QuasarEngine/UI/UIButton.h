@@ -4,8 +4,10 @@
 
 #include <functional>
 
-namespace QuasarEngine {
-	class UIButton : public UIElement {
+namespace QuasarEngine
+{
+	class UIButton : public UIElement
+	{
 	public:
 		using UIElement::UIElement;
 		std::string label = "Button";

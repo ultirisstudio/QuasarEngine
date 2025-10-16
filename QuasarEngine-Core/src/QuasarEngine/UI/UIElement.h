@@ -9,8 +9,10 @@
 #include "UIStyle.h"
 #include "UIFont.h"
 
-namespace QuasarEngine {
-	struct UIPointerEvent {
+namespace QuasarEngine
+{
+	struct UIPointerEvent
+	{
 		float x, y;
 		bool down = false;
 		bool up = false;
@@ -23,12 +25,20 @@ namespace QuasarEngine {
 		bool down = false;
 	};
 
+
+	struct UICharEvent {
+		uint32_t codepoint = 0;
+	};
+
 	struct UIRenderContext;
 
 	struct UILayoutContext {
 		float dpiScale = 1.f;
 		UIFont* font = nullptr;
 	};
+
+	enum class HAlign { Left, Center, Right };
+	enum class VAlign { Top, Middle, Baseline, Bottom };
 
 	class UIElement {
 	public:
@@ -46,14 +56,43 @@ namespace QuasarEngine {
 		virtual bool OnPointer(const UIPointerEvent& ev) { return false; }
 		virtual bool OnKey(const UIKeyEvent& ev) { return false; }
 
+		virtual bool OnChar(uint32_t codepoint) { return false; }
+
+		virtual void OnFocus() { m_Focused = true; }
+		virtual void OnBlur() { m_Focused = false; }
+
+		bool IsFocusable() const { return m_Focusable && m_Enabled; }
+		void SetFocusable(bool f) { m_Focusable = f; }
+		void SetTabIndex(int i) { m_TabIndex = i; }
+		int  GetTabIndex() const { return m_TabIndex; }
+		bool IsFocused() const { return m_Focused; }
+
+		void SetEnabled(bool e) { m_Enabled = e; }
+		bool IsEnabled() const { return m_Enabled; }
+
+		void SetTextAlign(HAlign h, VAlign v) { m_TextAlignH = h; m_TextAlignV = v; }
+		HAlign GetTextAlignH() const { return m_TextAlignH; }
+		VAlign GetTextAlignV() const { return m_TextAlignV; }
+
 		UITransform& Transform() { return m_Transform; }
 		UIStyle& Style() { return m_Style; }
+
+		const UITransform& Transform() const { return m_Transform; }
+		const UIStyle& Style()     const { return m_Style; }
+
 		const std::string& Id() const { return m_Id; }
 
 	protected:
 		std::string m_Id;
 		UITransform m_Transform;
 		UIStyle     m_Style;
+
+		bool m_Enabled = true;
+		bool m_Focusable = false;
+		bool m_Focused = false;
+		int  m_TabIndex = 0;
+		HAlign m_TextAlignH = HAlign::Left;
+		VAlign m_TextAlignV = VAlign::Top;
 
 		std::vector<std::shared_ptr<UIElement>> m_Children;
 	};

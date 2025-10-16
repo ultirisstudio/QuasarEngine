@@ -17,6 +17,14 @@
 #include <QuasarEngine/UI/UIContainer.h>
 #include <QuasarEngine/UI/UIText.h>
 #include <QuasarEngine/UI/UIButton.h>
+#include <QuasarEngine/UI/UITooltipLayer.h>
+#include <QuasarEngine/UI/UISystem.h>
+#include <QuasarEngine/UI/UITextInput.h>
+#include <QuasarEngine/UI/UICheckbox.h>
+#include <QuasarEngine/UI/UISlider.h>
+#include <QuasarEngine/UI/UIProgressBar.h>
+#include <QuasarEngine/UI/UIMenu.h>
+#include <QuasarEngine/UI/UITabBar.h>
 
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
@@ -488,27 +496,246 @@ namespace QuasarEngine
 		m_SceneData.m_DirectionalsBuffer.fill(DirectionalLight());
 
 		m_SceneData.m_UI = std::make_unique<UISystem>();
-
+		
+		struct UISharedState {
+			int quality = 1;
+		};
+		auto state = std::make_shared<UISharedState>();
+		
 		auto root = std::make_shared<UIContainer>("Root");
 		root->layout = UILayoutType::Vertical;
+		root->gap = 10.f;
 		root->Style().padding = 12.f;
-		root->Style().bg = { 0.1f, 0.1f, 0.1f, 0.8f };
+		root->Style().bg = { 0.10f, 0.10f, 0.12f, 0.85f };
 		root->Transform().pos = { 10.f, 10.f };
-		root->Transform().size = { 500.f, 100.f };
+		root->Transform().size = { 720.f, 0.f };
+		
+		{
+			auto title = std::make_shared<UIText>("Title");
+			title->text = "UI Playground - QuasarEngine";
+			title->Style().bg = { 0,0,0,0 };
+			title->Style().fg = { 0.95f, 0.96f, 0.99f, 1 };
+			title->Transform().size = { 0.f, 36.f };
+			root->AddChild(title);
+		}
+		
+		auto row1 = std::make_shared<UIContainer>("Row1");
+		row1->layout = UILayoutType::Horizontal;
+		row1->gap = 12.f;
+		row1->Style().bg = { 0,0,0,0 };
+		root->AddChild(row1);
 
-		auto title = std::make_shared<UIText>("Title");
-		title->text = "Menu Pause";
-		title->Style().bg = { 0,0,0,0 };
-		title->Transform().pos = { 0.f, 0.f };
-		title->Transform().size = { 10.f, 50.f };
-		root->AddChild(title);
+		auto colLeft = std::make_shared<UIContainer>("ColLeft");
+		colLeft->layout = UILayoutType::Vertical;
+		colLeft->gap = 6.f;
+		colLeft->Style().padding = 8.f;
+		colLeft->Style().bg = { 0.12f,0.13f,0.16f,1.f };
+		colLeft->Transform().size = { 340.f, 0.f };
+		row1->AddChild(colLeft);
 
-		auto btn = std::make_shared<UIButton>("Resume");
-		btn->label = "Reprendre";
-		btn->onClick = []() { std::cout << "Resume clicked\n"; };
-		btn->Transform().pos = { 0.f, 0.f };
-		btn->Transform().size = { 100.f, 50.f };
-		root->AddChild(btn);
+		{
+			auto btnResume = std::make_shared<UIButton>("BtnResume");
+			btnResume->label = "Reprendre";
+			btnResume->SetTabIndex(0);
+			btnResume->onClick = []() { std::cout << "[UI] Resume clicked\n"; };
+			colLeft->AddChild(btnResume);
+
+			auto btnOptions = std::make_shared<UIButton>("BtnOptions");
+			btnOptions->label = "Options";
+			btnOptions->SetTabIndex(1);
+			btnOptions->onClick = []() { std::cout << "[UI] Options clicked\n"; };
+			colLeft->AddChild(btnOptions);
+
+			auto btnQuit = std::make_shared<UIButton>("BtnQuit");
+			btnQuit->label = "Quitter";
+			btnQuit->SetTabIndex(2);
+			btnQuit->onClick = []() { std::cout << "[UI] Quit clicked\n"; };
+			colLeft->AddChild(btnQuit);
+		}
+
+		{
+			auto cbVsync = std::make_shared<UICheckbox>("CbVsync");
+			cbVsync->label = "VSync";
+			cbVsync->SetTabIndex(3);
+			colLeft->AddChild(cbVsync);
+
+			auto cbPost = std::make_shared<UICheckbox>("CbPostFX");
+			cbPost->label = "Post-Processing";
+			cbPost->SetTabIndex(4);
+			colLeft->AddChild(cbPost);
+
+			auto cbDisabled = std::make_shared<UICheckbox>("CbDisableResume");
+			cbDisabled->label = "Desactiver le bouton Reprendre (visuel)";
+			cbDisabled->SetTabIndex(5);
+			
+			struct SyncDisable : UIElement {
+				UIButton* target; UICheckbox* source;
+				explicit SyncDisable(std::string id, UIButton* t, UICheckbox* s) : UIElement(std::move(id)), target(t), source(s) {}
+				void Measure(UILayoutContext&) override { Transform().size = { 0,0 }; }
+				void BuildDraw(UIRenderContext&) override {
+					if (target && source) target->SetEnabled(!source->checked);
+				}
+			};
+			
+			colLeft->AddChild(cbDisabled);
+			colLeft->AddChild(std::make_shared<SyncDisable>("SyncDisableResume",
+				static_cast<UIButton*>(colLeft->Children()[0].get()),
+				cbDisabled.get()));
+		}
+
+		{
+			auto rLow = std::make_shared<UIRadioButton>("RadioLow");
+			rLow->label = "Qualite : Basse";
+			rLow->groupValue = &state->quality; rLow->index = 0;
+			rLow->SetTabIndex(6);
+			colLeft->AddChild(rLow);
+
+			auto rMed = std::make_shared<UIRadioButton>("RadioMed");
+			rMed->label = "Qualite : Moyenne";
+			rMed->groupValue = &state->quality; rMed->index = 1;
+			rMed->SetTabIndex(7);
+			colLeft->AddChild(rMed);
+
+			auto rHigh = std::make_shared<UIRadioButton>("RadioHigh");
+			rHigh->label = "Qualite : Haute";
+			rHigh->groupValue = &state->quality; rHigh->index = 2;
+			rHigh->SetTabIndex(8);
+			colLeft->AddChild(rHigh);
+		}
+
+		auto colRight = std::make_shared<UIContainer>("ColRight");
+		colRight->layout = UILayoutType::Vertical;
+		colRight->gap = 6.f;
+		colRight->Style().padding = 8.f;
+		colRight->Style().bg = { 0.12f,0.13f,0.16f,1.f };
+		colRight->Transform().size = { 340.f, 0.f };
+		row1->AddChild(colRight);
+
+		std::shared_ptr<UISlider> sMaster, sSpeed;
+		{
+			auto lblVol = std::make_shared<UIText>("LblVolume"); lblVol->text = "Volume principal";
+			colRight->AddChild(lblVol);
+
+			sMaster = std::make_shared<UISlider>("SliderMaster");
+			sMaster->min = 0; sMaster->max = 100; sMaster->value = 25;
+			sMaster->SetTabIndex(9);
+			colRight->AddChild(sMaster);
+
+			auto lblSpeed = std::make_shared<UIText>("LblSpeed"); lblSpeed->text = "Vitesse";
+			colRight->AddChild(lblSpeed);
+
+			sSpeed = std::make_shared<UISlider>("SliderSpeed");
+			sSpeed->min = 0; sSpeed->max = 10; sSpeed->value = 3.5f;
+			sSpeed->SetTabIndex(10);
+			colRight->AddChild(sSpeed);
+		}
+
+		{
+			auto pb = std::make_shared<UIProgressBar>("ProgressLoad");
+			pb->value = 0.25f;
+			colRight->AddChild(pb);
+
+			struct SyncProgress : UIElement {
+				UIProgressBar* bar; UISlider* src;
+				explicit SyncProgress(std::string id, UIProgressBar* b, UISlider* s) : UIElement(std::move(id)), bar(b), src(s) {}
+				void Measure(UILayoutContext&) override { Transform().size = { 0,0 }; }
+				void BuildDraw(UIRenderContext&) override {
+					if (bar && src) bar->value = (src->value - src->min) / std::max(0.0001f, (src->max - src->min));
+				}
+			};
+			colRight->AddChild(std::make_shared<SyncProgress>("SyncPB", pb.get(), sMaster.get()));
+		}
+
+		{
+			auto lblName = std::make_shared<UIText>("LblName"); lblName->text = "Nom du projet";
+			colRight->AddChild(lblName);
+
+			auto inpName = std::make_shared<UITextInput>("InpName");
+			inpName->text = "QuasarGame";
+			inpName->SetTabIndex(11);
+			colRight->AddChild(inpName);
+
+			auto lblRO = std::make_shared<UIText>("LblRO"); lblRO->text = "Champ en lecture seule (disabled):";
+			colRight->AddChild(lblRO);
+
+			auto inpRO = std::make_shared<UITextInput>("InpRO");
+			inpRO->text = "Indisponible";
+			inpRO->SetEnabled(false);
+			colRight->AddChild(inpRO);
+		}
+		
+		auto tabs = std::make_shared<UITabs>("Tabs");
+		tabs->Style().bg = { 0.11f,0.11f,0.13f,1 };
+		tabs->Transform().size = { 0.f, 260.f };
+		tabs->tabbar->labels = { "General", "Audio", "À propos" };
+		root->AddChild(tabs);
+
+		{
+			auto gen = std::make_shared<UIContainer>("TabGeneral");
+			gen->layout = UILayoutType::Vertical; gen->gap = 6.f;
+			{
+				auto t = std::make_shared<UIText>("TGen"); t->text = "Parametres generaux";
+				gen->AddChild(t);
+
+				auto cb = std::make_shared<UICheckbox>("GenCB"); cb->label = "Activer HUD";
+				gen->AddChild(cb);
+				auto cb2 = std::make_shared<UICheckbox>("GenCB2"); cb2->label = "Afficher FPS";
+				gen->AddChild(cb2);
+			}
+			tabs->AddChild(gen);
+		}
+
+		{
+			auto aud = std::make_shared<UIContainer>("TabAudio");
+			aud->layout = UILayoutType::Vertical; aud->gap = 6.f;
+			{
+				auto t = std::make_shared<UIText>("TAud"); t->text = "Options audio";
+				aud->AddChild(t);
+
+				auto sfx = std::make_shared<UISlider>("SFX"); sfx->min = 0; sfx->max = 100; sfx->value = 70;
+				aud->AddChild(sfx);
+				auto mus = std::make_shared<UISlider>("Music"); mus->min = 0; mus->max = 100; mus->value = 40;
+				aud->AddChild(mus);
+			}
+			tabs->AddChild(aud);
+		}
+
+		{
+			auto about = std::make_shared<UIContainer>("TabAbout");
+			about->layout = UILayoutType::Vertical; about->gap = 6.f;
+			{
+				auto t1 = std::make_shared<UIText>("Tab1"); t1->text = "QuasarEngine UI Sandbox";
+				about->AddChild(t1);
+				auto t2 = std::make_shared<UIText>("Tab2"); t2->text = "Test de widgets, layout, focus/tab, disabled, etc.";
+				about->AddChild(t2);
+			}
+			tabs->AddChild(about);
+		}
+
+		auto menu = std::make_shared<UIMenu>("CtxMenu");
+		menu->items = {
+			{ "Nouveau",  false, []() { std::cout << "[Menu] Nouveau\n"; } },
+			{ "Ouvrir...",false, []() { std::cout << "[Menu] Ouvrir\n"; } },
+			{ "Enregistrer",false, []() { std::cout << "[Menu] Enregistrer\n"; } },
+			{ "Quitter",  false, []() { std::cout << "[Menu] Quitter\n"; } }
+		};
+		root->AddChild(menu);
+
+		{
+			auto openMenuBtn = std::make_shared<UIButton>("BtnOpenMenu");
+			openMenuBtn->label = "Ouvrir le menu";
+			openMenuBtn->SetTabIndex(12);
+			openMenuBtn->onClick = [menu, openMenuBtn]() {
+				const Rect r = openMenuBtn->Transform().rect;
+				menu->OpenAt(r.x, r.y + r.h + 4.f);
+				};
+			root->AddChild(openMenuBtn);
+		}
+
+		auto tooltip = std::make_shared<UITooltipLayer>("Tooltip");
+		root->AddChild(tooltip);
+
+		tooltip->Show("Astuce: Tab pour naviguer, Espace/Entree pour activer.", 28.f, 80.f);
 
 		m_SceneData.m_UI->SetRoot(root);
 	}

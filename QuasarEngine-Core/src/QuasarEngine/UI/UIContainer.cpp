@@ -3,8 +3,10 @@
 #include "UIContainer.h"
 #include "UIRenderer.h"
 
-namespace QuasarEngine {
-    void UIContainer::Measure(UILayoutContext& ctx) {
+namespace QuasarEngine
+{
+    void UIContainer::Measure(UILayoutContext& ctx)
+    {
         float w = 0.f, h = 0.f;
         for (auto& c : Children()) {
             c->Measure(ctx);
@@ -30,19 +32,22 @@ namespace QuasarEngine {
         if (Transform().size.y <= 0) Transform().size.y = h;
     }
 
-    void UIContainer::Arrange(const Rect& parentRect) {
+    void UIContainer::Arrange(const Rect& parentRect)
+    {
         UIElement::Arrange(parentRect);
 
         float cursorX = m_Transform.rect.x + m_Style.padding;
         float cursorY = m_Transform.rect.y + m_Style.padding;
 
-        for (size_t i = 0; i < Children().size(); ++i) {
+        for (size_t i = 0; i < Children().size(); ++i)
+        {
             auto& c = Children()[i];
             auto cs = c->Transform().size;
 
             Rect childParent = m_Transform.rect;
             
-            if (layout == UILayoutType::Vertical) {
+            if (layout == UILayoutType::Vertical)
+            {
                 childParent.x = cursorX;
                 childParent.y = cursorY;
                 c->Transform().pos = { 0,0 };
@@ -50,7 +55,8 @@ namespace QuasarEngine {
                 c->Arrange({ childParent.x, childParent.y, cs.x, cs.y });
                 cursorY += cs.y + ((i + 1 < Children().size()) ? gap : 0.f);
             }
-            else {
+            else
+            {
                 childParent.x = cursorX;
                 childParent.y = cursorY;
                 c->Transform().pos = { 0,0 };
@@ -61,8 +67,10 @@ namespace QuasarEngine {
         }
     }
 
-    void UIContainer::BuildDraw(UIRenderContext& ctx) {
-        if (m_Style.bg.a > 0.f) {
+    void UIContainer::BuildDraw(UIRenderContext& ctx)
+    {
+        if (m_Style.bg.a > 0.f)
+        {
             ctx.batcher->PushRect(m_Transform.rect, ctx.whiteTex, PackRGBA8(m_Style.bg), nullptr);
         }
         for (auto& c : Children()) c->BuildDraw(ctx);

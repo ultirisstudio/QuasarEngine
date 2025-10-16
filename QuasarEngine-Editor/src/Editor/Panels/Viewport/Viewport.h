@@ -9,6 +9,7 @@
 
 #include <QuasarEngine/Events/Event.h>
 #include <QuasarEngine/Events/MouseEvent.h>
+#include <QuasarEngine/Events/KeyEvent.h>
 
 namespace QuasarEngine
 {
@@ -36,6 +37,9 @@ namespace QuasarEngine
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 		bool OnMouseButtonReleased(MouseButtonReleasedEvent& e);
 		bool OnMouseMoved(MouseMovedEvent& e);
+		bool OnKeyPressed(KeyPressedEvent& e);
+		bool OnKeyReleased(KeyReleasedEvent& e);
+		bool OnKeyTyped(KeyTypedEvent& e);
 
 		glm::vec2 ToUi(const ImVec2& imguiPos);
 

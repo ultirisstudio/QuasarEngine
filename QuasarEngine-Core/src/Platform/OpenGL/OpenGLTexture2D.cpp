@@ -32,20 +32,51 @@ namespace QuasarEngine
             return false;
         }
 
-        if (m_Specification.flip)  stbi_set_flip_vertically_on_load(true);
-        else                       stbi_set_flip_vertically_on_load(false);
+        stbi_set_flip_vertically_on_load(m_Specification.flip);
 
-        if (m_Specification.alpha) {
-            m_Specification.format = TextureFormat::RGBA;
-            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8A8 : TextureFormat::RGBA8;
+        if (!m_Specification.compressed) {
+            if (m_Specification.width == 0 || m_Specification.height == 0) {
+                Q_ERROR("OpenGLTexture2D: raw upload requires width/height in specification");
+                return false;
+            }
+
+            const int expectedChannels = Utils::DesiredChannels(m_Specification.internal_format);
+            if (expectedChannels <= 0) {
+                Q_ERROR("OpenGLTexture2D: unsupported/unknown internal format for raw upload");
+                return false;
+            }
+
+            const std::size_t expectedSize =
+                static_cast<std::size_t>(m_Specification.width) *
+                static_cast<std::size_t>(m_Specification.height) *
+                static_cast<std::size_t>(expectedChannels);
+
+            if (data.size != expectedSize) {
+                Q_WARNING("OpenGLTexture2D: raw pixel size (" + std::to_string(data.size) + ") != width*height*channels (" + std::to_string(expectedSize) + ")");
+            }
+
+            m_Specification.channels = static_cast<uint32_t>(expectedChannels);
+            return LoadFromData(data);
         }
-        else {
-            m_Specification.format = TextureFormat::RGB;
-            m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8 : TextureFormat::RGB8;
+
+        const bool inferFromFlags =
+            (m_Specification.format == TextureFormat::RGBA &&
+                m_Specification.internal_format == TextureFormat::RGBA);
+
+        if (inferFromFlags) {
+            if (m_Specification.alpha) {
+                m_Specification.format = TextureFormat::RGBA;
+                m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8A8 : TextureFormat::RGBA8;
+            }
+            else {
+                m_Specification.format = TextureFormat::RGB;
+                m_Specification.internal_format = m_Specification.gamma ? TextureFormat::SRGB8 : TextureFormat::RGB8;
+            }
         }
 
         int w = 0, h = 0, actualChannels = 0;
         const int desired = Utils::DesiredChannels(m_Specification.internal_format);
+
         unsigned char* decoded = stbi_load_from_memory(
             reinterpret_cast<const stbi_uc*>(data.data),
             static_cast<int>(data.size),
@@ -61,7 +92,7 @@ namespace QuasarEngine
         m_Specification.height = static_cast<uint32_t>(h);
         m_Specification.channels = static_cast<uint32_t>(desired ? desired : actualChannels);
 
-        const bool ok = LoadFromData(ByteView{ decoded, static_cast<std::size_t>(w * h * m_Specification.channels) });
+        const bool ok = LoadFromData(ByteView{ decoded, static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * m_Specification.channels });
         stbi_image_free(decoded);
         return ok;
     }

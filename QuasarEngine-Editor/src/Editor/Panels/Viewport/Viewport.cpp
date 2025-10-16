@@ -128,6 +128,9 @@ namespace QuasarEngine
 		dispatcher.Dispatch<MouseButtonPressedEvent>(std::bind(&Viewport::OnMouseButtonPressed, this, std::placeholders::_1));
 		dispatcher.Dispatch<MouseButtonReleasedEvent>(std::bind(&Viewport::OnMouseButtonReleased, this, std::placeholders::_1));
 		dispatcher.Dispatch<MouseMovedEvent>(std::bind(&Viewport::OnMouseMoved, this, std::placeholders::_1));
+		dispatcher.Dispatch<KeyPressedEvent>(std::bind(&Viewport::OnKeyPressed, this, std::placeholders::_1));
+		dispatcher.Dispatch<KeyReleasedEvent>(std::bind(&Viewport::OnKeyReleased, this, std::placeholders::_1));
+		dispatcher.Dispatch<KeyTypedEvent>(std::bind(&Viewport::OnKeyTyped, this, std::placeholders::_1));
 	}
 
 	bool Viewport::OnMouseButtonPressed(MouseButtonPressedEvent& e)
@@ -172,7 +175,7 @@ namespace QuasarEngine
 		return false;
 	}
 
-	bool Viewport::OnMouseMoved(MouseMovedEvent& /*e*/)
+	bool Viewport::OnMouseMoved(MouseMovedEvent& e)
 	{
 		const ImVec2 imguiPos = ImGui::GetIO().MousePos;
 		const glm::vec2 uiPos = ToUi(imguiPos);
@@ -189,6 +192,27 @@ namespace QuasarEngine
 		ev.move = true;
 
 		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		return false;
+	}
+
+	bool Viewport::OnKeyPressed(KeyPressedEvent& e)
+	{
+		UIKeyEvent kev{}; kev.key = (int)e.GetKeyCode(); kev.down = true;
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedKey(kev);
+		return false;
+	}
+
+	bool Viewport::OnKeyReleased(KeyReleasedEvent& e)
+	{
+		UIKeyEvent kev{}; kev.key = (int)e.GetKeyCode(); kev.down = false;
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedKey(kev);
+		return false;
+	}
+
+	bool Viewport::OnKeyTyped(KeyTypedEvent& e)
+	{
+		UICharEvent cev{}; cev.codepoint = (uint32_t)e.GetKeyCode();
+		Renderer::Instance().m_SceneData.m_UI->Input().FeedChar(cev);
 		return false;
 	}
 

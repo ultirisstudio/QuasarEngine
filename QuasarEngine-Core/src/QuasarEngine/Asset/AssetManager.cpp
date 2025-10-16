@@ -159,6 +159,7 @@ namespace QuasarEngine
 				if (asset.data)
 				{
 					texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
+					std::cout << "[AssetManager] TEXTURE '" << asset.id << "' loaded from memory.\n";
 				}
 				else
 				{

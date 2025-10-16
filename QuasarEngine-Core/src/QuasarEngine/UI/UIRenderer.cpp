@@ -173,9 +173,7 @@ namespace QuasarEngine {
 
         m_DefaultFont = std::make_unique<UIFont>();
         if (!m_DefaultFont->LoadTTF("Assets/Fonts/Monocraft.ttf", 16.f))
-            Q_ERROR("Failed to load default font: Monocraft.ttf");
-        else
-            Q_INFO("Default font loaded: Monocraft.ttf");
+            Q_ERROR("Failed to load default font");
 
         m_Context.defaultFont = m_DefaultFont.get();
 

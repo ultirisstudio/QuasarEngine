@@ -2,13 +2,16 @@
 
 #include "UIElement.h"
 
-namespace QuasarEngine {
-	enum class UILayoutType {
+namespace QuasarEngine
+{
+	enum class UILayoutType
+	{
 		Vertical,
 		Horizontal
 	};
 
-	class UIContainer : public UIElement {
+	class UIContainer : public UIElement
+	{
 	public:
 		using UIElement::UIElement;
 		UILayoutType layout = UILayoutType::Vertical;
