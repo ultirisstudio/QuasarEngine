@@ -147,6 +147,7 @@ namespace QuasarEngine
         case Shader::PrimitiveTopology::TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         case Shader::PrimitiveTopology::LineList:     return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
         case Shader::PrimitiveTopology::PointList:    return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        case Shader::PrimitiveTopology::PatchList:    return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
         }
         return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     }
@@ -336,6 +337,9 @@ namespace QuasarEngine
 
         pipelineDesc.viewport = viewport;
         pipelineDesc.scissor = scissor;
+
+        pipelineDesc.topology = ToVkPrimitiveTopology(m_Description.topology);
+        pipelineDesc.patchControlPoints = m_Description.patchControlPoints;
 
         pipelineDesc.cullMode = ToPipelineCullMode(m_Description.cullMode);
         pipelineDesc.fillMode = ToPipelineFillMode(m_Description.fillMode);

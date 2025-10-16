@@ -37,6 +37,9 @@ namespace QuasarEngine
         PipelineFillMode fillMode = PipelineFillMode::Solid;
         PipelineBlendMode blendMode = PipelineBlendMode::None;
 
+        VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        uint32_t patchControlPoints = 0;
+
         VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS;
         bool depthWriteEnable = true;
         bool depthTestEnable = true;

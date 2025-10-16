@@ -114,7 +114,7 @@ namespace QuasarEngine
         vertexInputInfo.pVertexAttributeDescriptions = desc.attributes.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.topology = desc.topology;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
@@ -139,6 +139,26 @@ namespace QuasarEngine
         pipelineCreateInfo.layout = layout;
         pipelineCreateInfo.renderPass = desc.renderPass;
         pipelineCreateInfo.subpass = 0;
+
+        bool hasTess = false;
+        for (const auto& st : desc.stages) {
+            if (st.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT ||
+                st.stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+                hasTess = true; break;
+            }
+        }
+
+        VkPipelineTessellationStateCreateInfo tess{ VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
+        if (hasTess) {
+            if (desc.topology != VK_PRIMITIVE_TOPOLOGY_PATCH_LIST) {
+                inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+            }
+            tess.patchControlPoints = desc.patchControlPoints ? desc.patchControlPoints : 3;
+            pipelineCreateInfo.pTessellationState = &tess;
+        }
+        else {
+            pipelineCreateInfo.pTessellationState = nullptr;
+        }
 
         VkResult result = vkCreateGraphicsPipelines(VulkanContext::Context.device->device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, VulkanContext::Context.allocator->GetCallbacks(), &handle);
 

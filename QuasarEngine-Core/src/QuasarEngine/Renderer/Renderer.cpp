@@ -26,27 +26,39 @@ namespace QuasarEngine
 {
 	void Renderer::Initialize()
 	{
+		auto extFor = [](RendererAPI::API api, Shader::ShaderStageType s) {
+			if (api == RendererAPI::API::Vulkan) {
+				switch (s) {
+				case Shader::ShaderStageType::Vertex:     return ".vert.spv";
+				case Shader::ShaderStageType::TessControl:return ".tesc.spv";
+				case Shader::ShaderStageType::TessEval:   return ".tese.spv";
+				case Shader::ShaderStageType::Fragment:   return ".frag.spv";
+				default: return "";
+				}
+			}
+			else {
+				switch (s) {
+				case Shader::ShaderStageType::Vertex:     return ".vert.glsl";
+				case Shader::ShaderStageType::TessControl:return ".tesc.glsl";
+				case Shader::ShaderStageType::TessEval:   return ".tese.glsl";
+				case Shader::ShaderStageType::Fragment:   return ".frag.glsl";
+				default: return "";
+				}
+			}
+			};
+
+
 		Shader::ShaderDescription desc;
 
-		std::string basePath;
-		std::string vertExt;
-		std::string fragExt;
+		const auto api = RendererAPI::GetAPI();
+		const std::string basePath = (api == RendererAPI::API::Vulkan)
+			? "Assets/Shaders/vk/spv/"
+			: "Assets/Shaders/gl/";
 
-		if (RendererAPI::GetAPI() == RendererAPI::API::Vulkan)
-		{
-			basePath = "Assets/Shaders/vk/spv/";
-			vertExt = ".vert.spv";
-			fragExt = ".frag.spv";
-		}
-		else
-		{
-			basePath = "Assets/Shaders/gl/";
-			vertExt = ".vert.glsl";
-			fragExt = ".frag.glsl";
-		}
+		const std::string name = "basic";
 
-		std::string vertPath = basePath + "basic" + vertExt;
-		std::string fragPath = basePath + "basic" + fragExt;
+		std::string vertPath = basePath + name + extFor(api, Shader::ShaderStageType::Vertex);
+		std::string fragPath = basePath + name + extFor(api, Shader::ShaderStageType::Fragment);
 
 		desc.modules = {
 			Shader::ShaderModuleInfo{
@@ -198,7 +210,7 @@ namespace QuasarEngine
 		constexpr Shader::ShaderStageFlags phyDebObjectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		phyDebDesc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebObjectUniforms, model), 0, 1, phyDebObjectUniformsFlags},
+			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebObjectUniforms, model), 1, 0, phyDebObjectUniformsFlags},
 		};
 
 		phyDebDesc.samplers = {
@@ -222,10 +234,13 @@ namespace QuasarEngine
 
 		terrainDesc.cullMode = Shader::CullMode::Back;
 
-		std::string tVertPath = basePath + "gpuheight.vs";
-		std::string tTcsPath = basePath + "gpuheight.tcs";
-		std::string tTesPath = basePath + "gpuheight.tes";
-		std::string tFragPath = basePath + "gpuheight.fs";
+		const std::string tName = "gpuheight";
+
+		std::string tVertPath = basePath + tName + extFor(api, Shader::ShaderStageType::Vertex);
+		std::string tTcsPath = basePath + tName + extFor(api, Shader::ShaderStageType::TessControl);
+		std::string tTesPath = basePath + tName + extFor(api, Shader::ShaderStageType::TessEval);
+		std::string tFragPath = basePath + tName + extFor(api, Shader::ShaderStageType::Fragment);
+
 
 		terrainDesc.modules = {
 			Shader::ShaderModuleInfo{
@@ -268,6 +283,7 @@ namespace QuasarEngine
 
 		const auto TerrainGlobalStages =
 			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
+			Shader::StageToBit(Shader::ShaderStageType::TessControl) |
 			Shader::StageToBit(Shader::ShaderStageType::TessEval) |
 			Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
@@ -300,35 +316,37 @@ namespace QuasarEngine
 		};
 
 		const auto TOFlags =
+			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
+			Shader::StageToBit(Shader::ShaderStageType::TessControl) |
 			Shader::StageToBit(Shader::ShaderStageType::TessEval) |
 			Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		terrainDesc.objectUniforms = {
-			{"model",               Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(TerrainObjectUniforms, model),               0, 1, TOFlags},
+			{"model",               Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(TerrainObjectUniforms, model),               1, 0, TOFlags},
 
-			{"albedo",              Shader::ShaderUniformType::Vec4,  sizeof(glm::vec4),  offsetof(TerrainObjectUniforms, albedo),              0, 1, TOFlags},
-			{"roughness",           Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, roughness),           0, 1, TOFlags},
-			{"metallic",            Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, metallic),            0, 1, TOFlags},
-			{"ao",                  Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, ao),                  0, 1, TOFlags},
+			{"albedo",              Shader::ShaderUniformType::Vec4,  sizeof(glm::vec4),  offsetof(TerrainObjectUniforms, albedo),              1, 0, TOFlags},
+			{"roughness",           Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, roughness),           1, 0, TOFlags},
+			{"metallic",            Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, metallic),            1, 0, TOFlags},
+			{"ao",                  Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, ao),                  1, 0, TOFlags},
 
-			{"has_albedo_texture",  Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_albedo_texture),  0, 1, TOFlags},
-			{"has_normal_texture",  Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_normal_texture),  0, 1, TOFlags},
-			{"has_roughness_texture",Shader::ShaderUniformType::Int,  sizeof(int),        offsetof(TerrainObjectUniforms, has_roughness_texture),0, 1, TOFlags},
-			{"has_metallic_texture",Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_metallic_texture),0, 1, TOFlags},
-			{"has_ao_texture",      Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_ao_texture),      0, 1, TOFlags},
+			{"has_albedo_texture",  Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_albedo_texture),  1, 0, TOFlags},
+			{"has_normal_texture",  Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_normal_texture),  1, 0, TOFlags},
+			{"has_roughness_texture",Shader::ShaderUniformType::Int,  sizeof(int),        offsetof(TerrainObjectUniforms, has_roughness_texture),1, 0, TOFlags},
+			{"has_metallic_texture",Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_metallic_texture),1, 0, TOFlags},
+			{"has_ao_texture",      Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_ao_texture),      1, 0, TOFlags},
 
-			{"heightMult",          Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, heightMult),          0, 1, TOFlags},
-			{"uTextureScale",       Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, uTextureScale),       0, 1, TOFlags},
+			{"heightMult",          Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, heightMult),          1, 0, TOFlags},
+			{"uTextureScale",       Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, uTextureScale),       1, 0, TOFlags},
 		};
 
 		terrainDesc.samplers = {
-			{"heightMap",        0, 2, Shader::StageToBit(Shader::ShaderStageType::TessEval)},
+			{"heightMap",        1, 1, Shader::StageToBit(Shader::ShaderStageType::TessEval)},
 
-			{"albedo_texture",   0, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture",   0, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture",0, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"metallic_texture", 0, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture",       0, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"albedo_texture",   1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"normal_texture",   1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"roughness_texture",1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"metallic_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"ao_texture",       1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 		};
 
 		terrainDesc.blendMode = Shader::BlendMode::None;
@@ -349,8 +367,10 @@ namespace QuasarEngine
 
 		Shader::ShaderDescription skinnedDesc;
 
-		std::string sVertPath = basePath + "basic_anim" + vertExt;
-		std::string sFragPath = basePath + "basic_anim" + fragExt;
+		const std::string sName = "basic_anim";
+
+		std::string sVertPath = basePath + sName + extFor(api, Shader::ShaderStageType::Vertex);
+		std::string sFragPath = basePath + sName + extFor(api, Shader::ShaderStageType::Fragment);
 
 		skinnedDesc.modules = {
 			Shader::ShaderModuleInfo{
@@ -411,28 +431,28 @@ namespace QuasarEngine
 		};
 
 		skinnedDesc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedObjectUniforms, model), 0, 1, SkinnedGlobalStages},
+			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedObjectUniforms, model), 1, 0, SkinnedGlobalStages},
 
-			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(SkinnedObjectUniforms, albedo), 0, 1, SkinnedGlobalStages},
-			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, roughness), 0, 1, SkinnedGlobalStages},
-			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, metallic), 0, 1, SkinnedGlobalStages},
-			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, ao), 0, 1, SkinnedGlobalStages},
+			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(SkinnedObjectUniforms, albedo), 1, 0, SkinnedGlobalStages},
+			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, roughness), 1, 0, SkinnedGlobalStages},
+			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, metallic), 1, 0, SkinnedGlobalStages},
+			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, ao), 1, 0, SkinnedGlobalStages},
 
-			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_albedo_texture), 0, 1, SkinnedGlobalStages},
-			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_normal_texture), 0, 1, SkinnedGlobalStages},
-			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_roughness_texture), 0, 1, SkinnedGlobalStages},
-			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_metallic_texture), 0, 1, SkinnedGlobalStages},
-			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_ao_texture), 0, 1, SkinnedGlobalStages},
+			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_albedo_texture), 1, 0, SkinnedGlobalStages},
+			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_normal_texture), 1, 0, SkinnedGlobalStages},
+			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_roughness_texture), 1, 0, SkinnedGlobalStages},
+			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_metallic_texture), 1, 0, SkinnedGlobalStages},
+			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_ao_texture), 1, 0, SkinnedGlobalStages},
 
-			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES, offsetof(SkinnedObjectUniforms, finalBonesMatrices),  0, 1, SkinnedGlobalStages},
+			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES, offsetof(SkinnedObjectUniforms, finalBonesMatrices),  1, 0, SkinnedGlobalStages},
 		};
 
 		skinnedDesc.samplers = {
-			{"albedo_texture", 0, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture", 0, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture", 0, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"metallic_texture", 0, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture", 0, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
 		};
 
 		skinnedDesc.blendMode = Shader::BlendMode::None;
