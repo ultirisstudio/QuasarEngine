@@ -16,6 +16,7 @@
 #include <Editor/Panels/AnimationEditor/AnimationEditorPanel.h>
 #include <Editor/Panels/HeightMapEditor/HeightMapEditor.h>
 #include <Editor/Panels/UIEditor/UserInterfaceEditor.h>
+#include <Editor/Modules/SpriteEditor/SpriteEditor.h>
 
 #include <Editor/SceneManager.h>
 #include <Editor/EditorCamera.h>
@@ -98,6 +99,7 @@ namespace QuasarEngine
 		//std::unique_ptr<AnimationEditorPanel> m_AnimationEditorPanel;
 		//std::unique_ptr<HeightMapEditor> m_HeightMapEditor;
 		//std::unique_ptr<UserInterfaceEditor> m_UserInterfaceEditor;
+		std::unique_ptr<SpriteEditor> m_SpriteEditor;
 
 		std::unique_ptr<SceneManager> m_SceneManager;
 		std::unique_ptr<EditorCamera> m_EditorCamera;

@@ -77,6 +77,7 @@ namespace QuasarEngine
 		//m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
 		//m_HeightMapEditor = std::make_unique<HeightMapEditor>();
 		//m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
+		m_SpriteEditor = std::make_unique<SpriteEditor>();
 
 		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
 		m_SceneManager->createNewScene();
@@ -319,6 +320,7 @@ namespace QuasarEngine
 		//m_NodeEditor.reset();
 		//m_AnimationEditorPanel.reset();
 		//m_HeightMapEditor.reset();
+		m_SpriteEditor.reset();
 
 		PhysicEngine::Instance().Shutdown();
 		AssetManager::Instance().Shutdown();
@@ -729,6 +731,7 @@ namespace QuasarEngine
 		//m_NodeEditor->OnImGuiRender();
 		//m_HeightMapEditor->OnImGuiRender();
 		//m_UserInterfaceEditor->OnImGuiRender();
+		m_SpriteEditor->OnImGuiRender();
 
 		/*try {
 			m_UserInterfaceEditor->OnImGuiRender("UI Editor");
