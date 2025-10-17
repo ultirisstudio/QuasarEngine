@@ -159,6 +159,13 @@ namespace QuasarEngine {
 
         m_VertexArray = VertexArray::Create();
 
+        MaterialSpecification materialSpec;
+        m_Material = Material::CreateMaterial(materialSpec);
+
+		m_Shader->AcquireResources(m_Material.get());
+
+        m_Material->m_Generation++;
+
         m_VertexBuffer = VertexBuffer::Create(64 * 1024);
         m_VertexBuffer->SetLayout({
             { ShaderDataType::Vec2, "inPosition" },
@@ -187,6 +194,9 @@ namespace QuasarEngine {
     {
         m_VertexArray.reset();
         m_VertexBuffer.reset();
+
+		m_Shader->ReleaseResources(m_Material.get());
+
 		m_Shader.reset();
 
         m_DefaultFont.reset();
@@ -350,10 +360,6 @@ namespace QuasarEngine {
                 ? cmd.tex.id
                 : m_Context.whiteTex.id;
 
-            /*const std::string& wantedId = (!Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId().empty() && AssetManager::Instance().isAssetLoaded(Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId()))
-                ? Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId()
-                : m_Context.whiteTex.id;*/
-
             auto tex = AssetManager::Instance().getAsset<Texture2D>(wantedId);
             if (!tex) {
                 UI_DIAG_WARN(std::string("UIRenderer: fallback to white, missing: ") + wantedId);
@@ -361,46 +367,6 @@ namespace QuasarEngine {
             }
 
             GetShader()->SetTexture("uTexture", tex.get(), Shader::SamplerType::Sampler2D);
-
-            /*std::string textureName = Renderer::Instance().m_SceneData.m_UI->Renderer().Ctx().defaultFont->GetTextureId();
-            if (AssetManager::Instance().isAssetLoaded(textureName))
-            {
-                auto tex = AssetManager::Instance().getAsset<Texture2D>(textureName);
-                GetShader()->SetTexture(
-                    "uTexture",
-                    tex.get(),
-                    Shader::SamplerType::Sampler2D
-                );
-            }
-            else
-            {
-                UI_DIAG_WARN(std::string("UIRenderer: texture not loaded: ") + cmd.tex.id);
-
-                GetShader()->SetTexture(
-                    "uTexture",
-                    AssetManager::Instance().getAsset<Texture>(m_Context.whiteTex.id).get(),
-                    Shader::SamplerType::Sampler2D
-                );
-            }*/
-
-            /*if (AssetManager::Instance().isAssetLoaded(cmd.tex.id)) {
-                auto tex = AssetManager::Instance().getAsset<Texture2D>(cmd.tex.id);
-                GetShader()->SetTexture(
-                    "uTexture",
-                    tex.get(),
-                    Shader::SamplerType::Sampler2D
-                );
-            }
-            else {
-                UI_DIAG_WARN(std::string("UIRenderer: texture not loaded: ") + cmd.tex.id);
-
-                auto tex = AssetManager::Instance().getAsset<Texture2D>(m_Context.whiteTex.id);
-                GetShader()->SetTexture(
-                    "uTexture",
-                    tex.get(),
-                    Shader::SamplerType::Sampler2D
-                );
-            }*/
 
             if (!GetShader()->UpdateObject(nullptr)) {
                 UI_DIAG_ERROR("UIRenderer: UpdateObject() failed.");

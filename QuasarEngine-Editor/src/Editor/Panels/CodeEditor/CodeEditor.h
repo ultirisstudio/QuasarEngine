@@ -41,6 +41,29 @@ namespace QuasarEngine
         void Undo();
         void Redo();
 
+        enum class SuggestionKind { Keyword, Identifier, Function, Snippet, FilePath, Unknown };
+
+        struct Suggestion {
+            std::string label;
+            std::string insertText;
+            SuggestionKind kind = SuggestionKind::Unknown;
+            std::string detail;
+            std::string doc;
+            int score = 0;
+        };
+
+        using SuggestionProvider = std::function<void(const std::string& word, std::vector<Suggestion>& out)>;
+
+        void AddSuggestionProvider(const SuggestionProvider& provider);
+        void SetKeywords(const std::vector<std::string>& kw);
+        void SetSnippets(const std::vector<Suggestion>& snippets);
+
+        void SetZoom(float factor);
+        float GetZoom() const { return m_Zoom; }
+        void ZoomIn();
+        void ZoomOut();
+        void ResetZoom();
+
         std::function<void()> OnTextChanged;
         std::function<void(const CodeEditorDiagnostics&)> OnDiagnosticClicked;
 
@@ -54,6 +77,18 @@ namespace QuasarEngine
         std::string GetCurrentWord() const;
         void InsertAutoComplete(const std::string& word);
 
+        std::pair<TextEditor::Coordinates, TextEditor::Coordinates> GetCurrentWordRange() const;
+
+        static int FuzzyScore(const std::string& query, const std::string& target);
+
+        void ProviderDictionary(const std::string& w, std::vector<Suggestion>& out);
+        void ProviderBufferIdentifiers(const std::string& w, std::vector<Suggestion>& out);
+        void ProviderKeywords(const std::string& w, std::vector<Suggestion>& out);
+        void ProviderSnippets(const std::string& w, std::vector<Suggestion>& out);
+        void RebuildBufferIdentifiers();
+
+        std::string SliceTextFromRange(const TextEditor::Coordinates& coord_from, const TextEditor::Coordinates& coord_to) const;
+
     private:
         TextEditor editor;
         ImFont* font = nullptr;
@@ -63,7 +98,14 @@ namespace QuasarEngine
         bool textChanged = false;
 
         std::vector<std::string> dictionary;
-        std::vector<std::string> suggestions;
+        std::vector<std::string> bufferIdentifiers;
+        std::vector<std::string> keywords;
+
+        std::vector<Suggestion> suggestions;
+        std::vector<Suggestion> snippetBank;
+
+        std::vector<SuggestionProvider> providers;
+
         int selectedSuggestion = 0;
         bool showAutoComplete = false;
 
@@ -71,6 +113,15 @@ namespace QuasarEngine
         char replaceBuffer[128] = "";
         bool searching = false;
         bool replaceMode = false;
+
+        float m_Zoom = 1.0f;
+        float m_MinZoom = 0.5f;
+        float m_MaxZoom = 3.0f;
+        float m_ZoomStep = 0.1f;
+
+        int m_SelectedSuggestion = 0;
+        bool m_ShowAutoComplete = false;
+        int m_MaxSuggestions = 100;
 
         std::vector<CodeEditorDiagnostics> diagnostics;
     };

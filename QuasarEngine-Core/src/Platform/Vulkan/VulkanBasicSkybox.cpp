@@ -64,19 +64,19 @@ namespace QuasarEngine
 		desc.enableDynamicScissor = true;
 		desc.enableDynamicLineWidth = false;
 
-		shader = Shader::Create(desc);
+		m_Shader = Shader::Create(desc);
 
 		MaterialSpecification materialSpec;
-		material = Material::CreateMaterial(materialSpec);
+		m_Material = Material::CreateMaterial(materialSpec);
 
-		shader->AcquireResources(material.get());
+		m_Shader->AcquireResources(m_Material.get());
 
-		material->m_Generation++;
+		m_Material->m_Generation++;
 
 		TextureSpecification textureSpec;
 		textureSpec.width = 2048;
 		textureSpec.height = 2048;
-		texture = std::make_shared<VulkanTexture2D>(textureSpec);
+		m_Texture = std::make_shared<VulkanTexture2D>(textureSpec);
 
 		std::vector<float> cubeVertices = {
 			-1,  1, -1,   0,  0, -1,   0, 1,
@@ -125,32 +125,32 @@ namespace QuasarEngine
 		std::vector<uint32_t> cubeIndices(36);
 		std::iota(cubeIndices.begin(), cubeIndices.end(), 0);
 
-		cubeMesh = std::make_unique<Mesh>(cubeVertices, cubeIndices, std::nullopt, DrawMode::TRIANGLES);
+		m_CubeMesh = std::make_unique<Mesh>(cubeVertices, cubeIndices, std::nullopt, DrawMode::TRIANGLES);
 	}
 
 	VulkanBasicSkybox::~VulkanBasicSkybox()
 	{
-		shader->ReleaseResources(material.get());
+		m_Shader->ReleaseResources(m_Material.get());
 
-		texture.reset();
-		material.reset();
-		cubeMesh.reset();
-		shader.reset();
+		m_Texture.reset();
+		m_Material.reset();
+		m_CubeMesh.reset();
+		m_Shader.reset();
 	}
 
 	void VulkanBasicSkybox::Bind()
 	{
-		shader->Use();
+		m_Shader->Use();
 	}
 
 	void VulkanBasicSkybox::Unbind()
 	{
-		shader->Unuse();
+		m_Shader->Unuse();
 	}
 
 	void VulkanBasicSkybox::Draw()
 	{
-		cubeMesh->draw();
+		m_CubeMesh->draw();
 	}
 
 	void VulkanBasicSkybox::LoadCubemap(const std::array<std::string, 6>& faces)
@@ -192,7 +192,7 @@ namespace QuasarEngine
 
 			staging->LoadData(0, totalSize, 0, buffer.data());
 
-			texture->image = std::make_unique<VulkanImage>(
+			m_Texture->image = std::make_unique<VulkanImage>(
 				VK_IMAGE_TYPE_2D,
 				VK_IMAGE_VIEW_TYPE_CUBE,
 				2048,
@@ -216,10 +216,10 @@ namespace QuasarEngine
 
 			temp_buffer->AllocateAndBeginSingleUse();
 
-			texture->image->ImageTransitionLayout(temp_buffer->handle, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, mipLevels, 0, 6);
-			texture->image->CopyFromBuffer(temp_buffer->handle, staging->handle, 6);
+			m_Texture->image->ImageTransitionLayout(temp_buffer->handle, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, mipLevels, 0, 6);
+			m_Texture->image->CopyFromBuffer(temp_buffer->handle, staging->handle, 6);
 			//texture->image->ImageTransitionLayout(temp_buffer->handle, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 6);
-			texture->image->GenerateMipmaps(temp_buffer->handle, format, 2048, 2048, mipLevels, 6);
+			m_Texture->image->GenerateMipmaps(temp_buffer->handle, format, 2048, 2048, mipLevels, 6);
 			
 			temp_buffer->EndSingleUse(queue);
 
@@ -232,25 +232,25 @@ namespace QuasarEngine
 			info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			info.anisotropyEnable = VK_FALSE;
 			info.unnormalizedCoordinates = VK_FALSE;
-			vkCreateSampler(VulkanContext::Context.device->device, &info, VulkanContext::Context.allocator->GetCallbacks(), &texture->sampler);
+			vkCreateSampler(VulkanContext::Context.device->device, &info, VulkanContext::Context.allocator->GetCallbacks(), &m_Texture->sampler);
 
-			material->SetTexture(TextureType::Albedo, texture.get());
+			m_Material->SetTexture(TextureType::Albedo, m_Texture.get());
 
-			texture->generation++;
+			m_Texture->generation++;
 	}
 
 	Shader* VulkanBasicSkybox::GetShader()
 	{
-		return shader.get();
+		return m_Shader.get();
 	}
 
 	Texture2D* VulkanBasicSkybox::GetTexture()
 	{
-		return texture.get();
+		return m_Texture.get();
 	}
 
 	Material* VulkanBasicSkybox::GetMaterial()
 	{
-		return material.get();
+		return m_Material.get();
 	}
 }

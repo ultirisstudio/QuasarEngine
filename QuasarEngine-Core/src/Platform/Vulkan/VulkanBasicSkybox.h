@@ -28,10 +28,10 @@ namespace QuasarEngine
 		Material* GetMaterial() override;
 
 	private:
-		std::unique_ptr<Mesh> cubeMesh;
+		std::unique_ptr<Mesh> m_CubeMesh;
 
-		std::shared_ptr<Material> material;
-		std::shared_ptr<VulkanTexture2D> texture;
-		std::shared_ptr<Shader> shader;
+		std::shared_ptr<Material> m_Material;
+		std::shared_ptr<VulkanTexture2D> m_Texture;
+		std::shared_ptr<Shader> m_Shader;
 	};
 }

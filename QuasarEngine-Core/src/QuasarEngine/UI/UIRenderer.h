@@ -85,6 +85,8 @@ namespace QuasarEngine {
 
 		std::shared_ptr<Shader> m_Shader;
 
+		std::shared_ptr<Material> m_Material;
+
 		std::shared_ptr<VertexArray> m_VertexArray;
 		std::shared_ptr<VertexBuffer> m_VertexBuffer;
 
