@@ -5,6 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Renderer/Renderer2D.h>
 
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Resources/Materials/Material.h>
@@ -1070,6 +1071,30 @@ namespace QuasarEngine
 		m_SceneData.m_TerrainShader->Unuse();
 
 		//std::cout << entityDraw << "/" << totalEntity << std::endl;
+
+		{
+			Renderer2D::Instance().BeginScene(camera);
+
+			for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, SpriteComponent>())
+			{
+				Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
+
+				auto& tr = entity.GetComponent<TransformComponent>();
+				auto& sc = entity.GetComponent<SpriteComponent>();
+				const auto& spec = sc.GetSpecification();
+				if (!spec.Visible) continue;
+
+				Texture* tex = sc.GetTexture();
+				glm::mat4 T = tr.GetGlobalTransform();
+				glm::vec4 uv = sc.GetEffectiveUV();
+
+				Renderer2D::Instance().DrawQuad(
+					T, tex, spec.Color, uv, spec.Tiling, spec.Offset, spec.SortingOrder
+				);
+			}
+
+			Renderer2D::Instance().EndScene();
+		}
 	}
 
 	void Renderer::RenderDebug(BaseCamera& camera)

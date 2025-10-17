@@ -23,3 +23,5 @@
 #include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>
 
 #include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
+
+#include <QuasarEngine/Entity/Components/2D/SpriteComponent.h>

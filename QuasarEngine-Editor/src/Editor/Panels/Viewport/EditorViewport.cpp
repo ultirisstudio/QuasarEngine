@@ -42,6 +42,9 @@ namespace QuasarEngine
 
 		m_EditorFrameBuffer->Bind();
 
+		const auto& spec = m_EditorFrameBuffer->GetSpecification();
+		RenderCommand::Instance().SetViewport(0, 0, spec.Width, spec.Height);
+
 		RenderCommand::Instance().ClearColor(glm::vec4(0.2f, 0.2f, 0.2f, 1.0f));
 		RenderCommand::Instance().Clear();
 

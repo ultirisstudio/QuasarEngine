@@ -18,6 +18,7 @@
 
 #include "QuasarEngine/Asset/AssetManager.h"
 #include "QuasarEngine/Renderer/RenderCommand.h"
+#include "QuasarEngine/Renderer/Renderer2D.h"
 
 #include <QuasarEngine/Memory/MemoryTracker.h>
 
@@ -59,6 +60,7 @@ namespace QuasarEngine
 
 		RenderCommand::Instance().Initialize();
 		Renderer::Instance().Initialize();
+		Renderer2D::Instance().Initialize();
 		
 		PhysicEngine::Instance().Initialize();
 
@@ -320,6 +322,7 @@ namespace QuasarEngine
 
 		PhysicEngine::Instance().Shutdown();
 		AssetManager::Instance().Shutdown();
+		Renderer2D::Instance().Shutdown();
 		Renderer::Instance().Shutdown();
 		RenderCommand::Instance().Shutdown();
 	}

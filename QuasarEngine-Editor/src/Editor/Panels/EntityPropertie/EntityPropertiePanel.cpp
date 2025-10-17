@@ -7,32 +7,11 @@
 #include <cctype>
 
 #include <Editor/SceneManager.h>
+#include <Editor/Panels/AllPanels.h>
 #include <Editor/Panels/SceneHierarchy/SceneHierarchy.h>
 #include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Renderer/Renderer.h>
-#include <QuasarEngine/Entity/AllComponents.h>
 #include <QuasarEngine/Core/UUID.h>
-
-#include <Editor/Panels/Components/TransformComponentPanel.h>
-#include <Editor/Panels/Components/CameraComponentPanel.h>
-#include <Editor/Panels/Components/MeshComponentPanel.h>
-#include <Editor/Panels/Components/TerrainComponentPanel.h>
-#include <Editor/Panels/Components/MaterialComponentPanel.h>
-#include <Editor/Panels/Components/LightComponentPanel.h>
-#include <Editor/Panels/Components/MeshRendererComponentPanel.h>
-
-#include <Editor/Panels/Components/Physics/RigidBodyComponentPanel.h>
-#include <Editor/Panels/Components/Physics/BoxColliderComponentPanel.h>
-#include <Editor/Panels/Components/Physics/ConvexMeshColliderComponentPanel.h>
-#include <Editor/Panels/Components/Physics/TriangleMeshColliderComponentPanel.h>
-#include <Editor/Panels/Components/Physics/CapsuleColliderComponentPanel.h>
-#include <Editor/Panels/Components/Physics/PlaneColliderComponentPanel.h>
-#include <Editor/Panels/Components/Physics/SphereColliderComponentPanel.h>
-#include <Editor/Panels/Components/Physics/HeightfieldColliderComponentPanel.h>
-
-#include <Editor/Panels/Components/Scripting/ScriptComponentPanel.h>
-
-#include <Editor/Panels/Components/Animation/AnimationComponentPanel.h>
 
 #include <QuasarEngine/Entity/AllComponents.h>
 #include <QuasarEngine/Core/UUID.h>
@@ -40,110 +19,6 @@
 
 namespace QuasarEngine
 {
-    /*struct TransformPanelAdapter : public IComponentPanel
-    {
-        TransformComponentPanel p;
-        const char* Name() const override { return "Transform"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct CameraPanelAdapter : public IComponentPanel
-    {
-        CameraComponentPanel p;
-        const char* Name() const override { return "Camera"; }
-        void Render(Entity& e, Scene* s) override { p.Render(e, *s); }
-    };
-    struct MeshRendererPanelAdapter : public IComponentPanel
-    {
-        MeshRendererComponentPanel p;
-        const char* Name() const override { return "Mesh Renderer"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct MeshPanelAdapter : public IComponentPanel
-    {
-        MeshComponentPanel p;
-        const char* Name() const override { return "Mesh"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct TerrainPanelAdapter : public IComponentPanel
-    {
-        TerrainComponentPanel p;
-        const char* Name() const override { return "Terrain"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct MaterialPanelAdapter : public IComponentPanel
-    {
-        MaterialComponentPanel p;
-        const char* Name() const override { return "Material"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct LightPanelAdapter : public IComponentPanel
-    {
-        LightComponentPanel p;
-        const char* Name() const override { return "Light"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct RigidBodyPanelAdapter : public IComponentPanel
-    {
-        RigidBodyComponentPanel p;
-        const char* Name() const override { return "RigidBody"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct BoxColliderPanelAdapter : public IComponentPanel
-    {
-        BoxColliderComponentPanel p;
-        const char* Name() const override { return "Box Collider"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct SphereColliderPanelAdapter : public IComponentPanel
-    {
-        SphereColliderComponentPanel p;
-        const char* Name() const override { return "Sphere Collider"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct CapsuleColliderPanelAdapter : public IComponentPanel
-    {
-        CapsuleColliderComponentPanel p;
-        const char* Name() const override { return "Capsule Collider"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct PlaneColliderPanelAdapter : public IComponentPanel
-    {
-        PlaneColliderComponentPanel p;
-        const char* Name() const override { return "Plane Collider"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct ConvexMeshColliderPanelAdapter : public IComponentPanel
-    {
-        ConvexMeshColliderComponentPanel p;
-        const char* Name() const override { return "Convex Mesh Collider"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct TriangleMeshColliderPanelAdapter : public IComponentPanel
-    {
-        TriangleMeshColliderComponentPanel p;
-        const char* Name() const override { return "Triangle Mesh Collider"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct HeightfieldColliderPanelAdapter : public IComponentPanel
-    {
-        HeightfieldColliderComponentPanel p;
-        const char* Name() const override { return "Heightfield Collider"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct ScriptPanelAdapter : public IComponentPanel
-    {
-        explicit ScriptPanelAdapter(const std::string& projectPath) : p(projectPath) {}
-        ScriptComponentPanel p;
-        const char* Name() const override { return "Script"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-    };
-    struct AnimationPanelAdapter : public IComponentPanel
-    {
-        AnimationComponentPanel p;
-        const char* Name() const override { return "Animation"; }
-        void Render(Entity& e, Scene*) override { p.Render(e); }
-	};*/
-
     static std::string toLower(std::string s)
     {
         for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -188,6 +63,7 @@ namespace QuasarEngine
         m_Panels.push_back({ std::make_unique<HeightfieldColliderComponentPanel>(), "Heightfield Collider" });
         m_Panels.push_back({ std::make_unique<ScriptComponentPanel>(projectPath), "Script" });
 		m_Panels.push_back({ std::make_unique<AnimationComponentPanel>(), "Animation" });
+		m_Panels.push_back({ std::make_unique<SpriteComponentPanel>(), "Sprite" });
     }
 
     void EntityPropertiePanel::buildMenuItems(const std::string& projectPath)
@@ -283,6 +159,10 @@ namespace QuasarEngine
 		add("Animation Component", "Animation", "animation animator clip",
 			[](Entity& e) { return e.HasComponent<AnimationComponent>(); },
 			[](Entity& e) { e.AddComponent<AnimationComponent>(); });
+
+        add("Sprite Component", "2D", "Rendering",
+            [](Entity& e) { return e.HasComponent<SpriteComponent>(); },
+            [](Entity& e) { e.AddComponent<SpriteComponent>(); });
     }
 
     void EntityPropertiePanel::renderPanels(Entity entity)
