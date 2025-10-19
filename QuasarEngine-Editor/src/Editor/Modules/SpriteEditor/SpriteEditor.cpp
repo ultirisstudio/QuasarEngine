@@ -214,11 +214,15 @@ namespace QuasarEngine
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120);
-        ImGui::DragInt("W", &m_GridW, 1.f, 1, 512);
+        if (ImGui::DragInt("W", &m_GridW, 1.f, 1, 512)) m_GridW = std::max(1, m_GridW);
+        bool deactW = ImGui::IsItemDeactivatedAfterEdit();
+
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120);
-        ImGui::DragInt("H", &m_GridH, 1.f, 1, 512);
-        if (ImGui::IsItemDeactivatedAfterEdit() || ImGui::IsItemDeactivatedAfterEdit()) ResizeLayers();
+        if (ImGui::DragInt("H", &m_GridH, 1.f, 1, 512)) m_GridH = std::max(1, m_GridH);
+        bool deactH = ImGui::IsItemDeactivatedAfterEdit();
+
+        if (deactW || deactH) ResizeLayers();
 
         ImGui::SetNextItemWidth(120);
         if (ImGui::DragFloat("Cell W", &m_CellW, 1.f, 4.f, 1024.f)) m_CellW = std::max(4.f, m_CellW);
@@ -270,15 +274,36 @@ namespace QuasarEngine
         ImGui::SameLine();
         ImGui::TextDisabled("Glissez des fichiers depuis le Content Browser ici");
 
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-                const wchar_t* wpath = (const wchar_t*)p->Data;
-                std::filesystem::path dropped(wpath);
-                std::string id = ToProjectId(dropped);
-                if (std::find(m_Palette.begin(), m_Palette.end(), id) == m_Palette.end())
-                    m_Palette.push_back(id);
+        {
+            ImVec2 zoneSize(ImGui::GetContentRegionAvail().x, 80.f);
+            ImVec2 p0 = ImGui::GetCursorScreenPos();
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImGui::InvisibleButton("##palette_dropzone", zoneSize);
+
+            bool hovered = ImGui::IsItemHovered();
+            ImU32 bg = hovered ? IM_COL32(80, 100, 160, 60) : IM_COL32(60, 64, 72, 50);
+            ImU32 border = hovered ? IM_COL32(140, 180, 255, 180) : IM_COL32(120, 125, 135, 140);
+
+            dl->AddRectFilled(p0, p0 + zoneSize, bg, 8.f);
+            dl->AddRect(p0, p0 + zoneSize, border, 8.f, 0, 2.f);
+
+            const char* title = "Deposez des textures ici";
+            ImVec2 ts = ImGui::CalcTextSize(title);
+            ImVec2 center = p0 + (zoneSize - ts) * 0.5f;
+            ImGui::SetCursorScreenPos(center);
+            ImGui::TextUnformatted(title);
+            ImGui::SetCursorScreenPos(p0 + ImVec2(0, zoneSize.y));
+
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
+                    const wchar_t* wpath = (const wchar_t*)p->Data;
+                    std::filesystem::path dropped(wpath);
+                    std::string id = ToProjectId(dropped);
+                    if (std::find(m_Palette.begin(), m_Palette.end(), id) == m_Palette.end())
+                        m_Palette.push_back(id);
+                }
+                ImGui::EndDragDropTarget();
             }
-            ImGui::EndDragDropTarget();
         }
 
         ImGui::Dummy(ImVec2(0, 4));
@@ -398,10 +423,12 @@ namespace QuasarEngine
             ImGuiButtonFlags_MouseButtonLeft |
             ImGuiButtonFlags_MouseButtonRight |
             ImGuiButtonFlags_MouseButtonMiddle);
-        bool hovering = ImGui::IsItemHovered();
-        bool active = ImGui::IsItemActive();
 
-        if (hovering)
+        const bool itemHovered = ImGui::IsItemHovered();
+        const bool itemActive = ImGui::IsItemActive();
+        const bool windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
+        if (itemHovered)
         {
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
                 ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Middle] = ImGui::GetIO().MousePos;
@@ -446,13 +473,24 @@ namespace QuasarEngine
             dl->AddRect(c0, c1, IM_COL32(255, 230, 140, 220), 0.f, 0, 2.0f);
         }
 
+        if (itemHovered && windowFocused)
+        {
+            if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                m_PaintingL = true;
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+                m_ErasingR = true;
+        }
+        
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))  m_PaintingL = false;
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) m_ErasingR = false;
+
         Scene* scn = Renderer::Instance().GetScene();
         if (scn && m_SelectedLayer >= 0 && m_SelectedLayer < (int)m_Layers.size())
         {
             Layer& L = m_Layers[m_SelectedLayer];
             if (m_HoverValid)
             {
-                if (ImGui::GetIO().KeyAlt && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                if (ImGui::GetIO().KeyAlt && itemHovered && windowFocused && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                     const Cell& c = L.cells[CellIndex(m_HoverX, m_HoverY)];
                     if (!c.textureId.empty()) {
                         m_Brush.textureId = c.textureId;
@@ -462,21 +500,22 @@ namespace QuasarEngine
                         m_Brush.tint = c.tint;
                     }
                 }
-                
-                if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && !m_Brush.textureId.empty()) {
+
+                if (m_PaintingL && !m_Brush.textureId.empty())
+                {
                     PaintAt(*scn, L, m_HoverX, m_HoverY, m_Brush);
                     m_SelectedCellX = m_HoverX;
                     m_SelectedCellY = m_HoverY;
                 }
-                
-                if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+                if (m_ErasingR)
+                {
                     EraseAt(*scn, L, m_HoverX, m_HoverY);
                     if (m_SelectedCellX == m_HoverX && m_SelectedCellY == m_HoverY) {
                         m_SelectedCellX = m_SelectedCellY = -1;
                     }
                 }
-                
-                if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) {
+
+                if (itemHovered && windowFocused && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) {
                     m_SelectedCellX = m_HoverX; m_SelectedCellY = m_HoverY;
                 }
             }
@@ -488,16 +527,45 @@ namespace QuasarEngine
         ImGui::Text("Pinceau");
         ImGui::Separator();
 
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-                const wchar_t* wpath = (const wchar_t*)p->Data;
-                std::filesystem::path dropped(wpath);
-                m_Brush.textureId = ToProjectId(dropped);
-                m_Brush.uv = { 0,0,1,1 };
-                m_Brush.flipH = m_Brush.flipV = false;
-                m_Brush.tint = { 1,1,1,1 };
+        {
+            ImVec2 zoneSize(ImVec2(ImGui::GetContentRegionAvail().x, 70.f));
+            ImVec2 p0 = ImGui::GetCursorScreenPos();
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImGui::InvisibleButton("##brush_dropzone", zoneSize);
+
+            bool hovered = ImGui::IsItemHovered();
+            ImU32 bg = hovered ? IM_COL32(80, 160, 100, 60) : IM_COL32(60, 64, 72, 50);
+            ImU32 border = hovered ? IM_COL32(140, 255, 160, 180) : IM_COL32(120, 125, 135, 140);
+
+            dl->AddRectFilled(p0, p0 + zoneSize, bg, 8.f);
+            dl->AddRect(p0, p0 + zoneSize, border, 8.f, 0, 2.f);
+
+            const char* title = "Déposez une texture pour le pinceau";
+            ImVec2 ts = ImGui::CalcTextSize(title);
+            ImVec2 center = p0 + (zoneSize - ts) * 0.5f;
+            ImGui::SetCursorScreenPos(center);
+            ImGui::TextUnformatted(title);
+            ImGui::SetCursorScreenPos(p0 + ImVec2(0, zoneSize.y));
+
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("SPRITE_PALETTE_ID")) {
+                    const char* id = (const char*)p->Data;
+                    m_Brush.textureId = id ? id : "";
+                    m_Brush.uv = { 0,0,1,1 };
+                    m_Brush.flipH = m_Brush.flipV = false;
+                    m_Brush.tint = { 1,1,1,1 };
+                }
+                
+                if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
+                    const wchar_t* wpath = (const wchar_t*)p->Data;
+                    std::filesystem::path dropped(wpath);
+                    m_Brush.textureId = ToProjectId(dropped);
+                    m_Brush.uv = { 0,0,1,1 };
+                    m_Brush.flipH = m_Brush.flipV = false;
+                    m_Brush.tint = { 1,1,1,1 };
+                }
+                ImGui::EndDragDropTarget();
             }
-            ImGui::EndDragDropTarget();
         }
 
         if (!m_Brush.textureId.empty()) {

@@ -112,6 +112,9 @@ namespace QuasarEngine
         int  m_HoverX = -1, m_HoverY = -1;
         bool m_HoverValid = false;
 
+        bool m_PaintingL = false;
+        bool m_ErasingR = false;
+
         int m_SelectedCellX = -1, m_SelectedCellY = -1;
 
         std::mutex m_Mutex;
