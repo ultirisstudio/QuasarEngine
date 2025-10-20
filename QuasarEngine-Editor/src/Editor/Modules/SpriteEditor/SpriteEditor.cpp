@@ -139,6 +139,7 @@ namespace QuasarEngine
         glm::vec2 offset = { u0, v0 };
         if (b.flipH) { tiling.x = -tiling.x; offset.x = u1; }
         if (b.flipV) { tiling.y = -tiling.y; offset.y = v1; }
+
         sp.GetSpecification().Tiling = tiling;
         sp.GetSpecification().Offset = offset;
 
@@ -540,7 +541,7 @@ namespace QuasarEngine
             dl->AddRectFilled(p0, p0 + zoneSize, bg, 8.f);
             dl->AddRect(p0, p0 + zoneSize, border, 8.f, 0, 2.f);
 
-            const char* title = "Déposez une texture pour le pinceau";
+            const char* title = "Deposez une texture pour le pinceau";
             ImVec2 ts = ImGui::CalcTextSize(title);
             ImVec2 center = p0 + (zoneSize - ts) * 0.5f;
             ImGui::SetCursorScreenPos(center);
