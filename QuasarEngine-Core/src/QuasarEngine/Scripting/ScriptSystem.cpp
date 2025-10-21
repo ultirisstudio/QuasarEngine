@@ -249,7 +249,7 @@ namespace QuasarEngine
         scriptComponent.environment = sol::nil;
     }
 
-    void ScriptSystem::Update(float dt) {
+    void ScriptSystem::Update(double dt) {
         auto view = m_Registry->view<ScriptComponent>();
         
         for (auto e : view) {

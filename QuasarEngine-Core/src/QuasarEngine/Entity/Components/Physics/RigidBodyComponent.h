@@ -42,7 +42,7 @@ namespace QuasarEngine
 
         void Destroy();
         void Init();
-        void Update(float dt);
+        void Update(double dt);
 
         void UpdateEnableGravity();
         void UpdateBodyType();

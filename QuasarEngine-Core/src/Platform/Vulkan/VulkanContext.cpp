@@ -202,8 +202,8 @@ namespace QuasarEngine
 		vkCmdSetViewport(Context.graphicsCommandBuffer[Context.imageIndex]->handle, 0, 1, &viewport);
 		vkCmdSetScissor(Context.graphicsCommandBuffer[Context.imageIndex]->handle, 0, 1, &scissor);
 
-		Context.mainRenderPass->SetWidth(Context.width);
-		Context.mainRenderPass->SetHeight(Context.height);
+		Context.mainRenderPass->SetWidth(static_cast<float>(Context.width));
+		Context.mainRenderPass->SetHeight(static_cast<float>(Context.height));
 
 		auto* cmdBuffer = Context.graphicsCommandBuffer[Context.imageIndex].get();
 		auto* framebuffer = Context.swapchain->framebuffers[Context.imageIndex];
@@ -430,7 +430,7 @@ namespace QuasarEngine
 
 			VkFramebufferCreateInfo framebuffer_create_info = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
 			framebuffer_create_info.renderPass = Context.mainRenderPass->renderpass;
-			framebuffer_create_info.attachmentCount = attachments.size();
+			framebuffer_create_info.attachmentCount = static_cast<uint32_t>(attachments.size());
 			framebuffer_create_info.pAttachments = attachments.data();
 			framebuffer_create_info.width = extent.width;
 			framebuffer_create_info.height = extent.height;
@@ -469,8 +469,8 @@ namespace QuasarEngine
 		VkExtent2D extent = {Context.width, Context.height};
 		Context.swapchain->RecreateSwapchain(extent);
 
-		Context.mainRenderPass->SetWidth(Context.width);
-		Context.mainRenderPass->SetHeight(Context.height);
+		Context.mainRenderPass->SetWidth(static_cast<float>(Context.width));
+		Context.mainRenderPass->SetHeight(static_cast<float>(Context.height));
 
 		for (uint32_t i = 0; i < Context.swapchain->images.size(); i++)
 		{
@@ -488,8 +488,8 @@ namespace QuasarEngine
 
 		Context.mainRenderPass->SetX(0);
 		Context.mainRenderPass->SetY(0);
-		Context.mainRenderPass->SetWidth(Context.width);
-		Context.mainRenderPass->SetHeight(Context.height);
+		Context.mainRenderPass->SetWidth(static_cast<float>(Context.width));
+		Context.mainRenderPass->SetHeight(static_cast<float>(Context.height));
 
 		RegenerateFramebuffer();
 

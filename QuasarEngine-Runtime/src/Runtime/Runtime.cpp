@@ -133,8 +133,8 @@ namespace QuasarEngine
 		//m_ApplicationSize = { spec.Width, spec.Height };
 		m_ApplicationSize = { 1280, 720 };
 
-		RenderCommand::Instance().SetViewport(0, 0, m_ApplicationSize.x, m_ApplicationSize.y);
-		m_FrameBuffer->Resize((uint32_t)m_ApplicationSize.x, (uint32_t)m_ApplicationSize.y);
+		RenderCommand::Instance().SetViewport(0u, 0u, static_cast<uint32_t>(m_ApplicationSize.x), static_cast<uint32_t>(m_ApplicationSize.y));
+		m_FrameBuffer->Resize(static_cast<uint32_t>(m_ApplicationSize.x), static_cast<uint32_t>(m_ApplicationSize.y));
 
 		m_ChunkManager = std::make_unique<ChunkManager>();
 		m_Player = std::make_unique<Player>();

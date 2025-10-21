@@ -197,7 +197,7 @@ namespace QuasarEngine
         RebuildActor();
     }
 
-    void RigidBodyComponent::Update(float)
+    void RigidBodyComponent::Update(double dt)
     {
         if (!mActor) return;
 

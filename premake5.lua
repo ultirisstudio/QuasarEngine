@@ -30,7 +30,7 @@ group "Dependencies"
 	include "vendor/TextEditor"
 	include "vendor/lua"
 	include "vendor/stb"
-	include "vendor/PhysX"
+	-- include "vendor/PhysX"
 group ""
 
 group "Core"

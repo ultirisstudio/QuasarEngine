@@ -107,7 +107,7 @@ namespace QuasarEngine
 		initInfo.Allocator = VulkanContext::Context.allocator->GetCallbacks();
         initInfo.CheckVkResultFn = [](VkResult err) {
             if (err != VK_SUCCESS) {
-                Q_ERROR("Vulkan error: {}", err);
+                Q_ERROR("Vulkan error: " + err);
             }
         };
 

@@ -151,7 +151,7 @@ namespace QuasarEngine
         m_VertexBuffer->Upload(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)));
     }
 
-    void PhysicEngine::Step(float dt, float fixedTimestep, uint32_t maxSubsteps)
+    void PhysicEngine::Step(double dt, double fixedTimestep, uint32_t maxSubsteps)
     {
         if (!m_Scene) return;
         m_Accumulator += dt;

@@ -52,7 +52,7 @@ namespace QuasarEngine
 
         bool Initialize(uint32_t numThreads = 2, const physx::PxVec3& gravity = physx::PxVec3(0.f, -9.81f, 0.f), bool enableCCD = true, bool enablePVD = true, const char* pvdHost = "127.0.0.1", uint32_t pvdPort = 5425);
         void Shutdown();
-        void Step(float dt, float fixedTimestep = 1.f / 60.f, uint32_t maxSubsteps = 4);
+        void Step(double dt, double fixedTimestep = 1.f / 60.f, uint32_t maxSubsteps = 4);
 
         physx::PxPhysics* GetPhysics() const noexcept { return m_Physics; }
         physx::PxScene* GetScene() const noexcept { return m_Scene; }

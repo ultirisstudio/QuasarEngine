@@ -875,7 +875,7 @@ namespace QuasarEngine
         if (texture) {
             vkTex = dynamic_cast<VulkanTexture2D*>(texture);
             if (!vkTex) {
-                Q_WARNING("Texture for sampler '%s' is not a VulkanTexture2D. Falling back to default.", name.c_str());
+                Q_WARNING("Texture for sampler '" + name + "' is not a VulkanTexture2D. Falling back to default.");
             }
         }
         m_ObjectTextures[name] = vkTex ? vkTex : defaultBlueTexture;

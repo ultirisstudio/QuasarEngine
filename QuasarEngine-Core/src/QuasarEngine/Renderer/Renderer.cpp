@@ -99,7 +99,7 @@ namespace QuasarEngine
 		static_assert(offsetof(GlobalUniforms, pointLights) % 16 == 0, "pointLights offset must be 16-aligned");
 		static_assert(offsetof(GlobalUniforms, dirLights) % 16 == 0, "dirLights offset must be 16-aligned");
 
-		Shader::ShaderStageFlags globalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+		constexpr Shader::ShaderStageFlags globalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		desc.globalUniforms = {
 			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(GlobalUniforms, view), 0, 0, globalUniformsFlags},
@@ -205,7 +205,7 @@ namespace QuasarEngine
 			glm::mat4 projection;
 		};
 
-		Shader::ShaderStageFlags phyDebGlobalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+		constexpr Shader::ShaderStageFlags phyDebGlobalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		phyDebDesc.globalUniforms = {
 			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(PhyDebGlobalUniforms, view), 0, 0, phyDebGlobalUniformsFlags},
@@ -289,7 +289,7 @@ namespace QuasarEngine
 		static_assert(offsetof(TerrainGlobalUniforms, pointLights) % 16 == 0, "pointLights offset must be 16-aligned");
 		static_assert(offsetof(TerrainGlobalUniforms, dirLights) % 16 == 0, "dirLights offset must be 16-aligned");
 
-		const auto TerrainGlobalStages =
+		constexpr Shader::ShaderStageFlags TerrainGlobalStages =
 			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
 			Shader::StageToBit(Shader::ShaderStageType::TessControl) |
 			Shader::StageToBit(Shader::ShaderStageType::TessEval) |
@@ -323,7 +323,7 @@ namespace QuasarEngine
 			int   uTextureScale;
 		};
 
-		const auto TOFlags =
+		constexpr Shader::ShaderStageFlags TOFlags =
 			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
 			Shader::StageToBit(Shader::ShaderStageType::TessControl) |
 			Shader::StageToBit(Shader::ShaderStageType::TessEval) |
@@ -409,7 +409,7 @@ namespace QuasarEngine
 			DirectionalLight dirLights[4];
 		};
 
-		constexpr auto SkinnedGlobalStages = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+		constexpr Shader::ShaderStageFlags SkinnedGlobalStages = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		skinnedDesc.globalUniforms = {
 			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, view), 0, 0, SkinnedGlobalStages},
@@ -1120,7 +1120,7 @@ namespace QuasarEngine
 
 			PhysicEngine::Instance().GetDebugVertexArray()->Bind();
 
-			RenderCommand::Instance().DrawArrays(DrawMode::LINES, PhysicEngine::Instance().GetDebugVertexArray()->GetVertexBuffers()[0]->GetSize() / sizeof(float) / 6); //vertices.size() / 6
+			RenderCommand::Instance().DrawArrays(DrawMode::LINES, static_cast<uint32_t>(PhysicEngine::Instance().GetDebugVertexArray()->GetVertexBuffers()[0]->GetSize() / sizeof(float) / 6));
 
 			m_SceneData.m_PhysicDebugShader->Unuse();
 		}

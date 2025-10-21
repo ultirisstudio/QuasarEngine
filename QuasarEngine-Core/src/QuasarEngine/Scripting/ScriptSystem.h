@@ -15,7 +15,7 @@ namespace QuasarEngine
         ~ScriptSystem();
 
         void Initialize();
-        void Update(float dt);
+        void Update(double dt);
 
         void Start();
         void Stop();
