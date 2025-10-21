@@ -50,7 +50,7 @@ namespace QuasarEngine
 
         MaterialSpecification m_Specification;
 
-        std::array<Texture2D*, kTexCount> m_Overrides{};
+        std::array<Texture*, kTexCount> m_Overrides{};
 
         std::optional<std::string>& idRef(TextureType type) noexcept;
         const std::optional<std::string>& idRef(TextureType type) const noexcept;
@@ -64,7 +64,7 @@ namespace QuasarEngine
         explicit Material(const MaterialSpecification& specification);
         ~Material() = default;
 
-        void SetTexture(TextureType type, Texture2D* texture) noexcept;
+        void SetTexture(TextureType type, Texture* texture) noexcept;
         void SetTexture(TextureType type, std::string_view idProject);
 
         [[nodiscard]] Texture* GetTexture(TextureType type) const noexcept;

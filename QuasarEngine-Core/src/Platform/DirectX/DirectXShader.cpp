@@ -73,14 +73,14 @@ namespace QuasarEngine
 		return true;
 	}
 
-	void DirectXShader::SetUniform(const std::string& name, void* data, size_t size)
+	bool DirectXShader::SetUniform(const std::string& name, void* data, size_t size)
 	{
-		
+		return true;
 	}
 
-	void DirectXShader::SetTexture(const std::string& name, Texture* texture, SamplerType type)
+	bool DirectXShader::SetTexture(const std::string& name, Texture* texture, SamplerType type)
 	{
-		
+		return true;
 	}
 
 	void DirectXShader::ApplyPipelineStates()

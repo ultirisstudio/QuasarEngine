@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QuasarEngine/Resources/BasicSkybox.h>
+//#include <QuasarEngine/Resources/SkyboxHDR.h>
 #include <QuasarEngine/Shader/Shader.h>
 #include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Scene/BaseCamera.h>
@@ -33,6 +34,7 @@ namespace QuasarEngine
 			std::array<glm::mat4, QE_MAX_BONES> m_IdentityBones;
 
 			std::shared_ptr<BasicSkybox> m_Skybox;
+			//std::shared_ptr<SkyboxHDR> m_SkyboxHDR;
 
 			std::unique_ptr<ScriptSystem> m_ScriptSystem;
 

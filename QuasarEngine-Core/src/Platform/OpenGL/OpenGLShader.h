@@ -69,8 +69,8 @@ namespace QuasarEngine
         bool AcquireResources(Material*) override { return true; }
         void ReleaseResources(Material*) override {}
 
-        void SetUniform(const std::string& name, void* data, size_t size) override;
-        void SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
+        bool SetUniform(const std::string& name, void* data, size_t size) override;
+        bool SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
 
     private:
         void LinkProgram(const std::vector<uint32_t>& shaders);

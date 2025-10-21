@@ -150,9 +150,9 @@ namespace QuasarEngine
 		virtual bool AcquireResources(Material* material) = 0;
 		virtual void ReleaseResources(Material* material) = 0;
 
-		virtual void SetUniform(const std::string& name, void* data, size_t size) = 0;
+		virtual bool SetUniform(const std::string& name, void* data, size_t size) = 0;
 
-        virtual void SetTexture(const std::string& name, Texture* texture, SamplerType type = SamplerType::Sampler2D) = 0;
+        virtual bool SetTexture(const std::string& name, Texture* texture, SamplerType type = SamplerType::Sampler2D) = 0;
 
 		virtual void Use() = 0;
 		virtual void Unuse() = 0;

@@ -94,7 +94,7 @@ namespace QuasarEngine
         queueTex(m_Specification.AOTexture, m_Specification.AOTextureSpec);
     }
 
-    void Material::SetTexture(TextureType type, Texture2D* texture) noexcept
+    void Material::SetTexture(TextureType type, Texture* texture) noexcept
     {
         m_Overrides[idx(type)] = texture;
         touch();

@@ -92,8 +92,8 @@ namespace QuasarEngine
 
         VulkanTexture2D* defaultBlueTexture = nullptr;
 
-        void SetUniform(const std::string& name, void* data, size_t size) override;
-        void SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
+        bool SetUniform(const std::string& name, void* data, size_t size) override;
+        bool SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
 
     private:
         bool   m_HasGlobalUBO = false;

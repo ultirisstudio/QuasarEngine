@@ -250,7 +250,6 @@ namespace QuasarEngine
 		std::string tTesPath = basePath + tName + extFor(api, Shader::ShaderStageType::TessEval);
 		std::string tFragPath = basePath + tName + extFor(api, Shader::ShaderStageType::Fragment);
 
-
 		terrainDesc.modules = {
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
@@ -489,6 +488,9 @@ namespace QuasarEngine
 			"Assets/Textures/Skybox/front.jpg",   // +Z
 			"Assets/Textures/Skybox/back.jpg"     // -Z
 		});
+
+		//m_SceneData.m_SkyboxHDR = SkyboxHDR::Create();
+		//m_SceneData.m_SkyboxHDR->LoadFromHDR("Assets/HDR/kloofendal_43d_clear_puresky_4k.hdr");
 
 		m_SceneData.m_ScriptSystem = std::make_unique<ScriptSystem>();
 		m_SceneData.m_ScriptSystem->Initialize();
@@ -743,7 +745,8 @@ namespace QuasarEngine
 
 	void Renderer::Shutdown()
 	{
-		m_SceneData.m_Skybox.reset();
+		//m_SceneData.m_Skybox.reset();
+		//m_SceneData.m_SkyboxHDR.reset();
 		m_SceneData.m_Shader.reset();
 		m_SceneData.m_PhysicDebugShader.reset();
 		m_SceneData.m_SkinnedShader.reset();
@@ -1142,6 +1145,15 @@ namespace QuasarEngine
 		m_SceneData.m_Skybox->Draw();
 
 		m_SceneData.m_Skybox->Unbind();
+
+		/*if (!m_SceneData.m_SkyboxHDR) return;
+
+		glm::mat4 V = camera.getViewMatrix();
+		glm::mat4 P = camera.getProjectionMatrix();
+
+		m_SceneData.m_SkyboxHDR->Draw(V, P);
+
+		m_SceneData.m_SkyboxHDR->Unbind();*/
 	}
 
 	void Renderer::RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi)

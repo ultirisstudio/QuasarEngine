@@ -825,7 +825,7 @@ namespace QuasarEngine
         material->m_ID = INVALID_ID;
     }
 
-    void VulkanShader::SetUniform(const std::string& name, void* data, size_t size)
+    bool VulkanShader::SetUniform(const std::string& name, void* data, size_t size)
     {
         const ShaderUniformDesc* d = nullptr;
         auto it = m_GlobalUniformMap.find(name);
@@ -833,33 +833,34 @@ namespace QuasarEngine
             d = it->second;
             if (size != d->size) {
                 Q_ERROR("Uniform '%s' size mismatch (got %zu, expected %zu)", name.c_str(), size, d->size);
-                return;
+                return false;
             }
             if (d->offset + size > m_GlobalUniformData.size()) {
                 Q_ERROR("Uniform '%s' write out of bounds (global UBO)", name.c_str());
-                return;
+                return false;
             }
             std::memcpy(m_GlobalUniformData.data() + d->offset, data, size);
-            return;
+            return true;
         }
         it = m_ObjectUniformMap.find(name);
         if (it != m_ObjectUniformMap.end()) {
             d = it->second;
             if (size != d->size) {
                 Q_ERROR("Uniform '%s' size mismatch (got %zu, expected %zu)", name.c_str(), size, d->size);
-                return;
+                return false;
             }
             if (d->offset + size > m_ObjectUniformData.size()) {
                 Q_ERROR("Uniform '%s' write out of bounds (object UBO)", name.c_str());
-                return;
+                return false;
             }
             std::memcpy(m_ObjectUniformData.data() + d->offset, data, size);
-            return;
+            return true;
         }
         Q_ERROR("Uniform '%s' not found", name.c_str());
+        return false;
     }
 
-    void VulkanShader::SetTexture(const std::string& name, Texture* texture, SamplerType /*type*/)
+    bool VulkanShader::SetTexture(const std::string& name, Texture* texture, SamplerType /*type*/)
     {
         auto it = std::find_if(
             m_Description.samplers.begin(), m_Description.samplers.end(),
@@ -867,7 +868,7 @@ namespace QuasarEngine
 
         if (it == m_Description.samplers.end()) {
             Q_ERROR("Sampler '%s' not found in shader description!", name.c_str());
-            return;
+            return false;
         }
 
         VulkanTexture2D* vkTex = nullptr;
@@ -878,5 +879,7 @@ namespace QuasarEngine
             }
         }
         m_ObjectTextures[name] = vkTex ? vkTex : defaultBlueTexture;
+
+        return true;
     }
 }

@@ -427,7 +427,7 @@ namespace QuasarEngine
         return true;
     }
 
-    void OpenGLShader::SetUniform(const std::string& name, void* data, size_t size)
+    bool OpenGLShader::SetUniform(const std::string& name, void* data, size_t size)
     {
         if (auto gIt = m_GlobalUniformMap.find(name); gIt != m_GlobalUniformMap.end())
         {
@@ -435,7 +435,7 @@ namespace QuasarEngine
             const size_t copySize = std::min(size, desc->size);
             if (desc->offset + copySize <= m_GlobalUniformData.size())
                 std::memcpy(m_GlobalUniformData.data() + desc->offset, data, copySize);
-            return;
+            return true;
         }
 
         if (auto oIt = m_ObjectUniformMap.find(name); oIt != m_ObjectUniformMap.end())
@@ -444,13 +444,14 @@ namespace QuasarEngine
             const size_t copySize = std::min(size, desc->size);
             if (desc->offset + copySize <= m_ObjectUniformData.size())
                 std::memcpy(m_ObjectUniformData.data() + desc->offset, data, copySize);
-            return;
+            return true;
         }
 
         Q_WARNING("Uniform not found : " + name);
+        return false;
     }
 
-    void OpenGLShader::SetTexture(const std::string& name, Texture* texture, SamplerType type)
+    bool OpenGLShader::SetTexture(const std::string& name, Texture* texture, SamplerType type)
     {
         auto itSampler = std::find_if(
             m_Description.samplers.begin(), m_Description.samplers.end(),
@@ -459,10 +460,12 @@ namespace QuasarEngine
         if (itSampler == m_Description.samplers.end())
         {
             Q_ERROR("Sampler " + name + " not found in shader description!");
-            return;
+            return false;
         }
 
         m_ObjectTextures[name] = texture ? dynamic_cast<OpenGLTexture2D*>(texture) : m_DefaultBlueTexture;
         m_ObjectTextureTypes[name] = type;
+
+        return true;
     }
 }
