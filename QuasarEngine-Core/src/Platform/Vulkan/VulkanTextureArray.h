@@ -22,6 +22,8 @@ namespace QuasarEngine {
         bool LoadFromMemory(ByteView data) override;
         bool LoadFromData(ByteView pixels) override;
 
+        bool LoadFromFiles(const std::vector<std::string>& paths) override { return false; }
+
         void Bind(int index = 0) const override;
         void Unbind() const override;
 

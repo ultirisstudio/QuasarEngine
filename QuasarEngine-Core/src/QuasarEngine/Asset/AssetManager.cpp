@@ -9,6 +9,7 @@
 #include <QuasarEngine/Asset/AssetHeader.h>
 #include <QuasarEngine/Resources/Model.h>
 #include <QuasarEngine/Entity/Components/MeshComponent.h>
+#include <QuasarEngine/Core/Logger.h>
 #include <QuasarEngine/Thread/JobSystem.h>
 
 namespace QuasarEngine
@@ -148,7 +149,7 @@ namespace QuasarEngine
 				if (isAssetLoaded(asset.id))
 					break;
 
-				std::cout << "[AssetManager] Loading TEXTURE '" << asset.id << "'...\n";
+				//std::cout << "[AssetManager] Loading TEXTURE '" << asset.id << "'...\n";
 
 				TextureSpecification spec;
 				if (std::holds_alternative<TextureSpecification>(asset.spec))
@@ -159,14 +160,13 @@ namespace QuasarEngine
 				if (asset.data)
 				{
 					texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
-					std::cout << "[AssetManager] TEXTURE '" << asset.id << "' loaded from memory.\n";
+					//std::cout << "[AssetManager] TEXTURE '" << asset.id << "' loaded from memory.\n";
 				}
 				else
 				{
 					if (asset.path.empty())
 					{
-						std::cerr << "[AssetManager] TEXTURE '" << asset.id
-							<< "': path manquant et pas de data.\n";
+						Q_ERROR("AssetManager: TEXTURE '" + asset.id + "' error, path missing and no data");
 						break;
 					}
 					texture->LoadFromPath(asset.path);
@@ -186,8 +186,7 @@ namespace QuasarEngine
 
 				if (asset.path.empty())
 				{
-					std::cerr << "[AssetManager] MODEL '" << asset.id
-						<< "': path manquant.\n";
+					Q_ERROR("AssetManager: MODEL path missing: " + asset.id);
 					break;
 				}
 
@@ -217,8 +216,7 @@ namespace QuasarEngine
 							}
 							else
 							{
-								std::cerr << "[AssetManager] MESH: instance '" << mc->GetName()
-									<< "' introuvable dans le Model '" << asset.id << "'.\n";
+								Q_ERROR("AssetManager: MESH instance '" + mc->GetName() + "' missing on '" + asset.id + "'");
 							}
 						}
 					}
@@ -253,8 +251,7 @@ namespace QuasarEngine
 			{
 				if (asset.path.empty())
 				{
-					std::cerr << "[AssetManager] Update TEXTURE '" << asset.id
-						<< "': path manquant et pas de data.\n";
+					Q_ERROR("AssetManager: Update TEXTURE '" + asset.id + "' error, path missing and no data");
 					continue;
 				}
 
@@ -267,8 +264,7 @@ namespace QuasarEngine
 	{
 		if (!asset.data && asset.path.empty())
 		{
-			std::cerr << "[AssetManager] loadAsset('" << asset.id
-				<< "'): path manquant et pas de data.\n";
+			Q_ERROR("AssetManager: Load asset '" + asset.id + "' error, path missing and no data");
 			return;
 		}
 
@@ -292,8 +288,7 @@ namespace QuasarEngine
 	{
 		if (!asset.data && asset.path.empty())
 		{
-			std::cerr << "[AssetManager] updateAsset('" << asset.id
-				<< "'): path manquant et pas de data.\n";
+			Q_ERROR("AssetManager: Update asset '" + asset.id + "' error, path missing and no data");
 			return;
 		}
 
@@ -324,8 +319,7 @@ namespace QuasarEngine
 	{
 		if (!asset.data && asset.path.empty())
 		{
-			std::cerr << "[AssetManager] LoadTextureAsync('" << asset.id
-				<< "'): path manquant et pas de data.\n";
+			Q_ERROR("AssetManager: Load texture async '" + asset.id + "' error, path missing and no data");
 			return;
 		}
 
@@ -369,8 +363,7 @@ namespace QuasarEngine
 				m_LoadedAssets[asset.id] = std::move(texture);
 			}
 
-			std::cout << "[JOB] Chargement texture : id=" << asset.id
-				<< " path=" << asset.path << std::endl;
+			std::cout << "[JOB] Chargement texture : id=" << asset.id << " path=" << asset.path << std::endl;
 
 			}, JobPriority::HIGH, JobPoolType::IO, {}, "LoadTextureAsync");
 	}

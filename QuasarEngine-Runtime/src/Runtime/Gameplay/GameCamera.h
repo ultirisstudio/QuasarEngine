@@ -49,7 +49,7 @@ public:
 	GameCamera();
 	GameCamera(const glm::vec3& position);
 
-	const glm::mat4 getViewMatrix() const override;
+	const glm::mat4& getViewMatrix() const override;
 	const glm::mat4& getProjectionMatrix() const override;
 
 	glm::vec3 GetFront() override;

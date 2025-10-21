@@ -1,10 +1,13 @@
 #include "qepch.h"
 #include "OpenGLFramebuffer.h"
+#include "OpenGLTexture2DView.h"
 
 #include <glad/glad.h>
 
 #include <QuasarEngine/Core/Logger.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
+
+#include <QuasarEngine/Resources/Texture.h>
 
 namespace QuasarEngine
 {
@@ -299,5 +302,33 @@ namespace QuasarEngine
     void OpenGLFramebuffer::BindColorAttachment(uint32_t index) const
     {
         glBindTexture(GL_TEXTURE_2D, m_ColorAttachments[index]);
+    }
+
+    std::shared_ptr<Texture> OpenGLFramebuffer::GetColorAttachmentTexture(uint32_t index) const
+    {
+        const bool multisample = m_Specification.Samples > 1;
+        if (!multisample) {
+            if (index >= m_ColorAttachments.size()) return {};
+            if (index >= m_ColorAttachmentViews.size()) m_ColorAttachmentViews.resize(m_ColorAttachments.size());
+
+            if (!m_ColorAttachmentViews[index]) {
+                TextureSpecification spec{};
+                spec.width = m_Specification.Width;
+                spec.height = m_Specification.Height;
+
+                m_ColorAttachmentViews[index] =
+                    std::make_shared<OpenGLTexture2DView>(m_ColorAttachments[index], GL_TEXTURE_2D, spec);
+            }
+            return m_ColorAttachmentViews[index];
+        }
+
+        if (!m_ResolvedColorView) {
+            TextureSpecification spec{};
+            spec.width = m_Specification.Width;
+            spec.height = m_Specification.Height;
+            m_ResolvedColorView =
+                std::make_shared<OpenGLTexture2DView>(m_ResolvedColorTexture, GL_TEXTURE_2D, spec);
+        }
+        return m_ResolvedColorView;
     }
 }

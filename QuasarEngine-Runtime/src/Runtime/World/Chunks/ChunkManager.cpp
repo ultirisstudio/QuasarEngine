@@ -66,16 +66,16 @@ ChunkManager::ChunkManager()
 	QuasarEngine::TextureSpecification spec;
 	spec.gamma = true;
 	spec.alpha = true;
-	std::shared_ptr<QuasarEngine::TextureArray> textureArray = QuasarEngine::TextureArray::CreateTextureArray(spec);
+	std::shared_ptr<QuasarEngine::TextureArray> textureArray = QuasarEngine::TextureArray::Create(spec);
 	textureArray->LoadFromFiles(textures);
 
 	QuasarEngine::TextureSpecification n_spec;
 	n_spec.alpha = true;
-	std::shared_ptr<QuasarEngine::TextureArray> normalTextureArray = QuasarEngine::TextureArray::CreateTextureArray(n_spec);
+	std::shared_ptr<QuasarEngine::TextureArray> normalTextureArray = QuasarEngine::TextureArray::Create(n_spec);
 	normalTextureArray->LoadFromFiles(normal_textures);
 
-	QuasarEngine::Renderer::m_SceneData.m_AssetManager->instLoadAsset("textures", textureArray);
-	QuasarEngine::Renderer::m_SceneData.m_AssetManager->instLoadAsset("normal_textures", normalTextureArray);
+	QuasarEngine::AssetManager::Instance().instLoadAsset("textures", textureArray);
+	QuasarEngine::AssetManager::Instance().instLoadAsset("normal_textures", normalTextureArray);
 }
 
 void ChunkManager::SetBlock(const glm::ivec3& position, BlockType voxel)
@@ -85,7 +85,7 @@ void ChunkManager::SetBlock(const glm::ivec3& position, BlockType voxel)
 	if (it == m_EntityMap.end())
 		return;
 
-	auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(it->second);
+	auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(it->second);
 	if (!entityOpt.has_value())
 		return;
 
@@ -102,7 +102,7 @@ void ChunkManager::SetBlock(const glm::ivec3& position, BlockType voxel)
 		auto neighborIt = m_EntityMap.find(Math::ToChunkPosition(neighborPos));
 		if (neighborIt == m_EntityMap.end())
 			return;
-		auto neighborOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(neighborIt->second);
+		auto neighborOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(neighborIt->second);
 		if (!neighborOpt.has_value())
 			return;
 		auto& neighborEntity = neighborOpt.value();
@@ -131,7 +131,7 @@ const Block* ChunkManager::GetBlock(const glm::ivec3& position)
 	if (it == m_EntityMap.end())
 		return nullptr;
 
-	auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(it->second);
+	auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(it->second);
 	if (!entityOpt.has_value())
 		return nullptr;
 
@@ -147,7 +147,7 @@ const BlockType ChunkManager::GetBlockType(const glm::ivec3& position)
 	if (it == m_EntityMap.end())
 		return BlockType::BLOCK_ERROR;
 
-	auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(it->second);
+	auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(it->second);
 	if (!entityOpt.has_value())
 		return BlockType::BLOCK_ERROR;
 
@@ -161,7 +161,7 @@ void ChunkManager::AddChunk(const glm::ivec3& position)
 	if (m_EntityMap.find(position) == m_EntityMap.end())
 	{
 		std::string name = "Chunk_" + std::to_string(position.x) + "_" + std::to_string(position.y) + "_" + std::to_string(position.z);
-		QuasarEngine::Entity chunk = QuasarEngine::Renderer::m_SceneData.m_Scene->CreateEntity(name);
+		QuasarEngine::Entity chunk = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->CreateEntity(name);
 		QuasarEngine::MaterialSpecification spec;
 		spec.AlbedoTexture = "Assets/Textures/dark_grass_block_top.png";
 		chunk.AddComponent<QuasarEngine::MeshComponent>();
@@ -170,13 +170,13 @@ void ChunkManager::AddChunk(const glm::ivec3& position)
 		chunk.AddComponent<Chunk>(position);
 
 		m_EntityMap.emplace(position, chunk.GetUUID());
-		auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(chunk.GetUUID());
+		auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(chunk.GetUUID());
 		if (entityOpt.has_value())
 			entityOpt.value().GetComponent<Chunk>().Generate(*m_Generator);
 	}
 	else
 	{
-		auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(m_EntityMap[position]);
+		auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(m_EntityMap[position]);
 		if (entityOpt.has_value() && entityOpt.value().GetComponent<Chunk>().IsMeshGenerated())
 			return;
 	}
@@ -187,7 +187,7 @@ void ChunkManager::AddChunk(const glm::ivec3& position)
 		if (GetChunk(newCoord) == nullptr)
 		{
 			std::string name = "Chunk_" + std::to_string(newCoord.x) + "_" + std::to_string(newCoord.y) + "_" + std::to_string(newCoord.z);
-			QuasarEngine::Entity chunk = QuasarEngine::Renderer::m_SceneData.m_Scene->CreateEntity(name);
+			QuasarEngine::Entity chunk = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->CreateEntity(name);
 			chunk.AddComponent<QuasarEngine::MeshComponent>();
 			QuasarEngine::MaterialSpecification spec;
 			spec.AlbedoTexture = "Assets/Textures/dark_grass_block_top.png";
@@ -196,13 +196,13 @@ void ChunkManager::AddChunk(const glm::ivec3& position)
 			chunk.AddComponent<Chunk>(newCoord);
 
 			m_EntityMap.emplace(newCoord, chunk.GetUUID());
-			auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(chunk.GetUUID());
+			auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(chunk.GetUUID());
 			if (entityOpt.has_value())
 				entityOpt.value().GetComponent<Chunk>().Generate(*m_Generator);
 		}
 	}
 
-	auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(m_EntityMap[position]);
+	auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(m_EntityMap[position]);
 	if (entityOpt.has_value())
 	{
 		auto& chunk = entityOpt.value().GetComponent<Chunk>();
@@ -222,7 +222,7 @@ const Chunk* ChunkManager::GetChunk(const glm::ivec3& position) const
 	if (it == m_EntityMap.end())
 		return nullptr;
 
-	auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(it->second);
+	auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(it->second);
 	if (!entityOpt.has_value())
 		return nullptr;
 
@@ -243,7 +243,7 @@ int ChunkManager::NeighborCount(glm::ivec3 coord, glm::ivec3 exclude) const
 			continue;
 		}
 
-		auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(it->second);
+		auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(it->second);
 		if (entityOpt.has_value())
 		{
 			auto& chunk = entityOpt.value().GetComponent<Chunk>();
@@ -281,7 +281,7 @@ void ChunkManager::UpdateChunk(const glm::ivec3& playerPos, float dt)
 
 	for (auto it = m_EntityMap.begin(); it != m_EntityMap.end();)
 	{
-		auto entityOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(it->second);
+		auto entityOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(it->second);
 		if (!entityOpt.has_value())
 		{
 			++it;
@@ -316,17 +316,17 @@ void ChunkManager::UpdateChunk(const glm::ivec3& playerPos, float dt)
 
 				if (chunkIt != m_EntityMap.end())
 				{
-					auto neighborOpt = QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(chunkIt->second);
+					auto neighborOpt = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(chunkIt->second);
 					if (neighborOpt.has_value() && !neighborOpt.value().GetComponent<Chunk>().IsMeshGenerated() && NeighborCount(newCoord, it->first) == 0)
 					{
-						QuasarEngine::Renderer::m_SceneData.m_Scene->DestroyEntity(neighborOpt.value());
+						QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(neighborOpt.value().GetUUID());
 						m_EntityMap.erase(chunkIt);
 					}
 				}
 			}
 
 			auto prev = it++;
-			QuasarEngine::Renderer::m_SceneData.m_Scene->DestroyEntity(entityOpt.value());
+			QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->DestroyEntity(entityOpt.value().GetUUID());
 			m_EntityMap.erase(prev);
 		}
 		else

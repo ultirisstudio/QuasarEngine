@@ -9,6 +9,8 @@ namespace QuasarEngine
     class VulkanImage;
     class VulkanRenderPass;
 
+    class Texture;
+
     class VulkanFramebuffer : public Framebuffer
     {
     public:
@@ -38,6 +40,8 @@ namespace QuasarEngine
 
         VkFramebuffer GetVkFramebuffer() const { return m_Framebuffer; }
         const std::vector<std::unique_ptr<VulkanImage>>& GetAttachments() const { return m_Attachments; }
+
+        std::shared_ptr<Texture> GetColorAttachmentTexture(uint32_t index) const override { return nullptr; }
 
     private:
         void Cleanup();

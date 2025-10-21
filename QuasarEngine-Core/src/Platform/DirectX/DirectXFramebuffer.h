@@ -7,6 +7,8 @@
 
 namespace QuasarEngine
 {
+    class Texture;
+
     class DirectXFramebuffer : public Framebuffer
     {
     public:
@@ -30,6 +32,8 @@ namespace QuasarEngine
         void  Unbind() const override;
 
         void  BindColorAttachment(uint32_t index = 0) const override;
+
+        std::shared_ptr<Texture> GetColorAttachmentTexture(uint32_t index) const override { return nullptr; }
 
     private:
         struct ColorAttachmentDX

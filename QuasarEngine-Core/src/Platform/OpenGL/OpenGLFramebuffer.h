@@ -4,6 +4,8 @@
 
 namespace QuasarEngine
 {
+    class Texture;
+
 	class OpenGLFramebuffer : public Framebuffer
 	{
     public:
@@ -30,6 +32,8 @@ namespace QuasarEngine
 
         void BindColorAttachment(uint32_t index = 0) const override;
 
+        std::shared_ptr<Texture> GetColorAttachmentTexture(uint32_t index) const override;
+
     private:
         uint32_t m_ID;
 
@@ -41,5 +45,8 @@ namespace QuasarEngine
         
         uint32_t m_ResolveFBO = 0;
         uint32_t m_ResolvedColorTexture = 0;
+
+        mutable std::vector<std::shared_ptr<Texture>> m_ColorAttachmentViews;
+        mutable std::shared_ptr<Texture> m_ResolvedColorView;
 	};
 }

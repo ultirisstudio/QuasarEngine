@@ -12,6 +12,10 @@
 #include <QuasarEngine/Entity/Components/CameraComponent.h>
 #include <QuasarEngine/Entity/Components/LightComponent.h>
 #include <QuasarEngine/Shader/Shader.h>
+#include <QuasarEngine/Renderer/RendererAPI.h>
+#include <QuasarEngine/Renderer/RenderCommand.h>
+#include <QuasarEngine/Renderer/Renderer2D.h>
+#include <QuasarEngine/Core/Logger.h>
 
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Tools/Chronometer.h>
@@ -26,19 +30,58 @@ namespace QuasarEngine
 
 	void Runtime::OnAttach()
 	{
-		//PhysicEngine::Init();
+		AssetManager::Instance().Initialize("");
+
+		RenderCommand::Instance().Initialize();
+		Renderer::Instance().Initialize();
+		Renderer2D::Instance().Initialize();
+
+		PhysicEngine::Instance().Initialize();
+
+		Logger::initUtf8Console();
 
 		Application::Get().GetWindow().SetCursorVisibility(true);
 
 		m_ScreenQuad = std::make_unique<ScreenQuad>();
 		m_Scene = std::make_unique<Scene>();
 
-		Renderer::BeginScene(*m_Scene);
+		Renderer::Instance().BeginScene(*m_Scene);
 
 		Shader::ShaderDescription screenDesc;
 
-		std::string vertPath = "Assets/Shaders/ScreenQuad.vert." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
-		std::string fragPath = "Assets/Shaders/ScreenQuad.frag." + std::string(RendererAPI::GetAPI() == RendererAPI::API::Vulkan ? "spv" : "gl.glsl");
+		auto extFor = [](RendererAPI::API api, Shader::ShaderStageType s) {
+			if (api == RendererAPI::API::Vulkan) {
+				switch (s) {
+				case Shader::ShaderStageType::Vertex:     return ".vert.spv";
+				case Shader::ShaderStageType::TessControl:return ".tesc.spv";
+				case Shader::ShaderStageType::TessEval:   return ".tese.spv";
+				case Shader::ShaderStageType::Fragment:   return ".frag.spv";
+				default: return "";
+				}
+			}
+			else {
+				switch (s) {
+				case Shader::ShaderStageType::Vertex:     return ".vert.glsl";
+				case Shader::ShaderStageType::TessControl:return ".tesc.glsl";
+				case Shader::ShaderStageType::TessEval:   return ".tese.glsl";
+				case Shader::ShaderStageType::Fragment:   return ".frag.glsl";
+				default: return "";
+				}
+			}
+			};
+
+
+		Shader::ShaderDescription desc;
+
+		const auto api = RendererAPI::GetAPI();
+		const std::string basePath = (api == RendererAPI::API::Vulkan)
+			? "Assets/Shaders/vk/spv/"
+			: "Assets/Shaders/gl/";
+
+		const std::string name = "ScreenQuad";
+
+		std::string vertPath = basePath + name + extFor(api, Shader::ShaderStageType::Vertex);
+		std::string fragPath = basePath + name + extFor(api, Shader::ShaderStageType::Fragment);
 
 		screenDesc.modules = {
 			Shader::ShaderModuleInfo{
@@ -90,7 +133,7 @@ namespace QuasarEngine
 		//m_ApplicationSize = { spec.Width, spec.Height };
 		m_ApplicationSize = { 1280, 720 };
 
-		RenderCommand::SetViewport(0, 0, m_ApplicationSize.x, m_ApplicationSize.y);
+		RenderCommand::Instance().SetViewport(0, 0, m_ApplicationSize.x, m_ApplicationSize.y);
 		m_FrameBuffer->Resize((uint32_t)m_ApplicationSize.x, (uint32_t)m_ApplicationSize.y);
 
 		m_ChunkManager = std::make_unique<ChunkManager>();
@@ -119,7 +162,11 @@ namespace QuasarEngine
 
 	void Runtime::OnDetach()
 	{
-		//PhysicEngine::Shutdown();
+		PhysicEngine::Instance().Shutdown();
+		AssetManager::Instance().Shutdown();
+		Renderer2D::Instance().Shutdown();
+		Renderer::Instance().Shutdown();
+		RenderCommand::Instance().Shutdown();
 	}
 
 	void Runtime::OnUpdate(double dt)
@@ -137,20 +184,20 @@ namespace QuasarEngine
 	{
 		m_FrameBuffer->Bind();
 
-		RenderCommand::Clear();
-		RenderCommand::ClearColor(glm::vec4(0.1f, 0.5f, .9f, 1.0f));
+		RenderCommand::Instance().Clear();
+		RenderCommand::Instance().ClearColor(glm::vec4(0.8f, 0.5f, .2f, 1.0f));
 
-		Renderer::BeginScene(*m_Scene);
+		Renderer::Instance().BeginScene(*m_Scene);
 		
-		Renderer::RenderSkybox(m_Player->GetCamera());
-		Renderer::Render(m_Player->GetCamera());
-		Renderer::EndScene();
+		Renderer::Instance().RenderSkybox(m_Player->GetCamera());
+		Renderer::Instance().Render(m_Player->GetCamera());
+		Renderer::Instance().EndScene();
 
 		unsigned int width = Application::Get().GetWindow().GetWidth();
 		unsigned int height = Application::Get().GetWindow().GetHeight();
 		if (m_ApplicationSize.x != width || m_ApplicationSize.y != height)
 		{
-			RenderCommand::SetViewport(0, 0, width, height);
+			RenderCommand::Instance().SetViewport(0, 0, width, height);
 			m_Player->GetCamera().OnResize(width, height);
 			m_FrameBuffer->Resize((uint32_t)width, (uint32_t)height);
 
@@ -160,8 +207,17 @@ namespace QuasarEngine
 		m_FrameBuffer->Unbind();
 
 		m_ScreenQuadShader->Use();
-		m_FrameBuffer->BindColorAttachment(0);
+
+		m_ScreenQuadShader->UpdateGlobalState();
+
+		auto screenTex = m_FrameBuffer->GetColorAttachmentTexture(0);
+		m_ScreenQuadShader->SetTexture("screenTexture", screenTex.get());
+
+		m_ScreenQuadShader->UpdateObject(nullptr);
+
 		m_ScreenQuad->Draw();
+
+		m_ScreenQuadShader->Unuse();
 	}
 
 	void Runtime::OnGuiRender()

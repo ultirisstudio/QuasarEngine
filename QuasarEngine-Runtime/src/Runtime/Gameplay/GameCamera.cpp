@@ -67,7 +67,7 @@ void GameCamera::updateViewMatrix()
 	m_viewMatrix = glm::lookAt(m_position, m_position + m_target, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
-const glm::mat4 GameCamera::getViewMatrix() const
+const glm::mat4& GameCamera::getViewMatrix() const
 {
 	return m_viewMatrix;
 }

@@ -22,6 +22,8 @@ namespace QuasarEngine
         virtual bool LoadFromMemory(ByteView data) override = 0;
         virtual bool LoadFromData(ByteView data) override = 0;
 
+        virtual bool LoadFromFiles(const std::vector<std::string>& paths) = 0;
+
         static std::shared_ptr<TextureArray> Create(const TextureSpecification& specification);
     };
 }

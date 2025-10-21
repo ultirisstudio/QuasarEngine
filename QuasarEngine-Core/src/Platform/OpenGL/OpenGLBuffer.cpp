@@ -43,7 +43,7 @@ namespace QuasarEngine
 		GLuint index = glGetUniformBlockIndex(programID, blockName.c_str());
 		if (index == GL_INVALID_INDEX)
 		{
-			Q_ERROR("Uniform block '" + blockName + "' not found in shader.");
+			//Q_ERROR("Uniform block '" + blockName + "' not found in shader.");
 			return;
 		}
 

@@ -98,7 +98,7 @@ namespace QuasarEngine
     {
         std::cout << "\n-- Test MemoryTracker balance --\n";
 
-        auto& tracker = MemoryTracker::instance();
+        auto& tracker = MemoryTracker::Instance();
 
         size_t before = tracker.GetCurrentUsage();
 

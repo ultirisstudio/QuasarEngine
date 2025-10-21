@@ -1,7 +1,7 @@
 #include "qepch.h"
 
 #include "OpenGLTextureArray.h"
-#include "OpenGLTextureUtils.h"
+#include "OpenGLTextureUtils.h"*
 
 #include <QuasarEngine/File/FileUtils.h>
 #include <QuasarEngine/Core/Logger.h>
@@ -39,8 +39,8 @@ namespace QuasarEngine
             return false;
         }
 
-        const auto glInt = ToGLFormat(m_Specification.internal_format);
-        const auto glExt = ToGLFormat(m_Specification.format);
+        const auto glInt = Utils::ToGLFormat(m_Specification.internal_format);
+        const auto glExt = Utils::ToGLFormat(m_Specification.format);
         const GLint channels = Utils::DesiredChannels(m_Specification.internal_format);
         if (glInt.internal == 0 || glExt.external == 0 || channels == 0) {
             Q_ERROR("OpenGLTextureArray: unsupported texture format mapping");
@@ -67,8 +67,8 @@ namespace QuasarEngine
 
     bool OpenGLTextureArray::UploadPixelsDSA(ByteView pixels, GLsizei layers) {
         const GLenum target = Utils::TargetFromSamples(m_Specification.Samples);
-        const auto   glInt = ToGLFormat(m_Specification.internal_format);
-        const auto   glExt = ToGLFormat(m_Specification.format);
+        const auto   glInt = Utils::ToGLFormat(m_Specification.internal_format);
+        const auto   glExt = Utils::ToGLFormat(m_Specification.format);
 
         if (glInt.internal == 0 || glExt.external == 0) {
             Q_ERROR("OpenGLTextureArray: unsupported texture format mapping");

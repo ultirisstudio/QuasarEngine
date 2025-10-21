@@ -17,26 +17,12 @@ namespace QuasarEngine
         bool LoadFromMemory(ByteView data) override;
         bool LoadFromData(ByteView data) override;
 
+        bool LoadFromFiles(const std::vector<std::string>& paths) override { return false; }
+
         void Bind(int index = 0) const override;
         void Unbind() const override;
 
     private:
-        struct GLFormat {
-            GLenum internal = 0;
-            GLenum external = 0;
-            GLenum type = GL_UNSIGNED_BYTE;
-            GLint  channels = 0;
-        };
-
-        static GLFormat ToGLFormat(TextureFormat fmt);
-        static GLenum   ToGLWrap(TextureWrap wrap);
-        static GLenum   ToGLFilter(TextureFilter f);
-        static GLint    DesiredChannels(TextureFormat fmt);
-        static GLint    CalcMipmapLevels(GLint w, GLint h, bool mipmap);
-        static GLenum   TargetFromSamples(uint32_t samples) {
-            return samples > 1 ? GL_TEXTURE_2D_MULTISAMPLE_ARRAY : GL_TEXTURE_2D_ARRAY;
-        }
-
         bool UploadPixelsDSA(ByteView pixels, GLsizei layers);
 
     private:
