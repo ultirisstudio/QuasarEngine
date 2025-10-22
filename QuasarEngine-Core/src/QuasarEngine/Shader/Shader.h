@@ -112,7 +112,7 @@ namespace QuasarEngine
         };
 
         enum class PrimitiveTopology {
-            TriangleList, LineList, PointList, PatchList
+            TriangleList, LineList, PointList, PatchList, TriangleStrip
         };
 
         struct ShaderDescription {

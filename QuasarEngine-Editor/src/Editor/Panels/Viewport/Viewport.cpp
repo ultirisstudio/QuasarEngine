@@ -53,8 +53,8 @@ namespace QuasarEngine
 			else
 				dpiScale = ImGui::GetIO().DisplayFramebufferScale.x;
 
-			Renderer::Instance().RenderSkybox(camera);
 			Renderer::Instance().Render(camera);
+			Renderer::Instance().RenderSkybox(camera);
 			//Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
 
 			Renderer::Instance().EndScene();

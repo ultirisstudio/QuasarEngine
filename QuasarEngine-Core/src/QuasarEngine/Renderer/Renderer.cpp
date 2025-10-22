@@ -478,7 +478,7 @@ namespace QuasarEngine
 		for (int i = 0; i < QE_MAX_BONES; ++i)
 			m_SceneData.m_IdentityBones[i] = glm::mat4(1.0f);
 
-		m_SceneData.m_Skybox = BasicSkybox::CreateBasicSkybox();
+		/*m_SceneData.m_Skybox = BasicSkybox::CreateBasicSkybox();
 
 		m_SceneData.m_Skybox->LoadCubemap({
 			"Assets/Textures/Skybox/right.jpg",   // +X
@@ -487,9 +487,9 @@ namespace QuasarEngine
 			"Assets/Textures/Skybox/bottom.jpg",  // -Y
 			"Assets/Textures/Skybox/front.jpg",   // +Z
 			"Assets/Textures/Skybox/back.jpg"     // -Z
-		});
+		});*/
 
-		//m_SceneData.m_SkyboxHDR = SkyboxHDR::Create();
+		m_SceneData.m_SkyboxHDR = std::make_shared<SkyboxHDR>();
 		//m_SceneData.m_SkyboxHDR->LoadFromHDR("Assets/HDR/kloofendal_43d_clear_puresky_4k.hdr");
 
 		m_SceneData.m_ScriptSystem = std::make_unique<ScriptSystem>();
@@ -1128,7 +1128,7 @@ namespace QuasarEngine
 
 	void Renderer::RenderSkybox(BaseCamera& camera)
 	{
-		m_SceneData.m_Skybox->Bind();
+		/*m_SceneData.m_Skybox->Bind();
 
 		glm::mat4 viewMatrix = camera.getViewMatrix();
 		glm::mat4 projectionMatrix = camera.getProjectionMatrix();
@@ -1144,7 +1144,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_Skybox->Draw();
 
-		m_SceneData.m_Skybox->Unbind();
+		m_SceneData.m_Skybox->Unbind();*/
 
 		/*if (!m_SceneData.m_SkyboxHDR) return;
 
@@ -1154,6 +1154,12 @@ namespace QuasarEngine
 		m_SceneData.m_SkyboxHDR->Draw(V, P);
 
 		m_SceneData.m_SkyboxHDR->Unbind();*/
+
+		const glm::mat4 V = camera.getViewMatrix();
+		const glm::mat4 P = camera.getProjectionMatrix();
+
+		// Si tu utilises le SkyboxHDR :
+		m_SceneData.m_SkyboxHDR->Draw(V, P);
 	}
 
 	void Renderer::RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi)
