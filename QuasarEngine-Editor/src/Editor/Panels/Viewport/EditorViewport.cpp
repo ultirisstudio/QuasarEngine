@@ -50,8 +50,8 @@ namespace QuasarEngine
 
 		Renderer::Instance().BeginScene(scene);
 
-		Renderer::Instance().Render(camera);
 		Renderer::Instance().RenderSkybox(camera);
+		Renderer::Instance().Render(camera);
 		Renderer::Instance().RenderDebug(camera);
 
 		Renderer::Instance().EndScene();

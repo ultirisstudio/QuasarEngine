@@ -13,6 +13,7 @@
 
 #include <QuasarEngine/Shader/Shader.h>
 #include <glad/glad.h>
+#include "OpenGLTextureCubeMap.h"
 
 namespace QuasarEngine
 {
@@ -96,13 +97,14 @@ namespace QuasarEngine
         std::vector<uint8_t> m_GlobalUniformData;
         std::vector<uint8_t> m_ObjectUniformData;
 
-        std::unordered_map<std::string, OpenGLTexture2D*> m_ObjectTextures;
+        std::unordered_map<std::string, Texture*> m_ObjectTextures;
         std::unordered_map<std::string, Shader::SamplerType> m_ObjectTextureTypes;
 
         struct BoundTex { GLuint handle = 0; GLenum target = GL_TEXTURE_2D; };
         std::unordered_map<int, BoundTex> m_BoundPerUnit;
 
         OpenGLTexture2D* m_DefaultBlueTexture = nullptr;
+        OpenGLTextureCubeMap* m_DefaultBlackCubemap = nullptr;
 
         ShaderDescription m_Description;
     };

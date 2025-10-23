@@ -2,6 +2,8 @@
 
 #include <QuasarEngine/Resources/TextureArray.h>
 #include <glad/glad.h>
+#include <vector>
+#include <string>
 
 namespace QuasarEngine
 {
@@ -16,18 +18,20 @@ namespace QuasarEngine
         bool LoadFromPath(const std::string& path) override;
         bool LoadFromMemory(ByteView data) override;
         bool LoadFromData(ByteView data) override;
-
-        bool LoadFromFiles(const std::vector<std::string>& paths) override { return false; }
+        bool LoadFromFiles(const std::vector<std::string>& paths) override;
 
         void Bind(int index = 0) const override;
         void Unbind() const override;
 
-    private:
-        bool UploadPixelsDSA(ByteView pixels, GLsizei layers);
+        bool AllocateStorage(uint32_t width, uint32_t height, GLsizei layers);
+        void GenerateMips() override;
 
     private:
-        GLuint m_ID = 0;
-        bool   m_Loaded = false;
+        bool UploadPixelsDSA(ByteView pixels, GLsizei layers, bool pixelsAreFloat);
+
+    private:
+        GLuint  m_ID = 0;
+        bool    m_Loaded = false;
         GLsizei m_Layers = 0;
     };
 }

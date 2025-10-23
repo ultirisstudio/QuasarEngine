@@ -15,6 +15,8 @@ namespace QuasarEngine {
 		void ClearColor(const glm::vec4& color) override;
 		void Clear() override;
 
+		void SetSeamlessCubemap(bool enable) override {}
+
 		void DrawArrays(DrawMode drawMode, uint32_t size) override;
 		void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex) override;
 

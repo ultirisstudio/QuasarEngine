@@ -31,6 +31,8 @@ namespace QuasarEngine {
         void Bind(int index = 0) const override;
         void Unbind() const override;
 
+        void GenerateMips() override {}
+
     public:
         std::unique_ptr<VulkanImage> image{};
         VkSampler        sampler{ VK_NULL_HANDLE };

@@ -22,12 +22,15 @@ namespace QuasarEngine
 		void Bind(int index = 0) const override;
 		void Unbind() const override;
 
+		void GenerateMips() override;
+		bool AllocateStorage();
+
+	private:
+		bool UploadPixelsDSA(ByteView pixels, bool pixelsAreFloat = false);
+
+	private:
 		GLuint m_ID = 0;
-
-	private:
-		bool UploadPixelsDSA(ByteView pixels);
-
-	private:
 		bool   m_Loaded = false;
+		std::string m_LastPath;
 	};
 }

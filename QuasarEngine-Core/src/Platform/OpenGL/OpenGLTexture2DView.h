@@ -2,6 +2,7 @@
 
 #include <QuasarEngine/Resources/Texture.h>
 #include <glad/glad.h>
+#include <cassert>
 
 namespace QuasarEngine
 {
@@ -12,10 +13,15 @@ namespace QuasarEngine
         }
 
         TextureHandle GetHandle() const noexcept override { return static_cast<TextureHandle>(m_ID); }
-        bool IsLoaded() const noexcept override { return true; }
+        bool IsLoaded() const noexcept override { return m_ID != 0; }
 
-        void Bind(int unit = 0) const override { glBindTextureUnit(unit, m_ID); }
+        void Bind(int unit = 0) const override {
+            if (!m_ID) return;
+            glBindTextureUnit(unit, m_ID);
+        }
         void Unbind() const override {}
+
+        void GenerateMips() override {}
 
         bool LoadFromPath(const std::string&) override { return false; }
         bool LoadFromMemory(ByteView) override { return false; }
@@ -25,5 +31,4 @@ namespace QuasarEngine
         GLuint m_ID = 0;
         GLenum m_Target = GL_TEXTURE_2D;
     };
-
 }

@@ -26,6 +26,8 @@ namespace QuasarEngine {
 		virtual void ClearColor(const glm::vec4& color) = 0;
 		virtual void Clear() = 0;
 
+		virtual void SetSeamlessCubemap(bool enable) = 0;
+
 		virtual void DrawArrays(DrawMode drawMode, uint32_t size) = 0;
 		virtual void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex) = 0;
 

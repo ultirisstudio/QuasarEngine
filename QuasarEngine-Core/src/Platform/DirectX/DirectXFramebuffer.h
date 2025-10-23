@@ -21,17 +21,23 @@ namespace QuasarEngine
         void* GetColorAttachment(uint32_t index) const override;
         void* GetDepthAttachment() const override; 
 
-        int   ReadPixel(uint32_t attachmentIndex, int x, int y) override;
-        void  ClearAttachment(uint32_t attachmentIndex, int value) override;
+        int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
 
-        void  Resize(uint32_t width, uint32_t height) override;
-        void  Invalidate() override;
-        void  Resolve() override;
+        void ClearAttachment(uint32_t attachmentIndex, int value) override;
+        void ClearColor(float r, float g, float b, float a) override {}
+        void ClearDepth(float d = 1.0f) override {}
+        void Clear(ClearFlags flags = ClearFlags::All) override {}
 
-        void  Bind() const override;
-        void  Unbind() const override;
+        void Resize(uint32_t width, uint32_t height) override;
+        void Invalidate() override;
+        void Resolve() override;
 
-        void  BindColorAttachment(uint32_t index = 0) const override;
+        void Bind() const override;
+        void Unbind() const override;
+
+        void BindColorAttachment(uint32_t index = 0) const override;
+
+        void SetColorAttachment(uint32_t index, const AttachmentRef& ref) override {}
 
         std::shared_ptr<Texture> GetColorAttachmentTexture(uint32_t index) const override { return nullptr; }
 

@@ -20,5 +20,7 @@ namespace QuasarEngine
 
         void Bind(int index = 0) const override;
         void Unbind() const override;
+
+        void GenerateMips() override {}
     };
 }

@@ -39,6 +39,14 @@ namespace QuasarEngine
 
     class Texture;
 
+    struct AttachmentRef {
+        std::shared_ptr<Texture> texture;
+        uint32_t mip = 0;
+        uint32_t layer = 0;
+    };
+
+    enum class ClearFlags : uint8_t { Color = 1, Depth = 2, Stencil = 4, All = 7 };
+
     class Framebuffer
     {
     public:
@@ -55,9 +63,15 @@ namespace QuasarEngine
         virtual void Resolve() = 0;
 
         virtual int ReadPixel(uint32_t attachmentIndex, int x, int y) = 0;
+
         virtual void ClearAttachment(uint32_t attachmentIndex, int value) = 0;
+        virtual void ClearColor(float r, float g, float b, float a) = 0;
+        virtual void ClearDepth(float d = 1.0f) = 0;
+        virtual void Clear(ClearFlags flags = ClearFlags::All) = 0;
 
         virtual void BindColorAttachment(uint32_t index = 0) const = 0;
+
+        virtual void SetColorAttachment(uint32_t index, const AttachmentRef& ref) = 0;
 
         virtual void* GetColorAttachment(uint32_t index) const = 0;
         virtual void* GetDepthAttachment() const = 0;

@@ -149,8 +149,8 @@ namespace QuasarEngine
 
 	void OpenGLBasicSkybox::LoadCubemap(const std::array<std::string, 6>& faces)
 	{
-		glGenTextures(1, &texture->m_ID);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, texture->m_ID);
+		//glGenTextures(1, &texture->m_ID);
+		//glBindTexture(GL_TEXTURE_CUBE_MAP, texture->m_ID);
 
 		int width, height, channels;
 		const int desiredChannels = 4;
@@ -182,8 +182,8 @@ namespace QuasarEngine
 
 		if (!success)
 		{
-			glDeleteTextures(1, &texture->m_ID);
-			texture->m_ID = 0;
+			//glDeleteTextures(1, &texture->m_ID);
+			//texture->m_ID = 0;
 			throw std::runtime_error("Failed to load one or more faces of the cubemap");
 		}
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <QuasarEngine/Resources/TextureCubeMap.h>
-
 #include <glad/glad.h>
+#include <string>
 
 namespace QuasarEngine
 {
@@ -25,17 +25,17 @@ namespace QuasarEngine
         void Bind(int index = 0) const override;
         void Unbind() const override;
 
-    private:
-        bool AllocateStorageIfNeeded(uint32_t w, uint32_t h);
-        bool UploadAllFacesDSA(ByteView allFacesPixels);
-        bool UploadFaceDSA(Face face, ByteView facePixels, uint32_t w, uint32_t h);
-
-        static GLint FaceIndex(Face f) { return static_cast<GLint>(f); }
+        bool AllocateStorage(uint32_t w, uint32_t h);
+        void GenerateMips() override;
 
     private:
-        GLuint m_ID = 0;
-        bool   m_Loaded = false;
-        bool   m_StorageAllocated = false;
+        bool UploadAllFacesDSA(ByteView allFacesPixels, bool pixelsAreFloat);
+        bool UploadFaceDSA(Face face, ByteView facePixels, uint32_t w, uint32_t h, bool pixelsAreFloat);
+
+    private:
+        GLuint  m_ID = 0;
+        bool    m_Loaded = false;
+        bool    m_StorageAllocated = false;
         GLsizei m_FacesUploaded = 0;
     };
 }

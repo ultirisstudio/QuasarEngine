@@ -82,6 +82,14 @@ namespace QuasarEngine {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
+	void OpenGLRendererAPI::SetSeamlessCubemap(bool enable)
+	{
+		if (enable)
+			glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+		else
+			glDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+	}
+
 	void OpenGLRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)
 	{
 		glDrawArrays(Utils::DrawModeToGLenum(drawMode), 0, static_cast<GLsizei>(size));

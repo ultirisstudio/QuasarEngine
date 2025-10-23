@@ -29,12 +29,18 @@ namespace QuasarEngine
         void Unbind() const override;
 
         void ClearAttachment(uint32_t attachmentIndex, int value) override;
+        void ClearColor(float r, float g, float b, float a) override {}
+		void ClearDepth(float d = 1.0f) override {}
+		void Clear(ClearFlags flags = ClearFlags::All) override {}
+
         int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
 
         void* GetColorAttachment(uint32_t index) const override;
         void* GetDepthAttachment() const override;
 
         void BindColorAttachment(uint32_t index = 0) const override {}
+
+        void SetColorAttachment(uint32_t index, const AttachmentRef& ref) override {}
 
         VulkanRenderPass* GetRenderPass() const { return m_RenderPass.get(); }
 

@@ -392,36 +392,31 @@ namespace QuasarEngine
         {
             const std::string& sname = samplerDesc.name;
 
-            OpenGLTexture2D* tex = m_DefaultBlueTexture;
-            auto it = m_ObjectTextures.find(sname);
-            if (it != m_ObjectTextures.end() && it->second)
-                tex = it->second;
+            SamplerType st = SamplerType::Sampler2D;
+            if (auto itT = m_ObjectTextureTypes.find(sname); itT != m_ObjectTextureTypes.end())
+                st = itT->second;
 
-            if (!tex || tex->GetHandle() == 0)
-            {
-                Q_ERROR("Invalid texture for sampler " + sname);
-                continue;
-            }
+            Texture* texObj = m_DefaultBlueTexture;
+            if (auto it = m_ObjectTextures.find(sname); it != m_ObjectTextures.end() && it->second)
+                texObj = it->second;
+            else if (st == SamplerType::SamplerCube)
+                texObj = m_DefaultBlackCubemap;
 
-            GLenum target = GL_TEXTURE_2D;
-            auto it2 = m_ObjectTextureTypes.find(sname);
-            if (it2 != m_ObjectTextureTypes.end())
-                target = SamplerTypeToGL(it2->second);
+            if (!texObj) { Q_ERROR("No texture bound for sampler " + sname); continue; }
 
-            const int unit = samplerDesc.binding;
+            const GLuint handle = static_cast<GLuint>(texObj->GetHandle());
+            if (handle == 0) { Q_ERROR("Invalid GL handle for sampler " + sname); continue; }
+
+            const GLint unit = samplerDesc.binding;
+
             BoundTex& bound = m_BoundPerUnit[unit];
-
-            const GLuint handle = static_cast<GLuint>(tex->GetHandle());
-            if (bound.handle != handle || bound.target != target) {
-                glActiveTexture(GL_TEXTURE0 + unit);
-                glBindTexture(target, handle);
+            if (bound.handle != handle) {
+                glBindTextureUnit(unit, handle);
                 bound.handle = handle;
-                bound.target = target;
             }
 
-            auto loc = m_UniformLocations.find(sname);
-            if (loc != m_UniformLocations.end() && loc->second >= 0)
-                glUniform1i(loc->second, unit);
+            if (auto itLoc = m_UniformLocations.find(sname); itLoc != m_UniformLocations.end() && itLoc->second >= 0)
+                glUniform1i(itLoc->second, unit);
         }
 
         return true;
@@ -463,7 +458,7 @@ namespace QuasarEngine
             return false;
         }
 
-        m_ObjectTextures[name] = texture ? dynamic_cast<OpenGLTexture2D*>(texture) : m_DefaultBlueTexture;
+        m_ObjectTextures[name] = texture;
         m_ObjectTextureTypes[name] = type;
 
         return true;

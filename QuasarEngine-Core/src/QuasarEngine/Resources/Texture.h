@@ -35,6 +35,8 @@ namespace QuasarEngine
 		virtual void Bind(int index = 0) const = 0;
 		virtual void Unbind() const = 0;
 
+		virtual void GenerateMips() = 0;
+
 		virtual bool LoadFromPath(const std::string& path) = 0;
 		virtual bool LoadFromMemory(ByteView data) = 0;
 		virtual bool LoadFromData(ByteView data) = 0;

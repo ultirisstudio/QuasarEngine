@@ -35,6 +35,11 @@ namespace QuasarEngine
 			s_RendererAPI->Clear();
 		}
 
+		void SetSeamlessCubemap(bool enable)
+		{
+			s_RendererAPI->SetSeamlessCubemap(enable);
+		}
+
 		void DrawArrays(DrawMode drawMode, uint32_t size)
 		{
 			s_RendererAPI->DrawArrays(drawMode, size);

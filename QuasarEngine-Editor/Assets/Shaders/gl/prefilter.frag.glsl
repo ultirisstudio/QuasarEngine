@@ -4,11 +4,11 @@ layout(location = 0) in vec3 inWorldPos;
 
 layout(location = 0) out vec4 outColor;
 
-uniform samplerCube environmentMap;
-
-layout(std140, binding = 1) uniform local_uniform_object {
+layout(std140, binding = 0) uniform local_uniform_object {
     float roughness;
 } object_ubo;
+
+layout(binding = 1) uniform samplerCube environmentMap;
 
 const float PI = 3.14159265359;
 
