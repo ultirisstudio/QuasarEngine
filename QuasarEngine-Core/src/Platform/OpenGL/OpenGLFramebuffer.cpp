@@ -442,9 +442,7 @@ namespace QuasarEngine
 
         if (std::dynamic_pointer_cast<TextureCubeMap>(ref.texture))
         {
-            //glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip, (GLint)ref.layer);
-            const GLenum faceTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + (GLenum)ref.layer;
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, faceTarget, texID, (GLint)ref.mip);
+            glNamedFramebufferTextureLayer(m_ID, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip, (GLint)ref.layer);
             attached = true;
         }
         else if (std::dynamic_pointer_cast<TextureArray>(ref.texture))

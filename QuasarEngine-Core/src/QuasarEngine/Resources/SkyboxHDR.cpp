@@ -456,6 +456,8 @@ namespace QuasarEngine
 #include <stb_image.h>
 #include <QuasarEngine/Core/Logger.h>
 
+#include <glad/glad.h>
+
 namespace QuasarEngine
 {
     const char* SkyboxHDR::ExtFor(RendererAPI::API api, Shader::ShaderStageType s)
@@ -592,7 +594,7 @@ namespace QuasarEngine
             d.cullMode = Shader::CullMode::None;
             d.fillMode = Shader::FillMode::Solid;
             d.depthFunc = Shader::DepthFunc::Always;
-            d.depthTestEnable = false; d.depthWriteEnable = false;
+            d.depthTestEnable = true; d.depthWriteEnable = false;
             d.topology = Shader::PrimitiveTopology::TriangleList;
             d.enableDynamicViewport = true; d.enableDynamicScissor = true;
 
@@ -817,37 +819,93 @@ namespace QuasarEngine
     {
         if (!m_HDRTexture || !m_EnvCubemap) return;
 
-        const uint32_t mipCount = CalcMipCount(m_Settings.envRes, m_Settings.envRes);
+        const GLuint cubeTex = static_cast<GLuint>(m_EnvCubemap->GetHandle());
+        const GLuint hdrTex = static_cast<GLuint>(m_HDRTexture->GetHandle());
+
+        glTextureParameteri(cubeTex, GL_TEXTURE_MAX_LEVEL, 0);
+        glTextureParameteri(cubeTex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(cubeTex, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        GLuint fbo = 0, rbo = 0;
+        glCreateFramebuffers(1, &fbo);
+        glCreateRenderbuffers(1, &rbo);
+        glNamedRenderbufferStorage(rbo, GL_DEPTH_COMPONENT24, (GLint)m_Settings.envRes, (GLint)m_Settings.envRes);
+        glNamedFramebufferRenderbuffer(fbo, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+        const GLenum drawBuf = GL_COLOR_ATTACHMENT0;
+        glNamedFramebufferDrawBuffers(fbo, 1, &drawBuf);
+
+        glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+        glViewport(0, 0, (GLint)m_Settings.envRes, (GLint)m_Settings.envRes);
+        glDisable(GL_CULL_FACE);
+        glEnable(GL_DEPTH_TEST);
 
         m_EquirectangularToCubemapShader->Use();
+        m_EquirectangularToCubemapShader->SetUniform("projection", &m_CaptureProjection, sizeof(glm::mat4));
+        m_EquirectangularToCubemapShader->SetTexture("equirectangularMap", m_HDRTexture.get(), Shader::SamplerType::Sampler2D);
+        m_EquirectangularToCubemapShader->UpdateGlobalState();
+        m_EquirectangularToCubemapShader->UpdateObject(nullptr);
 
-        for (uint32_t mip = 0; mip < mipCount; ++mip) {
-            const uint32_t w = std::max(1u, m_Settings.envRes >> mip);
-            const uint32_t h = std::max(1u, m_Settings.envRes >> mip);
-            m_FBO->Resize(w, h);
+        glBindTextureUnit(0, hdrTex);
 
-            for (uint32_t face = 0; face < 6; ++face) {
-                m_EquirectangularToCubemapShader->SetUniform("view", &m_CaptureViews[face], sizeof(glm::mat4));
-                m_EquirectangularToCubemapShader->SetUniform("projection", &m_CaptureProjection, sizeof(glm::mat4));
-                m_EquirectangularToCubemapShader->SetTexture("equirectangularMap", m_HDRTexture.get(), Shader::SamplerType::Sampler2D);
-                m_EquirectangularToCubemapShader->UpdateGlobalState();
-                m_EquirectangularToCubemapShader->UpdateObject(nullptr);
+        for (int face = 0; face < 6; ++face)
+        {
+            m_EquirectangularToCubemapShader->SetUniform("view", &m_CaptureViews[face], sizeof(glm::mat4));
+            m_EquirectangularToCubemapShader->UpdateGlobalState();
 
-                m_FBO->Bind();
-                m_FBO->SetColorAttachment(0, AttachmentRef{ m_EnvCubemap, mip, face });
-                m_FBO->Clear(ClearFlags::Color);
-                m_FBO->ClearColor(1.f, 0.f, 0.f, 1.f);
+            glNamedFramebufferTextureLayer(fbo, GL_COLOR_ATTACHMENT0, cubeTex, 0, face);
 
-                m_CubeMesh->draw();
-                m_FBO->Unbind();
+            const GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
+            if (status != GL_FRAMEBUFFER_COMPLETE) {
+                Q_WARNING("BuildEnvironment: FBO incomplete for face %d (status=0x%X)", face, status);
+                continue;
             }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
+            glClearColor(0.f, 0.f, 0.f, 1.f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            m_CubeMesh->draw();
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
         m_EquirectangularToCubemapShader->Unuse();
 
-        if (m_EnvCubemap)
-            m_EnvCubemap->GenerateMips();
+        glDeleteRenderbuffers(1, &rbo);
+        glDeleteFramebuffers(1, &fbo);
     }
+
+    /*void SkyboxHDR::BuildEnvironment()
+    {
+        if (!m_HDRTexture || !m_EnvCubemap || !m_FBO || !m_EquirectangularToCubemapShader) return;
+
+        m_FBO->Resize(m_Settings.envRes, m_Settings.envRes);
+
+        m_EquirectangularToCubemapShader->Use();
+        m_EquirectangularToCubemapShader->SetUniform("projection", &m_CaptureProjection, sizeof(glm::mat4));
+        m_EquirectangularToCubemapShader->SetTexture("equirectangularMap", m_HDRTexture.get(), Shader::SamplerType::Sampler2D);
+        m_EquirectangularToCubemapShader->UpdateGlobalState();
+        m_EquirectangularToCubemapShader->UpdateObject(nullptr);
+
+        for (uint32_t face = 0; face < 6; ++face)
+        {
+            m_EquirectangularToCubemapShader->SetUniform("view", &m_CaptureViews[face], sizeof(glm::mat4));
+            m_EquirectangularToCubemapShader->UpdateGlobalState();
+
+            m_FBO->SetColorAttachment(0, AttachmentRef{ m_EnvCubemap, 0, face });
+
+            m_FBO->Bind();
+            m_FBO->Clear(ClearFlags::All);
+
+            m_CubeMesh->draw();
+
+            m_FBO->Unbind();
+        }
+
+        m_EquirectangularToCubemapShader->Unuse();
+    }*/
 
     void SkyboxHDR::BuildIrradiance()
     {
@@ -868,6 +926,7 @@ namespace QuasarEngine
             m_FBO->SetColorAttachment(0, AttachmentRef{ m_IrradianceMap, 0, face });
             m_FBO->Clear(ClearFlags::All);
 
+            m_FBO->Bind();
             m_CubeMesh->draw();
             m_FBO->Unbind();
         }
@@ -941,6 +1000,7 @@ namespace QuasarEngine
         m_BackgroundShader->SetUniform("view", &v, sizeof(glm::mat4));
         m_BackgroundShader->SetUniform("projection", &p, sizeof(glm::mat4));
         m_BackgroundShader->SetTexture("environmentMap", m_EnvCubemap.get(), Shader::SamplerType::SamplerCube);
+        //m_BackgroundShader->SetTexture("environmentMap", m_IrradianceMap.get(), Shader::SamplerType::SamplerCube);
 
         m_BackgroundShader->UpdateGlobalState();
         m_BackgroundShader->UpdateObject(nullptr);
