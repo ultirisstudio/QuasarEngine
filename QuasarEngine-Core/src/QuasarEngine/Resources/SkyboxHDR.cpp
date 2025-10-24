@@ -458,6 +458,8 @@ namespace QuasarEngine
 
 #include <glad/glad.h>
 
+#include <Platform/OpenGL/OpenGLFramebuffer.h>
+
 namespace QuasarEngine
 {
     const char* SkyboxHDR::ExtFor(RendererAPI::API api, Shader::ShaderStageType s)
@@ -817,6 +819,48 @@ namespace QuasarEngine
 
     void SkyboxHDR::BuildEnvironment()
     {
+        if (!m_HDRTexture || !m_EnvCubemap || !m_FBO || !m_EquirectangularToCubemapShader) return;
+
+        m_FBO->Bind();
+        m_FBO->Resize(m_Settings.envRes, m_Settings.envRes);
+        m_FBO->Bind();
+
+        m_EquirectangularToCubemapShader->Use();
+        m_EquirectangularToCubemapShader->SetUniform("projection", &m_CaptureProjection, sizeof(glm::mat4));
+        m_EquirectangularToCubemapShader->SetTexture("equirectangularMap", m_HDRTexture.get(), Shader::SamplerType::Sampler2D);
+        m_EquirectangularToCubemapShader->UpdateGlobalState();
+        m_EquirectangularToCubemapShader->UpdateObject(nullptr);
+
+        m_HDRTexture->Bind();
+
+        for (uint32_t face = 0; face < 6; ++face)
+        {
+            m_FBO->Bind();
+
+            m_EquirectangularToCubemapShader->SetUniform("view", &m_CaptureViews[face], sizeof(glm::mat4));
+            m_EquirectangularToCubemapShader->UpdateGlobalState();
+
+            m_FBO->Bind();
+            m_FBO->SetColorAttachment(0, AttachmentRef{ m_EnvCubemap, 0, face });
+            m_FBO->Bind();
+
+            m_FBO->Bind();
+            m_FBO->ClearColor(0.f, 0.f, 0.f, 1.f);
+            m_FBO->Bind();
+            m_FBO->Clear(ClearFlags::Color | ClearFlags::Depth);
+            m_FBO->Bind();
+
+            m_CubeMesh->draw();
+
+            m_FBO->Bind();
+            m_FBO->Unbind();
+        }
+
+        m_EquirectangularToCubemapShader->Unuse();
+    }
+
+    /*void SkyboxHDR::BuildEnvironment()
+    {
         if (!m_HDRTexture || !m_EnvCubemap) return;
 
         const GLuint cubeTex = static_cast<GLuint>(m_EnvCubemap->GetHandle());
@@ -875,36 +919,6 @@ namespace QuasarEngine
 
         glDeleteRenderbuffers(1, &rbo);
         glDeleteFramebuffers(1, &fbo);
-    }
-
-    /*void SkyboxHDR::BuildEnvironment()
-    {
-        if (!m_HDRTexture || !m_EnvCubemap || !m_FBO || !m_EquirectangularToCubemapShader) return;
-
-        m_FBO->Resize(m_Settings.envRes, m_Settings.envRes);
-
-        m_EquirectangularToCubemapShader->Use();
-        m_EquirectangularToCubemapShader->SetUniform("projection", &m_CaptureProjection, sizeof(glm::mat4));
-        m_EquirectangularToCubemapShader->SetTexture("equirectangularMap", m_HDRTexture.get(), Shader::SamplerType::Sampler2D);
-        m_EquirectangularToCubemapShader->UpdateGlobalState();
-        m_EquirectangularToCubemapShader->UpdateObject(nullptr);
-
-        for (uint32_t face = 0; face < 6; ++face)
-        {
-            m_EquirectangularToCubemapShader->SetUniform("view", &m_CaptureViews[face], sizeof(glm::mat4));
-            m_EquirectangularToCubemapShader->UpdateGlobalState();
-
-            m_FBO->SetColorAttachment(0, AttachmentRef{ m_EnvCubemap, 0, face });
-
-            m_FBO->Bind();
-            m_FBO->Clear(ClearFlags::All);
-
-            m_CubeMesh->draw();
-
-            m_FBO->Unbind();
-        }
-
-        m_EquirectangularToCubemapShader->Unuse();
     }*/
 
     void SkyboxHDR::BuildIrradiance()

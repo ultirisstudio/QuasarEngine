@@ -51,7 +51,10 @@ namespace QuasarEngine
         uint32_t m_ID = 0;
 
         std::vector<uint32_t> m_ColorAttachments;
-        uint32_t m_DepthAttachment = 0;
+        
+        uint32_t m_DepthRBO = 0;
+        uint32_t m_DepthTexture = 0;
+        bool     m_DepthIsTexture = false;
 
         std::vector<FramebufferTextureSpecification> m_ColorAttachmentSpecifications;
         FramebufferTextureSpecification m_DepthAttachmentSpecification;
