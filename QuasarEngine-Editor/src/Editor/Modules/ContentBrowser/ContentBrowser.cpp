@@ -1,4 +1,4 @@
-#include "ContentBrowserPanel.h"
+#include "ContentBrowser.h"
 
 #include <iostream>
 
@@ -15,7 +15,7 @@
 
 namespace QuasarEngine
 {
-    ContentBrowserPanel::ContentBrowserPanel(const std::string& projectPath, AssetImporter* importer)
+    ContentBrowser::ContentBrowser(const std::string& projectPath, AssetImporter* importer)
         : m_BaseDirectory((std::filesystem::path(projectPath) / "Assets").lexically_normal())
         , m_CurrentDirectory(m_BaseDirectory)
         , m_AssetImporter(importer)
@@ -44,7 +44,7 @@ namespace QuasarEngine
         m_FileLuaIcon->LoadFromMemory({ img_texture_lua, img_texture_lua_size });
     }
 
-	ContentBrowserPanel::~ContentBrowserPanel()
+	ContentBrowser::~ContentBrowser()
 	{
 		m_DirectoryIcon.reset();
 		m_FilePNGIcon.reset();
@@ -53,22 +53,22 @@ namespace QuasarEngine
 		m_FileOtherIcon.reset();
 	}
 
-	void ContentBrowserPanel::Update()
+	void ContentBrowser::Update()
 	{
-		if (m_TextureViewerPanel)
+		if (m_TextureViewer)
 		{
-			m_TextureViewerPanel->Update();
+            m_TextureViewer->Update();
 		}
 	}
 
-    void ContentBrowserPanel::OnImGuiRender()
+    void ContentBrowser::OnImGuiRender()
     {
-        if (m_TextureViewerPanel)
+        if (m_TextureViewer)
         {
-            if (!m_TextureViewerPanel->IsOpen())
-                m_TextureViewerPanel.reset();
+            if (!m_TextureViewer->IsOpen())
+                m_TextureViewer.reset();
             else
-                m_TextureViewerPanel->OnImGuiRender();
+                m_TextureViewer->OnImGuiRender();
         }
 
         if (m_CodeEditor)
@@ -303,7 +303,7 @@ namespace QuasarEngine
                 {
                     if (ImGui::MenuItem("Modify"))
                     {
-                        m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(WeakCanonical(relativePath));
+                        m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(relativePath));
                     }
                     ImGui::Separator();
                 }
@@ -338,7 +338,7 @@ namespace QuasarEngine
                 }
                 else if (fileType == AssetType::TEXTURE)
                 {
-                    m_TextureViewerPanel = std::make_shared<TextureViewerPanel>(WeakCanonical(relativePath));
+                    m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(relativePath));
                 }
                 else if (fileType == AssetType::SCRIPT)
                 {

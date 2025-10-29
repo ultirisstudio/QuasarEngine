@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <cmath>
-#include "AnimationEditorPanel.h"
+#include "AnimationEditor.h"
 
 namespace QuasarEngine
 {
@@ -204,7 +204,7 @@ namespace QuasarEngine
         return k1.value + (t - k1.time) * dvdt;
     }
 
-    AnimationEditorPanel::AnimationEditorPanel() {
+    AnimationEditor::AnimationEditor() {
         clip_.name = "Default Clip";
         TrackScalar t; t.name = "PositionX"; t.color = ImVec4(0.31f, 0.51f, 1.f, 1.f);
         t.curve.add(0.0f, 0.0f);
@@ -214,11 +214,11 @@ namespace QuasarEngine
         clip_.scalarTracks.push_back(t);
     }
 
-    void AnimationEditorPanel::Update(double dt) {
+    void AnimationEditor::Update(double dt) {
         player_.update(dt, clip_);
     }
 
-    void AnimationEditorPanel::OnImGuiRender() {
+    void AnimationEditor::OnImGuiRender() {
         const ImGuiStyle& S = ImGui::GetStyle();
         auto C = [&](ImGuiCol col)->ImU32 { return ImGui::GetColorU32(S.Colors[col]); };
         grid_.bg = C(ImGuiCol_WindowBg);
@@ -251,7 +251,7 @@ namespace QuasarEngine
         ImGui::PopStyleVar(3);
     }
 
-    void AnimationEditorPanel::DrawToolbar() {
+    void AnimationEditor::DrawToolbar() {
         if (ImGui::BeginTable("ToolbarTbl", 3, ImGuiTableFlags_SizingStretchProp)) {
             ImGui::TableNextColumn();
             ImGui::BeginGroup();
@@ -318,7 +318,7 @@ namespace QuasarEngine
         ImGui::Separator();
     }
 
-    void AnimationEditorPanel::DrawTimeline() {
+    void AnimationEditor::DrawTimeline() {
         ImVec2 start = ImGui::GetCursorScreenPos();
         ImVec2 end = ImVec2(start.x + ImGui::GetContentRegionAvail().x, start.y + timelineHeight_);
         ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -374,7 +374,7 @@ namespace QuasarEngine
         }
     }
 
-    void AnimationEditorPanel::DrawTracks() {
+    void AnimationEditor::DrawTracks() {
         ImGui::BeginChild("Tracks", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollWithMouse);
 
         ImGuiListClipper clipper;
@@ -390,7 +390,7 @@ namespace QuasarEngine
         ImGui::EndChild();
     }
 
-    void AnimationEditorPanel::DrawTrack(TrackScalar& track, int index) {
+    void AnimationEditor::DrawTrack(TrackScalar& track, int index) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 rowStart = ImGui::GetCursorScreenPos();
         const ImVec2 rowEnd = ImVec2(rowStart.x + ImGui::GetContentRegionAvail().x, rowStart.y + trackHeight_);
@@ -428,7 +428,7 @@ namespace QuasarEngine
         ImGui::SetCursorScreenPos(ImVec2(rowStart.x, rowEnd.y + graphHeight_ + trackSpacing_ * 2));
     }
 
-    void AnimationEditorPanel::DrawKeyframeLane(TrackScalar& track, ImVec2 start, ImVec2 end) {
+    void AnimationEditor::DrawKeyframeLane(TrackScalar& track, ImVec2 start, ImVec2 end) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         dl->AddRectFilled(start, end, ImGui::GetColorU32(ImGuiCol_FrameBgHovered), 6.f);
 
@@ -515,7 +515,7 @@ namespace QuasarEngine
         }
     }
 
-    void AnimationEditorPanel::DrawGraph(TrackScalar& track, ImVec2 start, ImVec2 size) {
+    void AnimationEditor::DrawGraph(TrackScalar& track, ImVec2 start, ImVec2 size) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         ImVec2 end = start + size;
 
@@ -616,7 +616,7 @@ namespace QuasarEngine
         }
     }
 
-    void AnimationEditorPanel::DrawValueGrid(ImVec2 start, ImVec2 end) {
+    void AnimationEditor::DrawValueGrid(ImVec2 start, ImVec2 end) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const float width = end.x - start.x;
         const float height = end.y - start.y;
@@ -642,7 +642,7 @@ namespace QuasarEngine
         }
     }
 
-    void AnimationEditorPanel::HandleShortcuts() {
+    void AnimationEditor::HandleShortcuts() {
         ImGuiIO& io = ImGui::GetIO();
         if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) return;
 
@@ -698,64 +698,64 @@ namespace QuasarEngine
         }
     }
 
-    void AnimationEditorPanel::PushUndo() {
+    void AnimationEditor::PushUndo() {
         redoStack_.clear();
         undoStack_.push_back({ clip_, timeOffset_, timeScale_, valueOffset_, valueScale_, player_.time });
         if (undoStack_.size() > 64) undoStack_.erase(undoStack_.begin());
     }
 
-    void AnimationEditorPanel::Undo() {
+    void AnimationEditor::Undo() {
         if (undoStack_.empty()) return;
         redoStack_.push_back({ clip_, timeOffset_, timeScale_, valueOffset_, valueScale_, player_.time });
         auto s = undoStack_.back(); undoStack_.pop_back();
         clip_ = s.state; timeOffset_ = s.tOffset; timeScale_ = s.tScale; valueOffset_ = s.vOffset; valueScale_ = s.vScale; player_.time = s.playhead;
     }
 
-    void AnimationEditorPanel::Redo() {
+    void AnimationEditor::Redo() {
         if (redoStack_.empty()) return;
         undoStack_.push_back({ clip_, timeOffset_, timeScale_, valueOffset_, valueScale_, player_.time });
         auto s = redoStack_.back(); redoStack_.pop_back();
         clip_ = s.state; timeOffset_ = s.tOffset; timeScale_ = s.tScale; valueOffset_ = s.vOffset; valueScale_ = s.vScale; player_.time = s.playhead;
     }
 
-    float AnimationEditorPanel::PixelFromTime(float t, float x0) const {
+    float AnimationEditor::PixelFromTime(float t, float x0) const {
         return x0 + (t - timeOffset_) * pixelsPerSecond_ * timeScale_;
     }
-    float AnimationEditorPanel::TimeFromPixel(float x, float x0) const {
+    float AnimationEditor::TimeFromPixel(float x, float x0) const {
         return timeOffset_ + (x - x0) / (pixelsPerSecond_ * timeScale_);
     }
 
-    float AnimationEditorPanel::PixelFromValue(float v, float y0, float h) const {
+    float AnimationEditor::PixelFromValue(float v, float y0, float h) const {
         float norm = (v - valueOffset_) * valueScale_;
         return y0 + (1.f - norm) * (h - 12.f) + 6.f;
     }
-    float AnimationEditorPanel::ValueFromPixel(float y, float y0, float h) const {
+    float AnimationEditor::ValueFromPixel(float y, float y0, float h) const {
         float norm = 1.f - ((y - y0 - 6.f) / (h - 12.f));
         return (norm / valueScale_) + valueOffset_;
     }
 
-    float AnimationEditorPanel::PixelToTimeUnderMouse(float x0) const {
+    float AnimationEditor::PixelToTimeUnderMouse(float x0) const {
         return TimeFromPixel(ImGui::GetIO().MousePos.x, x0);
     }
 
-    float AnimationEditorPanel::ChooseNiceStep(float visibleSeconds) {
+    float AnimationEditor::ChooseNiceStep(float visibleSeconds) {
         static const float steps[] = { 0.01f, 0.02f, 0.05f, 0.1f, 0.2f, 0.5f, 1.f, 2.f, 5.f, 10.f, 20.f, 30.f, 60.f, 120.f };
         float target = std::max(visibleSeconds / 8.f, 0.001f);
         for (float s : steps) if (s >= target) return s;
         return 120.f;
     }
 
-    float AnimationEditorPanel::SnapTime(float t) const {
+    float AnimationEditor::SnapTime(float t) const {
         float visible = ImGui::GetContentRegionAvail().x / (pixelsPerSecond_ * timeScale_);
         float step = ChooseNiceStep(std::max(visible, 0.001f));
         return std::round(t / step) * step;
     }
-    float AnimationEditorPanel::SnapValue(float v) const {
+    float AnimationEditor::SnapValue(float v) const {
         return std::round(v / 0.1f) * 0.1f;
     }
 
 #ifdef QUASAR_USE_NLOHMANN_JSON
-    nlohmann::json AnimationEditorPanel::ToJson() const {
+    nlohmann::json AnimationEditor::ToJson() const {
         json j;
         j["name"] = clip_.name;
         j["length"] = clip_.length;
@@ -785,7 +785,7 @@ namespace QuasarEngine
         return j;
     }
 
-    void AnimationEditorPanel::FromJson(const nlohmann::json& j) {
+    void AnimationEditor::FromJson(const nlohmann::json& j) {
         if (j.is_discarded()) return;
         clip_.name = j.value("name", "Clip");
         clip_.length = j.value("length", 5.f);
@@ -827,7 +827,7 @@ namespace QuasarEngine
         }
     }
 #else
-    std::string AnimationEditorPanel::ExportText() const {
+    std::string AnimationEditor::ExportText() const {
         std::string s; char buf[256];
         std::snprintf(buf, 256, "Clip %s length=%.3f fps=%.2f\n", clip_.name.c_str(), clip_.length, clip_.fps); s += buf;
         for (size_t i = 0; i < clip_.scalarTracks.size(); ++i) {

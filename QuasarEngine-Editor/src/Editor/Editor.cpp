@@ -68,16 +68,16 @@ namespace QuasarEngine
 
 		m_AssetImporter = std::make_unique<AssetImporter>(m_Specification.ProjectPath);
 
-		m_EntityPropertiePanel = std::make_unique<EntityPropertiePanel>(m_Specification.ProjectPath);
+		m_EntityPropertie = std::make_unique<EntityPropertie>(m_Specification.ProjectPath);
 		m_SceneHierarchy = std::make_unique<SceneHierarchy>();
-		m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Specification.ProjectPath, m_AssetImporter.get());
+		m_ContentBrowser = std::make_unique<ContentBrowser>(m_Specification.ProjectPath, m_AssetImporter.get());
 		m_EditorViewport = std::make_unique<EditorViewport>();
 		m_Viewport = std::make_unique<Viewport>();
 		//m_NodeEditor = std::make_unique<NodeEditor>();
 		//m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
 		//m_HeightMapEditor = std::make_unique<HeightMapEditor>();
-		m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
-		m_SpriteEditor = std::make_unique<SpriteEditor>();
+		//m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
+		//m_SpriteEditor = std::make_unique<SpriteEditor>();
 
 		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
 		m_SceneManager->createNewScene();
@@ -312,15 +312,15 @@ namespace QuasarEngine
 	void Editor::OnDetach()
 	{
 		m_SceneManager.reset();
-		m_EntityPropertiePanel.reset();
+		m_EntityPropertie.reset();
 		m_SceneHierarchy.reset();
-		m_ContentBrowserPanel.reset();
+		m_ContentBrowser.reset();
 		m_EditorViewport.reset();
 		m_Viewport.reset();
 		//m_NodeEditor.reset();
 		//m_AnimationEditorPanel.reset();
 		//m_HeightMapEditor.reset();
-		m_SpriteEditor.reset();
+		//m_SpriteEditor.reset();
 
 		PhysicEngine::Instance().Shutdown();
 		AssetManager::Instance().Shutdown();
@@ -333,14 +333,14 @@ namespace QuasarEngine
 	{
 		Input::Update();
 
-		m_ContentBrowserPanel->Update();
+		m_ContentBrowser->Update();
 		m_EditorCamera->Update();
 		m_SceneManager->Update(dt);
 		m_EditorViewport->Update(*m_EditorCamera);
 		m_Viewport->Update(m_SceneManager->GetActiveScene(), dt);
 		//m_AnimationEditorPanel->Update(dt);
 		//m_HeightMapEditor->Update();
-		m_UserInterfaceEditor->Update();
+		//m_UserInterfaceEditor->Update();
 
 		if (Input::IsKeyPressed(Key::LeftControl))
 		{
@@ -724,21 +724,21 @@ namespace QuasarEngine
 
 		m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
 		m_EditorViewport->OnImGuiRender(*m_EditorCamera, *m_SceneManager, *m_SceneHierarchy);
-		m_EntityPropertiePanel->OnImGuiRender(*m_SceneHierarchy);
+		m_EntityPropertie->OnImGuiRender(*m_SceneHierarchy);
 		m_SceneHierarchy->OnImGuiRender(m_SceneManager->GetActiveScene());
-		m_ContentBrowserPanel->OnImGuiRender();
+		m_ContentBrowser->OnImGuiRender();
 		//m_AnimationEditorPanel->OnImGuiRender();
 		//m_NodeEditor->OnImGuiRender();
 		//m_HeightMapEditor->OnImGuiRender();
 		//m_UserInterfaceEditor->OnImGuiRender();
-		m_SpriteEditor->OnImGuiRender();
+		//m_SpriteEditor->OnImGuiRender();
 
-		try {
+		/*try {
 			m_UserInterfaceEditor->OnImGuiRender("UI Editor");
 		}
 		catch (const std::system_error& e) {
 			OutputDebugStringA(("std::system_error: " + std::string(e.what()) + "\n").c_str());
-		}
+		}*/
 
 		OptionMenu();
 

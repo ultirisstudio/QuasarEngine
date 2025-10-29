@@ -1,4 +1,4 @@
-#include "TextureViewerPanel.h"
+#include "TextureViewer.h"
 
 #include <iostream>
 #include <cstring>
@@ -14,7 +14,7 @@
 
 namespace QuasarEngine
 {
-	std::filesystem::path TextureViewerPanel::FindAssetsRoot(const std::filesystem::path& p)
+	std::filesystem::path TextureViewer::FindAssetsRoot(const std::filesystem::path& p)
 	{
 		std::filesystem::path cur = std::filesystem::absolute(p);
 		while (!cur.empty())
@@ -26,7 +26,7 @@ namespace QuasarEngine
 		return {};
 	}
 
-	std::string TextureViewerPanel::BuildTextureIdFromPath(const std::filesystem::path& absOrRelPath) const
+	std::string TextureViewer::BuildTextureIdFromPath(const std::filesystem::path& absOrRelPath) const
 	{
 		std::error_code ec{};
 		std::filesystem::path abs = absOrRelPath;
@@ -48,12 +48,12 @@ namespace QuasarEngine
 		return "Assets/" + abs.filename().generic_string();
 	}
 
-	TextureViewerPanel::TextureViewerPanel(std::filesystem::path path)
+	TextureViewer::TextureViewer(std::filesystem::path path)
 		: m_TexturePath(std::move(path))
 	{
 	}
 
-	void TextureViewerPanel::Update()
+	void TextureViewer::Update()
 	{
 		if (!m_Texture)
 		{
@@ -81,7 +81,7 @@ namespace QuasarEngine
 		}
 	}
 
-	void TextureViewerPanel::OnImGuiRender()
+	void TextureViewer::OnImGuiRender()
 	{
 		std::string name = m_TexturePath.filename().string() + " (Texture Viewer)";
 		ImGui::Begin(name.c_str());

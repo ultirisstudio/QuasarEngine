@@ -7,15 +7,15 @@
 #include <QuasarEngine/Events/Event.h>
 #include <QuasarEngine/Events/MouseEvent.h>
 
-#include <Editor/Panels/ContentBrowser/ContentBrowserPanel.h>
-#include <Editor/Panels/EntityPropertie/EntityPropertiePanel.h>
-#include <Editor/Panels/SceneHierarchy/SceneHierarchy.h>
-#include <Editor/Panels/Viewport/EditorViewport.h>
-#include <Editor/Panels/Viewport/Viewport.h>
-#include <Editor/Panels/NodeEditor/NodeEditor.h>
-#include <Editor/Panels/AnimationEditor/AnimationEditorPanel.h>
-#include <Editor/Panels/HeightMapEditor/HeightMapEditor.h>
-#include <Editor/Panels/UIEditor/UserInterfaceEditor.h>
+#include <Editor/Modules/ContentBrowser/ContentBrowser.h>
+#include <Editor/Modules/EntityPropertie/EntityPropertie.h>
+#include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
+#include <Editor/Modules/Viewport/EditorViewport.h>
+#include <Editor/Modules/Viewport/Viewport.h>
+#include <Editor/Modules/NodeEditor/NodeEditor.h>
+#include <Editor/Modules/AnimationEditor/AnimationEditor.h>
+#include <Editor/Modules/HeightMapEditor/HeightMapEditor.h>
+#include <Editor/Modules/UIEditor/UserInterfaceEditor.h>
 #include <Editor/Modules/SpriteEditor/SpriteEditor.h>
 
 #include <Editor/SceneManager.h>
@@ -90,16 +90,16 @@ namespace QuasarEngine
 
 		EditorSpecification m_Specification;
 
-		std::unique_ptr<ContentBrowserPanel> m_ContentBrowserPanel;
-		std::unique_ptr<EntityPropertiePanel> m_EntityPropertiePanel;
+		std::unique_ptr<ContentBrowser> m_ContentBrowser;
+		std::unique_ptr<EntityPropertie> m_EntityPropertie;
 		std::unique_ptr<SceneHierarchy> m_SceneHierarchy;
 		std::unique_ptr<EditorViewport> m_EditorViewport;
 		std::unique_ptr<Viewport> m_Viewport;
 		//std::unique_ptr<NodeEditor> m_NodeEditor;
-		//std::unique_ptr<AnimationEditorPanel> m_AnimationEditorPanel;
+		//std::unique_ptr<AnimationEditor> m_AnimationEditor;
 		//std::unique_ptr<HeightMapEditor> m_HeightMapEditor;
-		std::unique_ptr<UserInterfaceEditor> m_UserInterfaceEditor;
-		std::unique_ptr<SpriteEditor> m_SpriteEditor;
+		//std::unique_ptr<UserInterfaceEditor> m_UserInterfaceEditor;
+		//std::unique_ptr<SpriteEditor> m_SpriteEditor;
 
 		std::unique_ptr<SceneManager> m_SceneManager;
 		std::unique_ptr<EditorCamera> m_EditorCamera;

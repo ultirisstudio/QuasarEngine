@@ -1,4 +1,4 @@
-#include "EntityPropertiePanel.h"
+#include "EntityPropertie.h"
 
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -8,7 +8,7 @@
 
 #include <Editor/SceneManager.h>
 #include <Editor/Panels/AllPanels.h>
-#include <Editor/Panels/SceneHierarchy/SceneHierarchy.h>
+#include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
 #include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Core/UUID.h>
@@ -25,25 +25,25 @@ namespace QuasarEngine
         return s;
     }
 
-    bool EntityPropertiePanel::textContainsI(const std::string& hay, const std::string& needle)
+    bool EntityPropertie::textContainsI(const std::string& hay, const std::string& needle)
     {
         if (needle.empty()) return true;
         return toLower(hay).find(toLower(needle)) != std::string::npos;
     }
 
-    EntityPropertiePanel::EntityPropertiePanel(const std::string& projectPath)
+    EntityPropertie::EntityPropertie(const std::string& projectPath)
         : m_ProjectPath(projectPath)
     {
         buildPanels(projectPath);
         buildMenuItems(projectPath);
     }
 
-    EntityPropertiePanel::~EntityPropertiePanel()
+    EntityPropertie::~EntityPropertie()
     {
         AssetManager::Instance().unloadAsset("no_texture.png");
     }
 
-    void EntityPropertiePanel::buildPanels(const std::string& projectPath)
+    void EntityPropertie::buildPanels(const std::string& projectPath)
     {
         m_Panels.reserve(12);
         m_Panels.push_back({ std::make_unique<TransformComponentPanel>(), "Transform" });
@@ -66,7 +66,7 @@ namespace QuasarEngine
 		m_Panels.push_back({ std::make_unique<SpriteComponentPanel>(), "Sprite" });
     }
 
-    void EntityPropertiePanel::buildMenuItems(const std::string& projectPath)
+    void EntityPropertie::buildMenuItems(const std::string& projectPath)
     {
         m_MenuItems.clear();
         m_MenuItems.reserve(16);
@@ -165,13 +165,13 @@ namespace QuasarEngine
             [](Entity& e) { e.AddComponent<SpriteComponent>(); });
     }
 
-    void EntityPropertiePanel::renderPanels(Entity entity)
+    void EntityPropertie::renderPanels(Entity entity)
     {
         for (auto& entry : m_Panels)
             entry.panel->Render(entity);
     }
 
-    void EntityPropertiePanel::renderAddComponentPopup(Entity entity)
+    void EntityPropertie::renderAddComponentPopup(Entity entity)
     {
         if (ImGui::Button("Add Component")) ImGui::OpenPopup("AddComponent");
 
@@ -220,7 +220,7 @@ namespace QuasarEngine
         }
     }
 
-    void EntityPropertiePanel::OnImGuiRender(SceneHierarchy& sceneHierarchy)
+    void EntityPropertie::OnImGuiRender(SceneHierarchy& sceneHierarchy)
     {
         ImGui::Begin("Inspector");
 

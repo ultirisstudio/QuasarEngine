@@ -159,10 +159,10 @@ namespace QuasarEngine
         ImU32 marker = IM_COL32(255, 64, 64, 255);
     };
 
-    class AnimationEditorPanel {
+    class AnimationEditor {
     public:
-        AnimationEditorPanel();
-        ~AnimationEditorPanel() = default;
+        AnimationEditor();
+        ~AnimationEditor() = default;
 
         void Update(double dt);
 
@@ -266,9 +266,9 @@ namespace QuasarEngine
         }
     }
 
-    inline AnimationClip& AnimationEditorPanel::GetClip() { return clip_; }
-    inline const AnimationClip& AnimationEditorPanel::GetClip() const { return clip_; }
-    inline Player& AnimationEditorPanel::GetPlayer() { return player_; }
+    inline AnimationClip& AnimationEditor::GetClip() { return clip_; }
+    inline const AnimationClip& AnimationEditor::GetClip() const { return clip_; }
+    inline Player& AnimationEditor::GetPlayer() { return player_; }
 
     inline glm::vec3 TrackVec3::evaluate(float t) const { return glm::vec3(x.evaluate(t), y.evaluate(t), z.evaluate(t)); }
     inline glm::quat TrackQuat::evaluate(float t) const {

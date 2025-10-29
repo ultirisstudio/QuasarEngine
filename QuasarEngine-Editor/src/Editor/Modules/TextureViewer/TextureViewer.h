@@ -7,11 +7,11 @@
 
 namespace QuasarEngine
 {
-	class TextureViewerPanel
+	class TextureViewer
 	{
 	public:
-		TextureViewerPanel(std::filesystem::path path);
-		~TextureViewerPanel() = default;
+		TextureViewer(std::filesystem::path path);
+		~TextureViewer() = default;
 
 		void Update();
 

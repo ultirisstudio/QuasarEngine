@@ -2,20 +2,20 @@
 
 #include <filesystem>
 
-#include <Editor/Panels/TextureViewer/TextureViewerPanel.h>
+#include <Editor/Modules/TextureViewer/TextureViewer.h>
 
 #include <QuasarEngine/Resources/Texture2D.h>
 
 #include "Editor/Importer/AssetImporter.h"
-#include "Editor/Panels/CodeEditor/CodeEditor.h"
+#include "Editor/Modules/CodeEditor/CodeEditor.h"
 
 namespace QuasarEngine
 {
-	class ContentBrowserPanel
+	class ContentBrowser
 	{
 	public:
-		ContentBrowserPanel(const std::string& projectPath, AssetImporter* importer);
-		~ContentBrowserPanel();
+		ContentBrowser(const std::string& projectPath, AssetImporter* importer);
+		~ContentBrowser();
 
 		void Update();
 
@@ -34,7 +34,7 @@ namespace QuasarEngine
 		std::shared_ptr<Texture2D> m_FileSceneIcon;
 		std::shared_ptr<Texture2D> m_FileOtherIcon;
 
-		std::shared_ptr<TextureViewerPanel> m_TextureViewerPanel;
+		std::shared_ptr<TextureViewer> m_TextureViewer;
 		std::shared_ptr<CodeEditor> m_CodeEditor;
 
 		AssetImporter* m_AssetImporter;

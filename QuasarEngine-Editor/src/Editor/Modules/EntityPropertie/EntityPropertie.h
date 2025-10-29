@@ -12,11 +12,11 @@ namespace QuasarEngine
     class Entity;
     class IComponentPanel;
 
-    class EntityPropertiePanel
+    class EntityPropertie
     {
     public:
-        explicit EntityPropertiePanel(const std::string& projectPath);
-        ~EntityPropertiePanel();
+        explicit EntityPropertie(const std::string& projectPath);
+        ~EntityPropertie();
 
         void OnImGuiRender(SceneHierarchy& sceneHierarchy);
 

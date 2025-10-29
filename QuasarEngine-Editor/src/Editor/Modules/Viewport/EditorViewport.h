@@ -4,7 +4,7 @@
 
 #include <Editor/SceneManager.h>
 #include <Editor/EditorCamera.h>
-#include <Editor/Panels/SceneHierarchy/SceneHierarchy.h>
+#include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
 
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Renderer/Framebuffer.h>
