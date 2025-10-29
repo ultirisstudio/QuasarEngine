@@ -40,13 +40,16 @@ namespace QuasarEngine
 	enum class HAlign { Left, Center, Right };
 	enum class VAlign { Top, Middle, Baseline, Bottom };
 
-	class UIElement {
+	class UIElement : public std::enable_shared_from_this<UIElement> {
+		using ChildList = std::vector<std::shared_ptr<UIElement>>;
 	public:
 		explicit UIElement(std::string id) : m_Id(std::move(id)) {}
 		virtual ~UIElement() = default;
 
 		void AddChild(std::shared_ptr<UIElement> c) { m_Children.push_back(std::move(c)); }
-		const std::vector<std::shared_ptr<UIElement>>& Children() const { return m_Children; }
+
+		const ChildList& Children() const { return m_Children; }
+		ChildList& Children() { return m_Children; }
 
 		virtual void Measure(UILayoutContext& ctx);
 		virtual void Arrange(const Rect& parentRect);
@@ -78,9 +81,11 @@ namespace QuasarEngine
 		UIStyle& Style() { return m_Style; }
 
 		const UITransform& Transform() const { return m_Transform; }
+
 		const UIStyle& Style()     const { return m_Style; }
 
 		const std::string& Id() const { return m_Id; }
+		void SetId(const std::string& id) { m_Id = id; }
 
 	protected:
 		std::string m_Id;
@@ -94,6 +99,6 @@ namespace QuasarEngine
 		HAlign m_TextAlignH = HAlign::Left;
 		VAlign m_TextAlignV = VAlign::Top;
 
-		std::vector<std::shared_ptr<UIElement>> m_Children;
+		ChildList m_Children;
 	};
 }

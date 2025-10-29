@@ -90,6 +90,9 @@ project "QuasarEngine-Core"
 		"%{Library.Vulkan}" --,
 		-- "%{Library.VulkanUtils}"
 	}
+	
+	filter "toolset:msc*"
+		buildoptions { "/bigobj" }
 
 	filter "system:windows"
 		systemversion "latest"

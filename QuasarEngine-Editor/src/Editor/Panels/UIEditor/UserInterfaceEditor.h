@@ -9,84 +9,36 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <fstream>
 #include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
+
+#include <QuasarEngine/UI/UIElement.h>
+#include <QuasarEngine/UI/UIContainer.h>
+#include <QuasarEngine/UI/UIButton.h>
+#include <QuasarEngine/UI/UIText.h>
+#include <QuasarEngine/UI/UITextInput.h>
+#include <QuasarEngine/UI/UICheckbox.h>
+#include <QuasarEngine/UI/UISlider.h>
+#include <QuasarEngine/UI/UIProgressBar.h>
+#include <QuasarEngine/UI/UITabBar.h>
+#include <QuasarEngine/UI/UIMenu.h>
+#include <QuasarEngine/UI/UITooltipLayer.h>
+#include <QuasarEngine/UI/UIImage.h>
+#include <QuasarEngine/UI/UISeparator.h>
+
+#include <QuasarEngine/UI/UISerialize.h>
 
 namespace QuasarEngine
 {
     class UserInterfaceEditor
     {
     public:
-        enum class UIType : uint8_t
-        {
-            Button,
-            Text,
-            Checkbox,
-            ProgressBar,
-            Separator,
-            Image,
-            Slider,
-            InputText
-        };
-
-
-        struct UIFlags
-        {
-            bool visible = true;
-            bool disabled = false;
-            bool sameLine = false;
-        };
-
-        struct UIRect
-        {
-            float x = 20.0f;
-            float y = 20.0f;
-            float w = 120.0f;
-            float h = 32.0f;
-        };
-
-        enum class AlignH : uint8_t { Left, Center, Right };
-        enum class AlignV : uint8_t { Top, Middle, Bottom };
-
-        struct UIElement
-        {
-            uint32_t    id = 0;
-            UIType      type = UIType::Button;
-            UIRect      rect;
-            UIFlags     flags;
-
-            char        label[128] = "Button";
-            bool        checked = false;
-            float       fraction = 0.5f;
-            char        overlay[64] = "";
-
-            AlignH      alignH = AlignH::Center;
-            AlignV      alignV = AlignV::Middle;
-
-            float       fontPx = 16.0f;
-
-            char        imagePath[260] = "";
-            char        imageId[260] = "";
-            bool        imageKeepAspect = true;
-            float       imageTint[4] = { 1,1,1,1 };
-
-            float       sliderMin = 0.0f;
-            float       sliderMax = 1.0f;
-            float       sliderValue = 0.5f;
-            char        sliderFormat[16] = "%.2f";
-
-            char        inputBuffer[256] = "";
-            uint32_t    inputMaxLen = 256;
-            bool        inputPassword = false;
-            bool        inputMultiline = false;
-        };
-
         UserInterfaceEditor();
         ~UserInterfaceEditor() = default;
 
@@ -101,10 +53,9 @@ namespace QuasarEngine
 
     private:
         mutable std::mutex m_Mutex;
-        std::vector<UIElement> m_Elements;
-        uint32_t m_NextId = 1;
-
-        int      m_SelectedIndex = -1;
+        std::shared_ptr<UIElement> m_Root;
+        std::weak_ptr<UIElement>   m_Selected;
+        std::string                m_OpenedPath;
 
         ImVec2   m_CanvasPos{ 0,0 };
         ImVec2   m_CanvasSize{ 0,0 };
@@ -123,18 +74,11 @@ namespace QuasarEngine
         uint32_t m_DesignW = 1920;
         uint32_t m_DesignH = 1080;
 
-        struct Snapshot
-        {
-            std::vector<UIElement> elements;
-            int selected = -1;
-            uint32_t nextId = 1;
-        };
-        std::vector<Snapshot> m_Undo;
-        std::vector<Snapshot> m_Redo;
+        std::vector<std::vector<uint8_t>> m_Undo;
+        std::vector<std::vector<uint8_t>> m_Redo;
 
-        std::string m_OpenedPath;
+        std::string m_SelectedIdCache;
 
-    private:
         static inline float Saturate(float v) { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); }
         static inline float Snap(float v, float step) { return step > 1e-6f ? std::round(v / step) * step : v; }
 
@@ -145,19 +89,20 @@ namespace QuasarEngine
         void DrawPreviewPanel(float width, float height);
 
         void DrawGrid(ImDrawList* dl, ImVec2 origin, ImVec2 size, float step) const;
-        void DrawElement(ImDrawList* dl, const UIElement& e, bool selected) const;
-        void DrawResizeHandles(ImDrawList* dl, const UIElement& e) const;
-        bool HitTest(const UIElement& e, ImVec2 p) const;
-        int  HitTestHandle(const UIElement& e, ImVec2 p) const;
+        void DrawElementBox(ImDrawList* dl, UIElement* e, bool selected) const;
+        void DrawResizeHandles(ImDrawList* dl, UIElement* e) const;
 
-        int  AddElement(UIType type, ImVec2 canvasPt);
+        bool HitTest(UIElement* e, ImVec2 canvasPt) const;
+        int  HitTestHandle(UIElement* e, ImVec2 screen) const;
+
+        std::shared_ptr<UIElement> CreateElement(UISerType type, const glm::vec2& pos);
         void DeleteSelected();
         void DuplicateSelected();
         void BringToFront();
         void SendToBack();
 
-        void Select(int idx);
-        void StartDrag(ImVec2 mouseCanvas, const UIElement& e);
+        void Select(const std::shared_ptr<UIElement>& e);
+        void StartDrag(ImVec2 mouseCanvas, UIElement* e);
         void StartResize(int handleIndex);
         void ApplyDrag(ImVec2 mouseCanvas);
         void ApplyResize(ImVec2 mouseCanvas);
@@ -166,16 +111,28 @@ namespace QuasarEngine
         void DoUndo();
         void DoRedo();
 
-        bool Serialize(const char* path) const;
-        bool Deserialize(const char* path);
+        bool SerializeToBuffer(const std::shared_ptr<UIElement>& root, std::vector<uint8_t>& out) const;
+        std::shared_ptr<UIElement> DeserializeFromBuffer(const uint8_t* data, size_t size) const;
 
         ImVec2 ScreenToCanvas(ImVec2 screen) const;
         ImVec2 CanvasToScreen(ImVec2 canvas) const;
-        void   ClampRect(UIRect& r) const;
-        static const char* TypeToString(UIType t);
-        static UIType      StringToType(const char* s);
+        void   ClampRect(Rect& r) const;
 
-        ImVec2 ComputeAlignedTextPos(const ImVec2& rectMin, const ImVec2& rectSize, const char* text, AlignH ah, AlignV av, float fontScale) const;
+        void   FlattenZOrder(const std::shared_ptr<UIElement>& root, std::vector<UIElement*>& out) const;
+        std::shared_ptr<UIElement> FindById(const std::string& id) const;
+        std::shared_ptr<UIElement> ParentOf(const std::shared_ptr<UIElement>& node);
+        std::shared_ptr<const UIElement> ParentOf(const std::shared_ptr<const UIElement>& node) const;
+
+        bool   Reparent(const std::shared_ptr<UIElement>& node, const std::shared_ptr<UIElement>& newParent, int insertIndex = -1);
+        bool   ReorderWithinParent(const std::shared_ptr<UIElement>& node, int newIndex);
+
+        static const char* SerTypeToString(UISerType t);
+        static UISerType   StringToSerType(const char* s);
+        static ImU32       ToImColor(const UIColor& c);
+        static std::string MakeUniqueId(const std::string& base, const std::shared_ptr<UIElement>& root);
+
+        void DrawCommonProperties(UIElement& e, bool& anyChanged);
+        void DrawTypedProperties(UIElement& e, bool& anyChanged);
 
         struct FontScaleScope {
             float prev = 1.f;
@@ -185,7 +142,6 @@ namespace QuasarEngine
             }
             ~FontScaleScope() { ImGui::SetWindowFontScale(prev); }
         };
-
         void RenderRuntimePreview(float scale, ImVec2 offset) const;
     };
 }

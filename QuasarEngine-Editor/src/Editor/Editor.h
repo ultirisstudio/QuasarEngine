@@ -98,7 +98,7 @@ namespace QuasarEngine
 		//std::unique_ptr<NodeEditor> m_NodeEditor;
 		//std::unique_ptr<AnimationEditorPanel> m_AnimationEditorPanel;
 		//std::unique_ptr<HeightMapEditor> m_HeightMapEditor;
-		//std::unique_ptr<UserInterfaceEditor> m_UserInterfaceEditor;
+		std::unique_ptr<UserInterfaceEditor> m_UserInterfaceEditor;
 		std::unique_ptr<SpriteEditor> m_SpriteEditor;
 
 		std::unique_ptr<SceneManager> m_SceneManager;

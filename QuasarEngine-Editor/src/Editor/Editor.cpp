@@ -76,7 +76,7 @@ namespace QuasarEngine
 		//m_NodeEditor = std::make_unique<NodeEditor>();
 		//m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
 		//m_HeightMapEditor = std::make_unique<HeightMapEditor>();
-		//m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
+		m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
 		m_SpriteEditor = std::make_unique<SpriteEditor>();
 
 		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
@@ -340,7 +340,7 @@ namespace QuasarEngine
 		m_Viewport->Update(m_SceneManager->GetActiveScene(), dt);
 		//m_AnimationEditorPanel->Update(dt);
 		//m_HeightMapEditor->Update();
-		//m_UserInterfaceEditor->Update();
+		m_UserInterfaceEditor->Update();
 
 		if (Input::IsKeyPressed(Key::LeftControl))
 		{
@@ -733,12 +733,12 @@ namespace QuasarEngine
 		//m_UserInterfaceEditor->OnImGuiRender();
 		m_SpriteEditor->OnImGuiRender();
 
-		/*try {
+		try {
 			m_UserInterfaceEditor->OnImGuiRender("UI Editor");
 		}
 		catch (const std::system_error& e) {
 			OutputDebugStringA(("std::system_error: " + std::string(e.what()) + "\n").c_str());
-		}*/
+		}
 
 		OptionMenu();
 

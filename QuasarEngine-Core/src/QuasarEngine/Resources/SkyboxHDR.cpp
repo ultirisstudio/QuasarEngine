@@ -817,7 +817,7 @@ namespace QuasarEngine
         }
     }
 
-    void SkyboxHDR::BuildEnvironment()
+    /*void SkyboxHDR::BuildEnvironment()
     {
         if (!m_HDRTexture || !m_EnvCubemap || !m_FBO || !m_EquirectangularToCubemapShader) return;
 
@@ -857,9 +857,9 @@ namespace QuasarEngine
         }
 
         m_EquirectangularToCubemapShader->Unuse();
-    }
+    }*/
 
-    /*void SkyboxHDR::BuildEnvironment()
+    void SkyboxHDR::BuildEnvironment()
     {
         if (!m_HDRTexture || !m_EnvCubemap) return;
 
@@ -919,7 +919,7 @@ namespace QuasarEngine
 
         glDeleteRenderbuffers(1, &rbo);
         glDeleteFramebuffers(1, &fbo);
-    }*/
+    }
 
     void SkyboxHDR::BuildIrradiance()
     {

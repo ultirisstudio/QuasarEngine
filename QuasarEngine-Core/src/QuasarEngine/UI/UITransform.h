@@ -2,10 +2,21 @@
 
 #include <cstdint>
 
+#include <glm/glm.hpp>
+
 namespace QuasarEngine
 {
 	struct Vec2 {
-		float x, y;
+		float x{ 0.f }, y{ 0.f };
+
+		Vec2() = default;
+		Vec2(float x_, float y_) : x(x_), y(y_) {}
+		Vec2(const glm::vec2& v) : x(v.x), y(v.y) {}
+
+		Vec2& operator=(const glm::vec2& v) { x = v.x; y = v.y; return *this; }
+
+		Vec2& operator+=(const Vec2& o) { x += o.x; y += o.y; return *this; }
+		Vec2& operator+=(const glm::vec2& o) { x += o.x; y += o.y; return *this; }
 	};
 
 	struct Rect {

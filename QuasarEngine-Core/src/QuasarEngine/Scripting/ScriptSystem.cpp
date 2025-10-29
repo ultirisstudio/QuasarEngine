@@ -3,7 +3,14 @@
 
 #include <iostream>
 
-#include <QuasarEngine/Entity/AllComponents.h>
+#include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>
+#include <QuasarEngine/Entity/Components/MeshComponent.h>
+#include <QuasarEngine/Entity/Components/MaterialComponent.h>
+#include <QuasarEngine/Entity/Components/MeshRendererComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
+#include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Entity/Entity.h>
@@ -12,6 +19,16 @@
 #include <glm/gtx/compatibility.hpp>
 
 #include <QuasarEngine/Physic/PhysicEngine.h>
+
+#include <QuasarEngine/UI/UIElement.h>
+#include <QuasarEngine/UI/UIButton.h>
+#include <QuasarEngine/UI/UICheckbox.h>
+#include <QuasarEngine/UI/UITextInput.h>
+#include <QuasarEngine/UI/UIProgressBar.h>
+#include <QuasarEngine/UI/UIContainer.h>
+#include <QuasarEngine/UI/UISlider.h>
+#include <QuasarEngine/UI/UIText.h>
+#include <QuasarEngine/UI/UISystem.h>
 
 namespace QuasarEngine
 {
@@ -157,11 +174,14 @@ namespace QuasarEngine
         g_hasComponentFuncs["AnimationComponent"] = MakeHas<AnimationComponent>();
         g_addComponentFuncs["AnimationComponent"] = MakeAddOptionalArg<AnimationComponent, std::string>();
 
+		m_UISystem = Renderer::Instance().m_SceneData.m_UI.get();
+
         BindInputToLua(m_Lua);
         BindMathToLua(m_Lua);
         BindFunctionToLua(m_Lua);
         BindEntityToLua(m_Lua);
         BindPhysicsToLua(m_Lua);
+        BindUIToLua(m_Lua);
     }
 
     void ScriptSystem::RegisterEntityScript(ScriptComponent& scriptComponent)
@@ -921,5 +941,149 @@ namespace QuasarEngine
             });
 
         lua_state["physics"] = physics;
+    }
+    
+    void ScriptSystem::BindUIToLua(sol::state& L)
+    {
+        L.new_usertype<UIElement>("UIElement", sol::no_constructor,
+            "addChild", [](std::shared_ptr<UIElement>& self, std::shared_ptr<UIElement> child) {
+                if (child) self->AddChild(child);
+            },
+            
+            "set_pos", [](std::shared_ptr<UIElement>& self, float x, float y) { self->Transform().pos = { x, y }; },
+            "set_size", [](std::shared_ptr<UIElement>& self, float w, float h) { self->Transform().size = { w, h }; },
+            "rect", [](std::shared_ptr<UIElement>& self) {
+                const auto& r = self->Transform().rect;
+                return std::make_tuple(r.x, r.y, r.w, r.h);
+            },
+            
+            "set_bg", [](std::shared_ptr<UIElement>& self, float r, float g, float b, float a) { self->Style().bg = { r,g,b,a }; },
+            "set_fg", [](std::shared_ptr<UIElement>& self, float r, float g, float b, float a) { self->Style().fg = { r,g,b,a }; },
+            "set_padding", [](std::shared_ptr<UIElement>& self, float p) { self->Style().padding = p; },
+            
+            "set_focusable", [](std::shared_ptr<UIElement>& self, bool f) { self->SetFocusable(f); },
+            "set_tab_index", [](std::shared_ptr<UIElement>& self, int i) { self->SetTabIndex(i); },
+            "set_enabled", [](std::shared_ptr<UIElement>& self, bool e) { self->SetEnabled(e); }
+        );
+
+        L.new_usertype<UIContainer>("UIContainer", sol::no_constructor,
+            sol::base_classes, sol::bases<UIElement>(),
+            "set_layout", [](std::shared_ptr<UIContainer>& c, const std::string& layout) {
+                c->layout = (layout == "horizontal" || layout == "Horizontal")
+                    ? UILayoutType::Horizontal : UILayoutType::Vertical;
+            },
+            "set_gap", [](std::shared_ptr<UIContainer>& c, float gap) { c->gap = gap; }
+        );
+
+        L.new_usertype<UIButton>("UIButton", sol::no_constructor,
+            sol::base_classes, sol::bases<UIElement>(),
+            "set_label", [](std::shared_ptr<UIButton>& b, const std::string& s) { b->label = s; },
+            "on_click", [](std::shared_ptr<UIButton>& b, sol::function fn) {
+                b->onClick = [fn]() mutable { if (fn.valid()) fn(); };
+            }
+        );
+
+        L.new_usertype<UIText>("UIText", sol::no_constructor,
+            sol::base_classes, sol::bases<UIElement>(),
+            "set_text", [](std::shared_ptr<UIText>& t, const std::string& s) { t->text = s; }
+        );
+
+        L.new_usertype<UITextInput>("UITextInput", sol::no_constructor,
+            sol::base_classes, sol::bases<UIElement>(),
+            "set_text", [](std::shared_ptr<UITextInput>& t, const std::string& s) { t->text = s; },
+            "get_text", [](std::shared_ptr<UITextInput>& t) { return t->text; }
+        );
+
+        L.new_usertype<UICheckbox>("UICheckbox", sol::no_constructor,
+            sol::base_classes, sol::bases<UIElement>(),
+            "set_label", [](std::shared_ptr<UICheckbox>& c, const std::string& s) { c->label = s; },
+            "set_checked", [](std::shared_ptr<UICheckbox>& c, bool v) { c->checked = v; },
+            "is_checked", [](std::shared_ptr<UICheckbox>& c) { return c->checked; }
+        );
+
+        L.new_usertype<UISlider>("UISlider", sol::no_constructor,
+            sol::base_classes, sol::bases<UIElement>(),
+            "set_range", [](std::shared_ptr<UISlider>& s, float min, float max) { s->min = min; s->max = max; },
+            "set_value", [](std::shared_ptr<UISlider>& s, float v) { s->value = v; },
+            "get_value", [](std::shared_ptr<UISlider>& s) { return s->value; }
+        );
+
+        L.new_usertype<UIProgressBar>("UIProgressBar", sol::no_constructor,
+            sol::base_classes, sol::bases<UIElement>(),
+            "set_range", [](std::shared_ptr<UIProgressBar>& p, float min, float max) { p->min = min; p->max = max; },
+            "set_value", [](std::shared_ptr<UIProgressBar>& p, float v) { p->value = v; }
+        );
+
+        sol::table ui = L.create_table();
+
+        ui.set_function("set_root", [this](std::shared_ptr<UIElement> root) {
+            if (m_UISystem && root) {
+                m_UISystem->SetRoot(std::move(root));
+            }
+            });
+
+        ui.set_function("container", [](sol::optional<std::string> id, sol::optional<std::string> layout) {
+            auto c = std::make_shared<UIContainer>(id.value_or("container"));
+            if (layout) c->layout = (*layout == "horizontal" || *layout == "Horizontal")
+                ? UILayoutType::Horizontal : UILayoutType::Vertical;
+            return c;
+            });
+
+        ui.set_function("text", [](sol::optional<std::string> id, sol::optional<std::string> value) {
+            auto t = std::make_shared<UIText>(id.value_or("text"));
+            t->text = value.value_or("");
+            return t;
+            });
+
+        ui.set_function("text_input", [](sol::optional<std::string> id, sol::optional<std::string> value) {
+            auto t = std::make_shared<UITextInput>(id.value_or("textinput"));
+            if (value) t->text = *value;
+            return t;
+            });
+
+        ui.set_function("button", [](sol::optional<std::string> id,
+            sol::optional<std::string> label,
+            sol::optional<sol::function> cb) {
+                auto b = std::make_shared<UIButton>(id.value_or("button"));
+                if (label) b->label = *label;
+                if (cb && cb->valid()) {
+                    sol::function f = *cb;
+                    b->onClick = [f]() mutable { if (f.valid()) f(); };
+                }
+                return b;
+            });
+
+        ui.set_function("checkbox", [](sol::optional<std::string> id,
+            sol::optional<std::string> label,
+            sol::optional<bool> checked) {
+                auto c = std::make_shared<UICheckbox>(id.value_or("checkbox"));
+                if (label)   c->label = *label;
+                if (checked) c->checked = *checked;
+                return c;
+            });
+
+        ui.set_function("slider", [](sol::optional<std::string> id,
+            sol::optional<float> min,
+            sol::optional<float> max,
+            sol::optional<float> value) {
+                auto s = std::make_shared<UISlider>(id.value_or("slider"));
+                if (min)   s->min = *min;
+                if (max)   s->max = *max;
+                if (value) s->value = *value;
+                return s;
+            });
+
+        ui.set_function("progress", [](sol::optional<std::string> id,
+            sol::optional<float> min,
+            sol::optional<float> max,
+            sol::optional<float> value) {
+                auto p = std::make_shared<UIProgressBar>(id.value_or("progress"));
+                if (min)   p->min = *min;
+                if (max)   p->max = *max;
+                if (value) p->value = *value;
+                return p;
+            });
+
+        L["ui"] = ui;
     }
 }

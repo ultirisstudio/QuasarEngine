@@ -3,10 +3,13 @@
 #include <entt.hpp>
 #include <sol/sol.hpp>
 
+#include <memory>
+
 namespace QuasarEngine
 {
     class ScriptComponent;
 	class Entity;
+    class UISystem;
 
     class ScriptSystem
     {
@@ -41,10 +44,13 @@ namespace QuasarEngine
         void BindFunctionToLua(sol::state& lua_state);
         void BindEntityToLua(sol::state& lua_state);
         void BindPhysicsToLua(sol::state& lua_state);
+        void BindUIToLua(sol::state& lua_state);
 
         std::unique_ptr<entt::registry> m_Registry;
 
         sol::state m_Lua;
+
+        UISystem* m_UISystem = nullptr;
     };
 }
 
