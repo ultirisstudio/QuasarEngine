@@ -44,9 +44,6 @@ namespace QuasarEngine {
         unsigned int GetWidth()  const noexcept { return m_Data.Width; }
         unsigned int GetHeight() const noexcept { return m_Data.Height; }
 
-        template<typename T>
-        T* GetContextAs() const { return dynamic_cast<T*>(m_Context.get()); }
-
         void SetVSync(bool enabled);
         bool IsVSync() const noexcept { return m_Data.VSync; }
 
@@ -57,7 +54,25 @@ namespace QuasarEngine {
 
         bool WaitEventsTimeout(double seconds);
 
-        void SetMaximized(bool maximized);
+        void Minimize();
+        void Maximize();
+        void Restore();
+        bool IsMaximized() const;
+        void ToggleMaximize();
+
+        void SetPosition(int x, int y);
+        void GetPosition(int& x, int& y) const;
+        void MoveBy(int dx, int dy);
+
+        void SetDecorated(bool decorated);
+        void SetResizable(bool resizable);
+        void SetFloating(bool floating);
+        void SetOpacity(float alpha);
+        void SetSizeLimits(int minW, int minH, int maxW, int maxH);
+        void SetAspectRatio(int numer, int denom);
+        void CenterOnPrimaryMonitor();
+
+        void ToggleMaximizeWorkArea();
 
         void* GetNativeWindow() const noexcept { return m_Window; }
 
@@ -74,6 +89,9 @@ namespace QuasarEngine {
         GLFWwindow* m_Window = nullptr;
         WindowData  m_Data{};
         std::unique_ptr<GraphicsContext> m_Context;
+
+        int  m_PrevX = 0, m_PrevY = 0, m_PrevW = 0, m_PrevH = 0;
+        bool m_CustomMaximized = false;
 
         static int s_GLFWRefCount;
     };

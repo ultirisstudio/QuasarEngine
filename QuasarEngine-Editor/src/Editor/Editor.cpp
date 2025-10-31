@@ -36,6 +36,90 @@
 
 namespace QuasarEngine
 {
+	static void DrawToolbarBg(const ImVec2& min, const ImVec2& max)
+	{
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImU32 top = ImGui::GetColorU32(ImVec4(0.14f, 0.14f, 0.16f, 1.00f));
+		ImU32 bot = ImGui::GetColorU32(ImVec4(0.10f, 0.10f, 0.12f, 1.00f));
+		ImU32 edge = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.35f));
+		dl->AddRectFilledMultiColor(min, max, top, top, bot, bot);
+		dl->AddLine(ImVec2(min.x, max.y - 0.5f), ImVec2(max.x, max.y - 0.5f), edge, 1.0f);
+	}
+
+	static void ToolbarSeparator(float h)
+	{
+		ImGui::Dummy(ImVec2(4, h)); ImGui::SameLine();
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		dl->AddLine(ImVec2(p.x, p.y), ImVec2(p.x, p.y + h), ImGui::GetColorU32(ImGuiCol_Border), 1.0f);
+		ImGui::SameLine(); ImGui::Dummy(ImVec2(6, h)); ImGui::SameLine();
+	}
+
+	static void Badge(const char* label, const char* value)
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6);
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1, 1, 1, 0.06f));
+		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+		ImGui::BeginDisabled();
+		ImGui::Text("%s", label); ImGui::SameLine(0, 6); ImGui::Text("%s", value);
+		ImGui::EndDisabled();
+		ImGui::PopStyleColor(2); ImGui::PopStyleVar();
+	}
+
+	static bool MenuButton(const char* label, float h)
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6);
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12, (h - ImGui::GetTextLineHeight()) * 0.5f));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.06f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.12f));
+		bool pressed = ImGui::Button(label);
+		ImGui::PopStyleColor(3); ImGui::PopStyleVar(2);
+		return pressed;
+	}
+
+	struct AnchorRect { ImVec2 min, max; float width() const { return max.x - min.x; } float height() const { return max.y - min.y; } };
+
+	static AnchorRect LastItemAnchor()
+	{
+		AnchorRect r;
+		r.min = ImGui::GetItemRectMin();
+		r.max = ImGui::GetItemRectMax();
+		return r;
+	}
+
+	static bool BeginDropdown(const char* popup_id, const AnchorRect& anchor,
+		float y_gap = 4.0f, float min_width = 200.0f, bool match_button_width = true)
+	{
+		if (!ImGui::IsPopupOpen(popup_id))
+			return false;
+
+		float w = match_button_width ? ImMax(anchor.width(), min_width) : min_width;
+		ImVec2 pos = ImVec2(anchor.min.x, anchor.max.y + y_gap);
+
+		ImGui::SetNextWindowPos(pos, ImGuiCond_Always, ImVec2(0, 0));
+		ImGui::SetNextWindowSize(ImVec2(w, 0));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 6));
+		ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.12f, 0.12f, 0.14f, 0.98f));
+		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1, 1, 1, 0.25f));
+
+		if (ImGui::BeginPopup(popup_id))
+			return true;
+
+		ImGui::PopStyleColor(2);
+		ImGui::PopStyleVar(3);
+		return false;
+	}
+
+	static void EndDropdown()
+	{
+		ImGui::EndPopup();
+		ImGui::PopStyleColor(2);
+		ImGui::PopStyleVar(3);
+	}
+
 	Editor::Editor(const EditorSpecification& spec)
 		: Layer("Editor"),
 		m_Specification(spec),
@@ -290,6 +374,25 @@ namespace QuasarEngine
 		Logger::enableColors(oldColors);
 		Logger::setAbortOnFatal(oldAbort);
 		Q_INFO("Logger tests terminé.");*/
+
+		/*ImVec4 kToolbarTop = ImVec4(0.14f, 0.14f, 0.16f, 1.0f);
+		ImVec4 kToolbarText = ImGui::GetStyle().Colors[ImGuiCol_Text];
+
+		#if defined(_WIN32)
+		{
+			auto& appWin = QuasarEngine::Application::Get().GetWindow();
+			GLFWwindow* nativeWin = (GLFWwindow*)appWin.GetNativeWindow();
+
+			ImVec4 toolbarTop = ImVec4(0.14f, 0.14f, 0.16f, 1.0f);
+			ImVec4 captionText = ImGui::GetStyle().Colors[ImGuiCol_Text];
+
+			DWORD border = QE_ColorRefFromImVec4(toolbarTop);
+			DWORD caption = border;       // souvent on aligne border & caption
+			DWORD text = QE_ColorRefFromImVec4(captionText);
+
+			Application::Get().GetWindow().ApplyDwmFrameColors(border, caption, text);
+		}
+		#endif*/
 	}
 
 	void Editor::SetupAssets(const std::filesystem::path& chemin) {
@@ -586,6 +689,8 @@ namespace QuasarEngine
 		if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
 			window_flags |= ImGuiWindowFlags_NoBackground;
 
+		window_flags &= ~ImGuiWindowFlags_MenuBar;
+
 		if (!opt_padding)
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("DockSpace", &dockspaceOpen, window_flags);
@@ -594,6 +699,176 @@ namespace QuasarEngine
 
 		if (opt_fullscreen)
 			ImGui::PopStyleVar(2);
+
+		const float toolH = 44.0f;
+		const float itemH = 36.0f;
+		ImVec2 toolMin = ImGui::GetCursorScreenPos();
+		ImVec2 toolMax = ImVec2(toolMin.x + ImGui::GetContentRegionAvail().x, toolMin.y + toolH);
+
+		ImGui::BeginChild("TopToolbar", ImVec2(0, toolH), false,
+			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+		DrawToolbarBg(toolMin, toolMax);
+
+		ImGui::SetCursorScreenPos(ImVec2(toolMin.x + 12, toolMin.y + (toolH - itemH) * 0.5f));
+
+		if (MenuButton("Project", itemH)) ImGui::OpenPopup("ProjectMenu");
+		AnchorRect projA = LastItemAnchor();
+		if (BeginDropdown("ProjectMenu", projA, 4.0f, 200.0f, true))
+		{
+			if (ImGui::MenuItem("Preferences...")) { m_optionMenu = true; menu_state.set(MenuType::OPTION_MENU); }
+			if (ImGui::MenuItem("Quit")) { QuasarEngine::Application::Get().Close(); }
+			EndDropdown();
+		}
+
+		ImGui::SameLine();
+
+		if (MenuButton("Asset", itemH)) ImGui::OpenPopup("AssetMenu");
+		AnchorRect assetA = LastItemAnchor();
+		if (BeginDropdown("AssetMenu", assetA, 4.0f, 200.0f, true))
+		{
+			if (ImGui::MenuItem("Import")) { m_AssetImporter->ImportAsset(); }
+			EndDropdown();
+		}
+
+		ImGui::SameLine();
+
+		if (MenuButton("Scene", itemH)) ImGui::OpenPopup("SceneMenu");
+		AnchorRect sceneA = LastItemAnchor();
+		if (BeginDropdown("SceneMenu", sceneA, 4.0f, 220.0f, true))
+		{
+			if (ImGui::MenuItem("New Scene"))
+			{
+				m_SceneHierarchy->m_SelectedEntity = Entity::Null(); m_SceneManager->createNewScene();
+			}
+			if (ImGui::MenuItem("Save Scene")) { m_SceneManager->SaveScene(); }
+			if (ImGui::MenuItem("Load Scene"))
+			{
+				m_SceneHierarchy->m_SelectedEntity = Entity::Null(); m_SceneManager->LoadScene();
+			}
+			EndDropdown();
+		}
+
+		ImGui::SameLine();
+
+		if (MenuButton("Runtime", itemH)) ImGui::OpenPopup("RuntimeMenu");
+		AnchorRect runA = LastItemAnchor();
+		if (BeginDropdown("RuntimeMenu", runA, 4.0f, 200.0f, true))
+		{
+			static bool playing = false;
+			if (!playing)
+			{
+				if (ImGui::MenuItem("Start Scene"))
+				{
+					m_SceneManager->SaveScene(); m_SceneManager->GetActiveScene().OnRuntimeStart(); playing = true;
+				}
+			}
+			else
+			{
+				if (ImGui::MenuItem("Stop Scene"))
+				{
+					m_SceneManager->GetActiveScene().OnRuntimeStop();
+					m_SceneManager->ReloadScene(m_SceneManager->GetSceneObject().GetPath()); playing = false;
+				}
+			}
+			EndDropdown();
+		}
+
+		ImGui::SameLine();
+
+		if (MenuButton("Create", itemH)) ImGui::OpenPopup("CreateMenu");
+		AnchorRect createA = LastItemAnchor();
+		if (BeginDropdown("CreateMenu", createA, 4.0f, 220.0f, true))
+		{
+			if (ImGui::MenuItem("GameObject")) { (void)m_SceneManager->GetActiveScene().CreateEntity("GameObject"); }
+			if (ImGui::MenuItem("Cube")) { m_SceneManager->AddCube(); }
+			if (ImGui::MenuItem("Sphere")) { m_SceneManager->AddSphere(); }
+			if (ImGui::MenuItem("UV Sphere")) { m_SceneManager->AddUVSphere(); }
+			if (ImGui::MenuItem("Plane")) { m_SceneManager->AddPlane(); }
+			EndDropdown();
+		}
+
+		ImGui::SameLine(0, 18);
+		ToolbarSeparator(itemH - 6.0f);
+		{
+			std::filesystem::path proj(m_Specification.ProjectPath);
+			std::string projName = proj.filename().string();
+			std::string sceneName = m_SceneManager ? m_SceneManager->GetSceneObject().GetName() : "Untitled";
+			ImGui::Text("%s > %s", projName.c_str(), sceneName.c_str());
+		}
+
+		/*auto& appWin = QuasarEngine::Application::Get().GetWindow();
+		GLFWwindow* nativeWin = (GLFWwindow*)appWin.GetNativeWindow();
+
+		const float btnW = 36.0f;
+		const float gap = 4.0f;
+		const float padR = 12.0f;
+
+		const float rightSectionW = btnW * 3.0f + gap * 2.0f;
+
+		ImVec2 rightPos = ImVec2(
+			toolMax.x - padR - rightSectionW,
+			toolMin.y + (toolH - itemH) * 0.5f
+		);
+		ImGui::SetCursorScreenPos(rightPos);
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6);
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, (itemH - ImGui::GetTextLineHeight()) * 0.5f));
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.06f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.12f));
+		if (ImGui::Button("-", ImVec2(btnW, itemH))) appWin.Minimize();
+		ImGui::PopStyleColor(3);
+
+		ImGui::SameLine(0, gap);
+
+		bool isMax = appWin.IsMaximized();
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.06f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.12f));
+		if (ImGui::Button(isMax ? "R" : "M", ImVec2(btnW, itemH)))
+			appWin.ToggleMaximize();
+		ImGui::PopStyleColor(3);
+
+		ImGui::SameLine(0, gap);
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.10f, 0.10f, 0.90f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.50f, 0.10f, 0.10f, 0.95f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.65f, 0.15f, 0.15f, 1.00f));
+		if (ImGui::Button("X", ImVec2(btnW, itemH)))
+			QuasarEngine::Application::Get().Close();
+		ImGui::PopStyleColor(3);
+
+		ImGui::PopStyleVar(2);
+
+		{
+			static bool dragging = false;
+			static ImVec2 dragStartMouse = { 0,0 };
+			static int startX = 0, startY = 0;
+
+			bool inStrip = ImGui::IsMouseHoveringRect(toolMin, toolMax) && !ImGui::IsAnyItemHovered();
+
+			if (inStrip && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+				dragging = true;
+				dragStartMouse = ImGui::GetIO().MousePos;
+				appWin.GetPosition(startX, startY);
+			}
+			if (dragging) {
+				if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+					ImVec2 d = ImGui::GetIO().MousePos - dragStartMouse;
+					appWin.SetPosition(startX + (int)d.x, startY + (int)d.y);
+				}
+				else {
+					dragging = false;
+				}
+			}
+
+			if (inStrip && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+				appWin.ToggleMaximize();
+		}*/
+
+		ImGui::EndChild();
 
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
@@ -623,103 +898,6 @@ namespace QuasarEngine
 
 				ImGui::DockBuilderFinish(dockspace_id);
 			}
-		}
-
-		bool hasProject = true;
-
-		if (ImGui::BeginMenuBar())
-		{
-			if (ImGui::BeginMenu("Project"))
-			{
-				if (ImGui::MenuItem("Quit"))
-					QuasarEngine::Application::Get().Close();
-
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Asset"))
-			{
-				if (ImGui::MenuItem("Import"))
-				{
-					m_AssetImporter->ImportAsset();
-				}
-
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Scene", hasProject))
-			{
-				if (ImGui::MenuItem("New scene"))
-				{
-					m_SceneHierarchy->m_SelectedEntity = Entity::Null();
-					m_SceneManager->createNewScene();
-				}
-
-				if (ImGui::MenuItem("Save scene"))
-				{
-					m_SceneManager->SaveScene();
-				}
-
-				if (ImGui::MenuItem("Load scene"))
-				{
-					m_SceneHierarchy->m_SelectedEntity = Entity::Null();
-					m_SceneManager->LoadScene();
-				}
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Script", hasProject))
-			{
-				if (ImGui::MenuItem("Build"))
-				{
-					
-				}
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Runtime", hasProject))
-			{
-				if (ImGui::MenuItem("Start scene"))
-				{
-					m_SceneManager->SaveScene();
-					m_SceneManager->GetActiveScene().OnRuntimeStart();
-				}
-				if (ImGui::MenuItem("Stop scene"))
-				{					
-					m_SceneManager->GetActiveScene().OnRuntimeStop();
-					m_SceneManager->ReloadScene(m_SceneManager->GetSceneObject().GetPath());
-
-				}
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Create", hasProject))
-			{
-				if (ImGui::MenuItem("Create new GameObject"))
-				{
-					Entity temp = m_SceneManager->GetActiveScene().CreateEntity("GameObject");
-				}
-
-				if (ImGui::MenuItem("Create new Cube")) m_SceneManager->AddCube();
-				if (ImGui::MenuItem("Create new Sphere")) m_SceneManager->AddSphere();
-				if (ImGui::MenuItem("Create new UV Sphere")) m_SceneManager->AddUVSphere();
-				if (ImGui::MenuItem("Create new Plane")) m_SceneManager->AddPlane();;
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Options"))
-			{
-				if (ImGui::MenuItem("Preference"))
-				{
-					m_optionMenu = true;
-					menu_state.set(MenuType::OPTION_MENU);
-				}
-				//ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen);
-				//ImGui::MenuItem("Padding", NULL, &opt_padding);
-				ImGui::EndMenu();
-			}
-
-			ImGui::EndMenuBar();
 		}
 
 		m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());

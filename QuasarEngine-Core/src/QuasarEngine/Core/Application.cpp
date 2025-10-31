@@ -79,7 +79,14 @@ namespace QuasarEngine
 
 	void Application::MaximizeWindow(bool value)
 	{
-		m_Window->SetMaximized(value);
+		if (m_Window->IsMaximized())
+		{
+			m_Window->Maximize();
+		}
+		else
+		{
+			m_Window->Restore();
+		}
 	}
 
 	void Application::PushLayer(Layer* layer)
