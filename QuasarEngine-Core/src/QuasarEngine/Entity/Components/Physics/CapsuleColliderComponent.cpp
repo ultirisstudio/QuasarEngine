@@ -16,14 +16,14 @@ namespace QuasarEngine
     CapsuleColliderComponent::CapsuleColliderComponent() {}
     CapsuleColliderComponent::~CapsuleColliderComponent()
     {
-        if (mShape) { mShape->release(); mShape = nullptr; }
-        if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+        if (m_Shape) { m_Shape->release(); m_Shape = nullptr; }
+        if (m_Material) { m_Material->release(); m_Material = nullptr; }
     }
 
     void CapsuleColliderComponent::Init()
     {
         auto& phys = PhysicEngine::Instance();
-        if (!mMaterial) mMaterial = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
+        if (!m_Material) m_Material = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
         AttachOrRebuild();
         UpdateColliderMaterial();
     }
@@ -39,6 +39,8 @@ namespace QuasarEngine
         auto& rb = entity.GetComponent<RigidBodyComponent>();
         PxRigidActor* actor = rb.GetActor();
         if (!actor) return;
+
+        if (m_Shape) { actor->detachShape(*m_Shape); m_Shape->release(); }
 
         float scaleRadius = 1.f, scaleHeight = 1.f;
         if (m_UseEntityScale)
@@ -57,27 +59,64 @@ namespace QuasarEngine
 
         PxCapsuleGeometry geom(radius, halfHeight);
 
-        PxShape* newShape = sdk->createShape(geom, *mMaterial, true);
-        if (!newShape) return;
+        m_Shape = sdk->createShape(geom, *m_Material, true);
+        if (!m_Shape) return;
 
         PxQuat rot = PxQuat(PxIdentity);
         if (m_Axis == Axis::Y)      rot = PxQuat(PxHalfPi, PxVec3(0, 0, 1));
         else if (m_Axis == Axis::Z) rot = PxQuat(-PxHalfPi, PxVec3(0, 1, 0));
-        newShape->setLocalPose(PxTransform(PxVec3(0), rot));
+        m_Shape->setLocalPose(PxTransform(PxVec3(0), rot));
 
-        if (mShape) { actor->detachShape(*mShape); mShape->release(); }
-        mShape = newShape;
-        actor->attachShape(*mShape);
+        m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+        m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
+        m_Shape->setLocalPose(physx::PxTransform(
+            physx::PxVec3(m_LocalPosition.x, m_LocalPosition.y, m_LocalPosition.z),
+            physx::PxQuat(m_LocalRotation.x, m_LocalRotation.y, m_LocalRotation.z, m_LocalRotation.w)));
+        physx::PxFilterData qfd; qfd.word0 = 0xFFFFFFFF; qfd.word1 = 0xFFFFFFFF; m_Shape->setQueryFilterData(qfd);
+
+        actor->attachShape(*m_Shape);
 
         RecomputeMassFromSize();
     }
 
+    void CapsuleColliderComponent::SetTrigger(bool isTrigger)
+    {
+        m_IsTrigger = isTrigger;
+        if (m_Shape) {
+            m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+            m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
+        }
+    }
+
+    void CapsuleColliderComponent::SetLocalPose(const glm::vec3& p, const glm::quat& r)
+    {
+        m_LocalPosition = p;
+        m_LocalRotation = r;
+        if (m_Shape) {
+            m_Shape->setLocalPose(physx::PxTransform(
+                physx::PxVec3(p.x, p.y, p.z),
+                physx::PxQuat(r.x, r.y, r.z, r.w)));
+        }
+    }
+
+    void CapsuleColliderComponent::SetMaterialCombineModes(physx::PxCombineMode::Enum friction,
+        physx::PxCombineMode::Enum restitution)
+    {
+        m_FrictionCombine = friction;
+        m_RestitutionCombine = restitution;
+        UpdateColliderMaterial();
+    }
+
     void CapsuleColliderComponent::UpdateColliderMaterial()
     {
-        if (!mMaterial) return;
-        mMaterial->setStaticFriction(friction);
-        mMaterial->setDynamicFriction(friction);
-        mMaterial->setRestitution(bounciness);
+        if (!m_Material) return;
+
+        m_Material->setStaticFriction(friction);
+        m_Material->setDynamicFriction(friction);
+        m_Material->setRestitution(bounciness);
+        m_Material->setFrictionCombineMode(m_FrictionCombine);
+        m_Material->setRestitutionCombineMode(m_RestitutionCombine);
+
         RecomputeMassFromSize();
     }
 
@@ -92,7 +131,7 @@ namespace QuasarEngine
         if (!entity.HasComponent<RigidBodyComponent>()) return;
         auto& rb = entity.GetComponent<RigidBodyComponent>();
         PxRigidDynamic* dyn = rb.GetDynamic();
-        if (!dyn || !mShape) return;
+        if (!dyn || !m_Shape) return;
 
         float scaleRadius = 1.f, scaleHeight = 1.f;
         if (m_UseEntityScale)
@@ -114,5 +153,14 @@ namespace QuasarEngine
 
         PxRigidBodyExt::updateMassAndInertia(*dyn, densityVal);
         dyn->setMass(mass);
+    }
+
+    void CapsuleColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)
+    {
+        if (!m_Shape) return;
+        physx::PxFilterData qfd = m_Shape->getQueryFilterData();
+        qfd.word0 = layer;
+        qfd.word1 = mask;
+        m_Shape->setQueryFilterData(qfd);
     }
 }

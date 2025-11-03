@@ -14,15 +14,15 @@ namespace QuasarEngine
     ConvexMeshColliderComponent::ConvexMeshColliderComponent() {}
     ConvexMeshColliderComponent::~ConvexMeshColliderComponent()
     {
-        if (mShape) { mShape->release(); mShape = nullptr; }
-        if (mConvex) { mConvex->release(); mConvex = nullptr; }
-        if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+        if (m_Shape) { m_Shape->release(); m_Shape = nullptr; }
+        if (m_Convex) { m_Convex->release(); m_Convex = nullptr; }
+        if (m_Material) { m_Material->release(); m_Material = nullptr; }
     }
 
     void ConvexMeshColliderComponent::Init()
     {
         auto& phys = PhysicEngine::Instance();
-        if (!mMaterial) mMaterial = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
+        if (!m_Material) m_Material = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
         AttachOrRebuild();
         UpdateColliderMaterial();
     }
@@ -37,17 +37,17 @@ namespace QuasarEngine
         if (!entity.HasComponent<RigidBodyComponent>()) return;
         auto& rb = entity.GetComponent<RigidBodyComponent>();
         PxRigidActor* actor = rb.GetActor();
-        if (!actor || mPoints.empty()) return;
+        if (!actor || m_Points.empty()) return;
 
-        if (!mDirty && mShape) return;
+        if (!m_Dirty && m_Shape) return;
 
-        if (mShape) { actor->detachShape(*mShape); mShape->release(); mShape = nullptr; }
-        if (mConvex) { mConvex->release(); mConvex = nullptr; }
+        if (m_Shape) { actor->detachShape(*m_Shape); m_Shape->release(); m_Shape = nullptr; }
+        if (m_Convex) { m_Convex->release(); m_Convex = nullptr; }
 
-        std::vector<PxVec3> pts; pts.reserve(mPoints.size());
+        std::vector<PxVec3> pts; pts.reserve(m_Points.size());
         glm::vec3 scale(1.f);
         if (m_UseEntityScale) scale = entity.GetComponent<TransformComponent>().Scale;
-        for (auto& p : mPoints) pts.emplace_back(p.x * scale.x, p.y * scale.y, p.z * scale.z);
+        for (auto& p : m_Points) pts.emplace_back(p.x * scale.x, p.y * scale.y, p.z * scale.z);
 
         PxConvexMeshDesc desc;
         desc.points.count = static_cast<uint32_t>(pts.size());
@@ -55,30 +55,69 @@ namespace QuasarEngine
         desc.points.data = pts.data();
         desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
 
-        mConvex = PxCreateConvexMesh(phys.GetPhysics()->getTolerancesScale(), desc);
-        if (!mConvex) return;
+        m_Convex = PxCreateConvexMesh(phys.GetPhysics()->getTolerancesScale(), desc);
+        if (!m_Convex) return;
 
-        PxConvexMeshGeometry geom(mConvex);
-        mShape = sdk->createShape(geom, *mMaterial, true);
-        if (!mShape) return;
+        PxConvexMeshGeometry geom(m_Convex);
+        m_Shape = sdk->createShape(geom, *m_Material, true);
+        if (!m_Shape) return;
 
-        actor->attachShape(*mShape);
-        mDirty = false;
+        m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+        m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
+        m_Shape->setLocalPose(physx::PxTransform(
+            physx::PxVec3(m_LocalPosition.x, m_LocalPosition.y, m_LocalPosition.z),
+            physx::PxQuat(m_LocalRotation.x, m_LocalRotation.y, m_LocalRotation.z, m_LocalRotation.w)));
+        physx::PxFilterData qfd; qfd.word0 = 0xFFFFFFFF; qfd.word1 = 0xFFFFFFFF; m_Shape->setQueryFilterData(qfd);
+
+        actor->attachShape(*m_Shape);
+        m_Dirty = false;
         RecomputeMass();
+    }
+
+    void ConvexMeshColliderComponent::SetTrigger(bool isTrigger)
+    {
+        m_IsTrigger = isTrigger;
+        if (m_Shape) {
+            m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+            m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
+        }
+    }
+
+    void ConvexMeshColliderComponent::SetLocalPose(const glm::vec3& p, const glm::quat& r)
+    {
+        m_LocalPosition = p;
+        m_LocalRotation = r;
+        if (m_Shape) {
+            m_Shape->setLocalPose(physx::PxTransform(
+                physx::PxVec3(p.x, p.y, p.z),
+                physx::PxQuat(r.x, r.y, r.z, r.w)));
+        }
+    }
+
+    void ConvexMeshColliderComponent::SetMaterialCombineModes(physx::PxCombineMode::Enum friction,
+        physx::PxCombineMode::Enum restitution)
+    {
+        m_FrictionCombine = friction;
+        m_RestitutionCombine = restitution;
+        UpdateColliderMaterial();
     }
 
     void ConvexMeshColliderComponent::UpdateColliderMaterial()
     {
-        if (!mMaterial) return;
-        mMaterial->setStaticFriction(friction);
-        mMaterial->setDynamicFriction(friction);
-        mMaterial->setRestitution(bounciness);
+        if (!m_Material) return;
+
+        m_Material->setStaticFriction(friction);
+        m_Material->setDynamicFriction(friction);
+        m_Material->setRestitution(bounciness);
+        m_Material->setFrictionCombineMode(m_FrictionCombine);
+        m_Material->setRestitutionCombineMode(m_RestitutionCombine);
+
         RecomputeMass();
     }
 
     void ConvexMeshColliderComponent::UpdateColliderSize()
     {
-        mDirty = true;
+        m_Dirty = true;
         AttachOrRebuild();
     }
 
@@ -88,10 +127,19 @@ namespace QuasarEngine
         if (!entity.HasComponent<RigidBodyComponent>()) return;
         auto& rb = entity.GetComponent<RigidBodyComponent>();
         PxRigidDynamic* dyn = rb.GetDynamic();
-        if (!dyn || !mShape) return;
+        if (!dyn || !m_Shape) return;
 
         const float densityVal = std::max(0.000001f, mass);
         PxRigidBodyExt::updateMassAndInertia(*dyn, densityVal);
         dyn->setMass(mass);
+    }
+
+    void ConvexMeshColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)
+    {
+        if (!m_Shape) return;
+        physx::PxFilterData qfd = m_Shape->getQueryFilterData();
+        qfd.word0 = layer;
+        qfd.word1 = mask;
+        m_Shape->setQueryFilterData(qfd);
     }
 }

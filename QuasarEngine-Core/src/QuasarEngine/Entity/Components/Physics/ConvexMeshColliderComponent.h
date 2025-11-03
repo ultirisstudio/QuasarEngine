@@ -3,6 +3,7 @@
 #include <QuasarEngine/Entity/Components/Physics/PrimitiveColliderComponent.h>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <vector>
 
@@ -25,23 +26,41 @@ namespace QuasarEngine
         void UpdateColliderMaterial() override;
         void UpdateColliderSize() override;
 
-        void SetPoints(const std::vector<glm::vec3>& pts) { mPoints = pts; mDirty = true; }
-        const std::vector<glm::vec3>& GetPoints() const { return mPoints; }
+        void SetQueryFilter(uint32_t layer, uint32_t mask);
+
+        void SetTrigger(bool isTrigger);
+        bool IsTrigger() const noexcept { return m_IsTrigger; }
+        void SetLocalPose(const glm::vec3& localPosition, const glm::quat& localRotation);
+        glm::vec3 GetLocalPosition() const noexcept { return m_LocalPosition; }
+        glm::quat GetLocalRotation() const noexcept { return m_LocalRotation; }
+        void SetMaterialCombineModes(physx::PxCombineMode::Enum friction,
+            physx::PxCombineMode::Enum restitution);
+
+        void SetPoints(const std::vector<glm::vec3>& pts) { m_Points = pts; m_Dirty = true; }
+        const std::vector<glm::vec3>& GetPoints() const { return m_Points; }
         bool  m_UseEntityScale = true;
 
-        physx::PxShape* GetShape()    const noexcept { return mShape; }
-        physx::PxMaterial* GetMaterial() const noexcept { return mMaterial; }
-        physx::PxConvexMesh* GetMesh()     const noexcept { return mConvex; }
+        physx::PxShape* GetShape()    const noexcept { return m_Shape; }
+        physx::PxMaterial* GetMaterial() const noexcept { return m_Material; }
+        physx::PxConvexMesh* GetMesh()     const noexcept { return m_Convex; }
 
     private:
         void AttachOrRebuild();
         void RecomputeMass();
 
-        std::vector<glm::vec3> mPoints;
-        bool mDirty = true;
+        std::vector<glm::vec3> m_Points;
+        bool m_Dirty = true;
 
-        physx::PxShape* mShape = nullptr;
-        physx::PxMaterial* mMaterial = nullptr;
-        physx::PxConvexMesh* mConvex = nullptr;
+        physx::PxShape* m_Shape = nullptr;
+        physx::PxMaterial* m_Material = nullptr;
+        physx::PxConvexMesh* m_Convex = nullptr;
+
+        bool m_IsTrigger = false;
+
+        glm::vec3 m_LocalPosition{ 0 };
+        glm::quat m_LocalRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+
+        physx::PxCombineMode::Enum m_FrictionCombine = physx::PxCombineMode::eAVERAGE;
+        physx::PxCombineMode::Enum m_RestitutionCombine = physx::PxCombineMode::eAVERAGE;
     };
 }

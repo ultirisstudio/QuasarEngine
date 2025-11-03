@@ -50,6 +50,10 @@ namespace QuasarEngine
         void UpdateAngularAxisFactor();
         void UpdateDamping();
 
+        bool MoveKinematic(const glm::vec3& targetPos, const glm::quat& targetRot, bool doSweep);
+
+        void SetKinematicTarget(const glm::vec3& targetPos, const glm::quat& targetRot);
+
         physx::PxRigidActor* GetActor()   const noexcept { return mActor; }
         physx::PxRigidDynamic* GetDynamic() const noexcept { return mDynamic; }
 

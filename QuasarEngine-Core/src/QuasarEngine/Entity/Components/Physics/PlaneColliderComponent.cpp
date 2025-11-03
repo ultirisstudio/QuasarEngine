@@ -8,26 +8,26 @@
 #include <QuasarEngine/Physic/PhysicEngine.h>
 #include <glm/gtc/quaternion.hpp>
 
-using namespace physx;
+#include <QuasarEngine/Physic/PhysXQueryUtils.h>
 
 namespace QuasarEngine
 {
     PlaneColliderComponent::PlaneColliderComponent() {}
     PlaneColliderComponent::~PlaneColliderComponent()
     {
-        //if (mShape) { mShape->release();    mShape = nullptr; }
-        //if (mMaterial) { mMaterial->release(); mMaterial = nullptr; }
+        if (m_Shape) { m_Shape->release();    m_Shape = nullptr; }
+        if (m_Material) { m_Material->release(); m_Material = nullptr; }
     }
 
     void PlaneColliderComponent::Init()
     {
         auto& phys = PhysicEngine::Instance();
-        if (!mMaterial) mMaterial = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
+        if (!m_Material) m_Material = phys.GetPhysics()->createMaterial(friction, friction, bounciness);
         AttachOrRebuild();
         UpdateColliderMaterial();
     }
 
-    PxTransform PlaneColliderComponent::MakeLocalPose() const
+    physx::PxTransform PlaneColliderComponent::MakeLocalPose() const
     {
         if (m_UseEntityOrientation)
         {
@@ -35,77 +35,118 @@ namespace QuasarEngine
             const glm::quat q = entity.HasComponent<TransformComponent>()
                 ? glm::quat(entity.GetComponent<TransformComponent>().Rotation)
                 : glm::quat(1, 0, 0, 0);
-            const PxQuat rot = ToPx(q);
-            const PxVec3 off(0.f, m_Distance, 0.f);
-            return PxTransform(off, rot);
+            const physx::PxQuat rot = ToPx(q);
+            const physx::PxVec3 off(0.f, m_Distance, 0.f);
+            return physx::PxTransform(off, rot);
         }
         else
         {
             glm::vec3 n = m_Normal;
             const float len = std::max(1e-6f, std::sqrt(n.x * n.x + n.y * n.y + n.z * n.z));
             n /= len;
-            const PxPlane plane(ToPx(n), m_Distance);
-            return PxTransformFromPlaneEquation(plane);
+            const physx::PxPlane plane(ToPx(n), m_Distance);
+            return physx::PxTransformFromPlaneEquation(plane);
         }
     }
 
     void PlaneColliderComponent::AttachOrRebuild()
     {
         auto& phys = PhysicEngine::Instance();
-        PxPhysics* sdk = phys.GetPhysics();
-        PxScene* scene = phys.GetScene();
+        physx::PxPhysics* sdk = phys.GetPhysics();
+        physx::PxScene* scene = phys.GetScene();
         if (!sdk) return;
 
         Entity entity{ entt_entity, registry };
         if (!entity.HasComponent<RigidBodyComponent>()) return;
         auto& rb = entity.GetComponent<RigidBodyComponent>();
 
-        PxRigidActor* base = rb.GetActor();
-        PxRigidStatic* actor = base ? base->is<PxRigidStatic>() : nullptr;
+        physx::PxRigidActor* base = rb.GetActor();
+        physx::PxRigidStatic* actor = base ? base->is<physx::PxRigidStatic>() : nullptr;
         if (!actor) return;
 
         const bool useLock = (scene != nullptr);
         if (useLock) scene->lockWrite();
 
-        if (mShape) { actor->detachShape(*mShape); mShape->release(); mShape = nullptr; }
+        if (m_Shape) { actor->detachShape(*m_Shape); m_Shape->release(); m_Shape = nullptr; }
 
-        PxShape* shape = sdk->createShape(PxPlaneGeometry(), *mMaterial, true);
-        if (shape)
-        {
-            //shape->setContactOffset(0.02f);
-            //shape->setRestOffset(0.0f);
+        m_Shape = sdk->createShape(physx::PxPlaneGeometry(), *m_Material, true);
+        if (!m_Shape) return;
+        
+        m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+        m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
+        m_Shape->setLocalPose(physx::PxTransform(
+            physx::PxVec3(m_LocalPosition.x, m_LocalPosition.y, m_LocalPosition.z),
+            physx::PxQuat(m_LocalRotation.x, m_LocalRotation.y, m_LocalRotation.z, m_LocalRotation.w)));
+        physx::PxFilterData qfd; qfd.word0 = 0xFFFFFFFF; qfd.word1 = 0xFFFFFFFF; m_Shape->setQueryFilterData(qfd);
 
-            shape->setLocalPose(MakeLocalPose());
-            actor->attachShape(*shape);
-            mShape = shape;
-        }
+        m_Shape->setLocalPose(MakeLocalPose());
+        actor->attachShape(*m_Shape);
 
         if (useLock) scene->unlockWrite();
     }
 
+    void PlaneColliderComponent::SetTrigger(bool isTrigger)
+    {
+        m_IsTrigger = isTrigger;
+        if (m_Shape) {
+            m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+            m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
+        }
+    }
+
+    void PlaneColliderComponent::SetLocalPose(const glm::vec3& p, const glm::quat& r)
+    {
+        m_LocalPosition = p;
+        m_LocalRotation = r;
+        if (m_Shape) {
+            m_Shape->setLocalPose(physx::PxTransform(
+                physx::PxVec3(p.x, p.y, p.z),
+                physx::PxQuat(r.x, r.y, r.z, r.w)));
+        }
+    }
+
+    void PlaneColliderComponent::SetMaterialCombineModes(physx::PxCombineMode::Enum friction,
+        physx::PxCombineMode::Enum restitution)
+    {
+        m_FrictionCombine = friction;
+        m_RestitutionCombine = restitution;
+        UpdateColliderMaterial();
+    }
+
     void PlaneColliderComponent::UpdateColliderMaterial()
     {
-        if (!mMaterial) return;
-        mMaterial->setStaticFriction(friction);
-        mMaterial->setDynamicFriction(friction);
-        mMaterial->setRestitution(bounciness);
+        if (!m_Material) return;
+        m_Material->setStaticFriction(friction);
+        m_Material->setDynamicFriction(friction);
+        m_Material->setRestitution(bounciness);
+        m_Material->setFrictionCombineMode(m_FrictionCombine);
+        m_Material->setRestitutionCombineMode(m_RestitutionCombine);
     }
 
     void PlaneColliderComponent::UpdateColliderSize()
     {
         auto& phys = PhysicEngine::Instance();
-        PxScene* scene = phys.GetScene();
+        physx::PxScene* scene = phys.GetScene();
 
         Entity entity{ entt_entity, registry };
         if (!entity.HasComponent<RigidBodyComponent>()) return;
         auto& rb = entity.GetComponent<RigidBodyComponent>();
-        PxRigidStatic* actor = rb.GetActor() ? rb.GetActor()->is<PxRigidStatic>() : nullptr;
+        physx::PxRigidStatic* actor = rb.GetActor() ? rb.GetActor()->is<physx::PxRigidStatic>() : nullptr;
         if (!actor) return;
 
-        if (!mShape) { AttachOrRebuild(); return; }
+        if (!m_Shape) { AttachOrRebuild(); return; }
 
         if (scene) scene->lockWrite();
-        mShape->setLocalPose(MakeLocalPose());
+        m_Shape->setLocalPose(MakeLocalPose());
         if (scene) scene->unlockWrite();
+    }
+
+    void PlaneColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)
+    {
+        if (!m_Shape) return;
+        physx::PxFilterData qfd = m_Shape->getQueryFilterData();
+        qfd.word0 = layer;
+        qfd.word1 = mask;
+        m_Shape->setQueryFilterData(qfd);
     }
 }

@@ -9,6 +9,8 @@
 #include <QuasarEngine/Entity/Components/MeshRendererComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/SphereColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/CapsuleColliderComponent.h>
 #include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 
@@ -19,6 +21,7 @@
 #include <glm/gtx/compatibility.hpp>
 
 #include <QuasarEngine/Physic/PhysicEngine.h>
+#include <QuasarEngine/Physic/PhysXQueryUtils.h>
 
 #include <QuasarEngine/UI/UIElement.h>
 #include <QuasarEngine/UI/UIButton.h>
@@ -759,6 +762,24 @@ namespace QuasarEngine
         );
 	}
 
+    static QueryOptions ParseQueryOptions(const sol::object& obj) {
+        QueryOptions o;
+        if (!obj.valid() || obj.get_type() != sol::type::table) return o;
+        sol::table t = obj.as<sol::table>();
+
+        if (auto v = t.get<sol::optional<uint32_t>>("layer")) o.layer = *v;
+        if (auto v = t.get<sol::optional<uint32_t>>("mask"))  o.mask = *v;
+        if (auto v = t.get<sol::optional<bool>>("includeTriggers")) o.includeTriggers = *v;
+        if (auto v = t.get<sol::optional<bool>>("bothSides"))       o.bothSides = *v;
+        if (auto v = t.get<sol::optional<bool>>("precise"))         o.preciseSweep = *v;
+
+        if (auto v = t.get<sol::optional<bool>>("hitNormal"); v && *v)     o.hitFlags |= physx::PxHitFlag::eNORMAL;
+        if (auto v = t.get<sol::optional<bool>>("hitUV"); v && *v)         o.hitFlags |= physx::PxHitFlag::eUV;
+        if (auto v = t.get<sol::optional<bool>>("hitFaceIndex"); v && *v)  o.hitFlags |= physx::PxHitFlag::eFACE_INDEX;
+
+        return o;
+    }
+
     void ScriptSystem::BindPhysicsToLua(sol::state& lua_state)
     {
         lua_state.new_usertype<RigidBodyComponent>("RigidBody",
@@ -769,7 +790,7 @@ namespace QuasarEngine
             "set_body_type", [](RigidBodyComponent& c, const std::string& t) { c.bodyTypeString = t; c.UpdateBodyType(); },
             "set_linear_damping", [](RigidBodyComponent& c, float v) { c.linearDamping = v; c.UpdateDamping(); },
             "set_angular_damping", [](RigidBodyComponent& c, float v) { c.angularDamping = v; c.UpdateDamping(); },
-			"enable_gravity", & RigidBodyComponent::enableGravity
+            "enable_gravity", &RigidBodyComponent::enableGravity
         );
 
         sol::table physics = lua_state.create_table();
@@ -797,7 +818,7 @@ namespace QuasarEngine
                 physx::PxQueryFilterData f{};
                 f.flags = physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC;
                 if (queryDynamic && !queryDynamic.value()) f.flags &= ~physx::PxQueryFlag::eDYNAMIC;
-                if (queryStatic && !queryStatic.value())  f.flags &= ~physx::PxQueryFlag::eSTATIC;
+                if (queryStatic && !queryStatic.value())   f.flags &= ~physx::PxQueryFlag::eSTATIC;
 
                 physx::PxRaycastBuffer hit;
                 const bool ok = scene->raycast(ToPx(origin), ToPx(glm::normalize(dir)), maxDist,
@@ -813,6 +834,32 @@ namespace QuasarEngine
                     res["shape"] = (uintptr_t)hit.block.shape;
                 }
                 return sol::make_object(lua_state, res);
+            });
+
+        physics.set_function("raycast_all",
+            [&lua_state](const glm::vec3& origin,
+                const glm::vec3& dir,
+                float maxDist,
+                sol::object opts)
+            {
+                auto& P = PhysicEngine::Instance();
+                std::vector<physx::PxRaycastHit> hits;
+                QueryOptions q = ParseQueryOptions(opts);
+                P.RaycastAll(ToPx(origin), ToPx(dir), maxDist, hits, q);
+
+                sol::table out = lua_state.create_table(static_cast<int>(hits.size()), 0);
+                int i = 1;
+                for (const auto& h : hits) {
+                    sol::table t = lua_state.create_table();
+                    t["distance"] = h.distance;
+                    t["position"] = ToGlm(h.position);
+                    t["normal"] = ToGlm(h.normal);
+                    t["faceIndex"] = h.faceIndex;
+                    t["entity"] = ActorToEntityObject(h.actor, lua_state);
+                    t["shape"] = (uintptr_t)h.shape;
+                    out[i++] = t;
+                }
+                return out;
             });
 
         physics.set_function("overlap_sphere",
@@ -848,6 +895,44 @@ namespace QuasarEngine
                 return sol::make_object(lua_state, t);
             });
 
+        physics.set_function("overlap_box",
+            [&lua_state](const glm::vec3& center, const glm::quat& rot, const glm::vec3& halfExtents, sol::object opts)
+            {
+                auto& P = PhysicEngine::Instance();
+                std::vector<physx::PxOverlapHit> hits;
+                QueryOptions q = ParseQueryOptions(opts);
+                P.OverlapBox(ToPx(halfExtents), ToPx(center, rot), hits, q);
+
+                sol::table out = lua_state.create_table(static_cast<int>(hits.size()), 0);
+                int i = 1;
+                for (const auto& h : hits) {
+                    sol::table t = lua_state.create_table();
+                    t["entity"] = ActorToEntityObject(h.actor, lua_state);
+                    t["shape"] = (uintptr_t)h.shape;
+                    out[i++] = t;
+                }
+                return out;
+            });
+
+        physics.set_function("overlap_capsule",
+            [&lua_state](const glm::vec3& center, const glm::quat& rot, float radius, float halfHeight, sol::object opts)
+            {
+                auto& P = PhysicEngine::Instance();
+                std::vector<physx::PxOverlapHit> hits;
+                QueryOptions q = ParseQueryOptions(opts);
+                P.OverlapCapsule(radius, halfHeight, ToPx(center, rot), hits, q);
+
+                sol::table out = lua_state.create_table(static_cast<int>(hits.size()), 0);
+                int i = 1;
+                for (const auto& h : hits) {
+                    sol::table t = lua_state.create_table();
+                    t["entity"] = ActorToEntityObject(h.actor, lua_state);
+                    t["shape"] = (uintptr_t)h.shape;
+                    out[i++] = t;
+                }
+                return out;
+            });
+
         physics.set_function("sweep_sphere",
             [&lua_state](const glm::vec3& origin, float radius, const glm::vec3& dir, float maxDist) -> sol::object
             {
@@ -868,8 +953,47 @@ namespace QuasarEngine
                     res["normal"] = ToGlm(buf.block.normal);
                     res["distance"] = buf.block.distance;
                     res["entity"] = ActorToEntityObject(buf.block.actor, lua_state);
+                    res["shape"] = (uintptr_t)buf.block.shape;
                 }
                 return sol::make_object(lua_state, res);
+            });
+
+        physics.set_function("sweep_box",
+            [&lua_state](const glm::vec3& center, const glm::quat& rot, const glm::vec3& halfExtents,
+                const glm::vec3& dir, float maxDist, sol::object opts) -> sol::object
+            {
+                auto& P = PhysicEngine::Instance();
+                physx::PxSweepHit hit;
+                QueryOptions q = ParseQueryOptions(opts);
+                bool ok = P.SweepBox(ToPx(halfExtents), ToPx(center, rot), ToPx(dir), maxDist, hit, q);
+                if (!ok) return sol::make_object(lua_state, sol::nil);
+                sol::table t = lua_state.create_table();
+                t["distance"] = hit.distance;
+                t["position"] = ToGlm(hit.position);
+                t["normal"] = ToGlm(hit.normal);
+                t["faceIndex"] = hit.faceIndex;
+                t["entity"] = ActorToEntityObject(hit.actor, lua_state);
+                t["shape"] = (uintptr_t)hit.shape;
+                return sol::make_object(lua_state, t);
+            });
+
+        physics.set_function("sweep_capsule",
+            [&lua_state](const glm::vec3& center, const glm::quat& rot, float radius, float halfHeight,
+                const glm::vec3& dir, float maxDist, sol::object opts) -> sol::object
+            {
+                auto& P = PhysicEngine::Instance();
+                physx::PxSweepHit hit;
+                QueryOptions q = ParseQueryOptions(opts);
+                bool ok = P.SweepCapsule(radius, halfHeight, ToPx(center, rot), ToPx(dir), maxDist, hit, q);
+                if (!ok) return sol::make_object(lua_state, sol::nil);
+                sol::table t = lua_state.create_table();
+                t["distance"] = hit.distance;
+                t["position"] = ToGlm(hit.position);
+                t["normal"] = ToGlm(hit.normal);
+                t["faceIndex"] = hit.faceIndex;
+                t["entity"] = ActorToEntityObject(hit.actor, lua_state);
+                t["shape"] = (uintptr_t)hit.shape;
+                return sol::make_object(lua_state, t);
             });
 
         physics.set_function("set_linear_velocity",
@@ -904,7 +1028,6 @@ namespace QuasarEngine
                 if (physx::PxRigidDynamic* dyn = rbc.GetDynamic())
                 {
                     physx::PxTransform pose = dyn->getGlobalPose();
-
                     glm::quat q = glm::quat(eulerRad);
                     physx::PxQuat pxq(q.x, q.y, q.z, q.w);
                     pose.q = pxq.getNormalized();
@@ -940,7 +1063,46 @@ namespace QuasarEngine
                 }
             });
 
+        physics.set_function("move_kinematic",
+            [](Entity& e, const glm::vec3& targetPos, const glm::quat& targetRot, sol::optional<bool> doSweep) {
+                if (!e.HasComponent<RigidBodyComponent>()) return false;
+                auto& rb = e.GetComponent<RigidBodyComponent>();
+                bool sweep = doSweep.value_or(true);
+                return rb.MoveKinematic(targetPos, targetRot, sweep);
+            });
+
+        physics["CombineMode"] = lua_state.create_table_with(
+            "Average", (int)physx::PxCombineMode::eAVERAGE,
+            "Min", (int)physx::PxCombineMode::eMIN,
+            "Multiply", (int)physx::PxCombineMode::eMULTIPLY,
+            "Max", (int)physx::PxCombineMode::eMAX
+        );
+
         lua_state["physics"] = physics;
+
+        lua_state.new_usertype<BoxColliderComponent>("BoxColliderComponent",
+            "set_trigger", &BoxColliderComponent::SetTrigger,
+            "is_trigger", &BoxColliderComponent::IsTrigger,
+            "set_local_pose", &BoxColliderComponent::SetLocalPose,
+            "set_combine_modes", &BoxColliderComponent::SetMaterialCombineModes,
+            "set_query_filter", &BoxColliderComponent::SetQueryFilter
+        );
+
+        lua_state.new_usertype<SphereColliderComponent>("SphereColliderComponent",
+            "set_trigger", &SphereColliderComponent::SetTrigger,
+            "is_trigger", &SphereColliderComponent::IsTrigger,
+            "set_local_pose", &SphereColliderComponent::SetLocalPose,
+            "set_combine_modes", &SphereColliderComponent::SetMaterialCombineModes,
+            "set_query_filter", &SphereColliderComponent::SetQueryFilter
+        );
+
+        lua_state.new_usertype<CapsuleColliderComponent>("CapsuleColliderComponent",
+            "set_trigger", &CapsuleColliderComponent::SetTrigger,
+            "is_trigger", &CapsuleColliderComponent::IsTrigger,
+            "set_local_pose", &CapsuleColliderComponent::SetLocalPose,
+            "set_combine_modes", &CapsuleColliderComponent::SetMaterialCombineModes,
+            "set_query_filter", &CapsuleColliderComponent::SetQueryFilter
+        );
     }
     
     void ScriptSystem::BindUIToLua(sol::state& L)

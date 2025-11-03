@@ -1,25 +1,26 @@
 #include "qepch.h"
+
 #include "PhysicEngine.h"
+#include "PhysXQueryUtils.h"
+
 #include <iostream>
 #include <algorithm>
 
-using namespace physx;
-
 namespace QuasarEngine
 {
-    void PxLoggerCallback::reportError(PxErrorCode::Enum code, const char* message, const char* file, int line)
+    void PxLoggerCallback::reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line)
     {
         const char* level = "INFO";
         switch (code)
         {
-        case PxErrorCode::eABORT: level = "ABORT"; break;
-        case PxErrorCode::eINVALID_PARAMETER:
-        case PxErrorCode::eINVALID_OPERATION:
-        case PxErrorCode::eOUT_OF_MEMORY:
-        case PxErrorCode::eINTERNAL_ERROR:
-        case PxErrorCode::ePERF_WARNING:
-        case PxErrorCode::eDEBUG_WARNING: level = "WARN"; break;
-        case PxErrorCode::eDEBUG_INFO: level = "INFO"; break;
+        case physx::PxErrorCode::eABORT: level = "ABORT"; break;
+        case physx::PxErrorCode::eINVALID_PARAMETER:
+        case physx::PxErrorCode::eINVALID_OPERATION:
+        case physx::PxErrorCode::eOUT_OF_MEMORY:
+        case physx::PxErrorCode::eINTERNAL_ERROR:
+        case physx::PxErrorCode::ePERF_WARNING:
+        case physx::PxErrorCode::eDEBUG_WARNING: level = "WARN"; break;
+        case physx::PxErrorCode::eDEBUG_INFO: level = "INFO"; break;
         default: level = "LOG"; break;
         }
         std::cerr << "[PhysX][" << level << "] " << message << " (" << file << ":" << line << ")" << std::endl;
@@ -31,7 +32,7 @@ namespace QuasarEngine
         return s_Instance;
     }
 
-    bool PhysicEngine::Initialize(uint32_t numThreads, const PxVec3& gravity, bool enableCCD, bool enablePVD, const char* pvdHost, uint32_t pvdPort)
+    bool PhysicEngine::Initialize(uint32_t numThreads, const physx::PxVec3& gravity, bool enableCCD, bool enablePVD, const char* pvdHost, uint32_t pvdPort)
     {
         if (m_Initialized) return true;
         m_Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, m_Allocator, m_ErrorCallback);
@@ -52,7 +53,7 @@ namespace QuasarEngine
         m_Physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_Foundation, PxTolerancesScale(), true, pvd);
 #else
         (void)enablePVD; (void)pvdHost; (void)pvdPort;
-        m_Physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_Foundation, PxTolerancesScale(), true);
+        m_Physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_Foundation, physx::PxTolerancesScale(), true);
 #endif
         if (!m_Physics) { ReleaseAll(); return false; }
 
@@ -62,17 +63,17 @@ namespace QuasarEngine
         PxInitExtensions(*m_Physics, nullptr);
 #endif
 
-        PxSceneDesc sceneDesc(m_Physics->getTolerancesScale());
+        physx::PxSceneDesc sceneDesc(m_Physics->getTolerancesScale());
         sceneDesc.gravity = gravity;
-        m_Dispatcher = PxDefaultCpuDispatcherCreate(std::max<uint32_t>(1, numThreads));
+        m_Dispatcher = physx::PxDefaultCpuDispatcherCreate(std::max<uint32_t>(1, numThreads));
         if (!m_Dispatcher) { ReleaseAll(); return false; }
         sceneDesc.cpuDispatcher = m_Dispatcher;
-        sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-        if (enableCCD) sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
-        sceneDesc.solverType = PxSolverType::eTGS;
-        sceneDesc.flags |= PxSceneFlag::eENABLE_STABILIZATION;
-        sceneDesc.flags |= PxSceneFlag::eREQUIRE_RW_LOCK;
-        sceneDesc.broadPhaseType = PxBroadPhaseType::eSAP;
+        sceneDesc.filterShader = physx::PxDefaultSimulationFilterShader;
+        if (enableCCD) sceneDesc.flags |= physx::PxSceneFlag::eENABLE_CCD;
+        sceneDesc.solverType = physx::PxSolverType::eTGS;
+        sceneDesc.flags |= physx::PxSceneFlag::eENABLE_STABILIZATION;
+        sceneDesc.flags |= physx::PxSceneFlag::eREQUIRE_RW_LOCK;
+        sceneDesc.broadPhaseType = physx::PxBroadPhaseType::eSAP;
 
         m_Scene = m_Physics->createScene(sceneDesc);
         if (!m_Scene) { ReleaseAll(); return false; }
@@ -89,15 +90,15 @@ namespace QuasarEngine
         }
 #endif
 
-        m_Scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
-        m_Scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 1.0f);
-        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
-        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
+        m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eSCALE, 1.0f);
+        m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eACTOR_AXES, 1.0f);
+        m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
+        m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
 
         m_DefaultMaterial = CreateMaterial(0.5f, 0.5f, 0.1f);
         if (!m_DefaultMaterial) { ReleaseAll(); return false; }
 
-        m_CookingParams = PxCookingParams(m_Physics->getTolerancesScale());
+        m_CookingParams = physx::PxCookingParams(m_Physics->getTolerancesScale());
         m_CookingParams.suppressTriangleMeshRemapTable = true;
 
         m_Initialized = true;
@@ -171,18 +172,18 @@ namespace QuasarEngine
 
         std::vector<float> vertices;
         vertices.reserve(m_DebugVertexCount ? m_DebugVertexCount * 6 : 4096);
-        const PxRenderBuffer& rb = m_Scene->getRenderBuffer();
-        for (PxU32 i = 0; i < rb.getNbLines(); ++i)
+        const physx::PxRenderBuffer& rb = m_Scene->getRenderBuffer();
+        for (physx::PxU32 i = 0; i < rb.getNbLines(); ++i)
         {
-            const PxDebugLine& l = rb.getLines()[i];
-            PxU32 c0 = l.color0;
+            const physx::PxDebugLine& l = rb.getLines()[i];
+            physx::PxU32 c0 = l.color0;
             float r0 = ((c0 >> 16) & 0xFF) / 255.0f;
             float g0 = ((c0 >> 8) & 0xFF) / 255.0f;
             float b0 = (c0 & 0xFF) / 255.0f;
             vertices.push_back(l.pos0.x); vertices.push_back(l.pos0.y); vertices.push_back(l.pos0.z);
             vertices.push_back(r0); vertices.push_back(g0); vertices.push_back(b0);
 
-            PxU32 c1 = l.color1;
+            physx::PxU32 c1 = l.color1;
             float r1 = ((c1 >> 16) & 0xFF) / 255.0f;
             float g1 = ((c1 >> 8) & 0xFF) / 255.0f;
             float b1 = (c1 & 0xFF) / 255.0f;
@@ -192,12 +193,12 @@ namespace QuasarEngine
         BuildOrUpdateDebugBuffer(vertices);
     }
 
-    PxMaterial* PhysicEngine::CreateMaterial(float sf, float df, float r)
+    physx::PxMaterial* PhysicEngine::CreateMaterial(float sf, float df, float r)
     {
         return m_Physics ? m_Physics->createMaterial(sf, df, r) : nullptr;
     }
 
-    void PhysicEngine::AddActor(PxActor& actor)
+    void PhysicEngine::AddActor(physx::PxActor& actor)
     {
         if (!m_Scene) return;
         m_Scene->lockWrite();
@@ -205,7 +206,7 @@ namespace QuasarEngine
         m_Scene->unlockWrite();
     }
 
-    void PhysicEngine::RemoveActor(PxActor& actor)
+    void PhysicEngine::RemoveActor(physx::PxActor& actor)
     {
         if (!m_Scene) return;
         m_Scene->lockWrite();
@@ -213,32 +214,168 @@ namespace QuasarEngine
         m_Scene->unlockWrite();
     }
 
-    void PhysicEngine::SetGravity(const PxVec3& g)
+    void PhysicEngine::SetGravity(const physx::PxVec3& g)
     {
         if (m_Scene) m_Scene->setGravity(g);
     }
 
-    PxVec3 PhysicEngine::GetGravity() const
+    physx::PxVec3 PhysicEngine::GetGravity() const
     {
-        return m_Scene ? m_Scene->getGravity() : PxVec3(0.f);
+        return m_Scene ? m_Scene->getGravity() : physx::PxVec3(0.f);
     }
 
-    bool PhysicEngine::Raycast(const PxVec3& origin, const PxVec3& unitDir, float maxDistance, PxRaycastBuffer& outHit) const
+    bool PhysicEngine::RaycastAll(const physx::PxVec3& origin, const physx::PxVec3& dir, float maxDist, std::vector<physx::PxRaycastHit>& outHits, const QueryOptions& opts)
     {
-        if (!m_Scene) return false;
-        return m_Scene->raycast(origin, unitDir, maxDistance, outHit);
+        physx::PxScene* scene = m_Scene;
+        if (!scene) return false;
+
+        physx::PxRaycastBuffer buffer;
+        physx::PxHitFlags flags = opts.hitFlags;
+        if (opts.bothSides) flags |= physx::PxHitFlag::eMESH_BOTH_SIDES;
+
+        QueryFilterCB cb; cb.includeTriggers = opts.includeTriggers;
+        physx::PxQueryFilterData qfd = MakeFilterData(opts);
+
+        const uint32_t maxHits = 256;
+        physx::PxRaycastHit hits[maxHits];
+        physx::PxRaycastBuffer hitBuf(hits, maxHits);
+
+        const bool ok = scene->raycast(origin, dir.getNormalized(), maxDist, hitBuf, flags, qfd, &cb);
+        if (!ok) return false;
+
+        outHits.clear();
+        outHits.reserve(hitBuf.getNbAnyHits());
+        
+        for (uint32_t i = 0; i < hitBuf.getNbTouches(); ++i) outHits.push_back(hitBuf.getTouches()[i]);
+        if (hitBuf.hasBlock) outHits.push_back(hitBuf.block);
+        return !outHits.empty();
     }
+
+    bool PhysicEngine::Raycast(const physx::PxVec3& origin, const physx::PxVec3& dir, float maxDist, physx::PxRaycastHit& outHit, const QueryOptions& opts)
+    {
+        physx::PxScene* scene = m_Scene;
+        if (!scene) return false;
+
+        physx::PxRaycastBuffer hit;
+        physx::PxHitFlags flags = opts.hitFlags;
+        if (opts.bothSides) flags |= physx::PxHitFlag::eMESH_BOTH_SIDES;
+
+        QueryFilterCB cb;
+        cb.includeTriggers = opts.includeTriggers;
+
+        physx::PxQueryFilterData qfd = MakeFilterData(opts);
+
+        if (!scene->raycast(origin, dir.getNormalized(), maxDist, hit, flags, qfd, &cb))
+            return false;
+
+        if (!hit.hasBlock) return false;
+        outHit = hit.block;
+        return true;
+    }
+
+    bool PhysicEngine::SweepBox(const physx::PxVec3& halfExtents, const physx::PxTransform& pose,
+        const physx::PxVec3& dir, float maxDist, physx::PxSweepHit& outHit,
+        const QueryOptions& opts)
+    {
+        physx::PxScene* scene = m_Scene;
+        if (!scene) return false;
+
+        physx::PxBoxGeometry geom(halfExtents);
+        physx::PxSweepBuffer hit;
+        physx::PxHitFlags flags = opts.hitFlags;
+        if (opts.preciseSweep) flags |= physx::PxHitFlag::ePRECISE_SWEEP;
+
+        QueryFilterCB cb;
+        cb.includeTriggers = opts.includeTriggers;
+
+        physx::PxQueryFilterData qfd = MakeFilterData(opts);
+
+        if (!scene->sweep(geom, pose, dir.getNormalized(), maxDist, hit, flags, qfd, &cb))
+            return false;
+
+        if (!hit.hasBlock) return false;
+        outHit = hit.block;
+        return true;
+    }
+
+    bool PhysicEngine::SweepCapsule(float radius, float halfHeight, const physx::PxTransform& pose, const physx::PxVec3& dir, float maxDist, physx::PxSweepHit& outHit, const QueryOptions& opts)
+    {
+        physx::PxScene* scene = m_Scene;
+        if (!scene) return false;
+
+        physx::PxCapsuleGeometry geom(radius, halfHeight);
+        physx::PxSweepBuffer hit;
+        physx::PxHitFlags flags = opts.hitFlags;
+        if (opts.preciseSweep) flags |= physx::PxHitFlag::ePRECISE_SWEEP;
+
+        QueryFilterCB cb;
+        cb.includeTriggers = opts.includeTriggers;
+
+        physx::PxQueryFilterData qfd = MakeFilterData(opts);
+
+        if (!scene->sweep(geom, pose, dir.getNormalized(), maxDist, hit, flags, qfd, &cb))
+            return false;
+
+        if (!hit.hasBlock) return false;
+        outHit = hit.block;
+        return true;
+    }
+
+    bool PhysicEngine::OverlapBox(const physx::PxVec3& halfExtents, const physx::PxTransform& pose, std::vector<physx::PxOverlapHit>& outHits, const QueryOptions& opts)
+    {
+        physx::PxScene* scene = m_Scene;
+        if (!scene) return false;
+
+        physx::PxBoxGeometry geom(halfExtents);
+        const uint32_t maxHits = 256;
+        physx::PxOverlapHit hits[maxHits];
+        physx::PxOverlapBuffer buf(hits, maxHits);
+
+        QueryFilterCB cb;
+        cb.includeTriggers = opts.includeTriggers;
+
+        physx::PxQueryFilterData qfd = MakeFilterData(opts);
+
+        const bool ok = scene->overlap(geom, pose, buf, qfd, &cb);
+        if (!ok) return false;
+
+        outHits.assign(buf.getTouches(), buf.getTouches() + buf.getNbTouches());
+        return !outHits.empty();
+    }
+
+    bool PhysicEngine::OverlapCapsule(float radius, float halfHeight, const physx::PxTransform& pose, std::vector<physx::PxOverlapHit>& outHits, const QueryOptions& opts)
+    {
+        physx::PxScene* scene = m_Scene;
+        if (!scene) return false;
+
+        physx::PxCapsuleGeometry geom(radius, halfHeight);
+        const uint32_t maxHits = 256;
+        physx::PxOverlapHit hits[maxHits];
+        physx::PxOverlapBuffer buf(hits, maxHits);
+
+        QueryFilterCB cb;
+        cb.includeTriggers = opts.includeTriggers;
+
+        physx::PxQueryFilterData qfd = MakeFilterData(opts);
+
+        const bool ok = scene->overlap(geom, pose, buf, qfd, &cb);
+        if (!ok) return false;
+
+        outHits.assign(buf.getTouches(), buf.getTouches() + buf.getNbTouches());
+        return !outHits.empty();
+    }
+
 
     void PhysicEngine::SetVisualizationScale(float scale)
     {
-        if (m_Scene) m_Scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, scale);
+        if (m_Scene) m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eSCALE, scale);
     }
 
     void PhysicEngine::EnableVisualization(bool shapes, bool aabbs, bool axes)
     {
         if (!m_Scene) return;
-        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, shapes ? 1.0f : 0.0f);
-        m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, aabbs ? 1.0f : 0.0f);
-        m_Scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, axes ? 1.0f : 0.0f);
+        m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_SHAPES, shapes ? 1.0f : 0.0f);
+        m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_AABBS, aabbs ? 1.0f : 0.0f);
+        m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eACTOR_AXES, axes ? 1.0f : 0.0f);
     }
 }

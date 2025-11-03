@@ -7,6 +7,8 @@
 #include <QuasarEngine/Physic/PhysicEngine.h>
 #include <QuasarEngine/Core/Logger.h>
 
+#include <QuasarEngine/Physic/PhysXQueryUtils.h>
+
 namespace QuasarEngine
 {
     BoxColliderComponent::BoxColliderComponent() {}
@@ -146,26 +148,61 @@ namespace QuasarEngine
         const glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
         const physx::PxVec3    he = ToPx(full * 1.0f);
 
-        physx::PxShape* shape = sdk->createShape(physx::PxBoxGeometry(he), *m_Material, true);
-        if (shape)
-        {
-            shape->setContactOffset(0.02f);
-            shape->setRestOffset(0.005f);
-            shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, true);
-            shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, true);
-            shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, false);
+        m_Shape = sdk->createShape(physx::PxBoxGeometry(he), *m_Material, true);
+        if (!m_Shape) return;
+        
+        m_Shape->setContactOffset(0.02f);
+        m_Shape->setRestOffset(0.005f);
+        m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+        m_Shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, true);
+        m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
 
-            shape->acquireReference();
+        m_Shape->setLocalPose(physx::PxTransform(
+            physx::PxVec3(m_LocalPosition.x, m_LocalPosition.y, m_LocalPosition.z),
+            physx::PxQuat(m_LocalRotation.x, m_LocalRotation.y, m_LocalRotation.z, m_LocalRotation.w)));
 
-            actor->attachShape(*shape);
+        physx::PxFilterData qfd;
+        qfd.word0 = 0xFFFFFFFF;
+        qfd.word1 = 0xFFFFFFFF;
+        m_Shape->setQueryFilterData(qfd);
 
-            m_Shape = shape;
-            m_AttachedActor = actor;
-        }
+        m_Shape->acquireReference();
+
+        actor->attachShape(*m_Shape);
+
+        m_AttachedActor = actor;
 
         scene->unlockWrite();
 
         RecomputeMassFromSize();
+    }
+
+    void BoxColliderComponent::SetTrigger(bool isTrigger)
+    {
+        m_IsTrigger = isTrigger;
+        if (m_Shape) {
+            m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
+            m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
+        }
+    }
+
+    void BoxColliderComponent::SetLocalPose(const glm::vec3& p, const glm::quat& r)
+    {
+        m_LocalPosition = p;
+        m_LocalRotation = r;
+        if (m_Shape) {
+            m_Shape->setLocalPose(physx::PxTransform(
+                physx::PxVec3(p.x, p.y, p.z),
+                physx::PxQuat(r.x, r.y, r.z, r.w)));
+        }
+    }
+
+    void BoxColliderComponent::SetMaterialCombineModes(physx::PxCombineMode::Enum friction,
+        physx::PxCombineMode::Enum restitution)
+    {
+        m_FrictionCombine = friction;
+        m_RestitutionCombine = restitution;
+        UpdateColliderMaterial();
     }
 
     void BoxColliderComponent::UpdateColliderMaterial()
@@ -175,6 +212,8 @@ namespace QuasarEngine
         m_Material->setStaticFriction(friction);
         m_Material->setDynamicFriction(friction);
         m_Material->setRestitution(bounciness);
+        m_Material->setFrictionCombineMode(m_FrictionCombine);
+        m_Material->setRestitutionCombineMode(m_RestitutionCombine);
 
         RecomputeMassFromSize();
     }
@@ -273,5 +312,14 @@ namespace QuasarEngine
             m_Material = nullptr;
             m_OwnsMaterial = false;
         }
+    }
+
+    void BoxColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)
+    {
+        if (!m_Shape) return;
+        physx::PxFilterData qfd = m_Shape->getQueryFilterData();
+        qfd.word0 = layer;
+        qfd.word1 = mask;
+        m_Shape->setQueryFilterData(qfd);
     }
 }

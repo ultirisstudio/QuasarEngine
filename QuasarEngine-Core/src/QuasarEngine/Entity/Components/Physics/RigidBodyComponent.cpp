@@ -4,6 +4,7 @@
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
+#include <QuasarEngine/Physic/PhysXQueryUtils.h>
 
 namespace QuasarEngine
 {
@@ -228,6 +229,92 @@ namespace QuasarEngine
         if (!mDynamic) return;
         mDynamic->setLinearDamping(linearDamping);
         mDynamic->setAngularDamping(angularDamping);
+    }
+
+    void RigidBodyComponent::SetKinematicTarget(const glm::vec3& p, const glm::quat& r)
+    {
+        if (!mDynamic) return;
+        if (!mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC)) return;
+        mDynamic->setKinematicTarget(physx::PxTransform(ToPx(p), ToPx(r)));
+    }
+
+    bool RigidBodyComponent::MoveKinematic(const glm::vec3& targetPos,
+        const glm::quat& targetRot,
+        bool doSweep)
+    {
+        using namespace physx;
+
+        if (!mDynamic) return false;
+        if (!mDynamic->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return false;
+
+        const PxTransform to(ToPx(targetPos), ToPx(targetRot));
+
+        if (!doSweep) {
+            mDynamic->setKinematicTarget(to);
+            return true;
+        }
+
+        PxU32 nbShapes = mDynamic->getNbShapes();
+        if (nbShapes == 0) {
+            mDynamic->setKinematicTarget(to);
+            return true;
+        }
+
+        std::vector<PxShape*> shapes(nbShapes);
+        mDynamic->getShapes(shapes.data(), nbShapes);
+        PxShape* shape = shapes[0];
+
+        const PxTransform from = mDynamic->getGlobalPose();
+        const PxVec3 delta = (to.p - from.p);
+        const float dist = delta.magnitude();
+
+        if (dist <= 1e-4f) {
+            mDynamic->setKinematicTarget(to);
+            return true;
+        }
+
+        const PxVec3 unitDir = delta.getNormalized();
+
+        PxGeometryHolder gh = shape->getGeometry();
+        PxSweepBuffer buf;
+
+        QueryOptions opts;
+        opts.hitFlags = PxHitFlag::eDEFAULT | PxHitFlag::eMTD;
+        opts.includeTriggers = false;
+        opts.preciseSweep = true;
+
+        PxHitFlags hitFlags = opts.hitFlags;
+        if (opts.preciseSweep) hitFlags |= PxHitFlag::ePRECISE_SWEEP;
+
+        QueryFilterCB cb;
+        cb.includeTriggers = false;
+        cb.ignoreActor = mDynamic;
+
+        PxQueryFilterData qfd = MakeFilterData(opts);
+
+        PxScene* scene = PhysicEngine::Instance().GetScene();
+        if (!scene) {
+            mDynamic->setKinematicTarget(to);
+            return true;
+        }
+
+        const bool anyHit = scene->sweep(gh.any(), from, unitDir, dist, buf, hitFlags, qfd, &cb, nullptr);
+
+        if (!anyHit || !buf.hasBlock) {
+            mDynamic->setKinematicTarget(to);
+            return true;
+        }
+
+        const PxSweepHit& h = buf.block;
+
+        const float safety = 0.01f;
+        const float travel = PxMax<PxReal>(0.0f, h.distance - safety);
+
+        PxTransform safePose = from;
+        safePose.p += unitDir * travel;
+        mDynamic->setKinematicTarget(safePose);
+
+        return false;
     }
 
     void RigidBodyComponent::UpdateBodyType()
