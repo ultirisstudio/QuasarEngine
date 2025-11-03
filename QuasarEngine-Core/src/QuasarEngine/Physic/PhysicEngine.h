@@ -9,11 +9,14 @@
 #include <pvd/PxPvdTransport.h>
 #endif
 
+#include <entt.hpp>
+#include <sol/sol.hpp>
+
 #include <memory>
 #include <vector>
 #include <cstdint>
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <unordered_map>
+
 #include <QuasarEngine/Renderer/VertexArray.h>
 #include <QuasarEngine/Renderer/Buffer.h>
 
@@ -46,6 +49,10 @@ namespace QuasarEngine
         physx::PxFoundation* GetFoundation() const noexcept { return m_Foundation; }
         physx::PxCpuDispatcher* GetDispatcher() const noexcept { return m_Dispatcher; }
 
+        physx::PxControllerManager* GetCCTManager() const { return m_CCTManager; }
+        physx::PxMaterial* GetCCTMaterial();
+        bool HasScene() const { return m_Scene != nullptr; }
+
         physx::PxMaterial* CreateMaterial(float sf = 0.5f, float df = 0.5f, float r = 0.1f);
         void AddActor(physx::PxActor& actor);
         void RemoveActor(physx::PxActor& actor);
@@ -65,6 +72,11 @@ namespace QuasarEngine
         uint32_t GetDebugVertexCount() const { return m_DebugVertexCount; }
         void SetVisualizationScale(float scale);
         void EnableVisualization(bool shapes, bool aabbs, bool axes);
+
+        void RegisterActor(physx::PxActor* a, entt::entity id);
+        void UnregisterActor(physx::PxActor* a);
+
+        sol::object ActorToEntityObject(physx::PxActor* a, sol::state_view lua);
 
     private:
         PhysicEngine() = default;
@@ -92,6 +104,11 @@ namespace QuasarEngine
 
         float m_Accumulator = 0.f;
         bool m_Initialized = false;
+
+        std::unordered_map<const physx::PxActor*, entt::entity> m_ActorToEntity;
+
+        physx::PxControllerManager* m_CCTManager = nullptr;
+        mutable physx::PxMaterial* m_CCTMaterial = nullptr;
 
         std::shared_ptr<VertexArray> m_VertexArray;
         std::shared_ptr<VertexBuffer> m_VertexBuffer;

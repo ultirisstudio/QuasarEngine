@@ -32,8 +32,8 @@ namespace QuasarEngine
         angularDamping = other.angularDamping;
         density = other.density;
 
-        mActor = nullptr;
-        mDynamic = nullptr;
+        m_Actor = nullptr;
+        m_Dynamic = nullptr;
         mCurrentType = ParseBodyType(bodyTypeString);
     }
 
@@ -58,8 +58,8 @@ namespace QuasarEngine
         angularDamping = other.angularDamping;
         density = other.density;
 
-        mActor = nullptr;
-        mDynamic = nullptr;
+        m_Actor = nullptr;
+        m_Dynamic = nullptr;
         mCurrentType = ParseBodyType(bodyTypeString);
 
         return *this;
@@ -82,8 +82,8 @@ namespace QuasarEngine
         angularDamping = other.angularDamping;
         density = other.density;
 
-        mActor = other.mActor;   other.mActor = nullptr;
-        mDynamic = other.mDynamic; other.mDynamic = nullptr;
+        m_Actor = other.m_Actor;   other.m_Actor = nullptr;
+        m_Dynamic = other.m_Dynamic; other.m_Dynamic = nullptr;
         mCurrentType = other.mCurrentType;
     }
 
@@ -108,8 +108,8 @@ namespace QuasarEngine
         angularDamping = other.angularDamping;
         density = other.density;
 
-        mActor = other.mActor;   other.mActor = nullptr;
-        mDynamic = other.mDynamic; other.mDynamic = nullptr;
+        m_Actor = other.m_Actor;   other.m_Actor = nullptr;
+        m_Dynamic = other.m_Dynamic; other.m_Dynamic = nullptr;
         mCurrentType = other.mCurrentType;
 
         return *this;
@@ -117,20 +117,20 @@ namespace QuasarEngine
 
     void RigidBodyComponent::Destroy()
     {
-        if (!mActor) return;
+        if (!m_Actor) return;
 
-        physx::PxScene* scene = PhysicEngine::Instance().GetScene();
-        if (scene)
-        {
-            scene->lockWrite();
-            scene->removeActor(*mActor);
-            scene->unlockWrite();
+        if (physx::PxScene* sc = m_Actor->getScene()) {
+            sc->lockWrite();
+            sc->removeActor(*m_Actor);
+            sc->unlockWrite();
         }
 
-        mActor->userData = nullptr;
-        mActor->release();
-        mActor = nullptr;
-        mDynamic = nullptr;
+        PhysicEngine::Instance().UnregisterActor(m_Actor);
+
+        m_Actor->userData = nullptr;
+        m_Actor->release();
+        m_Actor = nullptr;
+        m_Dynamic = nullptr;
     }
 
     RigidBodyComponent::BodyType RigidBodyComponent::ParseBodyType(const std::string& s) const
@@ -147,16 +147,17 @@ namespace QuasarEngine
         physx::PxScene* scene = phys.GetScene();
         if (!sdk || !scene) return;
 
-        if (mActor)
-        {
-            scene->lockWrite();
-            scene->removeActor(*mActor);
-            scene->unlockWrite();
-
-            mActor->userData = nullptr;
-            mActor->release();
-            mActor = nullptr;
-            mDynamic = nullptr;
+        if (m_Actor) {
+            if (physx::PxScene* sc = m_Actor->getScene()) {
+                sc->lockWrite();
+                sc->removeActor(*m_Actor);
+                sc->unlockWrite();
+            }
+            phys.UnregisterActor(m_Actor);
+            m_Actor->userData = nullptr;
+            m_Actor->release();
+            m_Actor = nullptr;
+            m_Dynamic = nullptr;
         }
 
         Entity entity{ entt_entity, registry };
@@ -167,24 +168,25 @@ namespace QuasarEngine
         if (mCurrentType == BodyType::Static)
         {
             physx::PxRigidStatic* a = sdk->createRigidStatic(pose);
-            mActor = a;
+            m_Actor = a;
+            m_Dynamic = nullptr;
         }
         else
         {
             physx::PxRigidDynamic* a = sdk->createRigidDynamic(pose);
             a->setSolverIterationCounts(8, 2);
-            physx::PxRigidBodyExt::updateMassAndInertia(*a, density);
             if (mCurrentType == BodyType::Kinematic)
                 a->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, true);
-            mActor = a;
-            mDynamic = a;
+            m_Actor = a;
+            m_Dynamic = a;
         }
 
-        mActor->setActorFlag(physx::PxActorFlag::eVISUALIZATION, true);
-        mActor->userData = reinterpret_cast<void*>(static_cast<uintptr_t>(entt_entity));
+        m_Actor->setActorFlag(physx::PxActorFlag::eVISUALIZATION, true);
+
+        phys.RegisterActor(m_Actor, entt_entity);
 
         scene->lockWrite();
-        scene->addActor(*mActor);
+        scene->addActor(*m_Actor);
         scene->unlockWrite();
 
         UpdateEnableGravity();
@@ -200,13 +202,13 @@ namespace QuasarEngine
 
     void RigidBodyComponent::Update(double dt)
     {
-        if (!mActor) return;
+        if (!m_Actor) return;
 
         physx::PxScene* scene = PhysicEngine::Instance().GetScene();
         if (!scene) return;
 
         scene->lockRead();
-        const physx::PxTransform p = mActor->getGlobalPose();
+        const physx::PxTransform p = m_Actor->getGlobalPose();
         scene->unlockRead();
 
         Entity entity{ entt_entity, registry };
@@ -220,22 +222,22 @@ namespace QuasarEngine
 
     void RigidBodyComponent::UpdateEnableGravity()
     {
-        if (!mActor) return;
-        mActor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, !enableGravity);
+        if (!m_Actor) return;
+        m_Actor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, !enableGravity);
     }
 
     void RigidBodyComponent::UpdateDamping()
     {
-        if (!mDynamic) return;
-        mDynamic->setLinearDamping(linearDamping);
-        mDynamic->setAngularDamping(angularDamping);
+        if (!m_Dynamic) return;
+        m_Dynamic->setLinearDamping(linearDamping);
+        m_Dynamic->setAngularDamping(angularDamping);
     }
 
     void RigidBodyComponent::SetKinematicTarget(const glm::vec3& p, const glm::quat& r)
     {
-        if (!mDynamic) return;
-        if (!mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC)) return;
-        mDynamic->setKinematicTarget(physx::PxTransform(ToPx(p), ToPx(r)));
+        if (!m_Dynamic) return;
+        if (!m_Dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC)) return;
+        m_Dynamic->setKinematicTarget(physx::PxTransform(ToPx(p), ToPx(r)));
     }
 
     bool RigidBodyComponent::MoveKinematic(const glm::vec3& targetPos,
@@ -244,32 +246,32 @@ namespace QuasarEngine
     {
         using namespace physx;
 
-        if (!mDynamic) return false;
-        if (!mDynamic->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return false;
+        if (!m_Dynamic) return false;
+        if (!m_Dynamic->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return false;
 
         const PxTransform to(ToPx(targetPos), ToPx(targetRot));
 
         if (!doSweep) {
-            mDynamic->setKinematicTarget(to);
+            m_Dynamic->setKinematicTarget(to);
             return true;
         }
 
-        PxU32 nbShapes = mDynamic->getNbShapes();
+        PxU32 nbShapes = m_Dynamic->getNbShapes();
         if (nbShapes == 0) {
-            mDynamic->setKinematicTarget(to);
+            m_Dynamic->setKinematicTarget(to);
             return true;
         }
 
         std::vector<PxShape*> shapes(nbShapes);
-        mDynamic->getShapes(shapes.data(), nbShapes);
+        m_Dynamic->getShapes(shapes.data(), nbShapes);
         PxShape* shape = shapes[0];
 
-        const PxTransform from = mDynamic->getGlobalPose();
+        const PxTransform from = m_Dynamic->getGlobalPose();
         const PxVec3 delta = (to.p - from.p);
         const float dist = delta.magnitude();
 
         if (dist <= 1e-4f) {
-            mDynamic->setKinematicTarget(to);
+            m_Dynamic->setKinematicTarget(to);
             return true;
         }
 
@@ -288,20 +290,20 @@ namespace QuasarEngine
 
         QueryFilterCB cb;
         cb.includeTriggers = false;
-        cb.ignoreActor = mDynamic;
+        cb.ignoreActor = m_Dynamic;
 
         PxQueryFilterData qfd = MakeFilterData(opts);
 
         PxScene* scene = PhysicEngine::Instance().GetScene();
         if (!scene) {
-            mDynamic->setKinematicTarget(to);
+            m_Dynamic->setKinematicTarget(to);
             return true;
         }
 
         const bool anyHit = scene->sweep(gh.any(), from, unitDir, dist, buf, hitFlags, qfd, &cb, nullptr);
 
         if (!anyHit || !buf.hasBlock) {
-            mDynamic->setKinematicTarget(to);
+            m_Dynamic->setKinematicTarget(to);
             return true;
         }
 
@@ -312,14 +314,14 @@ namespace QuasarEngine
 
         PxTransform safePose = from;
         safePose.p += unitDir * travel;
-        mDynamic->setKinematicTarget(safePose);
+        m_Dynamic->setKinematicTarget(safePose);
 
         return false;
     }
 
     void RigidBodyComponent::UpdateBodyType()
     {
-        if (!mActor) { RebuildActor(); return; }
+        if (!m_Actor) { RebuildActor(); return; }
         const BodyType desired = ParseBodyType(bodyTypeString);
         if (desired == mCurrentType) return;
         RebuildActor();
@@ -327,17 +329,17 @@ namespace QuasarEngine
 
     void RigidBodyComponent::UpdateLinearAxisFactor()
     {
-        if (!mDynamic) return;
-        mDynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_LINEAR_X, !m_LinearAxisFactorX);
-        mDynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_LINEAR_Y, !m_LinearAxisFactorY);
-        mDynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_LINEAR_Z, !m_LinearAxisFactorZ);
+        if (!m_Dynamic) return;
+        m_Dynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_LINEAR_X, !m_LinearAxisFactorX);
+        m_Dynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_LINEAR_Y, !m_LinearAxisFactorY);
+        m_Dynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_LINEAR_Z, !m_LinearAxisFactorZ);
     }
 
     void RigidBodyComponent::UpdateAngularAxisFactor()
     {
-        if (!mDynamic) return;
-        mDynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_X, !m_AngularAxisFactorX);
-        mDynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y, !m_AngularAxisFactorY);
-        mDynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z, !m_AngularAxisFactorZ);
+        if (!m_Dynamic) return;
+        m_Dynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_X, !m_AngularAxisFactorX);
+        m_Dynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y, !m_AngularAxisFactorY);
+        m_Dynamic->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z, !m_AngularAxisFactorZ);
     }
 }

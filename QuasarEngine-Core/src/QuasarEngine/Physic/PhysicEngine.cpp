@@ -6,6 +6,9 @@
 #include <iostream>
 #include <algorithm>
 
+#include <QuasarEngine/Entity/Entity.h>
+#include <QuasarEngine/Renderer/Renderer.h>
+
 namespace QuasarEngine
 {
     void PxLoggerCallback::reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line)
@@ -95,6 +98,8 @@ namespace QuasarEngine
         m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
         m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
 
+        m_CCTManager = PxCreateControllerManager(*m_Scene);
+
         m_DefaultMaterial = CreateMaterial(0.5f, 0.5f, 0.1f);
         if (!m_DefaultMaterial) { ReleaseAll(); return false; }
 
@@ -121,6 +126,8 @@ namespace QuasarEngine
     {
         m_VertexBuffer.reset();
         m_VertexArray.reset();
+        if (m_CCTManager) { m_CCTManager->purgeControllers(); m_CCTManager->release(); m_CCTManager = nullptr; }
+        if (m_CCTMaterial) { m_CCTMaterial->release(); m_CCTMaterial = nullptr; }
         if (m_Scene) { m_Scene->release(); m_Scene = nullptr; }
         if (m_Dispatcher) { m_Dispatcher->release(); m_Dispatcher = nullptr; }
         if (m_DefaultMaterial) { m_DefaultMaterial->release(); m_DefaultMaterial = nullptr; }
@@ -192,6 +199,15 @@ namespace QuasarEngine
         }
         BuildOrUpdateDebugBuffer(vertices);
     }
+
+    physx::PxMaterial* PhysicEngine::GetCCTMaterial()
+    {
+        if (!m_CCTMaterial) {
+            m_CCTMaterial = m_Physics->createMaterial(0.0f, 0.0f, 0.0f);
+        }
+        return m_CCTMaterial;
+    }
+
 
     physx::PxMaterial* PhysicEngine::CreateMaterial(float sf, float df, float r)
     {
@@ -377,5 +393,34 @@ namespace QuasarEngine
         m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_SHAPES, shapes ? 1.0f : 0.0f);
         m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_AABBS, aabbs ? 1.0f : 0.0f);
         m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eACTOR_AXES, axes ? 1.0f : 0.0f);
+    }
+
+    void PhysicEngine::RegisterActor(physx::PxActor* a, entt::entity id) {
+        if (!a) return;
+        a->userData = reinterpret_cast<void*>(static_cast<uintptr_t>(id));
+        m_ActorToEntity[a] = id;
+    }
+
+    void PhysicEngine::UnregisterActor(physx::PxActor* a) {
+        if (!a) return;
+        a->userData = nullptr;
+        m_ActorToEntity.erase(a);
+    }
+
+    sol::object PhysicEngine::ActorToEntityObject(physx::PxActor* a, sol::state_view lua) {
+        if (!a) return sol::nil;
+        if (a->userData) {
+            const auto id = static_cast<entt::entity>(reinterpret_cast<uintptr_t>(a->userData));
+            auto* reg = Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
+            Entity e{ id, reg };
+            return e.IsValid() ? sol::make_object(lua, e) : sol::nil;
+        }
+        auto it = m_ActorToEntity.find(a);
+        if (it != m_ActorToEntity.end()) {
+            auto* reg = Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
+            Entity e{ it->second, reg };
+            return e.IsValid() ? sol::make_object(lua, e) : sol::nil;
+        }
+        return sol::nil;
     }
 }

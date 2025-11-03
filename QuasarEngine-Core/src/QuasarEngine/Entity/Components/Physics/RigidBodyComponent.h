@@ -54,12 +54,12 @@ namespace QuasarEngine
 
         void SetKinematicTarget(const glm::vec3& targetPos, const glm::quat& targetRot);
 
-        physx::PxRigidActor* GetActor()   const noexcept { return mActor; }
-        physx::PxRigidDynamic* GetDynamic() const noexcept { return mDynamic; }
+        physx::PxRigidActor* GetActor()   const noexcept { return m_Actor; }
+        physx::PxRigidDynamic* GetDynamic() const noexcept { return m_Dynamic; }
 
-        bool IsStatic()    const noexcept { return mActor && (mDynamic == nullptr); }
-        bool IsDynamic()   const noexcept { return mDynamic && !mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
-        bool IsKinematic() const noexcept { return mDynamic && mDynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
+        bool IsStatic()    const noexcept { return m_Actor && (m_Dynamic == nullptr); }
+        bool IsDynamic()   const noexcept { return m_Dynamic && !m_Dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
+        bool IsKinematic() const noexcept { return m_Dynamic && m_Dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
 
     private:
         enum class BodyType { Dynamic, Static, Kinematic };
@@ -67,8 +67,8 @@ namespace QuasarEngine
         BodyType ParseBodyType(const std::string& s) const;
         void RebuildActor();
 
-        physx::PxRigidActor* mActor = nullptr;
-        physx::PxRigidDynamic* mDynamic = nullptr;
+        physx::PxRigidActor* m_Actor = nullptr;
+        physx::PxRigidDynamic* m_Dynamic = nullptr;
 
         BodyType mCurrentType = BodyType::Dynamic;
     };

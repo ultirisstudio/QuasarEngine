@@ -11,6 +11,7 @@
 #include <QuasarEngine/Entity/Components/Physics/BoxColliderComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/SphereColliderComponent.h>
 #include <QuasarEngine/Entity/Components/Physics/CapsuleColliderComponent.h>
+#include <QuasarEngine/Entity/Components/Physics/CharacterControllerComponent.h>
 #include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 
@@ -66,17 +67,6 @@ namespace QuasarEngine
                 else                                        comp = &e.AddComponent<C>();
                 return sol::make_object(lua, std::ref(*comp));
                 };
-        }
-    }
-
-    namespace {
-        inline sol::object ActorToEntityObject(physx::PxActor* a, sol::state_view lua) {
-            if (!a || !a->userData) return sol::nil;
-            const auto id = static_cast<entt::entity>(reinterpret_cast<uintptr_t>(a->userData));
-            auto* reg = QuasarEngine::Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
-            QuasarEngine::Entity e{ id, reg };
-            if (!e.IsValid()) return sol::nil;
-            return sol::make_object(lua, e);
         }
     }
 
@@ -697,15 +687,6 @@ namespace QuasarEngine
             "IsPlayer", &QuasarEngine::TagComponent::IsPlayer
         );
 
-        lua_state.new_usertype<BoxColliderComponent>("BoxCollider",
-            "mass", &BoxColliderComponent::mass,
-            "friction", &BoxColliderComponent::friction,
-            "bounciness", &BoxColliderComponent::bounciness,
-            "useEntityScale", &BoxColliderComponent::m_UseEntityScale,
-            "size", &BoxColliderComponent::m_Size,
-            "Init", &BoxColliderComponent::Init
-        );
-
         lua_state.new_usertype<AnimationComponent>("AnimationComponent",
             "isPlaying", &AnimationComponent::IsPlaying,
             "isPaused", &AnimationComponent::IsPaused,
@@ -782,6 +763,60 @@ namespace QuasarEngine
 
     void ScriptSystem::BindPhysicsToLua(sol::state& lua_state)
     {
+        lua_state.new_usertype<CharacterControllerComponent>("CharacterController",
+            "move", [&](CharacterControllerComponent& c, const glm::vec3& disp, float dt, sol::optional<float> minDist) {
+                float md = minDist.value_or(0.001f);
+                bool any = c.Move(disp, dt, md);
+                sol::table t = lua_state.create_table();
+                t["collided"] = any;
+                t["grounded"] = c.IsGrounded();
+                t["position"] = c.GetPosition();
+                return t;
+            },
+            "set_position", &CharacterControllerComponent::SetPosition,
+            "get_position", &CharacterControllerComponent::GetPosition,
+            "resize_height", &CharacterControllerComponent::ResizeHeight,
+            "set_radius", &CharacterControllerComponent::SetRadius,
+            "set_step_offset", &CharacterControllerComponent::SetStepOffset,
+            "set_slope_limit_deg", &CharacterControllerComponent::SetSlopeLimitDeg,
+            "set_contact_offset", &CharacterControllerComponent::SetContactOffset,
+            "set_layer_mask", &CharacterControllerComponent::SetLayerMask,
+            "set_include_triggers", &CharacterControllerComponent::SetIncludeTriggers
+        );
+
+        sol::table character = lua_state.create_table();
+
+        character.set_function("create_capsule", [&](const glm::vec3& startPos, sol::optional<float> radius,
+            sol::optional<float> height, sol::optional<float> stepOffset,
+            sol::optional<float> slopeLimitDeg, sol::optional<float> contactOffset) {
+                auto& P = PhysicEngine::Instance();
+                if (!P.HasScene() || !P.GetCCTManager()) return sol::make_object(lua_state, sol::nil);
+
+                auto* mat = P.GetCCTMaterial();
+                auto* mgr = P.GetCCTManager();
+
+                CharacterControllerComponent* c = new CharacterControllerComponent();
+                if (radius) c->SetRadius(*radius);
+                if (height) c->ResizeHeight(*height);
+                if (stepOffset) c->SetStepOffset(*stepOffset);
+                if (slopeLimitDeg) c->SetSlopeLimitDeg(*slopeLimitDeg);
+                if (contactOffset) c->SetContactOffset(*contactOffset);
+
+                if (!c->Create(P.GetPhysics(), mgr, mat, startPos)) {
+                    delete c;
+                    return sol::make_object(lua_state, sol::nil);
+                }
+                return sol::make_object(lua_state, c);
+            });
+
+        character.set_function("destroy", [](CharacterControllerComponent* c) {
+            if (!c) return;
+            c->Destroy();
+            delete c;
+            });
+
+        lua_state["character"] = character;
+
         lua_state.new_usertype<RigidBodyComponent>("RigidBody",
             "enableGravity", sol::property(
                 [](RigidBodyComponent& c) { return c.enableGravity; },
@@ -830,7 +865,7 @@ namespace QuasarEngine
                     res["position"] = ToGlm(hit.block.position);
                     res["normal"] = ToGlm(hit.block.normal);
                     res["distance"] = hit.block.distance;
-                    res["entity"] = ActorToEntityObject(hit.block.actor, lua_state);
+                    res["entity"] = PhysicEngine::Instance().ActorToEntityObject(hit.block.actor, lua_state);
                     res["shape"] = (uintptr_t)hit.block.shape;
                 }
                 return sol::make_object(lua_state, res);
@@ -855,7 +890,7 @@ namespace QuasarEngine
                     t["position"] = ToGlm(h.position);
                     t["normal"] = ToGlm(h.normal);
                     t["faceIndex"] = h.faceIndex;
-                    t["entity"] = ActorToEntityObject(h.actor, lua_state);
+                    t["entity"] = PhysicEngine::Instance().ActorToEntityObject(h.actor, lua_state);
                     t["shape"] = (uintptr_t)h.shape;
                     out[i++] = t;
                 }
@@ -885,7 +920,7 @@ namespace QuasarEngine
                 const physx::PxOverlapHit* touches = buf.getTouches();
                 for (physx::PxU32 i = 0; i < n; ++i) {
                     physx::PxActor* a = touches[i].actor;
-                    auto obj = ActorToEntityObject(a, lua_state);
+                    auto obj = PhysicEngine::Instance().ActorToEntityObject(a, lua_state);
                     if (obj != sol::nil) ents[idx++] = obj;
                 }
 
@@ -907,7 +942,7 @@ namespace QuasarEngine
                 int i = 1;
                 for (const auto& h : hits) {
                     sol::table t = lua_state.create_table();
-                    t["entity"] = ActorToEntityObject(h.actor, lua_state);
+                    t["entity"] = PhysicEngine::Instance().ActorToEntityObject(h.actor, lua_state);
                     t["shape"] = (uintptr_t)h.shape;
                     out[i++] = t;
                 }
@@ -926,7 +961,7 @@ namespace QuasarEngine
                 int i = 1;
                 for (const auto& h : hits) {
                     sol::table t = lua_state.create_table();
-                    t["entity"] = ActorToEntityObject(h.actor, lua_state);
+                    t["entity"] = PhysicEngine::Instance().ActorToEntityObject(h.actor, lua_state);
                     t["shape"] = (uintptr_t)h.shape;
                     out[i++] = t;
                 }
@@ -952,7 +987,7 @@ namespace QuasarEngine
                     res["position"] = ToGlm(buf.block.position);
                     res["normal"] = ToGlm(buf.block.normal);
                     res["distance"] = buf.block.distance;
-                    res["entity"] = ActorToEntityObject(buf.block.actor, lua_state);
+                    res["entity"] = PhysicEngine::Instance().ActorToEntityObject(buf.block.actor, lua_state);
                     res["shape"] = (uintptr_t)buf.block.shape;
                 }
                 return sol::make_object(lua_state, res);
@@ -972,7 +1007,7 @@ namespace QuasarEngine
                 t["position"] = ToGlm(hit.position);
                 t["normal"] = ToGlm(hit.normal);
                 t["faceIndex"] = hit.faceIndex;
-                t["entity"] = ActorToEntityObject(hit.actor, lua_state);
+                t["entity"] = PhysicEngine::Instance().ActorToEntityObject(hit.actor, lua_state);
                 t["shape"] = (uintptr_t)hit.shape;
                 return sol::make_object(lua_state, t);
             });
@@ -991,7 +1026,7 @@ namespace QuasarEngine
                 t["position"] = ToGlm(hit.position);
                 t["normal"] = ToGlm(hit.normal);
                 t["faceIndex"] = hit.faceIndex;
-                t["entity"] = ActorToEntityObject(hit.actor, lua_state);
+                t["entity"] = PhysicEngine::Instance().ActorToEntityObject(hit.actor, lua_state);
                 t["shape"] = (uintptr_t)hit.shape;
                 return sol::make_object(lua_state, t);
             });
@@ -1085,8 +1120,16 @@ namespace QuasarEngine
             "is_trigger", &BoxColliderComponent::IsTrigger,
             "set_local_pose", &BoxColliderComponent::SetLocalPose,
             "set_combine_modes", &BoxColliderComponent::SetMaterialCombineModes,
-            "set_query_filter", &BoxColliderComponent::SetQueryFilter
+            "set_query_filter", &BoxColliderComponent::SetQueryFilter,
+
+            "mass", & BoxColliderComponent::mass,
+            "friction", & BoxColliderComponent::friction,
+            "bounciness", & BoxColliderComponent::bounciness,
+            "useEntityScale", & BoxColliderComponent::m_UseEntityScale,
+            "size", & BoxColliderComponent::m_Size,
+            "Init", & BoxColliderComponent::Init
         );
+
 
         lua_state.new_usertype<SphereColliderComponent>("SphereColliderComponent",
             "set_trigger", &SphereColliderComponent::SetTrigger,
