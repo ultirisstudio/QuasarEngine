@@ -65,7 +65,7 @@ namespace QuasarEngine
 		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
 		std::string GetName() { return GetComponent<TagComponent>().Tag; }
 
-		bool Entity::IsValid() const {
+		bool IsValid() const {
 			return m_EntityHandle != entt::null && m_Registry && m_Registry->IsValid(m_EntityHandle);
 		}
 
