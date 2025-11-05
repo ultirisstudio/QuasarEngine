@@ -38,21 +38,23 @@ namespace QuasarEngine
 
         void SetMaterialCombineModes(physx::PxCombineMode::Enum friction, physx::PxCombineMode::Enum restitution);
 
+        void OnActorAboutToBeReleased(physx::PxRigidActor& actor);
+
         void SetMesh(const std::vector<glm::vec3>& verts, const std::vector<uint32_t>& indices);
         const std::vector<glm::vec3>& GetVertices() const { return m_Vertices; }
         const std::vector<uint32_t>& GetIndices()  const { return m_Indices; }
 
         bool m_UseEntityScale = true;
 
-        physx::PxShape* GetShape()    const noexcept { return m_Shape; }
+        physx::PxShape* GetShape() const noexcept { return m_Shape; }
         physx::PxMaterial* GetMaterial() const noexcept { return m_Material; }
-        physx::PxTriangleMesh* GetMesh()     const noexcept { return m_TriMesh; }
+        physx::PxTriangleMesh* GetMesh() const noexcept { return m_TriMesh; }
 
     private:
         void AttachOrRebuild();
 
         std::vector<glm::vec3> m_Vertices;
-        std::vector<uint32_t>  m_Indices;
+        std::vector<uint32_t> m_Indices;
         bool mDirty = true;
 
         physx::PxShape* m_Shape = nullptr;

@@ -31,13 +31,14 @@ namespace QuasarEngine
         void SetLocalPose(const glm::vec3& localPosition, const glm::quat& localRotation);
         glm::vec3 GetLocalPosition() const noexcept { return m_LocalPosition; }
         glm::quat GetLocalRotation() const noexcept { return m_LocalRotation; }
-        void SetMaterialCombineModes(physx::PxCombineMode::Enum friction,
-            physx::PxCombineMode::Enum restitution);
+        void SetMaterialCombineModes(physx::PxCombineMode::Enum friction, physx::PxCombineMode::Enum restitution);
 
-        bool        m_UseEntityScale = true;
-        float       m_Radius = 0.5f;
+        void OnActorAboutToBeReleased(physx::PxRigidActor& actor);
 
-        physx::PxShape* GetShape()    const noexcept { return m_Shape; }
+        bool m_UseEntityScale = true;
+        float m_Radius = 0.5f;
+
+        physx::PxShape* GetShape() const noexcept { return m_Shape; }
         physx::PxMaterial* GetMaterial() const noexcept { return m_Material; }
 
     private:

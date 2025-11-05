@@ -40,9 +40,9 @@ namespace QuasarEngine
         RigidBodyComponent(RigidBodyComponent&& other) noexcept;
         RigidBodyComponent& operator=(RigidBodyComponent&& other) noexcept;
 
-        void Destroy();
         void Init();
         void Update(double dt);
+        void Destroy();
 
         void UpdateEnableGravity();
         void UpdateBodyType();

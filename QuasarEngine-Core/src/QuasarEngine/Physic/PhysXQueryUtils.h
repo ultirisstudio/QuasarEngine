@@ -72,4 +72,27 @@ namespace QuasarEngine
         qfd.data = physx::PxFilterData(opts.layer, opts.mask, 0, 0);
         return qfd;
     }
+
+    struct PxWriteLockGuard {
+        physx::PxScene * s{ nullptr };
+
+        explicit PxWriteLockGuard(physx::PxScene * scene) : s(scene) {
+            //if (s) s->lockWrite();
+        }
+
+        ~PxWriteLockGuard() {
+            //if (s) s->unlockWrite();
+        }
+
+        PxWriteLockGuard(const PxWriteLockGuard&) = delete;
+        PxWriteLockGuard & operator=(const PxWriteLockGuard&) = delete;
+    };
+
+    inline void SetFilterDataOnShape(physx::PxShape & shape, uint32_t layer, uint32_t mask)
+    {
+        physx::PxFilterData fd(layer, mask, 0, 0);
+
+        shape.setQueryFilterData(fd);
+		//shape.setSimulationFilterData(fd); // TODO: corriger ce truc
+    }
 }

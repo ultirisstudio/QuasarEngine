@@ -62,17 +62,16 @@ namespace QuasarEngine
         m_Shape = sdk->createShape(geom, *m_Material, true);
         if (!m_Shape) return;
 
-        PxQuat rot = PxQuat(PxIdentity);
-        if (m_Axis == Axis::Y)      rot = PxQuat(PxHalfPi, PxVec3(0, 0, 1));
-        else if (m_Axis == Axis::Z) rot = PxQuat(-PxHalfPi, PxVec3(0, 1, 0));
-        m_Shape->setLocalPose(PxTransform(PxVec3(0), rot));
+        PxQuat axisRot = PxQuat(PxIdentity);
+        if (m_Axis == Axis::Y)      axisRot = PxQuat(PxHalfPi, PxVec3(0, 0, 1));
+        else if (m_Axis == Axis::Z) axisRot = PxQuat(-PxHalfPi, PxVec3(0, 1, 0));
+        const PxTransform userLocal(PxVec3(m_LocalPosition.x, m_LocalPosition.y, m_LocalPosition.z), PxQuat(m_LocalRotation.x, m_LocalRotation.y, m_LocalRotation.z, m_LocalRotation.w));
+        m_Shape->setLocalPose(PxTransform(userLocal.p, axisRot * userLocal.q));
 
         m_Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, !m_IsTrigger);
         m_Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, m_IsTrigger);
-        m_Shape->setLocalPose(physx::PxTransform(
-            physx::PxVec3(m_LocalPosition.x, m_LocalPosition.y, m_LocalPosition.z),
-            physx::PxQuat(m_LocalRotation.x, m_LocalRotation.y, m_LocalRotation.z, m_LocalRotation.w)));
-        physx::PxFilterData qfd; qfd.word0 = 0xFFFFFFFF; qfd.word1 = 0xFFFFFFFF; m_Shape->setQueryFilterData(qfd);
+
+        SetFilterDataOnShape(*m_Shape, 0xFFFFFFFFu, 0xFFFFFFFFu);
 
         actor->attachShape(*m_Shape);
 
@@ -93,9 +92,11 @@ namespace QuasarEngine
         m_LocalPosition = p;
         m_LocalRotation = r;
         if (m_Shape) {
-            m_Shape->setLocalPose(physx::PxTransform(
-                physx::PxVec3(p.x, p.y, p.z),
-                physx::PxQuat(r.x, r.y, r.z, r.w)));
+            PxQuat axisRot = PxQuat(PxIdentity);
+            if (m_Axis == Axis::Y)      axisRot = PxQuat(PxHalfPi, PxVec3(0, 0, 1));
+            else if (m_Axis == Axis::Z) axisRot = PxQuat(-PxHalfPi, PxVec3(0, 1, 0));
+            const PxTransform userLocal(PxVec3(p.x, p.y, p.z), PxQuat(r.x, r.y, r.z, r.w));
+            m_Shape->setLocalPose(PxTransform(userLocal.p, axisRot * userLocal.q));
         }
     }
 
@@ -105,6 +106,22 @@ namespace QuasarEngine
         m_FrictionCombine = friction;
         m_RestitutionCombine = restitution;
         UpdateColliderMaterial();
+    }
+
+    void CapsuleColliderComponent::OnActorAboutToBeReleased(physx::PxRigidActor& actor)
+    {
+        if (!m_Shape) return;
+
+        if (auto* scene = PhysicEngine::Instance().GetScene()) {
+            PxWriteLockGuard lock(scene);
+            actor.detachShape(*m_Shape);
+        }
+        else {
+            actor.detachShape(*m_Shape);
+        }
+
+        m_Shape->release();
+        m_Shape = nullptr;
     }
 
     void CapsuleColliderComponent::UpdateColliderMaterial()
@@ -158,9 +175,6 @@ namespace QuasarEngine
     void CapsuleColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)
     {
         if (!m_Shape) return;
-        physx::PxFilterData qfd = m_Shape->getQueryFilterData();
-        qfd.word0 = layer;
-        qfd.word1 = mask;
-        m_Shape->setQueryFilterData(qfd);
+        SetFilterDataOnShape(*m_Shape, layer, mask);
     }
 }

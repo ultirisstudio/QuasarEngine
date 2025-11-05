@@ -33,8 +33,9 @@ namespace QuasarEngine
         void SetLocalPose(const glm::vec3& localPosition, const glm::quat& localRotation);
         glm::vec3 GetLocalPosition() const noexcept { return m_LocalPosition; }
         glm::quat GetLocalRotation() const noexcept { return m_LocalRotation; }
-        void SetMaterialCombineModes(physx::PxCombineMode::Enum friction,
-            physx::PxCombineMode::Enum restitution);
+        void SetMaterialCombineModes(physx::PxCombineMode::Enum friction, physx::PxCombineMode::Enum restitution);
+
+        void OnActorAboutToBeReleased(physx::PxRigidActor& actor);
 
         void SetPoints(const std::vector<glm::vec3>& pts) { m_Points = pts; m_Dirty = true; }
         const std::vector<glm::vec3>& GetPoints() const { return m_Points; }

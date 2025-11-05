@@ -38,6 +38,8 @@ namespace QuasarEngine
 
         void SetMaterialCombineModes(physx::PxCombineMode::Enum friction, physx::PxCombineMode::Enum restitution);
 
+        void OnActorAboutToBeReleased(physx::PxRigidActor& actor);
+
         void SetHeightData(uint32_t rows, uint32_t cols,
             const std::vector<float>& heightsMeters,
             float cellSizeX = 1.f, float cellSizeZ = 1.f);

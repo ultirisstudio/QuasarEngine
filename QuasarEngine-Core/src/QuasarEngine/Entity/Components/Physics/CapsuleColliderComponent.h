@@ -38,6 +38,8 @@ namespace QuasarEngine
 
         void SetMaterialCombineModes(physx::PxCombineMode::Enum friction, physx::PxCombineMode::Enum restitution);
 
+        void OnActorAboutToBeReleased(physx::PxRigidActor& actor);
+
         bool  m_UseEntityScale = true;
         float m_Radius = 0.5f;
         float m_Height = 1.0f;

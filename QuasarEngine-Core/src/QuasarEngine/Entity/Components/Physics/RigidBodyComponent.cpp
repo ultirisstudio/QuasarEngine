@@ -5,6 +5,13 @@
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
 #include <QuasarEngine/Physic/PhysXQueryUtils.h>
+#include "BoxColliderComponent.h"
+#include "SphereColliderComponent.h"
+#include "CapsuleColliderComponent.h"
+#include "ConvexMeshColliderComponent.h"
+#include "TriangleMeshColliderComponent.h"
+#include "HeightfieldColliderComponent.h"
+#include "PlaneColliderComponent.h"
 
 namespace QuasarEngine
 {
@@ -120,9 +127,8 @@ namespace QuasarEngine
         if (!m_Actor) return;
 
         if (physx::PxScene* sc = m_Actor->getScene()) {
-            sc->lockWrite();
+            PxWriteLockGuard _lock(sc);
             sc->removeActor(*m_Actor);
-            sc->unlockWrite();
         }
 
         PhysicEngine::Instance().UnregisterActor(m_Actor);
@@ -204,12 +210,12 @@ namespace QuasarEngine
     {
         if (!m_Actor) return;
 
-        physx::PxScene* scene = PhysicEngine::Instance().GetScene();
-        if (!scene) return;
+        //physx::PxScene* scene = PhysicEngine::Instance().GetScene();
+        //if (!scene) return;
 
-        scene->lockRead();
+        //scene->lockRead();
         const physx::PxTransform p = m_Actor->getGlobalPose();
-        scene->unlockRead();
+        //scene->unlockRead();
 
         Entity entity{ entt_entity, registry };
         if (entity.IsValid())
@@ -266,8 +272,12 @@ namespace QuasarEngine
         m_Dynamic->getShapes(shapes.data(), nbShapes);
         PxShape* shape = shapes[0];
 
-        const PxTransform from = m_Dynamic->getGlobalPose();
-        const PxVec3 delta = (to.p - from.p);
+        const PxTransform fromActor = m_Dynamic->getGlobalPose();
+        const PxTransform shapeLocal = shape->getLocalPose();
+        const PxTransform from = fromActor * shapeLocal;
+        const PxTransform toShape = to * shapeLocal;
+        const PxVec3 delta = (toShape.p - from.p);
+
         const float dist = delta.magnitude();
 
         if (dist <= 1e-4f) {
@@ -312,9 +322,10 @@ namespace QuasarEngine
         const float safety = 0.01f;
         const float travel = PxMax<PxReal>(0.0f, h.distance - safety);
 
-        PxTransform safePose = from;
-        safePose.p += unitDir * travel;
-        m_Dynamic->setKinematicTarget(safePose);
+        PxTransform safeShape = from;
+        safeShape.p += unitDir * travel;
+        const PxTransform safeActor = safeShape * shapeLocal.getInverse();
+        m_Dynamic->setKinematicTarget(safeActor);
 
         return false;
     }

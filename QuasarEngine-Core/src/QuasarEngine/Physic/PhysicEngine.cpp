@@ -245,7 +245,6 @@ namespace QuasarEngine
         physx::PxScene* scene = m_Scene;
         if (!scene) return false;
 
-        physx::PxRaycastBuffer buffer;
         physx::PxHitFlags flags = opts.hitFlags;
         if (opts.bothSides) flags |= physx::PxHitFlag::eMESH_BOTH_SIDES;
 
@@ -256,6 +255,7 @@ namespace QuasarEngine
         physx::PxRaycastHit hits[maxHits];
         physx::PxRaycastBuffer hitBuf(hits, maxHits);
 
+        if (dir.magnitudeSquared() <= 1e-12f) return false;
         const bool ok = scene->raycast(origin, dir.getNormalized(), maxDist, hitBuf, flags, qfd, &cb);
         if (!ok) return false;
 
@@ -271,6 +271,7 @@ namespace QuasarEngine
     {
         physx::PxScene* scene = m_Scene;
         if (!scene) return false;
+        if (dir.magnitudeSquared() <= 1e-12f) return false;
 
         physx::PxRaycastBuffer hit;
         physx::PxHitFlags flags = opts.hitFlags;
@@ -306,6 +307,7 @@ namespace QuasarEngine
 
         physx::PxQueryFilterData qfd = MakeFilterData(opts);
 
+        if (dir.magnitudeSquared() <= 1e-12f) return false;
         if (!scene->sweep(geom, pose, dir.getNormalized(), maxDist, hit, flags, qfd, &cb))
             return false;
 
@@ -329,6 +331,7 @@ namespace QuasarEngine
 
         physx::PxQueryFilterData qfd = MakeFilterData(opts);
 
+        if (dir.magnitudeSquared() <= 1e-12f) return false;
         if (!scene->sweep(geom, pose, dir.getNormalized(), maxDist, hit, flags, qfd, &cb))
             return false;
 

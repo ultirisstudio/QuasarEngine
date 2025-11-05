@@ -760,7 +760,8 @@ namespace QuasarEngine
 			{
 				if (ImGui::MenuItem("Start Scene"))
 				{
-					m_SceneManager->SaveScene(); m_SceneManager->GetActiveScene().OnRuntimeStart(); playing = true;
+					m_SceneManager->SaveScene();
+					m_SceneManager->GetActiveScene().OnRuntimeStart(); playing = true;
 				}
 			}
 			else

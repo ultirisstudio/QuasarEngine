@@ -121,15 +121,6 @@ namespace QuasarEngine
         physx::PxScene* scene = phys.GetScene();
         if (!sdk || !scene) return;
 
-        Entity entity{ entt_entity, registry };
-        if (!entity.IsValid() || !entity.HasComponent<RigidBodyComponent>()) return;
-
-        auto& rb = entity.GetComponent<RigidBodyComponent>();
-        physx::PxRigidActor* actor = rb.GetActor();
-        if (!actor) return;
-
-        scene->lockWrite();
-
         if (m_Shape)
         {
             if (m_AttachedActor)
@@ -139,6 +130,16 @@ namespace QuasarEngine
             m_AttachedActor = nullptr;
         }
 
+        Entity entity{ entt_entity, registry };
+        if (!entity.IsValid() || !entity.HasComponent<RigidBodyComponent>()) return;
+
+        auto& rb = entity.GetComponent<RigidBodyComponent>();
+        m_AttachedActor = rb.GetActor();
+        if (!m_AttachedActor) return;
+
+        //scene->lockWrite();
+        PxWriteLockGuard lock(scene);
+
         if (!m_Material)
         {
             m_Material = sdk->createMaterial(friction, friction, bounciness);
@@ -146,7 +147,7 @@ namespace QuasarEngine
         }
 
         const glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
-        const physx::PxVec3    he = ToPx(full * 1.0f);
+        const physx::PxVec3 he = ToPx(full * 1.0f);
 
         m_Shape = sdk->createShape(physx::PxBoxGeometry(he), *m_Material, true);
         if (!m_Shape) return;
@@ -161,18 +162,13 @@ namespace QuasarEngine
             physx::PxVec3(m_LocalPosition.x, m_LocalPosition.y, m_LocalPosition.z),
             physx::PxQuat(m_LocalRotation.x, m_LocalRotation.y, m_LocalRotation.z, m_LocalRotation.w)));
 
-        physx::PxFilterData qfd;
-        qfd.word0 = 0xFFFFFFFF;
-        qfd.word1 = 0xFFFFFFFF;
-        m_Shape->setQueryFilterData(qfd);
+        SetFilterDataOnShape(*m_Shape, 0xFFFFFFFFu, 0xFFFFFFFFu);
 
-        m_Shape->acquireReference();
+        //m_Shape->acquireReference();
 
-        actor->attachShape(*m_Shape);
+        m_AttachedActor->attachShape(*m_Shape);
 
-        m_AttachedActor = actor;
-
-        scene->unlockWrite();
+        //scene->unlockWrite();
 
         RecomputeMassFromSize();
     }
@@ -261,16 +257,17 @@ namespace QuasarEngine
     {
         if (!m_Shape) return;
 
-        if (auto* scene = PhysicEngine::Instance().GetScene())
-            scene->lockWrite();
+        if (auto* scene = PhysicEngine::Instance().GetScene()) {
+            PxWriteLockGuard lock(scene);
+            actor.detachShape(*m_Shape);
+        }
+        else {
+            actor.detachShape(*m_Shape);            
+        }
 
-        actor.detachShape(*m_Shape);
         m_Shape->release();
         m_Shape = nullptr;
         m_AttachedActor = nullptr;
-
-        if (auto* scene = PhysicEngine::Instance().GetScene())
-            scene->unlockWrite();
     }
 
     void BoxColliderComponent::Destroy()
@@ -289,15 +286,11 @@ namespace QuasarEngine
 
         physx::PxScene* scene = PhysicEngine::Instance().GetScene();
 
-        if (m_Shape)
-        {
-            if (m_AttachedActor && scene)
-            {
-                scene->lockWrite();
+        if (m_Shape) {
+            if (m_AttachedActor && scene) {
+                PxWriteLockGuard lock(scene);
                 m_AttachedActor->detachShape(*m_Shape);
-                scene->unlockWrite();
             }
-
             m_Shape->release();
             m_Shape = nullptr;
             m_AttachedActor = nullptr;
@@ -317,9 +310,6 @@ namespace QuasarEngine
     void BoxColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)
     {
         if (!m_Shape) return;
-        physx::PxFilterData qfd = m_Shape->getQueryFilterData();
-        qfd.word0 = layer;
-        qfd.word1 = mask;
-        m_Shape->setQueryFilterData(qfd);
+		SetFilterDataOnShape(*m_Shape, layer, mask);
     }
 }

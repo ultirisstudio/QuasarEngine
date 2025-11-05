@@ -19,6 +19,7 @@ namespace QuasarEngine
 
         void Initialize();
         void Update(double dt);
+		void FixedUpdate(double dt) {}
 
         void Start();
         void Stop();

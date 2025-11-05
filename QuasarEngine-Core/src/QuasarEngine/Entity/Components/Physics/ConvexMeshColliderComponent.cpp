@@ -102,6 +102,22 @@ namespace QuasarEngine
         UpdateColliderMaterial();
     }
 
+    void ConvexMeshColliderComponent::OnActorAboutToBeReleased(physx::PxRigidActor& actor)
+    {
+        if (!m_Shape) return;
+
+        if (auto* scene = PhysicEngine::Instance().GetScene()) {
+            PxWriteLockGuard lock(scene);
+            actor.detachShape(*m_Shape);
+        }
+        else {
+            actor.detachShape(*m_Shape);
+        }
+
+        m_Shape->release();
+        m_Shape = nullptr;
+    }
+
     void ConvexMeshColliderComponent::UpdateColliderMaterial()
     {
         if (!m_Material) return;
@@ -137,9 +153,6 @@ namespace QuasarEngine
     void ConvexMeshColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)
     {
         if (!m_Shape) return;
-        physx::PxFilterData qfd = m_Shape->getQueryFilterData();
-        qfd.word0 = layer;
-        qfd.word1 = mask;
-        m_Shape->setQueryFilterData(qfd);
+        SetFilterDataOnShape(*m_Shape, layer, mask);
     }
 }
