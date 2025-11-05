@@ -6,10 +6,15 @@
 #include <unordered_map>
 #include <filesystem>
 #include <functional>
+#include <optional>
+#include <stack>
+#include <algorithm>
 
 #include <glm/glm.hpp>
 #include <QuasarEngine/Resources/Mesh.h>
 #include <QuasarEngine/Asset/Asset.h>
+#include <QuasarEngine/Resources/Materials/Material.h>
+#include <QuasarEngine/Resources/ModelSpec.h>
 
 struct aiScene;
 struct aiNode;
@@ -18,13 +23,6 @@ struct aiMaterial;
 
 namespace QuasarEngine
 {
-    constexpr int QE_MAX_BONE_INFLUENCE = 4;
-
-    struct BoneInfo {
-        int id = -1;
-        glm::mat4 offset{ 1.f };
-    };
-
     struct MeshInstance {
         std::string name;
         std::shared_ptr<Mesh> mesh;
@@ -42,11 +40,25 @@ namespace QuasarEngine
     class Model : public Asset {
     public:
         explicit Model(const std::string& path);
+        explicit Model(const std::string& path, const ModelImportOptions& options);
         Model(std::string name, std::vector<float>& vertices, std::vector<unsigned int>& indices);
+        Model(std::string name,
+            std::vector<float>& vertices,
+            std::vector<unsigned int>& indices,
+            std::optional<BufferLayout> layout,
+            DrawMode drawMode = DrawMode::TRIANGLES,
+            std::optional<MaterialSpecification> material = std::nullopt);
         ~Model();
 
         static std::shared_ptr<Model> CreateModel(const std::string& path);
+        static std::shared_ptr<Model> CreateModel(const std::string& path, const ModelImportOptions& options);
         static std::shared_ptr<Model> CreateModel(std::string name, std::vector<float>& vertices, std::vector<unsigned int>& indices);
+        static std::shared_ptr<Model> CreateModel(std::string name,
+            std::vector<float>& vertices,
+            std::vector<unsigned int>& indices,
+            std::optional<BufferLayout> layout,
+            DrawMode drawMode = DrawMode::TRIANGLES,
+            std::optional<MaterialSpecification> material = std::nullopt);
 
         const ModelNode* GetRoot() const { return m_root.get(); }
         ModelNode* GetRoot() { return m_root.get(); }
@@ -64,36 +76,48 @@ namespace QuasarEngine
 
         const glm::mat4& GetGlobalInverse() const { return m_GlobalInverse; }
 
+        const ModelLoadedInfo& GetLoadedInfo() const { return m_Loaded; }
+
         static AssetType GetStaticType() { return AssetType::MODEL; }
         AssetType GetType() override { return GetStaticType(); }
 
     private:
         void loadFromFile(const std::string& path);
-        std::unique_ptr<ModelNode> buildNode(const aiNode* src, const aiScene* scene);
+        void loadFromFile(const std::string& path, const ModelImportOptions& options);
+
+        std::unique_ptr<ModelNode> buildNode(const aiNode* src, const aiScene* scene, const ModelImportOptions* opt);
 
         struct BuiltGeometry {
             std::vector<float>         vertices;
             std::vector<unsigned int>  indices;
             std::vector<int>           boneIDs;
             std::vector<float>         boneWeights;
-            bool                        skinned = false;
+            bool                       skinned = false;
         };
-        BuiltGeometry buildMeshGeometry(const aiMesh* mesh);
+
+        BuiltGeometry buildMeshGeometry(const aiMesh* mesh, const ModelImportOptions& opt);
+
         MaterialSpecification loadMaterial(const aiMaterial* material, const std::filesystem::path& modelDir);
 
         static std::string MakeUniqueChildName(const std::string& base, int index);
 
+        static void AppendAttribute(std::vector<float>& dst, ShaderDataType type, const float* src, int availableCount, float fill = 0.0f);
+
     private:
         std::unique_ptr<ModelNode> m_root;
-        std::unordered_map<std::string, std::shared_ptr<Mesh>> m_meshLibrary;
 
+        std::unordered_map<std::string, std::shared_ptr<Mesh>> m_meshLibrary;
         std::unordered_map<std::string, BoneInfo> m_boneInfoMap;
+
         int m_boneCount = 0;
 
         glm::mat4 m_GlobalInverse{ 1.0f };
 
         std::string m_Name = "Unnamed";
+
         std::filesystem::path m_SourcePath;
         std::filesystem::path m_SourceDir;
+
+        ModelLoadedInfo m_Loaded;
     };
 }

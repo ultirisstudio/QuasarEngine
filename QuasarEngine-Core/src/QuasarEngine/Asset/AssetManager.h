@@ -13,6 +13,7 @@
 
 #include <QuasarEngine/Resources/Texture2D.h>
 #include <QuasarEngine/Resources/Materials/Material.h>
+#include <QuasarEngine/Resources/ModelSpec.h>
 
 #include <QuasarEngine/Core/Singleton.h>
 #include <filesystem>
@@ -32,7 +33,7 @@ namespace QuasarEngine
 
 		std::shared_ptr<std::vector<unsigned char>> hold;
 
-		std::variant<std::monostate, TextureSpecification, MaterialSpecification> spec;
+		std::variant<std::monostate, TextureSpecification, MaterialSpecification, ModelImportOptions> spec;
 
 		AssetToLoad() : id(""), path(""), type(AssetType::NONE), size(0), data(nullptr), spec(std::monostate{})
 		{

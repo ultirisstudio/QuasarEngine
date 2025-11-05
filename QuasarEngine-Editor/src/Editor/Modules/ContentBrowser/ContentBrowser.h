@@ -93,6 +93,8 @@ namespace QuasarEngine
 
         std::vector<std::string> m_IgnoredExtensions = { ".ultconf", ".meta" };
 
+        std::unordered_map<std::string, bool> m_ExpandedModels;
+
         float m_LeftPaneWidth = 260.0f;
         float m_SplitterWidth = 4.0f;
     };

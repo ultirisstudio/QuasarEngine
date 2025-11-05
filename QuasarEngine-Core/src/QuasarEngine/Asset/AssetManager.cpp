@@ -70,11 +70,11 @@ namespace QuasarEngine
 			".scene"
 		};
 
-		m_ExtentionAssetTypes[m_ValidExtention.at(0)] = AssetType::MESH;
-		m_ExtentionAssetTypes[m_ValidExtention.at(1)] = AssetType::MESH;
-		m_ExtentionAssetTypes[m_ValidExtention.at(2)] = AssetType::MESH;
-		m_ExtentionAssetTypes[m_ValidExtention.at(3)] = AssetType::MESH;
-		m_ExtentionAssetTypes[m_ValidExtention.at(4)] = AssetType::MESH;
+		m_ExtentionAssetTypes[m_ValidExtention.at(0)] = AssetType::MODEL;
+		m_ExtentionAssetTypes[m_ValidExtention.at(1)] = AssetType::MODEL;
+		m_ExtentionAssetTypes[m_ValidExtention.at(2)] = AssetType::MODEL;
+		m_ExtentionAssetTypes[m_ValidExtention.at(3)] = AssetType::MODEL;
+		m_ExtentionAssetTypes[m_ValidExtention.at(4)] = AssetType::MODEL;
 		m_ExtentionAssetTypes[m_ValidExtention.at(5)] = AssetType::TEXTURE;
 		m_ExtentionAssetTypes[m_ValidExtention.at(6)] = AssetType::TEXTURE;
 		m_ExtentionAssetTypes[m_ValidExtention.at(7)] = AssetType::TEXTURE;
@@ -184,13 +184,19 @@ namespace QuasarEngine
 				if (isAssetLoaded(asset.id))
 					break;
 
-				if (asset.path.empty())
-				{
+				if (asset.path.empty()) {
 					Q_ERROR("AssetManager: MODEL path missing: " + asset.id);
 					break;
 				}
 
-				auto model = Model::CreateModel(asset.path);
+				std::shared_ptr<Model> model;
+				if (std::holds_alternative<ModelImportOptions>(asset.spec)) {
+					const auto& opts = std::get<ModelImportOptions>(asset.spec);
+					model = Model::CreateModel(asset.path, opts);
+				}
+				else {
+					model = Model::CreateModel(asset.path);
+				}
 
 				{
 					std::lock_guard<std::mutex> lock(m_AssetMutex);

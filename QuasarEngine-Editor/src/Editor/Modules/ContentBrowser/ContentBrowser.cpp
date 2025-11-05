@@ -209,25 +209,6 @@ namespace QuasarEngine
 
     void ContentBrowser::DrawToolbar()
     {
-        ImGui::InputTextWithHint("##search", "Search files...", m_SearchBuffer, IM_ARRAYSIZE(m_SearchBuffer));
-        std::string searchFilter = m_SearchBuffer;
-
-        ImGui::SameLine();
-
-        const char* sortLabel =
-            m_SortMode == SortMode::NameAsc ? "Name Up" :
-            m_SortMode == SortMode::NameDesc ? "Name Down" :
-            m_SortMode == SortMode::DateAsc ? "Date Up" : "Date Down";
-
-        if (ImGui::BeginCombo("Sort By", sortLabel)) {
-            if (ImGui::Selectable("Name Up"))   m_SortMode = SortMode::NameAsc;
-            if (ImGui::Selectable("Name Down")) m_SortMode = SortMode::NameDesc;
-            if (ImGui::Selectable("Date Up"))   m_SortMode = SortMode::DateAsc;
-            if (ImGui::Selectable("Date Down")) m_SortMode = SortMode::DateDesc;
-            ImGui::EndCombo();
-        }
-
-        ImGui::SameLine();
         ImGui::Checkbox("Group by Type", &m_GroupByType);
 
         ImGui::SameLine();
@@ -246,6 +227,25 @@ namespace QuasarEngine
 
         ImGui::SameLine();
         ImGui::Checkbox("Watch", &m_WatchEnabled);
+
+        ImGui::SameLine();
+        ImGui::InputTextWithHint("##search", "Search files...", m_SearchBuffer, IM_ARRAYSIZE(m_SearchBuffer));
+        std::string searchFilter = m_SearchBuffer;
+
+        ImGui::SameLine();
+
+        const char* sortLabel =
+            m_SortMode == SortMode::NameAsc ? "Name Up" :
+            m_SortMode == SortMode::NameDesc ? "Name Down" :
+            m_SortMode == SortMode::DateAsc ? "Date Up" : "Date Down";
+
+        if (ImGui::BeginCombo("Sort By", sortLabel)) {
+            if (ImGui::Selectable("Name Up"))   m_SortMode = SortMode::NameAsc;
+            if (ImGui::Selectable("Name Down")) m_SortMode = SortMode::NameDesc;
+            if (ImGui::Selectable("Date Up"))   m_SortMode = SortMode::DateAsc;
+            if (ImGui::Selectable("Date Down")) m_SortMode = SortMode::DateDesc;
+            ImGui::EndCombo();
+        }
 
         const char* names[] = { "All","Textures","Meshes","Scripts","Scenes","Other" };
 
@@ -290,12 +290,7 @@ namespace QuasarEngine
     void ContentBrowser::DrawListHeaderIfNeeded()
     {
         if (m_ListView) {
-            ImGui::Columns(4, nullptr, true);
-            ImGui::Text("Name");     ImGui::NextColumn();
-            ImGui::Text("Type");     ImGui::NextColumn();
-            ImGui::Text("Size");     ImGui::NextColumn();
-            ImGui::Text("Modified"); ImGui::NextColumn();
-            ImGui::Separator();
+            
         }
     }
 
@@ -577,7 +572,6 @@ namespace QuasarEngine
 
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("EXTERNAL_FILE")) {
-				// TODO: Window-level external drop handling
             }
             ImGui::EndDragDropTarget();
         }
@@ -595,16 +589,12 @@ namespace QuasarEngine
         for (auto& dirEntry : std::filesystem::directory_iterator(m_CurrentDirectory, ecIter)) {
             if (ecIter) break;
             std::string filenameStr = dirEntry.path().filename().string();
-
             if (!m_ShowHidden && !filenameStr.empty() && filenameStr[0] == '.') continue;
-
             std::string ext = dirEntry.path().extension().string();
             bool ignore = false;
             for (auto& ign : m_IgnoredExtensions) if (ext == ign) { ignore = true; break; }
             if (ignore) continue;
-
             if (!PassesSearchFilter(filenameStr, m_SearchBuffer)) continue;
-
             entries.push_back(dirEntry);
         }
 
@@ -620,113 +610,64 @@ namespace QuasarEngine
             };
         std::sort(entries.begin(), entries.end(), compareFunc);
 
-        float cardPadding = 8.0f;
-        float cardTextHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f;
-        float cardTotalHeight = m_ThumbSize + cardPadding + cardTextHeight;
-        float cardTotalWidth = m_ThumbSize + cardPadding * 2.0f;
+        float cardPadding = 12.0f;
+        float cardInnerPad = 8.0f;
+        float textLines = 2.0f;
+        float textH = ImGui::GetTextLineHeightWithSpacing() * textLines;
+        float iconSize = m_ThumbSize;
+        float cardW = iconSize + cardPadding * 2.0f;
+        float cardH_base = iconSize + textH + cardPadding * 2.0f + 6.0f;
+        float extraVGap = 12.0f;
 
         float panelWidth = ImGui::GetContentRegionAvail().x;
-        float rightPaneWidth = m_ListView ? 0.0f : std::min(280.0f, panelWidth * 0.35f);
-        if (rightPaneWidth > 0.0f) panelWidth -= rightPaneWidth + ImGui::GetStyle().ItemSpacing.x;
+        float rightPaneW = m_ListView ? 0.0f : std::min(280.0f, panelWidth * 0.35f);
+        if (rightPaneW > 0.0f) panelWidth -= rightPaneW + ImGui::GetStyle().ItemSpacing.x;
 
-        int columnCount = m_ListView ? 1 : std::max(1, (int)(panelWidth / cardTotalWidth));
-        if (!m_ListView) ImGui::Columns(columnCount, nullptr, false);
+        int columnCount = m_ListView ? 1 : std::max(1, (int)std::floor(panelWidth / (cardW + ImGui::GetStyle().ItemSpacing.x)));
+        columnCount = std::max(columnCount, 1);
 
-        auto drawHeader = [&](const char* t) {
-            if (!m_GroupByType || m_ListView) return;
-            ImGui::Separator();
-            ImGui::TextDisabled("%s", t);
-            ImGui::Separator();
-            };
+        static float s_meshPanelHeight = 140.0f;
 
-        auto DrawWrappedCenteredText = [&](ImDrawList* dl, ImVec2 top_left, float wrap_w,
-            const std::string& text, int max_lines, ImU32 color)
+        auto getAssetIconAndId = [&](const std::filesystem::path& path, AssetType& fileType, std::shared_ptr<Texture2D>& icon, std::string& modelId, bool& isModel)
             {
-                ImFont* font = ImGui::GetFont();
-                const float line_h = ImGui::GetTextLineHeightWithSpacing();
-                const float space_w = ImGui::CalcTextSize(" ").x;
-
-                const char* cur = text.c_str();
-                const char* end = cur + text.size();
-
-                for (int line = 0; line < max_lines && cur < end; ++line)
-                {
-                    const char* line_start = cur;
-                    const char* draw_end = cur;
-                    float line_w = 0.0f;
-
-                    while (cur < end)
-                    {
-                        while (cur < end && (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r'))
-                        {
-                            if (*cur == '\n') break;
-                            ++cur;
-                        }
-                        if (cur >= end || *cur == '\n') { ++cur; break; }
-
-                        const char* w_end = cur;
-                        while (w_end < end && *w_end != ' ' && *w_end != '\t' && *w_end != '\n' && *w_end != '\r')
-                            ++w_end;
-
-                        ImVec2 w_size = ImGui::CalcTextSize(cur, w_end);
-                        float next_w = (draw_end == line_start) ? w_size.x : (line_w + space_w + w_size.x);
-
-                        if (next_w > wrap_w && draw_end != line_start)
-                            break;
-
-                        line_w = (draw_end == line_start) ? w_size.x : (line_w + space_w + w_size.x);
-                        draw_end = w_end;
-                        cur = w_end;
-                    }
-
-                    bool need_ellipsis = (line == max_lines - 1) && (cur < end);
-                    if (need_ellipsis)
-                    {
-                        ImVec2 ell = ImGui::CalcTextSize("…");
-                        if (ell.x < wrap_w)
-                        {
-                            while (line_w + ell.x > wrap_w && draw_end > line_start)
-                            {
-                                --draw_end;
-                                line_w = ImGui::CalcTextSize(line_start, draw_end).x;
-                            }
-                        }
-                    }
-
-                    float x = top_left.x + (wrap_w - line_w) * 0.5f;
-                    dl->AddText(ImVec2(x, top_left.y), color, line_start, draw_end);
-                    if (need_ellipsis)
-                        dl->AddText(ImVec2(x + line_w, top_left.y), color, "…");
-
-                    top_left.y += line_h;
-                }
-            };
-
-        auto drawItem = [&](const std::filesystem::directory_entry& directoryEntry)
-            {
-                const auto& path = directoryEntry.path();
-                std::string filenameString = path.filename().string();
-                if (filenameString.empty()) filenameString = "unknown";
-
-                std::filesystem::path absPath(path);
-                std::filesystem::path relativePath(path);
-                std::string itemPath = relativePath.generic_string();
                 std::string extension = path.extension().string();
-
-                ImGui::PushID(itemPath.c_str());
-
-                std::shared_ptr<Texture2D> icon;
-                AssetType fileType = AssetManager::Instance().getTypeFromExtention(extension);
-
-                if (directoryEntry.is_directory()) {
+                fileType = AssetManager::Instance().getTypeFromExtention(extension);
+                isModel = false;
+                if (std::filesystem::is_directory(path)) {
                     icon = m_DirectoryIcon;
+                    return;
                 }
-                else if (fileType == AssetType::MESH) {
+                if (fileType == AssetType::MODEL) {
                     icon = m_FileOBJIcon;
-                }
-                else if (fileType == AssetType::TEXTURE) {
-                    const std::filesystem::path texAbs = path;
+                    std::error_code ec{};
+                    if (auto rel = std::filesystem::relative(path, m_BaseDirectory, ec); !ec)
+                        modelId = "Assets/" + rel.generic_string();
+                    else
+                        modelId = "Assets/" + path.filename().generic_string();
+                    isModel = true;
 
+                    if (!AssetManager::Instance().isAssetLoaded(modelId)) {
+                        static std::unordered_map<std::string, bool> loadingModel;
+                        if (!loadingModel[modelId]) {
+                            loadingModel[modelId] = true;
+                            ModelImportOptions opts;
+                            opts.buildMeshes = false;
+                            opts.loadMaterials = false;
+                            opts.loadSkinning = false;
+                            opts.loadAnimations = false;
+                            opts.vertexLayout.reset();
+                            AssetToLoad a{};
+                            a.id = modelId;
+                            a.path = path.generic_string();
+                            a.type = AssetType::MODEL;
+                            a.spec = opts;
+                            AssetManager::Instance().loadAsset(a);
+                        }
+                    }
+                    return;
+                }
+                if (fileType == AssetType::TEXTURE) {
+                    const std::filesystem::path texAbs = path;
                     std::error_code ec{};
                     std::string id;
                     if (auto rel = std::filesystem::relative(texAbs, m_BaseDirectory, ec); !ec)
@@ -741,347 +682,122 @@ namespace QuasarEngine
                         static std::unordered_map<std::string, bool> loadingMap;
                         if (!loadingMap[id]) {
                             loadingMap[id] = true;
-
                             TextureSpecification spec = TextureConfigImporter::ImportTextureConfig(texAbs.generic_string());
-
                             AssetToLoad asset{};
                             asset.id = id;
                             asset.path = texAbs.generic_string();
                             asset.type = AssetType::TEXTURE;
                             asset.spec = spec;
-
                             AssetManager::Instance().loadAsset(asset);
                         }
-                        if (AssetManager::Instance().isAssetLoaded(id))
-                            icon = AssetManager::Instance().getAsset<Texture2D>(id);
-                        else
-                            icon = m_FileOtherIcon;
+                        icon = AssetManager::Instance().isAssetLoaded(id) ? AssetManager::Instance().getAsset<Texture2D>(id) : m_FileOtherIcon;
                     }
+                    return;
                 }
-                else if (fileType == AssetType::SCRIPT) {
-                    if (extension == ".lua") icon = m_FileLuaIcon; else icon = m_FileOtherIcon;
+                if (fileType == AssetType::SCRIPT) {
+                    std::string ext = path.extension().string();
+                    icon = (ext == ".lua") ? m_FileLuaIcon : m_FileOtherIcon;
+                    return;
                 }
-                else if (fileType == AssetType::SCENE) {
+                if (fileType == AssetType::SCENE) {
                     icon = m_FileSceneIcon;
+                    return;
+                }
+                icon = m_FileOtherIcon;
+            };
+
+        auto drawMeshesPanel = [&](const std::string& itemPath, const std::string& modelId, float width)
+            {
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1, 1, 1, 0.03f));
+                ImGui::BeginChild((std::string("##mesh_panel_") + itemPath).c_str(), ImVec2(width, s_meshPanelHeight), true);
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2.0f);
+                ImGui::SliderFloat("Height", &s_meshPanelHeight, 80.0f, 280.0f, "%.0f");
+                ImGui::Separator();
+
+                auto model = AssetManager::Instance().getAsset<Model>(modelId);
+                if (model) {
+                    std::unordered_map<std::string, std::vector<std::string>> byNode;
+                    model->ForEachInstance([&](const MeshInstance& inst, const glm::mat4&, const std::string& nodePath) {
+                        byNode[nodePath].push_back(inst.name);
+                        });
+                    for (auto& kv : byNode) {
+                        ImGui::TextDisabled("%s", kv.first.c_str());
+                        ImGui::Indent();
+                        for (auto& n : kv.second) {
+                            ImGui::PushID((itemPath + "_mesh_" + n).c_str());
+                            bool hoveredBefore = ImGui::IsAnyItemHovered();
+                            if (ImGui::Selectable(n.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0, 0))) {
+                            }
+                            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                                ImGui::SetDragDropPayload("CONTENT_BROWSER_MESH_NAME", n.c_str(), (n.size() + 1));
+                                ImGui::TextUnformatted(n.c_str());
+                                ImGui::EndDragDropSource();
+                            }
+                            ImGui::PopID();
+                        }
+                        ImGui::Unindent();
+                        ImGui::Dummy(ImVec2(0, 2));
+                    }
                 }
                 else {
-                    icon = m_FileOtherIcon;
+                    ImGui::TextDisabled("Loading...");
                 }
 
-                if (!PassesTypeFilter(m_TypeFilter, (int)fileType)) { ImGui::PopID(); return; }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+            };
 
-                bool isSelected = m_Selection.find(itemPath) != m_Selection.end();
+        if (m_ListView)
+        {
+            ImGuiTableFlags tflags = ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersInnerH;
+            if (ImGui::BeginTable("##ContentList", 5, tflags))
+            {
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 0.48f);
+                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch, 0.14f);
+                ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthStretch, 0.12f);
+                ImGui::TableSetupColumn("Modified", ImGuiTableColumnFlags_WidthStretch, 0.22f);
+                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 24.0f);
+                ImGui::TableHeadersRow();
 
-                if (m_ListView) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-                    ImGui::ImageButton("##icon", (ImTextureID)icon->GetHandle(), ImVec2(24, 24), ImVec2(0, 1), ImVec2(1, 0));
-                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-                        if (ImGui::GetIO().KeyCtrl) {
-                            if (!isSelected) m_Selection.insert(itemPath);
-                            else m_Selection.erase(itemPath);
-                        }
-                        else {
-                            m_Selection.clear();
-                            m_Selection.insert(itemPath);
-                        }
-                    }
-                    ImGui::PopStyleColor();
+                const float rowHeight = 36.0f;
+                const float icon24 = 24.0f;
 
-                    if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-                        if (ImGui::BeginDragDropSource()) {
-#if defined(_WIN32)
-                            const wchar_t* itemPathW = relativePath.c_str();
-                            ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", itemPathW, (wcslen(itemPathW) + 1) * sizeof(wchar_t));
-#else
-                            std::string pUtf8 = relativePath.string();
-                            ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", pUtf8.c_str(), pUtf8.size() + 1);
-#endif
-                            ImGui::TextUnformatted(filenameString.c_str());
-                            ImGui::EndDragDropSource();
-                        }
-                    }
-
-                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                        if (directoryEntry.is_directory()) {
-                            m_CurrentDirectory /= path.filename();
-                            std::snprintf(m_PathBuffer, sizeof(m_PathBuffer), "%s", m_CurrentDirectory.string().c_str());
-                        }
-                        else if (fileType == AssetType::TEXTURE) {
-                            m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(relativePath));
-                        }
-                        else if (fileType == AssetType::SCRIPT) {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
-                            if (extension == ".lua") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
-                            else if (extension == ".cpp" || extension == ".h") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
-                            m_CodeEditor->LoadFromFile(relativePath.string());
-                        }
-                        else {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
-                            if (extension == ".txt") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
-                            m_CodeEditor->LoadFromFile(relativePath.string());
-                        }
-                    }
-
-                    std::string ctxId = "##ctx_" + filenameString;
-                    ImGui::OpenPopupOnItemClick(ctxId.c_str(), ImGuiPopupFlags_MouseButtonRight);
-
-                    ImGui::SameLine();
-
-                    if (m_RenamingPath && *m_RenamingPath == path) {
-                        ImGui::SetNextItemWidth(std::max(180.0f, ImGui::GetContentRegionAvail().x * 0.3f));
-                        if (ImGui::InputText("##rename_list", m_RenameBuffer, IM_ARRAYSIZE(m_RenameBuffer),
-                            ImGuiInputTextFlags_EnterReturnsTrue)) {
-                            std::error_code ec;
-                            auto newP = path.parent_path() / m_RenameBuffer;
-                            std::filesystem::rename(path, newP, ec);
-                            m_RenamingPath.reset();
-                            m_Selection.clear();
-                            m_Selection.insert(newP.generic_string());
-                        }
-                        if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-                            if (ImGui::GetIO().KeyCtrl) {
-                                if (!isSelected) m_Selection.insert(itemPath);
-                                else m_Selection.erase(itemPath);
-                            }
-                            else {
-                                m_Selection.clear();
-                                m_Selection.insert(itemPath);
-                            }
-                        }
-                    }
-                    else {
-                        ImGui::TextUnformatted(filenameString.c_str());
-                        if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-                            if (ImGui::GetIO().KeyCtrl) {
-                                if (!isSelected) m_Selection.insert(itemPath);
-                                else m_Selection.erase(itemPath);
-                            }
-                            else {
-                                m_Selection.clear();
-                                m_Selection.insert(itemPath);
-                            }
-                        }
-                    }
-
-                    ImGui::NextColumn();
-                    ImGui::TextUnformatted(directoryEntry.is_directory() ? "Folder" : (extension.empty() ? "-" : extension.c_str()));
-                    ImGui::NextColumn();
-                    if (directoryEntry.is_directory()) ImGui::TextUnformatted("-");
-                    else {
-                        std::error_code ecSz; auto sz = std::filesystem::file_size(path, ecSz);
-                        ImGui::Text("%s", PrettySize((uint64_t)sz).c_str());
-                    }
-                    ImGui::NextColumn();
-                    {
-                        std::error_code ecm; auto tp = std::filesystem::last_write_time(path, ecm);
-                        if (!ecm) { auto tt = ToTimeT(tp); ImGui::Text("%s", std::asctime(std::localtime(&tt))); }
-                        else ImGui::TextUnformatted("-");
-                    }
-                    ImGui::NextColumn();
-
-                    if (ImGui::IsItemClicked()) {
-                        if (ImGui::GetIO().KeyCtrl) {
-                            if (!isSelected) m_Selection.insert(itemPath);
-                            else m_Selection.erase(itemPath);
-                        }
-                        else {
-                            m_Selection.clear();
-                            m_Selection.insert(itemPath);
-                        }
-                    }
-
-                }
-                else
+                for (auto& directoryEntry : entries)
                 {
-                    const float pad = 10.0f;
-                    const float rounding = 10.0f;
-                    const float textLines = 2.0f;
-                    const float textH = ImGui::GetTextLineHeightWithSpacing() * textLines;
+                    const auto& path = directoryEntry.path();
+                    std::string filenameString = path.filename().string();
+                    if (filenameString.empty()) filenameString = "unknown";
+                    std::string itemPath = path.generic_string();
 
-                    const float cardW = m_ThumbSize + pad * 2.0f;
-                    const float cardH = m_ThumbSize + textH + pad * 2.0f;
+                    AssetType fileType; std::shared_ptr<Texture2D> icon; std::string modelId; bool isModel = false;
+                    getAssetIconAndId(path, fileType, icon, modelId, isModel);
+                    if (!PassesTypeFilter(m_TypeFilter, (int)fileType)) continue;
 
-                    ImVec2 p = ImGui::GetCursorScreenPos();
-                    ImRect r = ImRect(p, ImVec2(p.x + cardW, p.y + cardH));
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    bool isSelected = (m_Selection.find(itemPath) != m_Selection.end());
+                    bool hasContext = false;
+                    bool expandedRow = m_ExpandedModels[itemPath];
 
-                    ImGui::InvisibleButton("##card", r.GetSize());
-                    bool hovered = ImGui::IsItemHovered();
-                    bool active = ImGui::IsItemActive();
+                    ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
+                    ImGui::TableSetColumnIndex(0);
 
-                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                    ImGuiSelectableFlags sflags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick | ImGuiSelectableFlags_AllowItemOverlap;
+                    if (ImGui::Selectable((std::string("##row_") + itemPath).c_str(), isSelected, sflags, ImVec2(0, rowHeight))) {
                         if (ImGui::GetIO().KeyCtrl) {
-                            if (!isSelected) m_Selection.insert(itemPath);
-                            else m_Selection.erase(itemPath);
+                            if (isSelected) m_Selection.erase(itemPath);
+                            else m_Selection.insert(itemPath);
                         }
                         else {
                             m_Selection.clear();
                             m_Selection.insert(itemPath);
                         }
-                        isSelected = (m_Selection.find(itemPath) != m_Selection.end());
                     }
-
-                    ImU32 colBg = ImGui::GetColorU32(hovered ? ImVec4(1, 1, 1, 0.06f) : ImVec4(1, 1, 1, 0.03f));
-                    ImU32 colSelBg = ImGui::GetColorU32(ImVec4(0.25f, 0.5f, 1.0f, 0.18f));
-                    ImU32 colBorder = ImGui::GetColorU32(isSelected ? ImVec4(0.25f, 0.5f, 1.0f, 0.80f) : ImVec4(1, 1, 1, 0.10f));
-                    ImU32 colShadow = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.10f));
-
-                    dl->AddRectFilled(r.Min + ImVec2(0, 1), r.Max + ImVec2(0, 1), colShadow, rounding);
-                    dl->AddRectFilled(r.Min, r.Max, isSelected ? colSelBg : colBg, rounding);
-                    dl->AddRect(r.Min, r.Max, colBorder, rounding);
-
-                    ImVec2 iconPos(p.x + (cardW - m_ThumbSize) * 0.5f, p.y + pad);
-                    dl->AddImage((ImTextureID)icon->GetHandle(),
-                        iconPos,
-                        iconPos + ImVec2(m_ThumbSize, m_ThumbSize),
-                        ImVec2(0, 1), ImVec2(1, 0));
-
-                    const float sep_margin = 8.0f;
-                    ImVec2 sepMin(p.x + pad, iconPos.y + m_ThumbSize + sep_margin * 0.5f);
-                    ImVec2 sepMax(p.x + cardW - pad, sepMin.y + 1.0f);
-                    ImU32  sepCol = ImGui::GetColorU32(ImVec4(1, 1, 1, hovered ? 0.20f : 0.10f));
-                    dl->AddRectFilled(sepMin, sepMax, sepCol, 0.0f);
-
-                    const float textAreaW = cardW - pad * 2.0f;
-                    ImVec2 textTop(p.x + (cardW - textAreaW) * 0.5f,
-                        sepMax.y + sep_margin * 0.5f);
-
-                    size_t lastindex = filenameString.find_last_of(".");
-                    std::string fileNameOnly = (lastindex == std::string::npos) ? filenameString : filenameString.substr(0, lastindex);
-
-                    ImU32 txtCol = ImGui::GetColorU32(ImVec4(1, 1, 1, isSelected ? 1.0f : 0.95f));
-                    
-                    DrawWrappedCenteredText(dl, textTop, textAreaW, fileNameOnly, 2, txtCol);
-
-                    if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                        if (directoryEntry.is_directory()) {
-                            m_CurrentDirectory /= path.filename();
-                            std::snprintf(m_PathBuffer, sizeof(m_PathBuffer), "%s", m_CurrentDirectory.string().c_str());
-                        }
-                        else if (fileType == AssetType::TEXTURE) {
-                            m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(relativePath));
-                        }
-                        else if (fileType == AssetType::SCRIPT) {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
-                            if (extension == ".lua") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
-                            else if (extension == ".cpp" || extension == ".h") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
-                            m_CodeEditor->LoadFromFile(relativePath.string());
-                        }
-                        else {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
-                            if (extension == ".txt") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
-                            m_CodeEditor->LoadFromFile(relativePath.string());
-                        }
-                    }
-
-                    if (active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-                        if (ImGui::BeginDragDropSource()) {
-#if defined(_WIN32)
-                            const wchar_t* itemPathW = relativePath.c_str();
-                            ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", itemPathW, (wcslen(itemPathW) + 1) * sizeof(wchar_t));
-#else
-                            std::string pUtf8 = relativePath.string();
-                            ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", pUtf8.c_str(), pUtf8.size() + 1);
-#endif
-                            ImGui::TextUnformatted(filenameString.c_str());
-                            ImGui::EndDragDropSource();
-                        }
-                    }
-
-                    if (directoryEntry.is_directory() && ImGui::BeginDragDropTarget()) {
-                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-                            auto wpath = (const wchar_t*)payload->Data;
-                            std::filesystem::path src(wpath);
-                            std::error_code ec2;
-                            std::filesystem::path dst = path / src.filename();
-                            std::filesystem::rename(src, dst, ec2);
-                            if (ec2) m_LastError = ec2.message();
-                        }
-                        ImGui::EndDragDropTarget();
-                    }
-
-                    if (hovered && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                        ImGui::BeginTooltip();
-                        if (directoryEntry.is_directory()) {
-                            ImGui::Text("Folder");
-                            ImGui::Text("Size: %s", PrettySize(DirSize(path)).c_str());
-                        }
-                        else {
-                            std::error_code ecSz;
-                            auto sz = std::filesystem::file_size(path, ecSz);
-                            ImGui::Text("File");
-                            ImGui::Text("Size: %s", PrettySize((uint64_t)sz).c_str());
-                        }
-                        std::error_code ecm;
-                        auto tp2 = std::filesystem::last_write_time(path, ecm);
-                        if (!ecm) {
-                            auto tt = ToTimeT(tp2);
-                            ImGui::Text("Modified: %s", std::asctime(std::localtime(&tt)));
-                        }
-                        ImGui::EndTooltip();
-                    }
-
-                    std::string ctxId = "##ctx_" + filenameString;
-                    ImGui::OpenPopupOnItemClick(ctxId.c_str(), ImGuiPopupFlags_MouseButtonRight);
-                    if (ImGui::BeginPopup(ctxId.c_str())) {
-                        if (fileType == AssetType::TEXTURE) {
-                            if (ImGui::MenuItem("Modify")) {
-                                m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(relativePath));
-                            }
-                            if (ImGui::MenuItem("Reimport")) {  }
-                            if (ImGui::MenuItem("Generate Mipmaps")) {  }
-                            ImGui::Separator();
-                        }
-                        else if (fileType == AssetType::SCRIPT) {
-                            if (ImGui::MenuItem("Open in Code Editor")) {
-                                m_CodeEditor = std::make_shared<CodeEditor>();
-                                if (extension == ".lua")      m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
-                                else if (extension == ".cpp" || extension == ".h")
-                                    m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
-                                m_CodeEditor->LoadFromFile(relativePath.string());
-                            }
-                            ImGui::Separator();
-                        }
-                        else if (fileType == AssetType::MESH) {
-                            if (ImGui::MenuItem("Create Prefab")) {  }
-                            ImGui::Separator();
-                        }
-                        else if (fileType == AssetType::SCENE) {
-                            if (ImGui::MenuItem("Open Scene")) {  }
-                            ImGui::Separator();
-                        }
-
+                    if (ImGui::BeginPopupContextItem((std::string("##ctx_row_") + itemPath).c_str())) {
+                        hasContext = true;
                         if (ImGui::MenuItem("Rename")) {
                             m_RenamingPath = path;
                             std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
                             std::strncpy(m_RenameBuffer, filenameString.c_str(), sizeof(m_RenameBuffer) - 1);
                         }
-                        if (ImGui::MenuItem("Copy")) { m_Clipboard.mode = ClipMode::Copy; m_Clipboard.items = { path }; }
-                        if (ImGui::MenuItem("Cut")) { m_Clipboard.mode = ClipMode::Cut;  m_Clipboard.items = { path }; }
-                        if (ImGui::MenuItem("Duplicate")) {
-                            std::error_code ecDup;
-                            auto base = path.filename().string();
-                            auto dup = UniqueNameInDir(path.parent_path(), base + " - Copy");
-                            ecDup.clear(); CopyRec(path, dup, ecDup);
-                        }
-
-                        if (ImGui::MenuItem("Compress (.zip)")) {  }
-                        if (ImGui::MenuItem("Extract here")) {  }
-
-                        if (ImGui::MenuItem("Reveal in Explorer")) {
-#if defined(_WIN32)
-                            std::string cmd = "explorer /select,\"" + path.string() + "\"";
-                            system(cmd.c_str());
-#elif defined(__APPLE__)
-                            std::string cmd = "open -R \"" + path.string() + "\"";
-                            system(cmd.c_str());
-#else
-                            std::string cmd = "xdg-open \"" + path.parent_path().string() + "\"";
-                            system(cmd.c_str());
-#endif
-                        }
-
-                        ImGui::Separator();
                         if (ImGui::MenuItem("Delete")) {
                             m_PendingDelete.clear();
                             m_PendingDelete.push_back(path);
@@ -1090,69 +806,258 @@ namespace QuasarEngine
                         ImGui::EndPopup();
                     }
 
-                    ImGui::Dummy(ImVec2(0, 6));
-                }
+                    ImVec2 startPos = ImGui::GetCursorPos();
+                    ImGui::SetCursorPosY(startPos.y - rowHeight + (rowHeight - icon24) * 0.5f);
+                    ImGui::Image((ImTextureID)icon->GetHandle(), ImVec2(icon24, icon24), ImVec2(0, 1), ImVec2(1, 0));
+                    ImGui::SameLine();
 
-                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                    if (directoryEntry.is_directory()) {
-                        m_CurrentDirectory /= path.filename();
-                        std::snprintf(m_PathBuffer, sizeof(m_PathBuffer), "%s", m_CurrentDirectory.string().c_str());
-                    }
-                    else if (fileType == AssetType::TEXTURE) {
-                        m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(relativePath));
-                    }
-                    else if (fileType == AssetType::SCRIPT) {
-                        m_CodeEditor = std::make_shared<CodeEditor>();
-                        if (extension == ".lua") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
-                        else if (extension == ".cpp" || extension == ".h")
-                            m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
-                        m_CodeEditor->LoadFromFile(relativePath.string());
+                    if (m_RenamingPath && *m_RenamingPath == path) {
+                        ImGui::SetNextItemWidth(std::max(180.0f, ImGui::GetContentRegionAvail().x * 0.3f));
+                        if (ImGui::InputText((std::string("##rename_") + itemPath).c_str(), m_RenameBuffer, IM_ARRAYSIZE(m_RenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                            std::error_code ec;
+                            auto newP = path.parent_path() / m_RenameBuffer;
+                            std::filesystem::rename(path, newP, ec);
+                            m_RenamingPath.reset();
+                            m_Selection.clear();
+                            m_Selection.insert(newP.generic_string());
+                        }
                     }
                     else {
-                        m_CodeEditor = std::make_shared<CodeEditor>();
-                        if (extension == ".txt")
-                            m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
-                        m_CodeEditor->LoadFromFile(relativePath.string());
+                        ImGui::TextUnformatted(filenameString.c_str());
+                    }
+
+                    ImGui::TableSetColumnIndex(1);
+                    if (directoryEntry.is_directory()) ImGui::TextUnformatted("Folder");
+                    else {
+                        auto ext = path.extension().string();
+                        ImGui::TextUnformatted(ext.empty() ? "-" : ext.c_str());
+                    }
+
+                    ImGui::TableSetColumnIndex(2);
+                    if (directoryEntry.is_directory()) ImGui::TextUnformatted("-");
+                    else {
+                        std::error_code ecSz; auto sz = std::filesystem::file_size(path, ecSz);
+                        ImGui::Text("%s", PrettySize((uint64_t)sz).c_str());
+                    }
+
+                    ImGui::TableSetColumnIndex(3);
+                    {
+                        std::error_code ecm; auto tp = std::filesystem::last_write_time(path, ecm);
+                        if (!ecm) { auto tt = ToTimeT(tp); ImGui::Text("%s", std::asctime(std::localtime(&tt))); }
+                        else ImGui::TextUnformatted("-");
+                    }
+
+                    ImGui::TableSetColumnIndex(4);
+                    if (isModel) {
+                        std::string toggleId = "##toggle_row_" + itemPath;
+                        if (ImGui::SmallButton(toggleId.c_str())) {
+                            m_ExpandedModels[itemPath] = !m_ExpandedModels[itemPath];
+                        }
+                    }
+
+                    if (isModel && m_ExpandedModels[itemPath]) {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImVec4(1, 1, 1, 0.02f)));
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::TableNextColumn(); ImGui::TableSetColumnIndex(0);
+                        ImGui::TableSetColumnIndex(0);
+                        float w = ImGui::GetContentRegionAvail().x + ImGui::GetContentRegionAvail().x;
+                        drawMeshesPanel(itemPath, modelId, ImGui::GetContentRegionAvail().x + ImGui::GetStyle().CellPadding.x * 2.0f);
                     }
                 }
 
-                if (!m_ListView) {
-                    ImGui::NextColumn();
-                }
-                ImGui::PopID();
-            };
-
-        if (m_GroupByType && !m_ListView) {
-            drawHeader("Folders");
-            for (auto& e : entries) if (e.is_directory()) drawItem(e);
-
-            drawHeader("Textures");
-            for (auto& e : entries) if (!e.is_directory() && AssetManager::Instance().getTypeFromExtention(e.path().extension().string()) == AssetType::TEXTURE) drawItem(e);
-
-            drawHeader("Meshes");
-            for (auto& e : entries) if (!e.is_directory() && AssetManager::Instance().getTypeFromExtention(e.path().extension().string()) == AssetType::MESH) drawItem(e);
-
-            drawHeader("Scripts");
-            for (auto& e : entries) if (!e.is_directory() && AssetManager::Instance().getTypeFromExtention(e.path().extension().string()) == AssetType::SCRIPT) drawItem(e);
-
-            drawHeader("Scenes");
-            for (auto& e : entries) if (!e.is_directory() && AssetManager::Instance().getTypeFromExtention(e.path().extension().string()) == AssetType::SCENE) drawItem(e);
-
-            drawHeader("Other");
-            for (auto& e : entries) {
-                if (e.is_directory()) continue;
-                auto t = AssetManager::Instance().getTypeFromExtention(e.path().extension().string());
-                if (!(t == AssetType::TEXTURE || t == AssetType::MESH || t == AssetType::SCRIPT || t == AssetType::SCENE))
-                    drawItem(e);
+                ImGui::EndTable();
             }
         }
-        else {
-            for (auto& e : entries) drawItem(e);
+        else
+        {
+            ImGuiTableFlags tflags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_BordersOuterV;
+            if (ImGui::BeginTable("##ContentGrid", columnCount, tflags))
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(10.0f, 12.0f));
+
+                for (auto& directoryEntry : entries)
+                {
+                    const auto& path = directoryEntry.path();
+                    std::string filenameString = path.filename().string();
+                    if (filenameString.empty()) filenameString = "unknown";
+                    std::string itemPath = path.generic_string();
+
+                    AssetType fileType; std::shared_ptr<Texture2D> icon; std::string modelId; bool isModel = false;
+                    getAssetIconAndId(path, fileType, icon, modelId, isModel);
+                    if (!PassesTypeFilter(m_TypeFilter, (int)fileType)) continue;
+
+                    ImGui::TableNextColumn();
+                    ImGui::PushID(itemPath.c_str());
+
+                    ImVec2 p0 = ImGui::GetCursorScreenPos();
+                    float cardW_local = cardW;
+                    float cardH_local = cardH_base;
+
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    const float rounding = 10.0f;
+
+                    ImVec2 cardMin = p0;
+                    ImVec2 cardMax = ImVec2(p0.x + cardW_local, p0.y + cardH_local);
+
+                    bool hoverCard = ImGui::IsMouseHoveringRect(cardMin, cardMax);
+                    ImU32 colShadow = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.10f));
+                    ImU32 colBg = ImGui::GetColorU32(hoverCard ? ImVec4(1, 1, 1, 0.06f) : ImVec4(1, 1, 1, 0.03f));
+                    ImU32 colBorder = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.10f));
+                    dl->AddRectFilled(cardMin + ImVec2(0, 1), cardMax + ImVec2(0, 1), colShadow, rounding);
+                    dl->AddRectFilled(cardMin, cardMax, colBg, rounding);
+                    dl->AddRect(cardMin, cardMax, colBorder, rounding);
+
+                    ImVec2 iconPos(cardMin.x + cardPadding, cardMin.y + cardPadding);
+                    dl->AddImage((ImTextureID)icon->GetHandle(),
+                        iconPos, iconPos + ImVec2(iconSize, iconSize),
+                        ImVec2(0, 1), ImVec2(1, 0));
+
+                    const float textAreaW = cardW_local - cardPadding * 2.0f;
+                    ImVec2 textTop(cardMin.x + (cardW_local - textAreaW) * 0.5f,
+                        iconPos.y + iconSize + 6.0f);
+                    size_t lastDot = filenameString.find_last_of('.');
+                    std::string fileNameOnly = (lastDot == std::string::npos) ? filenameString : filenameString.substr(0, lastDot);
+
+                    auto drawCenteredWrap = [&](const std::string& txt)
+                        {
+                            const float line_h = ImGui::GetTextLineHeightWithSpacing();
+                            const float space_w = ImGui::CalcTextSize(" ").x;
+                            const char* cur = txt.c_str();
+                            const char* end = cur + txt.size();
+                            ImVec2 pos = textTop;
+
+                            for (int line = 0; line < 2 && cur < end; ++line) {
+                                const char* line_start = cur;
+                                const char* draw_end = cur;
+                                float line_w = 0.0f;
+                                while (cur < end) {
+                                    while (cur < end && (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')) {
+                                        if (*cur == '\n') break; ++cur;
+                                    }
+                                    if (cur >= end || *cur == '\n') { ++cur; break; }
+                                    const char* w_end = cur;
+                                    while (w_end < end && *w_end != ' ' && *w_end != '\t' && *w_end != '\n' && *w_end != '\r') ++w_end;
+                                    ImVec2 w_size = ImGui::CalcTextSize(cur, w_end);
+                                    float next_w = (draw_end == line_start) ? w_size.x : (line_w + space_w + w_size.x);
+                                    if (next_w > textAreaW && draw_end != line_start) break;
+                                    line_w = (draw_end == line_start) ? w_size.x : (line_w + space_w + w_size.x);
+                                    draw_end = w_end;
+                                    cur = w_end;
+                                }
+                                float x = cardMin.x + (cardW_local - line_w) * 0.5f;
+                                dl->AddText(ImVec2(x, pos.y), ImGui::GetColorU32(ImVec4(1, 1, 1, 0.95f)), line_start, draw_end);
+                                pos.y += line_h;
+                            }
+                        };
+                    drawCenteredWrap(fileNameOnly);
+
+                    bool clickToggle = false;
+                    bool expanded = m_ExpandedModels[itemPath];
+                    if (isModel) {
+                        ImVec2 toggleSize(22.0f, 22.0f);
+                        ImVec2 togglePos(cardMax.x - toggleSize.x - 6.0f, cardMin.y + 6.0f);
+                        ImGui::SetCursorScreenPos(togglePos);
+                        std::string toggleId = "##toggle_" + itemPath;
+                        if (ImGui::Button(toggleId.c_str(), toggleSize)) clickToggle = true;
+                        const char* g = expanded ? "-" : "+";
+                        ImVec2 gsz = ImGui::CalcTextSize(g);
+                        dl->AddText(ImVec2(togglePos.x + (toggleSize.x - gsz.x) * 0.5f, togglePos.y + (toggleSize.y - gsz.y) * 0.5f),
+                            ImGui::GetColorU32(ImVec4(1, 1, 1, 0.85f)), g);
+                    }
+
+                    bool doSelect = false;
+                    bool doDouble = false;
+                    if (!clickToggle && hoverCard && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                        doSelect = true;
+                    }
+                    if (hoverCard && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        doDouble = true;
+                    }
+
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+#if defined(_WIN32)
+                        const wchar_t* itemPathW = path.c_str();
+                        ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", itemPathW, (wcslen(itemPathW) + 1) * sizeof(wchar_t));
+#else
+                        std::string pUtf8 = path.string();
+                        ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", pUtf8.c_str(), pUtf8.size() + 1);
+#endif
+                        ImGui::TextUnformatted(filenameString.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+
+                    if (clickToggle) {
+                        m_ExpandedModels[itemPath] = !m_ExpandedModels[itemPath];
+                    }
+
+                    if (doSelect) {
+                        bool isSelected = (m_Selection.find(itemPath) != m_Selection.end());
+                        if (ImGui::GetIO().KeyCtrl) {
+                            if (isSelected) m_Selection.erase(itemPath);
+                            else m_Selection.insert(itemPath);
+                        }
+                        else {
+                            m_Selection.clear();
+                            m_Selection.insert(itemPath);
+                        }
+                    }
+                    if (doDouble) {
+                        if (std::filesystem::is_directory(path)) {
+                            m_CurrentDirectory /= path.filename();
+                            std::snprintf(m_PathBuffer, sizeof(m_PathBuffer), "%s", m_CurrentDirectory.string().c_str());
+                        }
+                        else if (fileType == AssetType::TEXTURE) {
+                            m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(path));
+                        }
+                        else if (fileType == AssetType::SCRIPT) {
+                            m_CodeEditor = std::make_shared<CodeEditor>();
+                            auto ext = path.extension().string();
+                            if (ext == ".lua") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
+                            else if (ext == ".cpp" || ext == ".h") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
+                            m_CodeEditor->LoadFromFile(path.string());
+                        }
+                        else {
+                            m_CodeEditor = std::make_shared<CodeEditor>();
+                            auto ext = path.extension().string();
+                            if (ext == ".txt") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
+                            m_CodeEditor->LoadFromFile(path.string());
+                        }
+                    }
+
+                    if (ImGui::BeginPopupContextItem((std::string("##ctx_card_") + itemPath).c_str())) {
+                        if (ImGui::MenuItem("Rename")) {
+                            m_RenamingPath = path;
+                            std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+                            std::strncpy(m_RenameBuffer, filenameString.c_str(), sizeof(m_RenameBuffer) - 1);
+                        }
+                        if (ImGui::MenuItem("Delete")) {
+                            m_PendingDelete.clear();
+                            m_PendingDelete.push_back(path);
+                            m_ShowConfirmDelete = true;
+                        }
+                        ImGui::EndPopup();
+                    }
+
+                    float usedHeight = cardH_local;
+
+                    if (isModel && m_ExpandedModels[itemPath]) {
+                        ImGui::SetCursorScreenPos(ImVec2(cardMin.x + cardInnerPad, cardMax.y + 6.0f));
+                        drawMeshesPanel(itemPath, modelId, cardW_local - cardInnerPad * 2);
+                        usedHeight += 6.0f + s_meshPanelHeight;
+                    }
+
+                    ImGui::SetCursorScreenPos(ImVec2(cardMin.x, cardMin.y + usedHeight + extraVGap));
+                    ImGui::Dummy(ImVec2(cardW_local, extraVGap));
+
+                    ImGui::PopID();
+                }
+
+                ImGui::PopStyleVar();
+                ImGui::EndTable();
+            }
         }
-
-        if (!m_ListView) ImGui::Columns(1);
-
-        //if (!m_ListView) DrawPreviewPane(rightPaneWidth);
 
         if (m_ShowConfirmDelete) {
             ImGui::OpenPopup("Confirmer la suppression");
