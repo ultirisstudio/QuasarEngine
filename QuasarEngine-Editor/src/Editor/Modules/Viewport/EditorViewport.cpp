@@ -383,47 +383,98 @@ namespace QuasarEngine
 		}
 
 		{
-			ImRect dropRect(
-				ImVec2(m_EditorViewportBounds[0].x, m_EditorViewportBounds[0].y),
-				ImVec2(m_EditorViewportBounds[1].x, m_EditorViewportBounds[1].y)
-			);
-
-			if (ImGui::BeginDragDropTargetCustom(dropRect, ImGui::GetID("EditorViewportDrop")))
 			{
-				const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM");
-				if (!payload)
-					payload = ImGui::AcceptDragDropPayload("EXTERNAL_FILE");
+				ImRect dropRect(
+					ImVec2(m_EditorViewportBounds[0].x, m_EditorViewportBounds[0].y),
+					ImVec2(m_EditorViewportBounds[1].x, m_EditorViewportBounds[1].y)
+				);
 
-				if (payload && payload->Data && payload->DataSize > 0)
+				auto ensureModelReady = [&](const std::string& filePathAbs)
+					{
+						std::error_code ec{};
+						std::filesystem::path abs = std::filesystem::weakly_canonical(filePathAbs, ec);
+						if (ec) abs = std::filesystem::path(filePathAbs);
+
+						std::filesystem::path root = AssetManager::Instance().getAssetPath();
+						std::string id = std::filesystem::relative(filePathAbs, root, ec).generic_string();
+
+						auto isRenderable = [&](const std::shared_ptr<Model>& m) -> bool {
+							if (!m) return false;
+							const auto& li = m->GetLoadedInfo();
+							if (li.meshes.empty()) return false;
+							for (const auto& mi : li.meshes) if (mi.mesh) return true;
+							return false;
+							};
+
+						bool loaded = AssetManager::Instance().isAssetLoaded(id);
+						if (loaded) {
+							auto mdl = AssetManager::Instance().getAsset<Model>(id);
+							if (isRenderable(mdl)) return;
+						}
+
+						ModelImportOptions opts;
+						opts.buildMeshes = true;
+						opts.loadMaterials = true;
+						opts.loadSkinning = true;
+						opts.loadAnimations = true;
+						opts.vertexLayout.reset();
+						opts.triangulate = true;
+						opts.joinIdenticalVertices = false;
+						opts.improveCacheLocality = false;
+						opts.genUVIfMissing = false;
+						opts.generateNormals = false;
+						opts.generateTangents = false;
+						opts.loadTangents = false;
+
+						AssetToLoad a{};
+						a.id = id;
+						a.path = abs.generic_string();
+						a.type = AssetType::MODEL;
+						a.spec = opts;
+						AssetManager::Instance().updateAsset(a);
+					};
+
+				if (ImGui::BeginDragDropTargetCustom(dropRect, ImGui::GetID("EditorViewportDrop")))
 				{
-					std::string filePath;
+					const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM");
+					if (!payload)
+						payload = ImGui::AcceptDragDropPayload("EXTERNAL_FILE");
+
+					if (payload && payload->Data && payload->DataSize > 0)
+					{
+						std::string filePath;
 #if defined(_WIN32)
-					const wchar_t* wpath = (const wchar_t*)payload->Data;
-					std::wstring ws(wpath);
-					filePath.assign(ws.begin(), ws.end());
+						const wchar_t* wpath = (const wchar_t*)payload->Data;
+						std::wstring ws(wpath);
+						filePath.assign(ws.begin(), ws.end());
 #else
-					const char* cpath = (const char*)payload->Data;
-					filePath = cpath;
+						const char* cpath = (const char*)payload->Data;
+						filePath = cpath;
 #endif
 
-					std::string ext;
-					if (size_t dot = filePath.find_last_of('.'); dot != std::string::npos) {
-						ext = filePath.substr(dot + 1);
-						for (char& ch : ext) ch = (char)std::tolower((unsigned char)ch);
+						std::string ext;
+						if (size_t dot = filePath.find_last_of('.'); dot != std::string::npos) {
+							ext = filePath.substr(dot + 1);
+							for (char& ch : ext) ch = (char)std::tolower((unsigned char)ch);
+						}
+
+						bool isModelExt =
+							(ext == "obj" || ext == "dae" || ext == "fbx" ||
+								ext == "glb" || ext == "gltf" || ext == "bin");
+
+						if (isModelExt)
+						{
+							ensureModelReady(filePath);
+							sceneManager.AddGameObject(filePath);
+						}
+						else if (ext == "scene")
+						{
+							sceneManager.LoadScene(filePath);
+						}
 					}
 
-					if (ext == "obj" || ext == "dae" || ext == "fbx" || ext == "glb" || ext == "gltf" || ext == "bin")
-					{
-						sceneManager.AddGameObject(filePath);
-					}
-					
-					else if (ext == "scene")
-					{
-						sceneManager.LoadScene(filePath);
-					}
+					ImGui::EndDragDropTarget();
 				}
-
-				ImGui::EndDragDropTarget();
 			}
 		}
 

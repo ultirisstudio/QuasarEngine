@@ -18,6 +18,24 @@ namespace QuasarEngine
 				ImGui::Text("Mesh: "); ImGui::SameLine();
 				ImGui::Text(mc.GetName().c_str());
 
+				ImGui::Text("Model Path: "); ImGui::SameLine();
+				ImGui::Text(mc.GetModelPath().c_str());
+
+				ImGui::Text("Node Path: "); ImGui::SameLine();
+				ImGui::Text(mc.GetNodePath().c_str());
+
+				ImGui::Text("Has Local Node Transform: "); ImGui::SameLine();
+				ImGui::Text(mc.HasLocalNodeTransform() ? "Yes" : "No");
+
+				ImGui::Text("Has Mesh: "); ImGui::SameLine();
+				ImGui::Text(mc.HasMesh() ? "Yes" : "No");
+
+				ImGui::Text("Vertices Count: "); ImGui::SameLine();
+				ImGui::Text("%zu", mc.HasMesh() ? mc.GetMesh().GetVerticesCount() : 0);
+
+				ImGui::Text("Indices Count: "); ImGui::SameLine();
+				ImGui::Text("%zu", mc.HasMesh() ? mc.GetMesh().GetIndicesCount() : 0);
+
 				ImGui::TreePop();
 			}
 		}

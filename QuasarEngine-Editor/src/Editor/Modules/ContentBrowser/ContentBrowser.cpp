@@ -228,7 +228,7 @@ namespace QuasarEngine
         ImGui::SameLine();
         ImGui::Checkbox("Watch", &m_WatchEnabled);
 
-        ImGui::SameLine();
+        //ImGui::SameLine();
         ImGui::InputTextWithHint("##search", "Search files...", m_SearchBuffer, IM_ARRAYSIZE(m_SearchBuffer));
         std::string searchFilter = m_SearchBuffer;
 
@@ -545,7 +545,6 @@ namespace QuasarEngine
 
         ImGui::Begin("Content Browser");
 
-        const float full_h = ImGui::GetContentRegionAvail().y;
         const float min_left = 160.0f;
         const float max_left = std::max(160.0f, ImGui::GetContentRegionAvail().x - 300.0f);
 
@@ -597,6 +596,22 @@ namespace QuasarEngine
             if (!PassesSearchFilter(filenameStr, m_SearchBuffer)) continue;
             entries.push_back(dirEntry);
         }
+
+        auto BeginDragSourceForPath = [&](const std::filesystem::path& p, const std::string& preview)
+            {
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+                {
+#if defined(_WIN32)
+                    const wchar_t* w = p.c_str();
+                    ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", w, (wcslen(w) + 1) * sizeof(wchar_t));
+#else
+                    std::string u8 = p.string();
+                    ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", u8.c_str(), u8.size() + 1);
+#endif
+                    ImGui::TextUnformatted(preview.c_str());
+                    ImGui::EndDragDropSource();
+                }
+            };
 
         auto compareFunc = [&](const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b)
             {
@@ -725,7 +740,6 @@ namespace QuasarEngine
                         ImGui::Indent();
                         for (auto& n : kv.second) {
                             ImGui::PushID((itemPath + "_mesh_" + n).c_str());
-                            bool hoveredBefore = ImGui::IsAnyItemHovered();
                             if (ImGui::Selectable(n.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0, 0))) {
                             }
                             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
@@ -747,6 +761,62 @@ namespace QuasarEngine
                 ImGui::PopStyleColor();
             };
 
+        auto itemContextMenu = [&](const std::filesystem::path& path, const std::string& filenameString)
+            {
+                if (ImGui::MenuItem("Rename")) {
+                    m_RenamingPath = path;
+                    std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
+                    std::strncpy(m_RenameBuffer, filenameString.c_str(), sizeof(m_RenameBuffer) - 1);
+                }
+                if (ImGui::MenuItem("Copy")) {
+                    m_Clipboard.mode = ClipMode::Copy;
+                    m_Clipboard.items = { path };
+                }
+                if (ImGui::MenuItem("Cut")) {
+                    m_Clipboard.mode = ClipMode::Cut;
+                    m_Clipboard.items = { path };
+                }
+                if (ImGui::MenuItem("Paste")) {
+                    if (m_Clipboard.mode != ClipMode::None && !m_Clipboard.items.empty()) {
+                        std::error_code ec;
+                        for (auto& src : m_Clipboard.items) {
+                            auto dst = path.parent_path() / src.filename();
+                            if (m_Clipboard.mode == ClipMode::Copy) { ec.clear(); CopyRec(src, dst, ec); }
+                            else if (m_Clipboard.mode == ClipMode::Cut) { ec.clear(); std::filesystem::rename(src, dst, ec); }
+                        }
+                        if (m_Clipboard.mode == ClipMode::Cut) m_Clipboard = {};
+                    }
+                }
+                if (ImGui::MenuItem("Duplicate")) {
+                    std::error_code ecDup;
+                    auto base = path.filename().string();
+                    auto dup = UniqueNameInDir(path.parent_path(), base + " - Copy");
+                    ecDup.clear(); CopyRec(path, dup, ecDup);
+                }
+                if (ImGui::MenuItem("Compress (.zip)")) {
+                }
+                if (ImGui::MenuItem("Extract here")) {
+                }
+                if (ImGui::MenuItem("Reveal in Explorer")) {
+#if defined(_WIN32)
+                    std::string cmd = "explorer /select,\"" + path.string() + "\"";
+                    system(cmd.c_str());
+#elif defined(__APPLE__)
+                    std::string cmd = "open -R \"" + path.string() + "\"";
+                    system(cmd.c_str());
+#else
+                    std::string cmd = "xdg-open \"" + path.parent_path().string() + "\"";
+                    system(cmd.c_str());
+#endif
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem("Delete")) {
+                    m_PendingDelete.clear();
+                    m_PendingDelete.push_back(path);
+                    m_ShowConfirmDelete = true;
+                }
+            };
+
         if (m_ListView)
         {
             ImGuiTableFlags tflags = ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersInnerH;
@@ -759,7 +829,7 @@ namespace QuasarEngine
                 ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 24.0f);
                 ImGui::TableHeadersRow();
 
-                const float rowHeight = 36.0f;
+                const float rowHeight = 38.0f;
                 const float icon24 = 24.0f;
 
                 for (auto& directoryEntry : entries)
@@ -774,8 +844,6 @@ namespace QuasarEngine
                     if (!PassesTypeFilter(m_TypeFilter, (int)fileType)) continue;
 
                     bool isSelected = (m_Selection.find(itemPath) != m_Selection.end());
-                    bool hasContext = false;
-                    bool expandedRow = m_ExpandedModels[itemPath];
 
                     ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
                     ImGui::TableSetColumnIndex(0);
@@ -791,18 +859,9 @@ namespace QuasarEngine
                             m_Selection.insert(itemPath);
                         }
                     }
-                    if (ImGui::BeginPopupContextItem((std::string("##ctx_row_") + itemPath).c_str())) {
-                        hasContext = true;
-                        if (ImGui::MenuItem("Rename")) {
-                            m_RenamingPath = path;
-                            std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
-                            std::strncpy(m_RenameBuffer, filenameString.c_str(), sizeof(m_RenameBuffer) - 1);
-                        }
-                        if (ImGui::MenuItem("Delete")) {
-                            m_PendingDelete.clear();
-                            m_PendingDelete.push_back(path);
-                            m_ShowConfirmDelete = true;
-                        }
+
+                    if (ImGui::BeginPopupContextItem((std::string("##ctx_row_full_") + itemPath).c_str())) {
+                        itemContextMenu(path, filenameString);
                         ImGui::EndPopup();
                     }
 
@@ -858,11 +917,6 @@ namespace QuasarEngine
                     if (isModel && m_ExpandedModels[itemPath]) {
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImVec4(1, 1, 1, 0.02f)));
-                        ImGui::TableSetColumnIndex(0);
-                        ImGui::TableNextColumn(); ImGui::TableSetColumnIndex(0);
-                        ImGui::TableSetColumnIndex(0);
-                        float w = ImGui::GetContentRegionAvail().x + ImGui::GetContentRegionAvail().x;
                         drawMeshesPanel(itemPath, modelId, ImGui::GetContentRegionAvail().x + ImGui::GetStyle().CellPadding.x * 2.0f);
                     }
                 }
@@ -877,6 +931,97 @@ namespace QuasarEngine
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(10.0f, 12.0f));
 
+                auto drawMeshCard = [&](const std::string& parentId, const std::string& meshName, const std::string& nodePath)
+                    {
+                        ImGui::TableNextColumn();
+
+                        std::string mid = parentId + "##mesh_" + meshName;
+                        ImGui::PushID(mid.c_str());
+
+                        float meshPadding = 10.0f;
+                        float meshIconSize = std::max(48.0f, iconSize * 0.6f);
+                        float meshTextLines = 2.0f;
+                        float meshTextH = ImGui::GetTextLineHeightWithSpacing() * meshTextLines;
+                        float meshW = cardW * 0.9f;
+                        float meshH = meshIconSize + meshTextH + meshPadding * 2.0f;
+
+                        ImVec2 p0 = ImGui::GetCursorScreenPos();
+
+                        ImGui::InvisibleButton("##mesh_hit", ImVec2(meshW, meshH));
+                        bool hovered = ImGui::IsItemHovered();
+
+                        ImDrawList* dl = ImGui::GetWindowDrawList();
+                        float rounding = 10.0f;
+                        ImU32 colShadow = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.10f));
+                        ImU32 colBg = ImGui::GetColorU32(hovered ? ImVec4(1, 1, 1, 0.08f) : ImVec4(1, 1, 1, 0.05f));
+                        ImU32 colBorder = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.12f));
+
+                        ImVec2 cardMin = p0;
+                        ImVec2 cardMax = ImVec2(p0.x + meshW, p0.y + meshH);
+
+                        dl->AddRectFilled(cardMin + ImVec2(0, 1), cardMax + ImVec2(0, 1), colShadow, rounding);
+                        dl->AddRectFilled(cardMin, cardMax, colBg, rounding);
+                        dl->AddRect(cardMin, cardMax, colBorder, rounding);
+
+                        ImVec2 iconPos(cardMin.x + (meshW - meshIconSize) * 0.5f, cardMin.y + meshPadding);
+                        dl->AddImage((ImTextureID)m_FileOBJIcon->GetHandle(),
+                            iconPos, iconPos + ImVec2(meshIconSize, meshIconSize),
+                            ImVec2(0, 1), ImVec2(1, 0));
+
+                        const float textAreaW = meshW - meshPadding * 2.0f;
+                        ImVec2 textTop(cardMin.x + (meshW - textAreaW) * 0.5f,
+                            iconPos.y + meshIconSize + 6.0f);
+
+                        auto drawCenteredWrap = [&](const std::string& txt)
+                            {
+                                const float line_h = ImGui::GetTextLineHeightWithSpacing();
+                                const float space_w = ImGui::CalcTextSize(" ").x;
+                                const char* cur = txt.c_str();
+                                const char* end = cur + txt.size();
+                                ImVec2 pos = textTop;
+
+                                for (int line = 0; line < 2 && cur < end; ++line) {
+                                    const char* line_start = cur;
+                                    const char* draw_end = cur;
+                                    float line_w = 0.0f;
+
+                                    while (cur < end) {
+                                        while (cur < end && (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')) {
+                                            if (*cur == '\n') break; ++cur;
+                                        }
+                                        if (cur >= end || *cur == '\n') { ++cur; break; }
+
+                                        const char* w_end = cur;
+                                        while (w_end < end && *w_end != ' ' && *w_end != '\t' && *w_end != '\n' && *w_end != '\r') ++w_end;
+
+                                        ImVec2 w_size = ImGui::CalcTextSize(cur, w_end);
+                                        float next_w = (draw_end == line_start) ? w_size.x : (line_w + space_w + w_size.x);
+                                        if (next_w > textAreaW && draw_end != line_start) break;
+
+                                        line_w = (draw_end == line_start) ? w_size.x : (line_w + space_w + w_size.x);
+                                        draw_end = w_end;
+                                        cur = w_end;
+                                    }
+
+                                    float x = cardMin.x + (meshW - line_w) * 0.5f;
+                                    dl->AddText(ImVec2(x, pos.y), ImGui::GetColorU32(ImVec4(1, 1, 1, 0.95f)), line_start, draw_end);
+                                    pos.y += line_h;
+                                }
+                            };
+
+                        drawCenteredWrap(meshName);
+
+                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                            ImGui::SetDragDropPayload("CONTENT_BROWSER_MESH_NAME", meshName.c_str(), (meshName.size() + 1));
+                            ImGui::TextUnformatted(meshName.c_str());
+                            ImGui::EndDragDropSource();
+                        }
+
+                        ImGui::Dummy(ImVec2(0, 8.0f));
+
+                        ImGui::PopID();
+                    };
+
                 for (auto& directoryEntry : entries)
                 {
                     const auto& path = directoryEntry.path();
@@ -884,7 +1029,10 @@ namespace QuasarEngine
                     if (filenameString.empty()) filenameString = "unknown";
                     std::string itemPath = path.generic_string();
 
-                    AssetType fileType; std::shared_ptr<Texture2D> icon; std::string modelId; bool isModel = false;
+                    AssetType fileType;
+                    std::shared_ptr<Texture2D> icon;
+                    std::string modelId;
+                    bool isModel = false;
                     getAssetIconAndId(path, fileType, icon, modelId, isModel);
                     if (!PassesTypeFilter(m_TypeFilter, (int)fileType)) continue;
 
@@ -892,18 +1040,38 @@ namespace QuasarEngine
                     ImGui::PushID(itemPath.c_str());
 
                     ImVec2 p0 = ImGui::GetCursorScreenPos();
+
                     float cardW_local = cardW;
                     float cardH_local = cardH_base;
 
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
-                    const float rounding = 10.0f;
+                    bool expanded = m_ExpandedModels[itemPath];
 
+                    ImGui::InvisibleButton("##card_hit", ImVec2(cardW_local, cardH_local));
+                    ImGui::SetItemAllowOverlap();
+                    bool cardIsActiveAndDragging = ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left);
+                    if (cardIsActiveAndDragging)
+                    {
+                        BeginDragSourceForPath(itemPath, filenameString);
+                    }
+
+                    bool hoveredCard = ImGui::IsItemHovered();
+                    bool leftClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+                    bool rightClicked = ImGui::IsItemClicked(ImGuiMouseButton_Right);
+                    bool doubleClicked = hoveredCard && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+
+                    if (ImGui::BeginPopupContextItem())
+                    {
+                        itemContextMenu(path, filenameString);
+                        ImGui::EndPopup();
+                    }
+
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    float rounding = 10.0f;
                     ImVec2 cardMin = p0;
                     ImVec2 cardMax = ImVec2(p0.x + cardW_local, p0.y + cardH_local);
 
-                    bool hoverCard = ImGui::IsMouseHoveringRect(cardMin, cardMax);
                     ImU32 colShadow = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.10f));
-                    ImU32 colBg = ImGui::GetColorU32(hoverCard ? ImVec4(1, 1, 1, 0.06f) : ImVec4(1, 1, 1, 0.03f));
+                    ImU32 colBg = ImGui::GetColorU32(hoveredCard ? ImVec4(1, 1, 1, 0.06f) : ImVec4(1, 1, 1, 0.03f));
                     ImU32 colBorder = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.10f));
                     dl->AddRectFilled(cardMin + ImVec2(0, 1), cardMax + ImVec2(0, 1), colShadow, rounding);
                     dl->AddRectFilled(cardMin, cardMax, colBg, rounding);
@@ -917,8 +1085,11 @@ namespace QuasarEngine
                     const float textAreaW = cardW_local - cardPadding * 2.0f;
                     ImVec2 textTop(cardMin.x + (cardW_local - textAreaW) * 0.5f,
                         iconPos.y + iconSize + 6.0f);
+
                     size_t lastDot = filenameString.find_last_of('.');
-                    std::string fileNameOnly = (lastDot == std::string::npos) ? filenameString : filenameString.substr(0, lastDot);
+                    std::string fileNameOnly = (lastDot == std::string::npos)
+                        ? filenameString
+                        : filenameString.substr(0, lastDot);
 
                     auto drawCenteredWrap = [&](const std::string& txt)
                         {
@@ -932,6 +1103,7 @@ namespace QuasarEngine
                                 const char* line_start = cur;
                                 const char* draw_end = cur;
                                 float line_w = 0.0f;
+
                                 while (cur < end) {
                                     while (cur < end && (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')) {
                                         if (*cur == '\n') break; ++cur;
@@ -939,6 +1111,7 @@ namespace QuasarEngine
                                     if (cur >= end || *cur == '\n') { ++cur; break; }
                                     const char* w_end = cur;
                                     while (w_end < end && *w_end != ' ' && *w_end != '\t' && *w_end != '\n' && *w_end != '\r') ++w_end;
+
                                     ImVec2 w_size = ImGui::CalcTextSize(cur, w_end);
                                     float next_w = (draw_end == line_start) ? w_size.x : (line_w + space_w + w_size.x);
                                     if (next_w > textAreaW && draw_end != line_start) break;
@@ -946,6 +1119,7 @@ namespace QuasarEngine
                                     draw_end = w_end;
                                     cur = w_end;
                                 }
+
                                 float x = cardMin.x + (cardW_local - line_w) * 0.5f;
                                 dl->AddText(ImVec2(x, pos.y), ImGui::GetColorU32(ImVec4(1, 1, 1, 0.95f)), line_start, draw_end);
                                 pos.y += line_h;
@@ -953,27 +1127,69 @@ namespace QuasarEngine
                         };
                     drawCenteredWrap(fileNameOnly);
 
-                    bool clickToggle = false;
-                    bool expanded = m_ExpandedModels[itemPath];
-                    if (isModel) {
-                        ImVec2 toggleSize(22.0f, 22.0f);
+                    ImRect toggleRect;
+                    bool toggleClicked = false;
+                    if (isModel)
+                    {
+                        ImVec2 toggleSize(24.0f, 24.0f);
                         ImVec2 togglePos(cardMax.x - toggleSize.x - 6.0f, cardMin.y + 6.0f);
+                        toggleRect = ImRect(togglePos, ImVec2(togglePos.x + toggleSize.x, togglePos.y + toggleSize.y));
+
                         ImGui::SetCursorScreenPos(togglePos);
-                        std::string toggleId = "##toggle_" + itemPath;
-                        if (ImGui::Button(toggleId.c_str(), toggleSize)) clickToggle = true;
+                        ImGui::PushID("toggle");
+                        ImGui::InvisibleButton("##toggle_btn", toggleSize);
+                        bool tHovered = ImGui::IsItemHovered();
+                        bool tClicked = ImGui::IsItemClicked();
+                        ImGui::PopID();
+
                         const char* g = expanded ? "-" : "+";
                         ImVec2 gsz = ImGui::CalcTextSize(g);
-                        dl->AddText(ImVec2(togglePos.x + (toggleSize.x - gsz.x) * 0.5f, togglePos.y + (toggleSize.y - gsz.y) * 0.5f),
-                            ImGui::GetColorU32(ImVec4(1, 1, 1, 0.85f)), g);
+                        ImU32 gcol = ImGui::GetColorU32(ImVec4(1, 1, 1, tHovered ? 0.95f : 0.80f));
+                        dl->AddText(ImVec2(togglePos.x + (toggleSize.x - gsz.x) * 0.5f,
+                            togglePos.y + (toggleSize.y - gsz.y) * 0.5f), gcol, g);
+
+                        if (tClicked) toggleClicked = true;
                     }
 
-                    bool doSelect = false;
-                    bool doDouble = false;
-                    if (!clickToggle && hoverCard && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                        doSelect = true;
+                    if (toggleClicked) {
+                        m_ExpandedModels[itemPath] = !m_ExpandedModels[itemPath];
+                        expanded = m_ExpandedModels[itemPath];
                     }
-                    if (hoverCard && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                        doDouble = true;
+
+                    if (leftClicked && !(isModel && toggleRect.Contains(ImGui::GetMousePos())))
+                    {
+                        bool isSelected = (m_Selection.find(itemPath) != m_Selection.end());
+                        if (ImGui::GetIO().KeyCtrl) {
+                            if (isSelected) m_Selection.erase(itemPath);
+                            else m_Selection.insert(itemPath);
+                        }
+                        else {
+                            m_Selection.clear();
+                            m_Selection.insert(itemPath);
+                        }
+                    }
+
+                    if (doubleClicked && !(isModel && toggleRect.Contains(ImGui::GetMousePos())))
+                    {
+                        auto ext = path.extension().string();
+                        if (std::filesystem::is_directory(path)) {
+                            m_CurrentDirectory /= path.filename();
+                            std::snprintf(m_PathBuffer, sizeof(m_PathBuffer), "%s", m_CurrentDirectory.string().c_str());
+                        }
+                        else if (fileType == AssetType::TEXTURE) {
+                            m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(path));
+                        }
+                        else if (fileType == AssetType::SCRIPT) {
+                            m_CodeEditor = std::make_shared<CodeEditor>();
+                            if (ext == ".lua") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
+                            else if (ext == ".cpp" || ext == ".h") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
+                            m_CodeEditor->LoadFromFile(path.string());
+                        }
+                        else {
+                            m_CodeEditor = std::make_shared<CodeEditor>();
+                            if (ext == ".txt") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
+                            m_CodeEditor->LoadFromFile(path.string());
+                        }
                     }
 
                     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
@@ -988,68 +1204,48 @@ namespace QuasarEngine
                         ImGui::EndDragDropSource();
                     }
 
-                    if (clickToggle) {
-                        m_ExpandedModels[itemPath] = !m_ExpandedModels[itemPath];
-                    }
+                    if (isModel && expanded)
+                    {
+                        auto model = AssetManager::Instance().getAsset<Model>(modelId);
+                        if (model)
+                        {
+                            std::vector<std::pair<std::string, std::string>> meshCards;
+                            model->ForEachInstance([&](const MeshInstance& inst, const glm::mat4&, const std::string& nodePath) {
+                                meshCards.emplace_back(inst.name, nodePath);
+                                });
 
-                    if (doSelect) {
-                        bool isSelected = (m_Selection.find(itemPath) != m_Selection.end());
-                        if (ImGui::GetIO().KeyCtrl) {
-                            if (isSelected) m_Selection.erase(itemPath);
-                            else m_Selection.insert(itemPath);
+                            int colIndex = ImGui::TableGetColumnIndex();
+                            int remainingCols = columnCount - (colIndex + 1);
+
+                            int idx = 0;
+                            auto emitMeshCard = [&](const std::pair<std::string, std::string>& m) {
+                                drawMeshCard(itemPath, m.first, m.second);
+                                };
+
+                            for (; idx < (int)meshCards.size(); ++idx)
+                            {
+                                if (remainingCols <= 0) {
+                                    ImGui::TableNextRow();
+                                    remainingCols = columnCount;
+                                }
+                                emitMeshCard(meshCards[idx]);
+                                --remainingCols;
+                            }
+
+                            ImGui::TableNextRow();
                         }
-                        else {
-                            m_Selection.clear();
-                            m_Selection.insert(itemPath);
+                        else
+                        {
+                            ImGui::TableNextColumn();
+                            ImGui::TextDisabled("Loading...");
+                            ImGui::TableNextRow();
                         }
                     }
-                    if (doDouble) {
-                        if (std::filesystem::is_directory(path)) {
-                            m_CurrentDirectory /= path.filename();
-                            std::snprintf(m_PathBuffer, sizeof(m_PathBuffer), "%s", m_CurrentDirectory.string().c_str());
-                        }
-                        else if (fileType == AssetType::TEXTURE) {
-                            m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(path));
-                        }
-                        else if (fileType == AssetType::SCRIPT) {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
-                            auto ext = path.extension().string();
-                            if (ext == ".lua") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
-                            else if (ext == ".cpp" || ext == ".h") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
-                            m_CodeEditor->LoadFromFile(path.string());
-                        }
-                        else {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
-                            auto ext = path.extension().string();
-                            if (ext == ".txt") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
-                            m_CodeEditor->LoadFromFile(path.string());
-                        }
+                    else
+                    {
+                        ImGui::SetCursorScreenPos(ImVec2(p0.x, p0.y + cardH_local + extraVGap));
+                        ImGui::Dummy(ImVec2(cardW_local, 0.0f));
                     }
-
-                    if (ImGui::BeginPopupContextItem((std::string("##ctx_card_") + itemPath).c_str())) {
-                        if (ImGui::MenuItem("Rename")) {
-                            m_RenamingPath = path;
-                            std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
-                            std::strncpy(m_RenameBuffer, filenameString.c_str(), sizeof(m_RenameBuffer) - 1);
-                        }
-                        if (ImGui::MenuItem("Delete")) {
-                            m_PendingDelete.clear();
-                            m_PendingDelete.push_back(path);
-                            m_ShowConfirmDelete = true;
-                        }
-                        ImGui::EndPopup();
-                    }
-
-                    float usedHeight = cardH_local;
-
-                    if (isModel && m_ExpandedModels[itemPath]) {
-                        ImGui::SetCursorScreenPos(ImVec2(cardMin.x + cardInnerPad, cardMax.y + 6.0f));
-                        drawMeshesPanel(itemPath, modelId, cardW_local - cardInnerPad * 2);
-                        usedHeight += 6.0f + s_meshPanelHeight;
-                    }
-
-                    ImGui::SetCursorScreenPos(ImVec2(cardMin.x, cardMin.y + usedHeight + extraVGap));
-                    ImGui::Dummy(ImVec2(cardW_local, extraVGap));
 
                     ImGui::PopID();
                 }

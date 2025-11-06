@@ -189,6 +189,8 @@ namespace QuasarEngine
 					break;
 				}
 
+				std::cout << "[AssetManager] Loading MODEL '" << asset.id << "'...\n";
+
 				std::shared_ptr<Model> model;
 				if (std::holds_alternative<ModelImportOptions>(asset.spec)) {
 					const auto& opts = std::get<ModelImportOptions>(asset.spec);
@@ -239,29 +241,67 @@ namespace QuasarEngine
 			AssetToLoad asset = m_AssetsToUpdate.front();
 			m_AssetsToUpdate.pop();
 
-			std::lock_guard<std::mutex> lock(m_AssetMutex);
-			auto it = m_LoadedAssets.find(asset.id);
-			if (it == m_LoadedAssets.end())
-				continue;
-
-			it->second = Texture2D::Create(std::get<TextureSpecification>(asset.spec));
-			auto texture = std::dynamic_pointer_cast<Texture2D>(it->second);
-			if (!texture)
-				continue;
-
-			if (asset.data && asset.size > 0)
+			switch (asset.type)
 			{
-				texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
+			case AssetType::TEXTURE:
+			{
+				TextureSpecification spec;
+				if (std::holds_alternative<TextureSpecification>(asset.spec))
+					spec = std::get<TextureSpecification>(asset.spec);
+
+				auto texture = Texture2D::Create(spec);
+
+				if (asset.data && asset.size > 0)
+				{
+					texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
+				}
+				else
+				{
+					if (asset.path.empty())
+					{
+						Q_ERROR("AssetManager: Update TEXTURE '" + asset.id + "' error, path missing and no data");
+						continue;
+					}
+					texture->LoadFromPath(asset.path);
+				}
+
+				{
+					std::lock_guard<std::mutex> lock(m_AssetMutex);
+					m_LoadedAssets[asset.id] = std::move(texture);
+				}
+				break;
 			}
-			else
+
+			case AssetType::MODEL:
 			{
 				if (asset.path.empty())
 				{
-					Q_ERROR("AssetManager: Update TEXTURE '" + asset.id + "' error, path missing and no data");
+					Q_ERROR("AssetManager: Update MODEL '" + asset.id + "' error, path missing");
 					continue;
 				}
 
-				texture->LoadFromPath(asset.path);
+				std::cout << "[AssetManager] Updating MODEL '" << asset.id << "'...\n";
+
+				std::shared_ptr<Model> model;
+				if (std::holds_alternative<ModelImportOptions>(asset.spec))
+				{
+					const auto& opts = std::get<ModelImportOptions>(asset.spec);
+					model = Model::CreateModel(asset.path, opts);
+				}
+				else
+				{
+					model = Model::CreateModel(asset.path);
+				}
+
+				{
+					std::lock_guard<std::mutex> lock(m_AssetMutex);
+					m_LoadedAssets[asset.id] = model;
+				}
+				break;
+			}
+
+			default:
+				break;
 			}
 		}
 	}
@@ -296,6 +336,19 @@ namespace QuasarEngine
 		{
 			Q_ERROR("AssetManager: Update asset '" + asset.id + "' error, path missing and no data");
 			return;
+		}
+
+		if (!m_AssetRegistry->isAssetRegistred(asset.id))
+		{
+			if (asset.type == AssetType::NONE)
+			{
+				asset.type = InferTypeFromPath(asset.path);
+				m_AssetRegistry->registerAsset(asset.id, asset.type);
+			}
+			else
+			{
+				m_AssetRegistry->registerAsset(asset.id, asset.type);
+			}
 		}
 
 		m_AssetsToUpdate.push(asset);

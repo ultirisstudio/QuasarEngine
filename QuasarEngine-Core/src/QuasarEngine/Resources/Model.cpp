@@ -398,7 +398,6 @@ namespace QuasarEngine
             info.mesh = inst.mesh;
             info.material = inst.material;
             info.skinned = inst.skinned;
-			//std::cout << "Loaded mesh: " << info.name << " at " << info.nodePath << ", skinned=" << info.skinned << "\n";
             m_Loaded.meshes.push_back(std::move(info));
             });
         m_Loaded.bones = m_boneInfoMap;
