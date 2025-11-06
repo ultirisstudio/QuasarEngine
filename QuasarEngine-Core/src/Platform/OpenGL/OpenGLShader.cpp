@@ -458,6 +458,11 @@ namespace QuasarEngine
             return false;
         }
 
+        /*if (!texture)
+        {
+            Q_WARNING("Setting null texture for sampler " + name);
+		}*/
+
         m_ObjectTextures[name] = texture;
         m_ObjectTextureTypes[name] = type;
 

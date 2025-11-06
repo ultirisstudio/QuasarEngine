@@ -121,14 +121,14 @@ namespace QuasarEngine
 
 		m_ScreenQuadShader = Shader::Create(screenDesc);
 
-		//m_ScreenQuadShader->setUniform("screenTexture", 0);
-
 		FramebufferSpecification spec;
 		spec.Width = Application::Get().GetWindow().GetWidth();
 		spec.Height = Application::Get().GetWindow().GetHeight();
-		spec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::Depth };
+		spec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::DEPTH24 };
+		spec.Samples = 1;
 
 		m_FrameBuffer = Framebuffer::Create(spec);
+		m_FrameBuffer->Invalidate();
 
 		//m_ApplicationSize = { spec.Width, spec.Height };
 		m_ApplicationSize = { 1280, 720 };
@@ -171,11 +171,11 @@ namespace QuasarEngine
 
 	void Runtime::OnUpdate(double dt)
 	{
+		m_Scene->Update(dt);
+
 		m_Player->Update(dt);
 
 		m_Player->GetCamera().Update();
-
-		m_Scene->Update(dt);
 
 		m_ChunkManager->UpdateChunk(m_Player->GetPosition(), dt);
 	}
@@ -184,11 +184,11 @@ namespace QuasarEngine
 	{
 		m_FrameBuffer->Bind();
 
+		RenderCommand::Instance().ClearColor(glm::vec4(0.8f, 0.5f, .6f, 1.0f));
 		RenderCommand::Instance().Clear();
-		RenderCommand::Instance().ClearColor(glm::vec4(0.8f, 0.5f, .2f, 1.0f));
 
 		Renderer::Instance().BeginScene(*m_Scene);
-		
+
 		Renderer::Instance().RenderSkybox(m_Player->GetCamera());
 		Renderer::Instance().Render(m_Player->GetCamera());
 		Renderer::Instance().EndScene();
@@ -198,6 +198,7 @@ namespace QuasarEngine
 		if (m_ApplicationSize.x != width || m_ApplicationSize.y != height)
 		{
 			RenderCommand::Instance().SetViewport(0, 0, width, height);
+
 			m_Player->GetCamera().OnResize(width, height);
 			m_FrameBuffer->Resize((uint32_t)width, (uint32_t)height);
 
@@ -210,6 +211,7 @@ namespace QuasarEngine
 
 		m_ScreenQuadShader->UpdateGlobalState();
 
+		m_FrameBuffer->Resolve();
 		auto screenTex = m_FrameBuffer->GetColorAttachmentTexture(0);
 		m_ScreenQuadShader->SetTexture("screenTexture", screenTex.get());
 
@@ -222,10 +224,7 @@ namespace QuasarEngine
 
 	void Runtime::OnGuiRender()
 	{
-		//Renderer::BeginScene(*m_Scene);
-		//Renderer::RenderSkybox(m_Player->GetCamera());
-		//Renderer::Render(m_Player->GetCamera());
-		//Renderer::EndScene();
+
 	}
 
 	void Runtime::OnEvent(Event& e)

@@ -40,9 +40,6 @@ namespace QuasarEngine
 
     void ScreenQuad::Draw() const
     {
-        RenderCommand::Instance().Clear();
-        RenderCommand::Instance().ClearColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-
         m_vertexArray->Bind();
 
         uint32_t count = m_vertexArray->GetIndexBuffer()->GetCount();

@@ -590,7 +590,7 @@ namespace QuasarEngine
                 {"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkyboxGlobals, projection), 0, 0, GP},
             };
             d.samplers = {
-                { "equirectangularMap", 1, 1, GP }
+                { "equirectangularMap", 1, 0, GP }
             };
             d.blendMode = Shader::BlendMode::None;
             d.cullMode = Shader::CullMode::None;
@@ -644,7 +644,7 @@ namespace QuasarEngine
                 {"roughness",  Shader::ShaderUniformType::Float, sizeof(float), offsetof(PrefilterObj, roughness), 1, 0, GP},
             };
             d.samplers = {
-                { "environmentMap", 1, 1, GP }
+                { "environmentMap", 1, 0, GP }
             };
             d.blendMode = Shader::BlendMode::None;
             d.cullMode = Shader::CullMode::None;
@@ -819,43 +819,27 @@ namespace QuasarEngine
 
     /*void SkyboxHDR::BuildEnvironment()
     {
-        if (!m_HDRTexture || !m_EnvCubemap || !m_FBO || !m_EquirectangularToCubemapShader) return;
-
-        m_FBO->Bind();
         m_FBO->Resize(m_Settings.envRes, m_Settings.envRes);
-        m_FBO->Bind();
-
         m_EquirectangularToCubemapShader->Use();
         m_EquirectangularToCubemapShader->SetUniform("projection", &m_CaptureProjection, sizeof(glm::mat4));
         m_EquirectangularToCubemapShader->SetTexture("equirectangularMap", m_HDRTexture.get(), Shader::SamplerType::Sampler2D);
         m_EquirectangularToCubemapShader->UpdateGlobalState();
         m_EquirectangularToCubemapShader->UpdateObject(nullptr);
 
-        m_HDRTexture->Bind();
-
-        for (uint32_t face = 0; face < 6; ++face)
-        {
-            m_FBO->Bind();
-
+        for (uint32_t face = 0; face < 6; ++face) {
             m_EquirectangularToCubemapShader->SetUniform("view", &m_CaptureViews[face], sizeof(glm::mat4));
             m_EquirectangularToCubemapShader->UpdateGlobalState();
 
             m_FBO->Bind();
             m_FBO->SetColorAttachment(0, AttachmentRef{ m_EnvCubemap, 0, face });
-            m_FBO->Bind();
+            RenderCommand::Instance().SetViewport(0, 0, m_Settings.envRes, m_Settings.envRes);
+            RenderCommand::Instance().SetScissor(0, 0, m_Settings.envRes, m_Settings.envRes);
 
-            m_FBO->Bind();
-            m_FBO->ClearColor(0.f, 0.f, 0.f, 1.f);
-            m_FBO->Bind();
             m_FBO->Clear(ClearFlags::Color | ClearFlags::Depth);
-            m_FBO->Bind();
 
             m_CubeMesh->draw();
-
-            m_FBO->Bind();
             m_FBO->Unbind();
         }
-
         m_EquirectangularToCubemapShader->Unuse();
     }*/
 
