@@ -222,13 +222,13 @@ namespace QuasarEngine
         for (const auto& uniform : m_Description.globalUniforms)
             globalSize = std::max(globalSize, uniform.offset + uniform.size);
         m_GlobalUniformData.resize(globalSize);
-        m_GlobalUBO = std::make_unique<OpenGLUniformBuffer>(globalSize, 0);
+        m_GlobalUBO = (globalSize > 0) ? std::make_unique<OpenGLUniformBuffer>(globalSize, 0) : nullptr;
 
         size_t objectSize = 0;
         for (const auto& uniform : m_Description.objectUniforms)
             objectSize = std::max(objectSize, uniform.offset + uniform.size);
         m_ObjectUniformData.resize(objectSize);
-        m_ObjectUBO = std::make_unique<OpenGLUniformBuffer>(objectSize, 1);
+        m_ObjectUBO = (objectSize > 0) ? std::make_unique<OpenGLUniformBuffer>(objectSize, 1) : nullptr;
 
         for (const auto& uniform : m_Description.globalUniforms)
             m_GlobalUniformMap[uniform.name] = &uniform;
@@ -304,13 +304,29 @@ namespace QuasarEngine
         }
         m_DefaultBlueTexture = new OpenGLTexture2D(spec);
         m_DefaultBlueTexture->LoadFromData({ bluePixels.data(), bluePixels.size() });
+
+        {
+            TextureSpecification cspec = spec;
+            cspec.width = 1;
+            cspec.height = 1;
+            m_DefaultBlackCubemap = new OpenGLTextureCubeMap(cspec);
+
+            unsigned char black[6 * 4] = { 0 };
+            m_DefaultBlackCubemap->LoadFromData({ black, sizeof(black) });
+        }
     }
 
     OpenGLShader::~OpenGLShader()
     {
-        if (m_ID) glDeleteProgram(m_ID);
+        if (m_ID) {
+            glDeleteProgram(m_ID);
+        }
+
         delete m_DefaultBlueTexture;
         m_DefaultBlueTexture = nullptr;
+
+        delete m_DefaultBlackCubemap;
+        m_DefaultBlackCubemap = nullptr;
     }
 
     void OpenGLShader::Use()
@@ -321,7 +337,7 @@ namespace QuasarEngine
             s_CurrentProgram = m_ID;
         }
 
-        m_BoundPerUnit.clear();
+        //m_BoundPerUnit.clear();
 
         RendererGLState::I().PushCurrent();
 
@@ -374,19 +390,23 @@ namespace QuasarEngine
 
     bool OpenGLShader::UpdateGlobalState()
     {
-        if (!m_GlobalUniformData.empty()) {
-            m_GlobalUBO->SetData(m_GlobalUniformData.data(), m_GlobalUniformData.size());
+        if (m_GlobalUBO) {
+            if (!m_GlobalUniformData.empty()) {
+                m_GlobalUBO->SetData(m_GlobalUniformData.data(), m_GlobalUniformData.size());
+            }
+            m_GlobalUBO->BindToShader(m_ID, "global_uniform_object");
         }
-        m_GlobalUBO->BindToShader(m_ID, "global_uniform_object");
         return true;
     }
 
     bool OpenGLShader::UpdateObject(Material* /*material*/)
     {
-        if (!m_ObjectUniformData.empty()) {
-            m_ObjectUBO->SetData(m_ObjectUniformData.data(), m_ObjectUniformData.size());
+        if (m_ObjectUBO) {
+            if (!m_ObjectUniformData.empty()) {
+                m_ObjectUBO->SetData(m_ObjectUniformData.data(), m_ObjectUniformData.size());
+            }
+            m_ObjectUBO->BindToShader(m_ID, "local_uniform_object");
         }
-        m_ObjectUBO->BindToShader(m_ID, "local_uniform_object");
 
         for (const auto& samplerDesc : m_Description.samplers)
         {

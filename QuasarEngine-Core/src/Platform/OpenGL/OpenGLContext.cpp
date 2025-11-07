@@ -20,6 +20,15 @@ namespace QuasarEngine {
 		Q_INFO((char*)glGetString(GL_VENDOR));
 		Q_INFO((char*)glGetString(GL_RENDERER));
 		Q_INFO((char*)glGetString(GL_VERSION));
+
+		int maj = 0, min = 0;
+		glGetIntegerv(GL_MAJOR_VERSION, &maj);
+		glGetIntegerv(GL_MINOR_VERSION, &min);
+		Q_INFO("OpenGL version: " + std::to_string(maj) + "." + std::to_string(min));
+		if (maj < 4 || (maj == 4 && min < 5)) {
+			Q_WARNING("OpenGL < 4.5 detected: ARB_direct_state_access may be required, DSA code paths could fail.");
+		}
+
 	}
 
 	void OpenGLContext::BeginFrame()
@@ -33,5 +42,6 @@ namespace QuasarEngine {
 
 	void OpenGLContext::Resize(unsigned int newWidth, unsigned int newHeight)
 	{
+		glViewport(0, 0, (GLsizei)newWidth, (GLsizei)newHeight);
 	}
 }

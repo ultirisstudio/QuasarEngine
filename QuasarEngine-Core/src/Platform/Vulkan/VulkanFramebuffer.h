@@ -28,7 +28,7 @@ namespace QuasarEngine
         void Bind() const override;
         void Unbind() const override;
 
-        void ClearAttachment(uint32_t attachmentIndex, int value) override;
+        void ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a) override;
         void ClearColor(float r, float g, float b, float a) override {}
 		void ClearDepth(float d = 1.0f) override {}
 		void Clear(ClearFlags flags = ClearFlags::All) override {}

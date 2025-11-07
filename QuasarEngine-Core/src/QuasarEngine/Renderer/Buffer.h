@@ -5,8 +5,6 @@
 #include <memory>
 #include <iostream>
 
-#include <glm/glm.hpp>
-
 namespace QuasarEngine {
 
 	enum class ShaderDataType

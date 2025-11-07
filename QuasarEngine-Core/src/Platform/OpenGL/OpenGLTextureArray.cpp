@@ -170,81 +170,59 @@ namespace QuasarEngine
 
         const bool wantFloat = Utils::IsFloatInternal(m_Specification.internal_format);
         const int desired = Utils::DesiredChannels(m_Specification.internal_format);
+
         int w0 = -1, h0 = -1, n0 = -1;
 
-        std::vector<std::vector<uint8_t>> layersData;
-        layersData.reserve(paths.size());
-
-        for (const auto& p : paths)
         {
             int w = 0, h = 0, n = 0;
-
             if (wantFloat) {
-                float* img = stbi_loadf(p.c_str(), &w, &h, &n, desired > 0 ? desired : 0);
-                if (!img) {
-                    Q_ERROR(std::string("stb_image (float) failed: ") + stbi_failure_reason());
-                    return false;
-                }
-                const int ch = desired > 0 ? desired : n;
-                const size_t bytes = (size_t)w * (size_t)h * (size_t)ch * sizeof(float);
-                std::vector<uint8_t> layer(bytes);
-                std::memcpy(layer.data(), img, bytes);
+                float* img = stbi_loadf(paths[0].c_str(), &w, &h, &n, desired > 0 ? desired : 0);
+                if (!img) { Q_ERROR(std::string("stb_image (float) failed: ") + stbi_failure_reason()); return false; }
+                n0 = (desired > 0 ? desired : n); w0 = w; h0 = h;
+                
+                m_Specification.width = (uint32_t)w0;
+                m_Specification.height = (uint32_t)h0;
+                m_Specification.channels = (uint32_t)n0;
+                if (!AllocateStorage(m_Specification.width, m_Specification.height, (GLsizei)paths.size())) { stbi_image_free(img); return false; }
+                
+                const auto glExt = Utils::ToGLFormat(m_Specification.format);
+                glTextureSubImage3D(m_ID, 0, 0, 0, 0, (GLint)w0, (GLint)h0, 1, glExt.external, GL_FLOAT, img);
                 stbi_image_free(img);
-                layersData.push_back(std::move(layer));
             }
             else {
-                unsigned char* img = stbi_load(p.c_str(), &w, &h, &n, desired > 0 ? desired : 0);
-                if (!img) {
-                    Q_ERROR(std::string("stb_image failed: ") + stbi_failure_reason());
-                    return false;
-                }
-                const int ch = desired > 0 ? desired : n;
-                const size_t bytes = (size_t)w * (size_t)h * (size_t)ch * sizeof(uint8_t);
-                std::vector<uint8_t> layer(bytes);
-                std::memcpy(layer.data(), img, bytes);
+                unsigned char* img = stbi_load(paths[0].c_str(), &w, &h, &n, desired > 0 ? desired : 0);
+                if (!img) { Q_ERROR(std::string("stb_image failed: ") + stbi_failure_reason()); return false; }
+                n0 = (desired > 0 ? desired : n); w0 = w; h0 = h;
+                
+                m_Specification.width = (uint32_t)w0;
+                m_Specification.height = (uint32_t)h0;
+                m_Specification.channels = (uint32_t)n0;
+                if (!AllocateStorage(m_Specification.width, m_Specification.height, (GLsizei)paths.size())) { stbi_image_free(img); return false; }
+                
+                const auto glExt = Utils::ToGLFormat(m_Specification.format);
+                glTextureSubImage3D(m_ID, 0, 0, 0, 0, (GLint)w0, (GLint)h0, 1, glExt.external, glExt.type, img);
                 stbi_image_free(img);
-                layersData.push_back(std::move(layer));
-            }
-
-            if (w0 < 0) { w0 = w; h0 = h; n0 = (desired > 0 ? desired : n); }
-            else if (w != w0 || h != h0 || (desired > 0 ? desired : n) != n0) {
-                Q_ERROR("OpenGLTextureArray::LoadFromFiles: all layers must have identical size & channels");
-                return false;
             }
         }
-
-        m_Specification.width = (uint32_t)w0;
-        m_Specification.height = (uint32_t)h0;
-        m_Specification.channels = (uint32_t)n0;
-
-        if (!AllocateStorage(m_Specification.width, m_Specification.height, (GLsizei)paths.size()))
-            return false;
 
         const auto glExt = Utils::ToGLFormat(m_Specification.format);
-        if (glExt.external == 0) {
-            Q_ERROR("OpenGLTextureArray::LoadFromFiles: invalid external format");
-            return false;
+        for (GLint layer = 1; layer < (GLint)paths.size(); ++layer) {
+            int w = 0, h = 0, n = 0;
+            if (wantFloat) {
+                float* img = stbi_loadf(paths[layer].c_str(), &w, &h, &n, desired > 0 ? desired : 0);
+                if (!img) { Q_ERROR(std::string("stb_image (float) failed: ") + stbi_failure_reason()); return false; }
+                if (w != w0 || h != h0 || (desired > 0 ? desired : n) != n0) { stbi_image_free(img); Q_ERROR("OpenGLTextureArray::LoadFromFiles: all layers must have identical size & channels"); return false; }
+                glTextureSubImage3D(m_ID, 0, 0, 0, layer, (GLint)w0, (GLint)h0, 1, glExt.external, GL_FLOAT, img);
+                stbi_image_free(img);
+            }
+            else {
+                unsigned char* img = stbi_load(paths[layer].c_str(), &w, &h, &n, desired > 0 ? desired : 0);
+                if (!img) { Q_ERROR(std::string("stb_image failed: ") + stbi_failure_reason()); return false; }
+                if (w != w0 || h != h0 || (desired > 0 ? desired : n) != n0) { stbi_image_free(img); Q_ERROR("OpenGLTextureArray::LoadFromFiles: all layers must have identical size & channels"); return false; }
+                glTextureSubImage3D(m_ID, 0, 0, 0, layer, (GLint)w0, (GLint)h0, 1, glExt.external, glExt.type, img);
+                stbi_image_free(img);
+            }
         }
-
-        const GLenum target = GL_TEXTURE_2D_ARRAY;
-
-        GLint oldUnpack = 4;
-        glGetIntegerv(GL_UNPACK_ALIGNMENT, &oldUnpack);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-        const GLenum uploadType = wantFloat ? GL_FLOAT : glExt.type;
-
-        for (GLint layer = 0; layer < (GLint)paths.size(); ++layer)
-        {
-            const auto& layerData = layersData[(size_t)layer];
-            glTextureSubImage3D(m_ID, 0,
-                0, 0, layer,
-                (GLint)m_Specification.width, (GLint)m_Specification.height, 1,
-                glExt.external, uploadType,
-                layerData.data());
-        }
-
-        glPixelStorei(GL_UNPACK_ALIGNMENT, oldUnpack);
 
         if (m_Specification.auto_generate_mips) GenerateMips();
 

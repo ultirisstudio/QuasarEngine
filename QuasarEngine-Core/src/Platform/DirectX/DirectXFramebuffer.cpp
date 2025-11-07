@@ -324,13 +324,13 @@ namespace QuasarEngine
         return red;
     }
 
-    void DirectXFramebuffer::ClearAttachment(uint32_t attachmentIndex, int value)
+    void DirectXFramebuffer::ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a)
     {
         if (attachmentIndex >= m_Color.size()) return;
 
         auto& dx = DirectXContext::Context;
         float color[4] = {
-            (float)value / 255.0f, 0.0f, 0.0f, 0.0f
+            r, g, b, a
         };
         dx.deviceContext->ClearRenderTargetView(m_Color[attachmentIndex].rtv.Get(), color);
     }

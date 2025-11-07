@@ -48,7 +48,6 @@ namespace QuasarEngine
 
 	private:
 		int32_t FindMemoryIndex(uint32_t typeFilter, uint32_t propertyFlags); // TODO: centralize
-		
 	};
 
 	class VulkanVertexBuffer : public VertexBuffer

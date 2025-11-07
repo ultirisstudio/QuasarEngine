@@ -49,7 +49,11 @@ namespace QuasarEngine
 
 		if (result != VK_SUCCESS)
 		{
-			Q_ERROR("Unable to create vulkan buffer because the required memory type index was not found. Error: " + result);
+			Q_ERROR("Unable to create vulkan buffer because the required memory type index was not found. Error: " + VulkanResultString(result));
+			if (handle != VK_NULL_HANDLE) {
+				vkDestroyBuffer(device, handle, VulkanContext::Context.allocator->GetCallbacks());
+				handle = VK_NULL_HANDLE;
+			}
 			return;
 		}
 
@@ -57,9 +61,6 @@ namespace QuasarEngine
 		{
 			Bind();
 		}
-
-		//std::string str = "Vulkan buffer initialized successfully with size: " + std::to_string(size);
-		//Q_DEBUG(str);
 	}
 
 	VulkanBuffer::~VulkanBuffer()
@@ -134,7 +135,8 @@ namespace QuasarEngine
 
 		if (result != VK_SUCCESS)
 		{
-			Q_ERROR("Unable to create vulkan buffer because the required memory type index was not found. Error: " + result);
+			Q_ERROR("Unable to create vulkan buffer because the required memory type index was not found. Error: " + VulkanResultString(result));
+			vkDestroyBuffer(device, new_buffer, VulkanContext::Context.allocator->GetCallbacks());
 			return;
 		}
 
@@ -181,6 +183,15 @@ namespace QuasarEngine
 
 	void VulkanBuffer::Bind(uint64_t offset)
 	{
+		if (offset != 0) {
+			VkMemoryRequirements req{};
+			vkGetBufferMemoryRequirements(device, handle, &req);
+			if (offset % req.alignment != 0) {
+				Q_ERROR("Bind offset not aligned to memory requirements alignment.");
+				return;
+			}
+		}
+
 		VK_CHECK(vkBindBufferMemory(device, handle, memory, offset));
 	}
 
@@ -210,10 +221,6 @@ namespace QuasarEngine
 			return;
 		}
 
-		//size_t alignment = VulkanContext::Context.device->alignment;
-
-		//offset = (offset + alignment - 1) & ~(alignment - 1);
-
 		void* data_ptr = nullptr;
 		VK_CHECK(vkMapMemory(device, memory, offset, size, flags, &data_ptr));
 		memcpy(data_ptr, data, size);
@@ -222,8 +229,6 @@ namespace QuasarEngine
 
 	void VulkanBuffer::CopyTo(VkCommandPool pool, VkFence fence, VkQueue queue, VkBuffer src, uint64_t srcOffset, VkBuffer dest, uint64_t destOffset, uint64_t size)
 	{
-		vkQueueWaitIdle(queue);
-
 		std::unique_ptr<VulkanCommandBuffer> tempCommandBuffer = std::make_unique<VulkanCommandBuffer>(device, pool);
 		tempCommandBuffer->AllocateAndBeginSingleUse();
 
@@ -241,8 +246,6 @@ namespace QuasarEngine
 
 	void VulkanBuffer::CopyTo(VkCommandPool pool, VkFence fence, VkQueue queue, VkBuffer dest, uint64_t destOffset, uint64_t size)
 	{
-		vkQueueWaitIdle(queue);
-
 		std::unique_ptr<VulkanCommandBuffer> tempCommandBuffer = std::make_unique<VulkanCommandBuffer>(device, pool);
 		tempCommandBuffer->AllocateAndBeginSingleUse();
 

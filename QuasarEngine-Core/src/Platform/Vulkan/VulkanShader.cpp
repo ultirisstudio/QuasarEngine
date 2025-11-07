@@ -794,7 +794,7 @@ namespace QuasarEngine
         if (objectStates.size() <= id) objectStates.resize(id + 1);
         objectStates[id] = std::move(object_state);
 
-        material->m_ID;
+        material->m_ID = id;
         return true;
     }
 

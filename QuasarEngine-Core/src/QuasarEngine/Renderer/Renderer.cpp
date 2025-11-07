@@ -746,7 +746,7 @@ namespace QuasarEngine
 	void Renderer::Shutdown()
 	{
 		//m_SceneData.m_Skybox.reset();
-		//m_SceneData.m_SkyboxHDR.reset();
+		m_SceneData.m_SkyboxHDR.reset();
 		m_SceneData.m_Shader.reset();
 		m_SceneData.m_PhysicDebugShader.reset();
 		m_SceneData.m_SkinnedShader.reset();
@@ -1146,19 +1146,9 @@ namespace QuasarEngine
 
 		m_SceneData.m_Skybox->Unbind();*/
 
-		/*if (!m_SceneData.m_SkyboxHDR) return;
-
-		glm::mat4 V = camera.getViewMatrix();
-		glm::mat4 P = camera.getProjectionMatrix();
-
-		m_SceneData.m_SkyboxHDR->Draw(V, P);
-
-		m_SceneData.m_SkyboxHDR->Unbind();*/
-
 		const glm::mat4 V = camera.getViewMatrix();
 		const glm::mat4 P = camera.getProjectionMatrix();
 
-		// Si tu utilises le SkyboxHDR :
 		m_SceneData.m_SkyboxHDR->Draw(V, P);
 	}
 

@@ -251,33 +251,55 @@ namespace QuasarEngine
     {
         glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
         glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
-        int pixelData = 0;
-        glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixelData);
+
+        GLenum base = GL_RED_INTEGER, type = GL_INT;
+        if (attachmentIndex < m_ColorAttachmentSpecifications.size()) {
+            Utils::GLBaseFormatType(m_ColorAttachmentSpecifications[attachmentIndex].TextureFormat, base, type);
+        }
+
+        int out = 0;
+        if (base == GL_RED_INTEGER) {
+            glReadPixels(x, y, 1, 1, base, type, &out);
+        }
+        else {
+            if (type == GL_FLOAT) {
+                float pix[4] = { 0 };
+                glReadPixels(x, y, 1, 1, base, GL_FLOAT, pix);
+                out = (int)pix[0];
+            }
+            else {
+                unsigned char pix[4] = { 0 };
+                glReadPixels(x, y, 1, 1, base, GL_UNSIGNED_BYTE, pix);
+                out = (int)pix[0];
+            }
+        }
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        return pixelData;
+        return out;
     }
 
-    void OpenGLFramebuffer::ClearAttachment(uint32_t attachmentIndex, int value)
+    void OpenGLFramebuffer::ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a)
     {
         if (attachmentIndex < m_ColorAttachments.size() && m_ColorAttachments[attachmentIndex])
         {
-            const auto& spec = m_ColorAttachmentSpecifications[attachmentIndex].TextureFormat;
-            GLenum base = GL_RED_INTEGER, type = GL_INT;
-            Utils::GLBaseFormatType(spec, base, type);
+            const GLfloat color[4] = { r, g, b, a };
+            
+            for (uint32_t i = 0; i < (uint32_t)m_ColorAttachments.size(); ++i) {
+                if (m_ColorAttachments[i] != 0)
+                    glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)i, color);
+            }
+            
+            for (uint32_t i = 0; i < (uint32_t)m_ExternalColorAttachments.size(); ++i) {
+                if (m_ExternalColorAttachments[i].texture)
+                    glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)i, color);
+            }
 
-            if (base == GL_RED_INTEGER) {
-                glClearTexImage(m_ColorAttachments[attachmentIndex], 0, base, type, &value);
-            }
-            else {
-                const GLfloat v[4] = { (float)value, 0.f, 0.f, 0.f };
-                glClearTexImage(m_ColorAttachments[attachmentIndex], 0, base, GL_FLOAT, v);
-            }
             return;
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
         const GLint drawBuffer = (GLint)attachmentIndex;
-        const GLfloat zero[4] = { (float)value, 0, 0, 0 };
+        const GLfloat zero[4] = { r, g, b, a };
         glClearBufferfv(GL_COLOR, drawBuffer, zero);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -316,8 +338,9 @@ namespace QuasarEngine
             return;
         }
 
-        if (index < m_ColorAttachments.size())
-            glBindTexture(GL_TEXTURE_2D, m_ColorAttachments[index]);
+        if (index < m_ColorAttachments.size()) {
+            glBindTextureUnit(0, m_ColorAttachments[index]);
+        }
     }
 
     void OpenGLFramebuffer::SetColorAttachment(uint32_t index, const AttachmentRef& ref)
@@ -391,8 +414,9 @@ namespace QuasarEngine
     {
         if (m_ColorAttachments.empty())
         {
-            const GLenum drawBuf = GL_COLOR_ATTACHMENT0;
-            glNamedFramebufferDrawBuffers(m_ID, 1, &drawBuf);
+            const GLenum none = GL_NONE;
+            glNamedFramebufferDrawBuffers(m_ID, 1, &none);
+            glNamedFramebufferReadBuffer(m_ID, GL_NONE);
             return;
         }
 

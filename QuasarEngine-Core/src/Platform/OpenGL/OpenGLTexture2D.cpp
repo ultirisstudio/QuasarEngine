@@ -217,7 +217,7 @@ namespace QuasarEngine
         const GLenum uploadType = pixelsAreFloat ? GL_FLOAT : glExt.type;
         glTextureSubImage2D(m_ID, 0, 0, 0, (GLint)m_Specification.width, (GLint)m_Specification.height, glExt.external, uploadType, pixels.data);
 
-        if (m_Specification.mipmap && levels > 1)
+        if ((m_Specification.mipmap || m_Specification.auto_generate_mips) && levels > 1)
             glGenerateTextureMipmap(m_ID);
 
         glTextureParameterf(m_ID, GL_TEXTURE_MAX_LOD, float(levels - 1));

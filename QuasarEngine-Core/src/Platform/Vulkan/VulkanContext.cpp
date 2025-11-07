@@ -372,14 +372,12 @@ namespace QuasarEngine
 
 		Q_DEBUG("Vulkan instance created successfully");
 
-		auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(
-			Context.instance, "vkCreateDebugUtilsMessengerEXT"));
+#ifdef DEBUG
+		auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr( Context.instance, "vkCreateDebugUtilsMessengerEXT"));
 
 		Q_ASSERT(func != nullptr, "Failed to create debug messenger");
 
-#ifdef DEBUG
-		VK_CHECK(
-			func(VulkanContext::Context.instance, &debugCreateInfo, VulkanContext::Context.allocator->GetCallbacks(), &VulkanContext::Context.debugMessenger));
+		VK_CHECK(func(VulkanContext::Context.instance, &debugCreateInfo, VulkanContext::Context.allocator->GetCallbacks(), &VulkanContext::Context.debugMessenger));
 #endif
 
 		Q_DEBUG("Vulkan debug messenger created successfully");
@@ -461,10 +459,7 @@ namespace QuasarEngine
 
 		vkDeviceWaitIdle(Context.device->device);
 
-		for (uint32_t i = 0; i < Context.swapchain->images.size(); i++)
-		{
-			Context.imagesInFlight[i] = nullptr;
-		}
+		Context.imagesInFlight.assign(Context.swapchain->images.size(), VK_NULL_HANDLE);
 
 		VkExtent2D extent = {Context.width, Context.height};
 		Context.swapchain->RecreateSwapchain(extent);

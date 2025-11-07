@@ -296,7 +296,7 @@ namespace QuasarEngine
         m_DescriptorSets.clear();
     }
 
-    void VulkanFramebuffer::ClearAttachment(uint32_t attachmentIndex, int value)
+    void VulkanFramebuffer::ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a)
     {
 
     }

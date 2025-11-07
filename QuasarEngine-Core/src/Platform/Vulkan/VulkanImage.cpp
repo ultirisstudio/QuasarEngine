@@ -63,7 +63,7 @@ namespace QuasarEngine
 		if (createView)
 		{
 			view = nullptr;
-			CreateImageView(format, viewAspectFlags, viewType, layerCount);
+			CreateImageView(format, viewAspectFlags, viewType, layerCount, mipLevels);
 		}
 	}
 
@@ -78,7 +78,18 @@ namespace QuasarEngine
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.image = handle;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		
+		if (format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			if (format == VK_FORMAT_D24_UNORM_S8_UINT ||
+				format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+				barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+			}
+		}
+		else {
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		}
+
 		barrier.subresourceRange.baseMipLevel = baseMipLevel;
 		barrier.subresourceRange.levelCount = levelCount;
 		barrier.subresourceRange.baseArrayLayer = baseArrayLayer;
@@ -222,7 +233,7 @@ namespace QuasarEngine
 		return -1;
 	}
 
-	void VulkanImage::CreateImageView(VkFormat format, VkImageAspectFlags aspectFlags, VkImageViewType viewType, uint32_t layerCount)
+	void VulkanImage::CreateImageView(VkFormat format, VkImageAspectFlags aspectFlags, VkImageViewType viewType, uint32_t layerCount, uint32_t mipLevels)
 	{
 		VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		viewInfo.image = handle;
@@ -231,7 +242,7 @@ namespace QuasarEngine
 		viewInfo.subresourceRange.aspectMask = aspectFlags;
 
 		viewInfo.subresourceRange.baseMipLevel = 0;
-		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.levelCount = mipLevels;
 		viewInfo.subresourceRange.baseArrayLayer = 0;
 		viewInfo.subresourceRange.layerCount = layerCount;
 

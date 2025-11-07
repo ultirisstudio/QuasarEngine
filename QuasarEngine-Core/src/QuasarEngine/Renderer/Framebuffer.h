@@ -84,7 +84,7 @@ namespace QuasarEngine
 
         virtual int ReadPixel(uint32_t attachmentIndex, int x, int y) = 0;
 
-        virtual void ClearAttachment(uint32_t attachmentIndex, int value) = 0;
+        virtual void ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a) = 0;
         virtual void ClearColor(float r, float g, float b, float a) = 0;
         virtual void ClearDepth(float d = 1.0f) = 0;
         virtual void Clear(ClearFlags flags = ClearFlags::All) = 0;
