@@ -13,9 +13,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <QuasarEngine/Core/PlatformDetection.h>
+
 #ifdef PLATFORM_WINDOWS
-	#ifndef NOMINMAX
-		#define NOMINMAX
-	#endif
-	#include <Windows.h>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
 #endif

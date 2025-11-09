@@ -33,9 +33,10 @@ namespace QuasarEngine
         bool UploadFaceDSA(Face face, ByteView facePixels, uint32_t w, uint32_t h, bool pixelsAreFloat);
 
     private:
-        GLuint  m_ID = 0;
-        bool    m_Loaded = false;
-        bool    m_StorageAllocated = false;
+        GLuint m_ID = 0;
+        GLuint m_SamplerID = 0;
+        bool m_Loaded = false;
+        bool m_StorageAllocated = false;
         GLsizei m_FacesUploaded = 0;
     };
 }

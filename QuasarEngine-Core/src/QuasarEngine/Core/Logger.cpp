@@ -14,8 +14,6 @@
 #include <QuasarEngine/Core/Logger.h>
 
 #if defined(_WIN32)
-#define NOMINMAX
-#include <windows.h>
 #include <io.h>
 #define ISATTY _isatty
 #define FILENO _fileno

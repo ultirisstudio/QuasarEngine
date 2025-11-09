@@ -11,11 +11,9 @@ namespace QuasarEngine
 		: m_Size(size), m_Binding(binding)
 	{
 		if (size > 0) {
-			glGenBuffers(1, &m_ID);
-			glBindBuffer(GL_UNIFORM_BUFFER, m_ID);
-			glBufferData(GL_UNIFORM_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+			glCreateBuffers(1, &m_ID);
+			glNamedBufferData(m_ID, size, nullptr, GL_DYNAMIC_DRAW);
 			glBindBufferBase(GL_UNIFORM_BUFFER, binding, m_ID);
-			glBindBuffer(GL_UNIFORM_BUFFER, 0);
 		}
 	}
 
@@ -26,21 +24,19 @@ namespace QuasarEngine
 
 	void OpenGLUniformBuffer::SetData(const void* data, size_t size)
 	{
-		if (m_ID == 0) return;
+		if (m_ID == 0 || !data || size == 0) return;
 
 		if (size > m_Size)
-			throw std::runtime_error("Uniform buffer size exceeded: requested " + std::to_string(size) + " bytes, but buffer size is " + std::to_string(m_Size) + " bytes.");
+			throw std::runtime_error("Uniform buffer size exceeded: requested " +
+				std::to_string(size) + " > " + std::to_string(m_Size));
 
-		if (size != m_Size)
-		{
-			Q_WARNING("Uniform buffer size mismatch: expected " + std::to_string(m_Size) + " bytes but got " + std::to_string(size) + " bytes.");
+		if (size != m_Size) {
+			Q_WARNING("UBO size mismatch: expected " + std::to_string(m_Size) +
+				" got " + std::to_string(size));
 		}
 
-		glBindBuffer(GL_UNIFORM_BUFFER, m_ID);
-		glBufferData(GL_UNIFORM_BUFFER, m_Size, nullptr, GL_DYNAMIC_DRAW);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, size, data);
-		glBindBufferBase(GL_UNIFORM_BUFFER, m_Binding, m_ID);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
+		glNamedBufferSubData(m_ID, 0, size, data);
 	}
 
 	void OpenGLUniformBuffer::BindToShader(uint32_t programID, const std::string& blockName)
@@ -61,7 +57,7 @@ namespace QuasarEngine
 		return m_ID;
 	}
 
-	OpenGLVertexBuffer::OpenGLVertexBuffer() : m_Size(0), m_Layout(), m_RendererID(0)
+	OpenGLVertexBuffer::OpenGLVertexBuffer() : m_Size(0), m_Layout(), m_ID(0)
 	{
 
 	}
@@ -69,27 +65,25 @@ namespace QuasarEngine
 	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size)
 		: m_Size(size)
 	{
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+		glCreateBuffers(1, &m_ID);
+		glNamedBufferData(m_ID, size, nullptr, GL_DYNAMIC_DRAW);
 	}
 
 	OpenGLVertexBuffer::OpenGLVertexBuffer(const void* data, uint32_t size)
 		: m_Size(size)
 	{
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+		glCreateBuffers(1, &m_ID);
+		glNamedBufferData(m_ID, size, data, GL_STATIC_DRAW);
 	}
 
 	OpenGLVertexBuffer::~OpenGLVertexBuffer()
 	{
-		glDeleteBuffers(1, &m_RendererID);
+		glDeleteBuffers(1, &m_ID);
 	}
 
 	void OpenGLVertexBuffer::Bind() const
 	{
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
+		glBindBuffer(GL_ARRAY_BUFFER, m_ID);
 	}
 
 	void OpenGLVertexBuffer::Unbind() const
@@ -97,54 +91,86 @@ namespace QuasarEngine
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
+	void OpenGLVertexBuffer::EnablePersistentMapping(uint32_t size)
+	{
+		if (m_ID) glDeleteBuffers(1, &m_ID);
+		glCreateBuffers(1, &m_ID);
+		m_Size = size;
+		const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+		glNamedBufferStorage(m_ID, m_Size, nullptr, flags);
+		m_Mapped = glMapNamedBufferRange(m_ID, 0, m_Size, flags);
+		m_IsPersistent = (m_Mapped != nullptr);
+	}
+
 	void OpenGLVertexBuffer::Upload(const void* data, uint32_t size)
 	{
-		if (size == 0 || data == nullptr) return;
+		if (!data || size == 0) return;
 
 		if (size > m_Size) {
 			Reserve(size);
 		}
 
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
+		if (m_IsPersistent && m_Mapped) {
+			std::memcpy(m_Mapped, data, size);
+		}
+		else {
+			glNamedBufferSubData(m_ID, 0, size, data);
+		}
+	}
+
+	void OpenGLVertexBuffer::Upload(const void* data, uint32_t size, uint32_t offset)
+	{
+		if (!data || size == 0) return;
+		const uint32_t end = offset + size;
+		if (end > m_Size) Reserve(end);
+
+		if (m_IsPersistent && m_Mapped) {
+			std::memcpy(static_cast<std::byte*>(m_Mapped) + offset, data, size);
+		}
+		else {
+			glNamedBufferSubData(m_ID, offset, size, data);
+		}
 	}
 
 	void OpenGLVertexBuffer::Reserve(uint32_t size)
 	{
 		if (size <= m_Size) return;
 		m_Size = size;
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, m_Size, nullptr, GL_DYNAMIC_DRAW);
+
+		if (m_IsPersistent) {
+			EnablePersistentMapping(m_Size);
+			return;
+		}
+
+		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 	}
 
-	OpenGLIndexBuffer::OpenGLIndexBuffer() : m_Size(0), m_RendererID(0)
+	OpenGLIndexBuffer::OpenGLIndexBuffer() : m_Size(0), m_ID(0)
 	{
 	}
 
 	OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t size)
 		: m_Size(size)
 	{
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+		glCreateBuffers(1, &m_ID);
+		glNamedBufferData(m_ID, size, nullptr, GL_DYNAMIC_DRAW);
 	}
 
 	OpenGLIndexBuffer::OpenGLIndexBuffer(const void* data, uint32_t size)
 		: m_Size(size)
 	{
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+		glCreateBuffers(1, &m_ID);
+		glNamedBufferData(m_ID, size, data, GL_STATIC_DRAW);
 	}
 
 	OpenGLIndexBuffer::~OpenGLIndexBuffer()
 	{
-		glDeleteBuffers(1, &m_RendererID);
+		glDeleteBuffers(1, &m_ID);
 	}
 
 	void OpenGLIndexBuffer::Bind() const
 	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ID);
 	}
 
 	void OpenGLIndexBuffer::Unbind() const
@@ -152,23 +178,57 @@ namespace QuasarEngine
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 
+	void OpenGLIndexBuffer::EnablePersistentMapping(uint32_t size)
+	{
+		if (m_ID) glDeleteBuffers(1, &m_ID);
+		glCreateBuffers(1, &m_ID);
+		m_Size = size;
+		const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+		glNamedBufferStorage(m_ID, m_Size, nullptr, flags);
+		m_Mapped = glMapNamedBufferRange(m_ID, 0, m_Size, flags);
+		m_IsPersistent = (m_Mapped != nullptr);
+	}
+
 	void OpenGLIndexBuffer::Upload(const void* data, uint32_t size)
 	{
-		if (size == 0 || data == nullptr) return;
+		if (!data || size == 0) return;
 
 		if (size > m_Size) {
 			Reserve(size);
 		}
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
-		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, data);
+		if (m_IsPersistent && m_Mapped) {
+			std::memcpy(m_Mapped, data, size);
+		}
+		else {
+			glNamedBufferSubData(m_ID, 0, size, data);
+		}
+	}
+
+	void OpenGLIndexBuffer::Upload(const void* data, uint32_t size, uint32_t offset)
+	{
+		if (!data || size == 0) return;
+		const uint32_t end = offset + size;
+		if (end > m_Size) Reserve(end);
+
+		if (m_IsPersistent && m_Mapped) {
+			std::memcpy(static_cast<std::byte*>(m_Mapped) + offset, data, size);
+		}
+		else {
+			glNamedBufferSubData(m_ID, offset, size, data);
+		}
 	}
 
 	void OpenGLIndexBuffer::Reserve(uint32_t size)
 	{
 		if (size <= m_Size) return;
 		m_Size = size;
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_Size, nullptr, GL_DYNAMIC_DRAW);
+
+		if (m_IsPersistent) {
+			EnablePersistentMapping(m_Size);
+			return;
+		}
+
+		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 	}
 }

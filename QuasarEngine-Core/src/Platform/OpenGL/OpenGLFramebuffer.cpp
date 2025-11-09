@@ -76,6 +76,41 @@ namespace QuasarEngine
     void OpenGLFramebuffer::CreateResolveTargetsIfNeeded()
     {
         DestroyResolveTargets();
+
+        if (m_Specification.Samples <= 1)
+            return;
+
+        m_ResolveFBOs.resize(m_ColorAttachments.size(), 0);
+        m_ResolvedColorTextures.resize(m_ColorAttachments.size(), 0);
+
+        for (size_t i = 0; i < m_ColorAttachments.size(); ++i)
+        {
+            if (m_ColorAttachments[i] == 0)
+                continue;
+
+            glCreateTextures(GL_TEXTURE_2D, 1, &m_ResolvedColorTextures[i]);
+            glTextureParameteri(m_ResolvedColorTextures[i], GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTextureParameteri(m_ResolvedColorTextures[i], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTextureParameteri(m_ResolvedColorTextures[i], GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTextureParameteri(m_ResolvedColorTextures[i], GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            GLenum internalFormat = GL_RGBA8;
+            if (i < m_ColorAttachmentSpecifications.size() &&
+                m_ColorAttachmentSpecifications[i].TextureFormat == FramebufferTextureFormat::RED_INTEGER)
+                internalFormat = GL_R32I;
+
+            glTextureStorage2D(m_ResolvedColorTextures[i], 1, internalFormat,
+                (GLint)m_Specification.Width, (GLint)m_Specification.Height);
+
+            glCreateFramebuffers(1, &m_ResolveFBOs[i]);
+            glNamedFramebufferTexture(m_ResolveFBOs[i], GL_COLOR_ATTACHMENT0, m_ResolvedColorTextures[i], 0);
+            const GLenum draw = GL_COLOR_ATTACHMENT0;
+            glNamedFramebufferDrawBuffers(m_ResolveFBOs[i], 1, &draw);
+
+            const GLenum status = glCheckNamedFramebufferStatus(m_ResolveFBOs[i], GL_FRAMEBUFFER);
+            if (status != GL_FRAMEBUFFER_COMPLETE)
+                Q_WARNING("Resolve FBO incomplete (i=" + std::to_string(i) + "). Status=0x" + std::to_string(status));
+        }
     }
 
     OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& spec)
@@ -88,6 +123,8 @@ namespace QuasarEngine
             else
                 m_DepthAttachmentSpecification = format;
         }
+
+        Invalidate();
     }
 
     OpenGLFramebuffer::~OpenGLFramebuffer()
@@ -138,21 +175,37 @@ namespace QuasarEngine
             {
                 const auto fmt = m_ColorAttachmentSpecifications[i].TextureFormat;
 
-                GLenum internalFormat = GL_RGBA8;
-                if (fmt == FramebufferTextureFormat::RED_INTEGER)
-                    internalFormat = GL_R32I;
+                const bool isInteger = (fmt == FramebufferTextureFormat::RED_INTEGER);
+                const GLenum internalFormat = isInteger ? GL_R32I : GL_RGBA8;
 
-                glCreateTextures(GL_TEXTURE_2D, 1, &m_ColorAttachments[i]);
+                const bool msaa = (m_Specification.Samples > 1);
+                const GLenum target = msaa ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
-                glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glCreateTextures(target, 1, &m_ColorAttachments[i]);
 
-                glTextureStorage2D(
-                    m_ColorAttachments[i], 1, internalFormat,
-                    (GLint)m_Specification.Width, (GLint)m_Specification.Height
-                );
+                if (msaa)
+                {
+                    glTextureStorage2DMultisample(
+                        m_ColorAttachments[i],
+                        (GLint)m_Specification.Samples,
+                        internalFormat,
+                        (GLint)m_Specification.Width,
+                        (GLint)m_Specification.Height,
+                        GL_FALSE
+                    );
+                }
+                else
+                {
+                    glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                    glTextureParameteri(m_ColorAttachments[i], GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+                    glTextureStorage2D(
+                        m_ColorAttachments[i], 1, internalFormat,
+                        (GLint)m_Specification.Width, (GLint)m_Specification.Height
+                    );
+                }
 
                 glNamedFramebufferTexture(m_ID, GL_COLOR_ATTACHMENT0 + (GLenum)i, m_ColorAttachments[i], 0);
             }
@@ -169,7 +222,9 @@ namespace QuasarEngine
             const GLenum depthInternal = wantStencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24;
             const GLenum depthAttach = wantStencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
 
-            if (m_Specification.DepthAsTexture)
+            const bool msaa = (m_Specification.Samples > 1);
+
+            if (m_Specification.DepthAsTexture && !msaa)
             {
                 m_DepthIsTexture = true;
                 glCreateTextures(GL_TEXTURE_2D, 1, &m_DepthTexture);
@@ -186,10 +241,20 @@ namespace QuasarEngine
             else
             {
                 glCreateRenderbuffers(1, &m_DepthRBO);
-                glNamedRenderbufferStorage(
-                    m_DepthRBO, depthInternal,
-                    (GLint)m_Specification.Width, (GLint)m_Specification.Height
-                );
+                if (msaa)
+                {
+                    glNamedRenderbufferStorageMultisample(
+                        m_DepthRBO, (GLint)m_Specification.Samples, depthInternal,
+                        (GLint)m_Specification.Width, (GLint)m_Specification.Height
+                    );
+                }
+                else
+                {
+                    glNamedRenderbufferStorage(
+                        m_DepthRBO, depthInternal,
+                        (GLint)m_Specification.Width, (GLint)m_Specification.Height
+                    );
+                }
                 glNamedFramebufferRenderbuffer(m_ID, depthAttach, GL_RENDERBUFFER, m_DepthRBO);
             }
         }
@@ -203,8 +268,9 @@ namespace QuasarEngine
         }
         else
         {
-            const GLenum drawBuf = GL_COLOR_ATTACHMENT0;
-            glNamedFramebufferDrawBuffers(m_ID, 1, &drawBuf);
+            const GLenum none = GL_NONE;
+            glNamedFramebufferDrawBuffers(m_ID, 1, &none);
+            glNamedFramebufferReadBuffer(m_ID, GL_NONE);
         }
 
         CreateResolveTargetsIfNeeded();
@@ -219,11 +285,36 @@ namespace QuasarEngine
 
     void OpenGLFramebuffer::Resolve()
     {
-        
+        if (m_Specification.Samples <= 1)
+            return;
+
+        for (size_t i = 0; i < m_ColorAttachments.size(); ++i)
+        {
+            if (i >= m_ResolveFBOs.size() || m_ResolveFBOs[i] == 0)
+                continue;
+
+            glNamedFramebufferReadBuffer(m_ID, GL_COLOR_ATTACHMENT0 + (GLenum)i);
+            const GLenum draw = GL_COLOR_ATTACHMENT0;
+            glNamedFramebufferDrawBuffers(m_ResolveFBOs[i], 1, &draw);
+
+            glBlitNamedFramebuffer(
+                m_ID, m_ResolveFBOs[i],
+                0, 0, (GLint)m_Specification.Width, (GLint)m_Specification.Height,
+                0, 0, (GLint)m_Specification.Width, (GLint)m_Specification.Height,
+                GL_COLOR_BUFFER_BIT, GL_NEAREST
+            );
+        }
     }
 
     void* OpenGLFramebuffer::GetColorAttachment(uint32_t index) const
     {
+        if (m_Specification.Samples > 1)
+        {
+            if (index < m_ResolvedColorTextures.size() && m_ResolvedColorTextures[index] != 0)
+                return reinterpret_cast<void*>(static_cast<uintptr_t>(m_ResolvedColorTextures[index]));
+            return nullptr;
+        }
+
         if (index < m_ColorAttachments.size())
             return reinterpret_cast<void*>(static_cast<uintptr_t>(m_ColorAttachments[index]));
 
@@ -280,54 +371,72 @@ namespace QuasarEngine
 
     void OpenGLFramebuffer::ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a)
     {
-        if (attachmentIndex < m_ColorAttachments.size() && m_ColorAttachments[attachmentIndex])
-        {
-            const GLfloat color[4] = { r, g, b, a };
-            
-            for (uint32_t i = 0; i < (uint32_t)m_ColorAttachments.size(); ++i) {
-                if (m_ColorAttachments[i] != 0)
-                    glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)i, color);
-            }
-            
-            for (uint32_t i = 0; i < (uint32_t)m_ExternalColorAttachments.size(); ++i) {
-                if (m_ExternalColorAttachments[i].texture)
-                    glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)i, color);
-            }
+        const bool isInteger =
+            (attachmentIndex < m_ColorAttachmentSpecifications.size()) &&
+            (m_ColorAttachmentSpecifications[attachmentIndex].TextureFormat == FramebufferTextureFormat::RED_INTEGER);
 
+        if (isInteger)
+        {
+            const GLint icolor[4] = { (GLint)r, (GLint)g, (GLint)b, (GLint)a };
+            glClearNamedFramebufferiv(m_ID, GL_COLOR, (GLint)attachmentIndex, icolor);
             return;
         }
-
-        glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
-        const GLint drawBuffer = (GLint)attachmentIndex;
-        const GLfloat zero[4] = { r, g, b, a };
-        glClearBufferfv(GL_COLOR, drawBuffer, zero);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        else
+        {
+            const GLfloat color[4] = { r, g, b, a };
+            glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)attachmentIndex, color);
+            return;
+        }
     }
 
     void OpenGLFramebuffer::ClearColor(float r, float g, float b, float a)
     {
-        const GLfloat color[4] = { r, g, b, a };
+        m_LastClearColor[0] = r; m_LastClearColor[1] = g;
+        m_LastClearColor[2] = b; m_LastClearColor[3] = a;
+
         const uint32_t n = std::max<uint32_t>((uint32_t)m_ColorAttachments.size(),
             (uint32_t)m_ExternalColorAttachments.size());
         for (uint32_t i = 0; i < n; ++i)
-            glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)i, color);
+            glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)i, m_LastClearColor);
     }
+
 
     void OpenGLFramebuffer::ClearDepth(float d)
     {
-        glClearNamedFramebufferfv(m_ID, GL_DEPTH, 0, &d);
+        m_LastClearDepth = d;
+        glClearNamedFramebufferfv(m_ID, GL_DEPTH, 0, &m_LastClearDepth);
     }
 
     void OpenGLFramebuffer::Clear(ClearFlags flags)
     {
-        glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
+        if ((uint8_t)flags & (uint8_t)ClearFlags::Color)
+        {
+            const uint32_t n = std::max<uint32_t>((uint32_t)m_ColorAttachments.size(),
+                (uint32_t)m_ExternalColorAttachments.size());
+            for (uint32_t i = 0; i < n; ++i)
+                glClearNamedFramebufferfv(m_ID, GL_COLOR, (GLint)i, m_LastClearColor);
+        }
 
-        GLbitfield mask = 0;
-        if ((uint8_t)flags & (uint8_t)ClearFlags::Color)   mask |= GL_COLOR_BUFFER_BIT;
-        if ((uint8_t)flags & (uint8_t)ClearFlags::Depth)   mask |= GL_DEPTH_BUFFER_BIT;
-        if ((uint8_t)flags & (uint8_t)ClearFlags::Stencil) mask |= GL_STENCIL_BUFFER_BIT;
+        const bool wantDepth = ((uint8_t)flags & (uint8_t)ClearFlags::Depth) != 0;
+        const bool wantStencil = ((uint8_t)flags & (uint8_t)ClearFlags::Stencil) != 0;
 
-        glClear(mask);
+        if (wantDepth || wantStencil)
+        {
+            const bool hasDS =
+                (m_DepthAttachmentSpecification.TextureFormat == FramebufferTextureFormat::DEPTH24STENCIL8);
+
+            if (wantDepth && wantStencil && hasDS)
+            {
+                glClearNamedFramebufferfi(m_ID, GL_DEPTH_STENCIL, 0, m_LastClearDepth, m_LastClearStencil);
+            }
+            else
+            {
+                if (wantDepth)
+                    glClearNamedFramebufferfv(m_ID, GL_DEPTH, 0, &m_LastClearDepth);
+                if (wantStencil)
+                    glClearNamedFramebufferiv(m_ID, GL_STENCIL, 0, &m_LastClearStencil);
+            }
+        }
     }
 
     void OpenGLFramebuffer::BindColorAttachment(uint32_t index) const
@@ -354,32 +463,26 @@ namespace QuasarEngine
         if (texID == 0)
         {
             glNamedFramebufferTexture(m_ID, GL_COLOR_ATTACHMENT0 + index, 0, 0);
-            const GLenum none = GL_NONE;
-            glNamedFramebufferDrawBuffers(m_ID, 1, &none);
+
+            UpdateDrawBuffers();
+
             return;
         }
 
         if (std::dynamic_pointer_cast<TextureCubeMap>(ref.texture))
         {
-            glNamedFramebufferTextureLayer(
-                m_ID, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip, (GLint)ref.layer);
+            glNamedFramebufferTextureLayer(m_ID, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip, (GLint)ref.layer);
         }
         else if (std::dynamic_pointer_cast<TextureArray>(ref.texture))
         {
-            glNamedFramebufferTextureLayer(
-                m_ID, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip, (GLint)ref.layer);
+            glNamedFramebufferTextureLayer(m_ID, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip, (GLint)ref.layer);
         }
         else
         {
-            glNamedFramebufferTexture(
-                m_ID, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip);
+            glNamedFramebufferTexture(m_ID, GL_COLOR_ATTACHMENT0 + index, texID, (GLint)ref.mip);
         }
 
-        const GLenum buf = GL_COLOR_ATTACHMENT0 + index;
-        glNamedFramebufferDrawBuffers(m_ID, 1, &buf);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
-        glDrawBuffer(buf);
+        UpdateDrawBuffers();
 
         const GLenum status = glCheckNamedFramebufferStatus(m_ID, GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -388,10 +491,21 @@ namespace QuasarEngine
 
     std::shared_ptr<Texture> OpenGLFramebuffer::GetColorAttachmentTexture(uint32_t index) const
     {
-        if (index < m_ExternalColorAttachments.size())
+        if (m_Specification.Samples > 1)
         {
-            const auto& ref = m_ExternalColorAttachments[index];
-            if (ref.texture.get()) return ref.texture;
+            if (index >= m_ResolvedColorTextures.size()) return {};
+            if (index >= m_ResolvedColorViews.size())
+                m_ResolvedColorViews.resize(m_ResolvedColorTextures.size());
+
+            if (!m_ResolvedColorViews[index])
+            {
+                TextureSpecification spec{};
+                spec.width = m_Specification.Width;
+                spec.height = m_Specification.Height;
+                m_ResolvedColorViews[index] =
+                    std::make_shared<OpenGLTexture2DView>(m_ResolvedColorTextures[index], GL_TEXTURE_2D, spec);
+            }
+            return m_ResolvedColorViews[index];
         }
 
         if (index >= m_ColorAttachments.size()) return {};
@@ -403,7 +517,6 @@ namespace QuasarEngine
             TextureSpecification spec{};
             spec.width = m_Specification.Width;
             spec.height = m_Specification.Height;
-
             m_ColorAttachmentViews[index] =
                 std::make_shared<OpenGLTexture2DView>(m_ColorAttachments[index], GL_TEXTURE_2D, spec);
         }
@@ -412,7 +525,11 @@ namespace QuasarEngine
 
     void OpenGLFramebuffer::UpdateDrawBuffers() const
     {
-        if (m_ColorAttachments.empty())
+        const uint32_t nInternal = (uint32_t)m_ColorAttachments.size();
+        const uint32_t nExternal = (uint32_t)m_ExternalColorAttachments.size();
+        const uint32_t n = std::max(nInternal, nExternal);
+
+        if (n == 0)
         {
             const GLenum none = GL_NONE;
             glNamedFramebufferDrawBuffers(m_ID, 1, &none);
@@ -420,9 +537,13 @@ namespace QuasarEngine
             return;
         }
 
-        std::vector<GLenum> buffers(m_ColorAttachments.size(), GL_NONE);
-        for (uint32_t i = 0; i < (uint32_t)m_ColorAttachments.size(); ++i)
-            buffers[i] = (m_ColorAttachments[i] != 0) ? (GL_COLOR_ATTACHMENT0 + i) : GL_NONE;
+        std::vector<GLenum> buffers(n, GL_NONE);
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            const bool hasInternal = (i < nInternal) && (m_ColorAttachments[i] != 0);
+            const bool hasExternal = (i < nExternal) && (m_ExternalColorAttachments[i].texture != nullptr);
+            buffers[i] = (hasInternal || hasExternal) ? (GL_COLOR_ATTACHMENT0 + i) : GL_NONE;
+        }
 
         glNamedFramebufferDrawBuffers(m_ID, (GLsizei)buffers.size(), buffers.data());
     }

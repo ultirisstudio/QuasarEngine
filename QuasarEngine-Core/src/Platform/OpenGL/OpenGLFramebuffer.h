@@ -24,7 +24,7 @@ namespace QuasarEngine
         void Invalidate() override;
         void Resolve() override;
 
-        int  ReadPixel(uint32_t attachmentIndex, int x, int y) override;
+        int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
 
         void ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a) override;
         void ClearColor(float r, float g, float b, float a) override;
@@ -55,6 +55,10 @@ namespace QuasarEngine
         uint32_t m_DepthRBO = 0;
         uint32_t m_DepthTexture = 0;
         bool     m_DepthIsTexture = false;
+
+        float m_LastClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        float m_LastClearDepth = 1.0f;
+        int   m_LastClearStencil = 0;
 
         std::vector<FramebufferTextureSpecification> m_ColorAttachmentSpecifications;
         FramebufferTextureSpecification m_DepthAttachmentSpecification;

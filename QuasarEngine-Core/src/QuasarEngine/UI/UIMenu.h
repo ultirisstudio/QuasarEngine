@@ -60,7 +60,7 @@ namespace QuasarEngine
             float y = r.y + 2.f;
             for (size_t i = 0; i < items.size(); ++i) {
                 Rect ir{ r.x + 2, y, r.w - 4, lineH + 6.f };
-                ctx.DrawText(items[i].label.c_str(), ir.x + 6, ir.y + 3, items[i].disabled ? UIColor{ 0.6f,0.6f,0.6f,1 } : m_Style.fg);
+                ctx.CtxDrawText(items[i].label.c_str(), ir.x + 6, ir.y + 3, items[i].disabled ? UIColor{ 0.6f,0.6f,0.6f,1 } : m_Style.fg);
                 y += ir.h;
             }
         }

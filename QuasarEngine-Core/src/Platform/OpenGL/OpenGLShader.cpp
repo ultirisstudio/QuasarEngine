@@ -431,7 +431,7 @@ namespace QuasarEngine
 
             BoundTex& bound = m_BoundPerUnit[unit];
             if (bound.handle != handle) {
-                glBindTextureUnit(unit, handle);
+                texObj->Bind(unit);
                 bound.handle = handle;
             }
 

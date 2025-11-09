@@ -30,6 +30,7 @@ namespace QuasarEngine
 
 	private:
 		GLuint m_ID = 0;
+		GLuint m_SamplerID = 0;
 		bool   m_Loaded = false;
 		std::string m_LastPath;
 	};

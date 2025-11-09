@@ -34,7 +34,7 @@ namespace QuasarEngine
                 float th = ctx.defaultFont->Ascent() - ctx.defaultFont->Descent();
                 float x = r.x + (r.w - tw) * 0.5f;
                 float y = r.y + (r.h - th) * 0.5f;
-                ctx.DrawText(buf, x, y, m_Style.fg);
+                ctx.CtxDrawText(buf, x, y, m_Style.fg);
             }
         }
     };

@@ -211,7 +211,6 @@ namespace QuasarEngine
 
 		m_ScreenQuadShader->UpdateGlobalState();
 
-		m_FrameBuffer->Resolve();
 		auto screenTex = m_FrameBuffer->GetColorAttachmentTexture(0);
 		m_ScreenQuadShader->SetTexture("screenTexture", screenTex.get());
 

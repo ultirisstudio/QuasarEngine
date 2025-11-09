@@ -8,6 +8,10 @@
 #include <QuasarEngine/File/FileUtils.h>
 #include <QuasarEngine/Core/Logger.h>
 
+#include <algorithm>
+#include <cctype>
+#include <cstring>
+
 namespace QuasarEngine
 {
     namespace Utils
@@ -16,7 +20,8 @@ namespace QuasarEngine
         {
             const size_t n = s.size(), m = std::strlen(suf);
             if (m > n) return false;
-            for (size_t i = 0; i < m; ++i) {
+            for (size_t i = 0; i < m; ++i)
+            {
                 char a = (char)std::tolower((unsigned char)s[n - m + i]);
                 char b = (char)std::tolower((unsigned char)suf[i]);
                 if (a != b) return false;
@@ -41,12 +46,53 @@ namespace QuasarEngine
         }
     }
 
-	OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification) : Texture2D(specification) {}
+    OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification)
+        : Texture2D(specification)
+    {
+    }
 
-	OpenGLTexture2D::~OpenGLTexture2D()
-	{
-		if (m_ID) glDeleteTextures(1, &m_ID);
-	}
+    OpenGLTexture2D::~OpenGLTexture2D()
+    {
+        if (m_ID) glDeleteTextures(1, &m_ID);
+        if (m_SamplerID) { glDeleteSamplers(1, &m_SamplerID); m_SamplerID = 0; }
+    }
+
+    static void ConfigureTextureFixedState(GLuint tex, const TextureSpecification& spec,
+        const Utils::GLFormat& glInt, uint32_t levels)
+    {
+        glTextureParameteri(tex, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(spec.wrap_s));
+        glTextureParameteri(tex, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(spec.wrap_t));
+        glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(spec.min_filter_param));
+        glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(spec.mag_filter_param));
+
+        if (glInt.channels == 1) {
+            const GLint swizzle[4] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+            glTextureParameteriv(tex, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+        }
+
+        glTextureParameteri(tex, GL_TEXTURE_BASE_LEVEL, 0);
+        glTextureParameteri(tex, GL_TEXTURE_MAX_LEVEL, (GLint)(levels > 0 ? levels - 1 : 0));
+        glTextureParameterf(tex, GL_TEXTURE_MAX_LOD, (levels > 0) ? float(levels - 1) : 0.0f);
+    }
+
+    static void ConfigureOrCreateSampler(GLuint& sampler, const TextureSpecification& spec)
+    {
+        if (!sampler) glCreateSamplers(1, &sampler);
+
+        glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(spec.wrap_s));
+        glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(spec.wrap_t));
+        glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(spec.min_filter_param));
+        glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(spec.mag_filter_param));
+
+#ifdef GL_TEXTURE_MAX_ANISOTROPY_EXT
+        if (::GLAD_GL_EXT_texture_filter_anisotropic && spec.anisotropy > 1.0f) {
+            float maxAniso = 1.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+            const float a = std::min(spec.anisotropy, maxAniso);
+            glSamplerParameterf(sampler, GL_TEXTURE_MAX_ANISOTROPY_EXT, a);
+        }
+#endif
+    }
 
     bool OpenGLTexture2D::LoadFromPath(const std::string& path)
     {
@@ -68,7 +114,8 @@ namespace QuasarEngine
 
         stbi_set_flip_vertically_on_load(m_Specification.flip);
 
-        if (!m_Specification.compressed) {
+        if (!m_Specification.compressed)
+        {
             if (m_Specification.width == 0 || m_Specification.height == 0) {
                 Q_ERROR("OpenGLTexture2D: raw upload requires width/height in specification");
                 return false;
@@ -88,9 +135,10 @@ namespace QuasarEngine
             return UploadPixelsDSA(data, false);
         }
 
-        const bool wantFloat = Utils::IsFloatInternal(m_Specification.internal_format)
-            || stbi_is_hdr_from_memory((const stbi_uc*)data.data, (int)data.size) != 0
-            || Utils::EndsWithInsensitive(m_LastPath, ".hdr");
+        const bool wantFloat =
+            Utils::IsFloatInternal(m_Specification.internal_format) ||
+            stbi_is_hdr_from_memory((const stbi_uc*)data.data, (int)data.size) != 0 ||
+            Utils::EndsWithInsensitive(m_LastPath, ".hdr");
 
         if (wantFloat) {
             int w = 0, h = 0, n = 0;
@@ -108,7 +156,8 @@ namespace QuasarEngine
             m_Specification.height = (uint32_t)h;
             m_Specification.channels = (uint32_t)(desired > 0 ? desired : n);
 
-            const std::size_t bytes = (std::size_t)w * (std::size_t)h * (std::size_t)m_Specification.channels * sizeof(float);
+            const std::size_t bytes =
+                (std::size_t)w * (std::size_t)h * (std::size_t)m_Specification.channels * sizeof(float);
             const bool ok = UploadPixelsDSA(ByteView{ (const uint8_t*)decoded, bytes }, true);
             stbi_image_free(decoded);
             return ok;
@@ -116,7 +165,6 @@ namespace QuasarEngine
         else {
             int w = 0, h = 0, n = 0;
             const int desired = Utils::DesiredChannels(m_Specification.internal_format);
-
             unsigned char* decoded = stbi_load_from_memory(
                 (const stbi_uc*)data.data, (int)data.size,
                 &w, &h, &n, desired > 0 ? desired : 0
@@ -130,7 +178,8 @@ namespace QuasarEngine
             m_Specification.height = (uint32_t)h;
             m_Specification.channels = (uint32_t)(desired > 0 ? desired : n);
 
-            const std::size_t bytes = (std::size_t)w * (std::size_t)h * (std::size_t)m_Specification.channels;
+            const std::size_t bytes =
+                (std::size_t)w * (std::size_t)h * (std::size_t)m_Specification.channels;
             const bool ok = UploadPixelsDSA(ByteView{ decoded, bytes }, false);
             stbi_image_free(decoded);
             return ok;
@@ -162,19 +211,13 @@ namespace QuasarEngine
 
         glCreateTextures(GL_TEXTURE_2D, 1, &m_ID);
 
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(m_Specification.wrap_s));
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(m_Specification.wrap_t));
-        glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(m_Specification.min_filter_param));
-        glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(m_Specification.mag_filter_param));
-
-        if (glInt.channels == 1) {
-            const GLint swizzle[4] = { GL_RED, GL_RED, GL_RED, GL_ONE };
-            glTextureParameteriv(m_ID, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
-        }
-
         const uint32_t levels = Utils::CalcMipLevelsFromSpec(m_Specification);
         glTextureStorage2D(m_ID, (GLint)levels, glInt.internal,
             (GLint)m_Specification.width, (GLint)m_Specification.height);
+
+        ConfigureTextureFixedState(m_ID, m_Specification, glInt, levels);
+
+        ConfigureOrCreateSampler(m_SamplerID, m_Specification);
 
         m_Loaded = true;
         return true;
@@ -191,42 +234,57 @@ namespace QuasarEngine
         }
 
         if (m_ID) { glDeleteTextures(1, &m_ID); m_ID = 0; m_Loaded = false; }
-
         glCreateTextures(GL_TEXTURE_2D, 1, &m_ID);
 
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(m_Specification.wrap_s));
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(m_Specification.wrap_t));
-        glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(m_Specification.min_filter_param));
-        glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(m_Specification.mag_filter_param));
-
-        if (glInt.channels == 1) {
-            const GLint swizzle[4] = { GL_RED, GL_RED, GL_RED, GL_ONE };
-            glTextureParameteriv(m_ID, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
-        }
-
         const uint32_t levels = Utils::CalcMipLevelsFromSpec(m_Specification);
-        glTextureStorage2D(m_ID, (GLint)levels, glInt.internal, (GLint)m_Specification.width, (GLint)m_Specification.height);
+        glTextureStorage2D(m_ID, (GLint)levels, glInt.internal,
+            (GLint)m_Specification.width, (GLint)m_Specification.height);
 
-        glTextureParameteri(m_ID, GL_TEXTURE_BASE_LEVEL, 0);
-        glTextureParameteri(m_ID, GL_TEXTURE_MAX_LEVEL, levels - 1);
+        ConfigureTextureFixedState(m_ID, m_Specification, glInt, levels);
+
+        ConfigureOrCreateSampler(m_SamplerID, m_Specification);
 
         GLint oldUnpack = 4;
         glGetIntegerv(GL_UNPACK_ALIGNMENT, &oldUnpack);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
         const GLenum uploadType = pixelsAreFloat ? GL_FLOAT : glExt.type;
-        glTextureSubImage2D(m_ID, 0, 0, 0, (GLint)m_Specification.width, (GLint)m_Specification.height, glExt.external, uploadType, pixels.data);
 
-        if ((m_Specification.mipmap || m_Specification.auto_generate_mips) && levels > 1)
-            glGenerateTextureMipmap(m_ID);
+        if (m_Specification.async_upload)
+        {
+            GLuint pbo = 0;
+            glCreateBuffers(1, &pbo);
+            glNamedBufferData(pbo, (GLsizeiptr)pixels.size, nullptr, GL_STREAM_DRAW);
 
-        glTextureParameterf(m_ID, GL_TEXTURE_MAX_LOD, float(levels - 1));
+            void* dst = glMapNamedBufferRange(pbo, 0, (GLsizeiptr)pixels.size,
+                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+            if (dst) {
+                std::memcpy(dst, pixels.data, pixels.size);
+                glUnmapNamedBuffer(pbo);
+            }
+
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+            glTextureSubImage2D(
+                m_ID, 0, 0, 0,
+                (GLint)m_Specification.width, (GLint)m_Specification.height,
+                glExt.external, uploadType, (const void*)0 /* offset */
+            );
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+            glDeleteBuffers(1, &pbo);
+        }
+        else
+        {
+            glTextureSubImage2D(
+                m_ID, 0, 0, 0,
+                (GLint)m_Specification.width, (GLint)m_Specification.height,
+                glExt.external, uploadType, pixels.data
+            );
+        }
 
         glPixelStorei(GL_UNPACK_ALIGNMENT, oldUnpack);
 
-        if (m_Specification.auto_generate_mips && levels > 1) {
+        if (m_Specification.auto_generate_mips && levels > 1)
             glGenerateTextureMipmap(m_ID);
-        }
 
         m_Loaded = true;
         return true;
@@ -242,6 +300,7 @@ namespace QuasarEngine
     {
         if (!m_ID) return;
         glBindTextureUnit(index, m_ID);
+        if (m_SamplerID) glBindSampler(index, m_SamplerID);
     }
 
     void OpenGLTexture2D::Unbind() const

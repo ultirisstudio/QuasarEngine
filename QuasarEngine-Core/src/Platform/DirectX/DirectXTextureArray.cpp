@@ -1,9 +1,16 @@
 #include "qepch.h"
+
 #include "DirectXTextureArray.h"
 #include "DirectXContext.h"
+
 #include <d3d11.h>
 #include <wrl/client.h>
+
 #include <stb_image.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 
 namespace QuasarEngine
 {

@@ -36,7 +36,7 @@ namespace QuasarEngine {
 
 		UIFont* defaultFont = nullptr;
 
-		void DrawText(const char* s, float x, float y, const UIColor& color);
+		void CtxDrawText(const char* s, float x, float y, const UIColor& color);
 	};
 
 	struct UIDrawCmd {

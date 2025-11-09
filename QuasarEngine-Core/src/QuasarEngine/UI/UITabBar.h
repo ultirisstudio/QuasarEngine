@@ -68,7 +68,7 @@ namespace QuasarEngine
                 const float th = ctx.defaultFont ? (ctx.defaultFont->Ascent() - ctx.defaultFont->Descent()) : 18.f;
                 const float tx = t.x + (t.w - tw) * 0.5f;
                 const float ty = t.y + (t.h - th) * 0.5f;
-                ctx.DrawText(labels[i].c_str(), tx, ty, m_Style.fg);
+                ctx.CtxDrawText(labels[i].c_str(), tx, ty, m_Style.fg);
 
                 x += w + tabGap;
             }

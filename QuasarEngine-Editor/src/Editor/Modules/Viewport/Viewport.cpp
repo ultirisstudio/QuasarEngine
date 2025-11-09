@@ -108,6 +108,7 @@ namespace QuasarEngine
 		//ResizeIfNeeded(scene, vpSize);
 
 		if (m_ViewportFrameBuffer) {
+			m_ViewportFrameBuffer->Resolve();
 			if (void* handle = m_ViewportFrameBuffer->GetColorAttachment(0)) {
 				ImVec2 uv0 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 0,1 } : ImVec2{ 1,0 };
 				ImVec2 uv1 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 1,0 } : ImVec2{ 0,1 };

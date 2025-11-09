@@ -40,6 +40,19 @@ namespace QuasarEngine {
         return false;
     }
 
+    static inline uint32_t PackColor(const UIColor& c)
+    {
+        const auto clamp255 = [](float v) -> uint32_t {
+            if (v < 0.f) v = 0.f; else if (v > 1.f) v = 1.f;
+            return (uint32_t)(v * 255.0f + 0.5f);
+            };
+        const uint32_t r = clamp255(c.r);
+        const uint32_t g = clamp255(c.g);
+        const uint32_t b = clamp255(c.b);
+        const uint32_t a = clamp255(c.a);
+        return (r) | (g << 8) | (b << 16) | (a << 24);
+    }
+
     static void UnpackColor(uint32_t rgba, float& r, float& g, float& b, float& a) {
         r = ((rgba >> 0) & 0xFF) / 255.0f;
         g = ((rgba >> 8) & 0xFF) / 255.0f;
@@ -239,7 +252,7 @@ namespace QuasarEngine {
         m_Cmds.push_back(cmd);
     }
 
-    void UIRenderContext::DrawText(const char* s, float x, float y, const UIColor& color)
+    void UIRenderContext::CtxDrawText(const char* s, float x, float y, const UIColor& color)
     {
         if (!defaultFont) return;
 

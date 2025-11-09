@@ -33,7 +33,13 @@ namespace QuasarEngine
 		void Bind() const override;
 		void Unbind() const override;
 
+		uint32_t GetID() const { return m_ID; }
+
+		void EnablePersistentMapping(uint32_t size);
+		bool IsPersistent() const { return m_IsPersistent; }
+
 		void Upload(const void* data, uint32_t size) override;
+		void Upload(const void* data, uint32_t size, uint32_t offset);
 
 		void Reserve(uint32_t size) override;
 
@@ -42,9 +48,12 @@ namespace QuasarEngine
 		const BufferLayout& GetLayout() const override { return m_Layout; }
 		void SetLayout(const BufferLayout& layout) override { m_Layout = layout; }
 	private:
-		uint32_t m_RendererID;
+		uint32_t m_ID;
 		size_t m_Size;
 		BufferLayout m_Layout;
+
+		void* m_Mapped = nullptr;
+		bool m_IsPersistent = false;
 	};
 
 	class OpenGLIndexBuffer : public IndexBuffer
@@ -59,14 +68,23 @@ namespace QuasarEngine
 		void Bind() const override;
 		void Unbind() const override;
 
+		uint32_t GetID() const { return m_ID; }
+
+		void EnablePersistentMapping(uint32_t size);
+		bool IsPersistent() const { return m_IsPersistent; }
+
 		void Upload(const void* data, uint32_t size) override;
+		void Upload(const void* data, uint32_t size, uint32_t offset);
 
 		void Reserve(uint32_t size) override;
 
 		size_t GetSize() const override { return m_Size; }
 		uint32_t GetCount() const override { return m_Size / sizeof(uint32_t); }
 	private:
-		uint32_t m_RendererID;
+		uint32_t m_ID;
 		size_t m_Size;
+
+		void* m_Mapped = nullptr;
+		bool m_IsPersistent = false;
 	};
 }

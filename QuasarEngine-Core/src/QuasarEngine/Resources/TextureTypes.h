@@ -93,10 +93,13 @@ namespace QuasarEngine
         bool flip{ true };
         bool mipmap{ true };
         bool compressed{ true };
+        bool async_upload{ false };
 
         uint32_t Samples{ 1 };
 
         uint32_t channels{ 4 };
+
+        float anisotropy = 1.0f;
 
         TextureUsage usage{ TextureUsage::ShaderRead };
 

@@ -30,8 +30,9 @@ namespace QuasarEngine
         bool UploadPixelsDSA(ByteView pixels, GLsizei layers, bool pixelsAreFloat);
 
     private:
-        GLuint  m_ID = 0;
-        bool    m_Loaded = false;
+        GLuint m_ID = 0;
+        GLuint m_SamplerID = 0;
+        bool m_Loaded = false;
         GLsizei m_Layers = 0;
     };
 }

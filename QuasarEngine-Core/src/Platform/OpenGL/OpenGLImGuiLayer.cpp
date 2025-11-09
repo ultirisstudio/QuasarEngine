@@ -6,6 +6,8 @@
 #include <imgui/imgui.h>
 #include <ImGuizmo.h>
 
+#include <glad/glad.h>
+
 #include <backends/imgui_impl_opengl3.h>
 #include <backends/imgui_impl_glfw.h>
 
@@ -50,8 +52,14 @@ namespace QuasarEngine
 		Application& app = Application::Get();
 		GLFWwindow* window = static_cast<GLFWwindow*>(app.GetWindow().GetNativeWindow());
 
+		int maj = 0, min = 0;
+		glGetIntegerv(GL_MAJOR_VERSION, &maj);
+		glGetIntegerv(GL_MINOR_VERSION, &min);
+		char glsl[32];
+		snprintf(glsl, sizeof(glsl), "#version %d%d0", maj, min);
+
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
-		ImGui_ImplOpenGL3_Init("#version 410");
+		ImGui_ImplOpenGL3_Init(glsl);
 	}
 
 	void OpenGLImGuiLayer::OnDetach()

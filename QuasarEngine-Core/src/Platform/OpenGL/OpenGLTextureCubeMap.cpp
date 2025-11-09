@@ -7,6 +7,8 @@
 #include <glad/glad.h>
 #include <QuasarEngine/File/FileUtils.h>
 #include <QuasarEngine/Core/Logger.h>
+#include <algorithm>
+#include <cstring>
 
 namespace QuasarEngine
 {
@@ -39,6 +41,41 @@ namespace QuasarEngine
         static GLint FaceIndex(TextureCubeMap::Face f) { return static_cast<GLint>(f); }
     }
 
+    static void ConfigureTextureFixedState(GLuint tex, const TextureSpecification& spec,
+        const Utils::GLFormat& glInt, uint32_t levels)
+    {
+        glTextureParameteri(tex, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(spec.wrap_s));
+        glTextureParameteri(tex, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(spec.wrap_t));
+        glTextureParameteri(tex, GL_TEXTURE_WRAP_R, Utils::ToGLWrap(spec.wrap_r));
+        glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(spec.min_filter_param));
+        glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(spec.mag_filter_param));
+        if (glInt.channels == 1) {
+            const GLint swizzle[4] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+            glTextureParameteriv(tex, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+        }
+        glTextureParameteri(tex, GL_TEXTURE_BASE_LEVEL, 0);
+        glTextureParameterf(tex, GL_TEXTURE_MAX_LOD, float(levels > 0 ? levels - 1 : 0));
+        glTextureParameteri(tex, GL_TEXTURE_MAX_LEVEL, (GLint)(levels > 0 ? levels - 1 : 0));
+    }
+
+    static void ConfigureOrCreateSampler(GLuint& sampler, const TextureSpecification& spec)
+    {
+        if (!sampler) glCreateSamplers(1, &sampler);
+        glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(spec.wrap_s));
+        glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(spec.wrap_t));
+        glSamplerParameteri(sampler, GL_TEXTURE_WRAP_R, Utils::ToGLWrap(spec.wrap_r));
+        glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(spec.min_filter_param));
+        glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(spec.mag_filter_param));
+#ifdef GL_TEXTURE_MAX_ANISOTROPY_EXT
+        if (::GLAD_GL_EXT_texture_filter_anisotropic && spec.anisotropy > 1.0f) {
+            float maxAniso = 1.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+            const float a = std::min(spec.anisotropy, maxAniso);
+            glSamplerParameterf(sampler, GL_TEXTURE_MAX_ANISOTROPY_EXT, a);
+        }
+#endif
+    }
+
     OpenGLTextureCubeMap::OpenGLTextureCubeMap(const TextureSpecification& specification)
         : TextureCubeMap(specification)
     {
@@ -48,6 +85,7 @@ namespace QuasarEngine
     OpenGLTextureCubeMap::~OpenGLTextureCubeMap()
     {
         if (m_ID) glDeleteTextures(1, &m_ID);
+        if (m_SamplerID) { glDeleteSamplers(1, &m_SamplerID); m_SamplerID = 0; }
     }
 
     bool OpenGLTextureCubeMap::AllocateStorage(uint32_t w, uint32_t h)
@@ -58,21 +96,10 @@ namespace QuasarEngine
         if (m_ID) { glDeleteTextures(1, &m_ID); m_ID = 0; m_Loaded = false; }
         glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_ID);
 
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, Utils::ToGLWrap(m_Specification.wrap_s));
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, Utils::ToGLWrap(m_Specification.wrap_t));
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_R, Utils::ToGLWrap(m_Specification.wrap_r));
-        glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, Utils::ToGLFilter(m_Specification.min_filter_param));
-        glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, Utils::ToGLFilter(m_Specification.mag_filter_param));
-
         const auto glInt = Utils::ToGLFormat(m_Specification.internal_format);
         if (glInt.internal == 0) {
             Q_ERROR("OpenGLTextureCubeMap: unsupported internal format");
             return false;
-        }
-
-        if (glInt.channels == 1) {
-            const GLint swizzle[4] = { GL_RED, GL_RED, GL_RED, GL_ONE };
-            glTextureParameteriv(m_ID, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
         }
 
         m_Specification.width = w;
@@ -81,12 +108,12 @@ namespace QuasarEngine
         const uint32_t levels = Utils::CalcMipLevelsFromSpec(m_Specification);
         glTextureStorage2D(m_ID, (GLint)levels, glInt.internal, (GLint)w, (GLint)h);
 
-        glTextureParameteri(m_ID, GL_TEXTURE_BASE_LEVEL, 0);
-        glTextureParameterf(m_ID, GL_TEXTURE_MAX_LOD, float(levels - 1));
-        glTextureParameteri(m_ID, GL_TEXTURE_MAX_LEVEL, (GLint)levels - 1);
+        ConfigureTextureFixedState(m_ID, m_Specification, glInt, levels);
+        ConfigureOrCreateSampler(m_SamplerID, m_Specification);
 
         m_StorageAllocated = true;
         m_FacesUploaded = 0;
+        m_Loaded = true;
         return true;
     }
 
@@ -111,15 +138,37 @@ namespace QuasarEngine
 
         const GLenum uploadType = pixelsAreFloat ? GL_FLOAT : glExt.type;
 
-        glTextureSubImage3D(
-            m_ID, 0,
-            0, 0, 0,
-            (GLint)m_Specification.width,
-            (GLint)m_Specification.height,
-            6,
-            glExt.external, uploadType,
-            allFacesPixels.data
-        );
+        if (m_Specification.async_upload) {
+            GLuint pbo = 0;
+            glCreateBuffers(1, &pbo);
+            glNamedBufferData(pbo, (GLsizeiptr)allFacesPixels.size, nullptr, GL_STREAM_DRAW);
+            void* dst = glMapNamedBufferRange(pbo, 0, (GLsizeiptr)allFacesPixels.size,
+                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+            if (dst) { std::memcpy(dst, allFacesPixels.data, allFacesPixels.size); glUnmapNamedBuffer(pbo); }
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+            glTextureSubImage3D(
+                m_ID, 0,
+                0, 0, 0,
+                (GLint)m_Specification.width,
+                (GLint)m_Specification.height,
+                6,
+                glExt.external, uploadType,
+                (const void*)0
+            );
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+            glDeleteBuffers(1, &pbo);
+        }
+        else {
+            glTextureSubImage3D(
+                m_ID, 0,
+                0, 0, 0,
+                (GLint)m_Specification.width,
+                (GLint)m_Specification.height,
+                6,
+                glExt.external, uploadType,
+                allFacesPixels.data
+            );
+        }
 
         glPixelStorei(GL_UNPACK_ALIGNMENT, oldUnpack);
 
@@ -128,6 +177,7 @@ namespace QuasarEngine
             glGenerateTextureMipmap(m_ID);
         }
 
+        ConfigureOrCreateSampler(m_SamplerID, m_Specification);
         m_FacesUploaded = 6;
         m_Loaded = true;
         return true;
@@ -147,15 +197,37 @@ namespace QuasarEngine
 
         const GLenum uploadType = pixelsAreFloat ? GL_FLOAT : glExt.type;
 
-        glTextureSubImage3D(
-            m_ID, 0,
-            0, 0, Utils::FaceIndex(face),
-            (GLint)w,
-            (GLint)h,
-            1,
-            glExt.external, uploadType,
-            facePixels.data
-        );
+        if (m_Specification.async_upload) {
+            GLuint pbo = 0;
+            glCreateBuffers(1, &pbo);
+            glNamedBufferData(pbo, (GLsizeiptr)facePixels.size, nullptr, GL_STREAM_DRAW);
+            void* dst = glMapNamedBufferRange(pbo, 0, (GLsizeiptr)facePixels.size,
+                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+            if (dst) { std::memcpy(dst, facePixels.data, facePixels.size); glUnmapNamedBuffer(pbo); }
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+            glTextureSubImage3D(
+                m_ID, 0,
+                0, 0, Utils::FaceIndex(face),
+                (GLint)w,
+                (GLint)h,
+                1,
+                glExt.external, uploadType,
+                (const void*)0
+            );
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+            glDeleteBuffers(1, &pbo);
+        }
+        else {
+            glTextureSubImage3D(
+                m_ID, 0,
+                0, 0, Utils::FaceIndex(face),
+                (GLint)w,
+                (GLint)h,
+                1,
+                glExt.external, uploadType,
+                facePixels.data
+            );
+        }
 
         glPixelStorei(GL_UNPACK_ALIGNMENT, oldUnpack);
 
@@ -164,6 +236,7 @@ namespace QuasarEngine
             if (m_Specification.auto_generate_mips && levels > 1) {
                 glGenerateTextureMipmap(m_ID);
             }
+            ConfigureOrCreateSampler(m_SamplerID, m_Specification);
             m_Loaded = true;
         }
         return true;
@@ -224,8 +297,7 @@ namespace QuasarEngine
             const std::size_t faceBytes = (size_t)w * (size_t)h * (size_t)m_Specification.channels * sizeof(float);
             bool ok = true;
             for (int fi = 0; fi < 6; ++fi) {
-                ok &= UploadFaceDSA((Face)fi,
-                    ByteView{ (const uint8_t*)decoded, faceBytes }, (uint32_t)w, (uint32_t)h, true);
+                ok &= UploadFaceDSA((Face)fi, ByteView{ (const uint8_t*)decoded, faceBytes }, (uint32_t)w, (uint32_t)h, true);
             }
             stbi_image_free(decoded);
             return ok;
@@ -249,8 +321,7 @@ namespace QuasarEngine
             const std::size_t faceBytes = (size_t)w * (size_t)h * (size_t)m_Specification.channels;
             bool ok = true;
             for (int fi = 0; fi < 6; ++fi) {
-                ok &= UploadFaceDSA((Face)fi,
-                    ByteView{ decoded, faceBytes }, (uint32_t)w, (uint32_t)h, false);
+                ok &= UploadFaceDSA((Face)fi, ByteView{ decoded, faceBytes }, (uint32_t)w, (uint32_t)h, false);
             }
             stbi_image_free(decoded);
             return ok;
@@ -287,8 +358,7 @@ namespace QuasarEngine
         else if (data.size == faceSize) {
             bool ok = true;
             for (int fi = 0; fi < 6; ++fi) {
-                ok &= UploadFaceDSA((Face)fi, data,
-                    m_Specification.width, m_Specification.height, pixelsAreFloat);
+                ok &= UploadFaceDSA((Face)fi, data, m_Specification.width, m_Specification.height, pixelsAreFloat);
             }
             return ok;
         }
@@ -335,20 +405,14 @@ namespace QuasarEngine
                 m_Specification.width = (uint32_t)w;
                 m_Specification.height = (uint32_t)h;
                 m_Specification.channels = (uint32_t)(desired > 0 ? desired : n);
-                if (!AllocateStorage(m_Specification.width, m_Specification.height)) {
-                    stbi_image_free(decoded); return false;
-                }
+                if (!AllocateStorage(m_Specification.width, m_Specification.height)) { stbi_image_free(decoded); return false; }
             }
             else {
-                if (m_Specification.width != (uint32_t)w || m_Specification.height != (uint32_t)h) {
-                    Q_ERROR("OpenGLTextureCubeMap: face dimension mismatch");
-                    stbi_image_free(decoded); return false;
-                }
+                if (m_Specification.width != (uint32_t)w || m_Specification.height != (uint32_t)h) { stbi_image_free(decoded); Q_ERROR("OpenGLTextureCubeMap: face dimension mismatch"); return false; }
             }
 
             const std::size_t bytes = (size_t)w * (size_t)h * (size_t)m_Specification.channels * sizeof(float);
-            const bool ok = UploadFaceDSA(face, ByteView{ (const uint8_t*)decoded, bytes },
-                (uint32_t)w, (uint32_t)h, true);
+            const bool ok = UploadFaceDSA(face, ByteView{ (const uint8_t*)decoded, bytes }, (uint32_t)w, (uint32_t)h, true);
             stbi_image_free(decoded);
             return ok;
         }
@@ -364,20 +428,14 @@ namespace QuasarEngine
                 m_Specification.width = (uint32_t)w;
                 m_Specification.height = (uint32_t)h;
                 m_Specification.channels = (uint32_t)(desired > 0 ? desired : n);
-                if (!AllocateStorage(m_Specification.width, m_Specification.height)) {
-                    stbi_image_free(decoded); return false;
-                }
+                if (!AllocateStorage(m_Specification.width, m_Specification.height)) { stbi_image_free(decoded); return false; }
             }
             else {
-                if (m_Specification.width != (uint32_t)w || m_Specification.height != (uint32_t)h) {
-                    Q_ERROR("OpenGLTextureCubeMap: face dimension mismatch");
-                    stbi_image_free(decoded); return false;
-                }
+                if (m_Specification.width != (uint32_t)w || m_Specification.height != (uint32_t)h) { stbi_image_free(decoded); Q_ERROR("OpenGLTextureCubeMap: face dimension mismatch"); return false; }
             }
 
             const std::size_t bytes = (size_t)w * (size_t)h * (size_t)m_Specification.channels;
-            const bool ok = UploadFaceDSA(face, ByteView{ decoded, bytes },
-                (uint32_t)w, (uint32_t)h, false);
+            const bool ok = UploadFaceDSA(face, ByteView{ decoded, bytes }, (uint32_t)w, (uint32_t)h, false);
             stbi_image_free(decoded);
             return ok;
         }
@@ -417,10 +475,10 @@ namespace QuasarEngine
     {
         if (!m_ID) return;
         glBindTextureUnit(index, m_ID);
+        if (m_SamplerID) glBindSampler(index, m_SamplerID);
     }
 
     void OpenGLTextureCubeMap::Unbind() const
     {
-        
     }
 }

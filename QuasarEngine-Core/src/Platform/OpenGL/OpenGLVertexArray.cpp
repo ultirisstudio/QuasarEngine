@@ -2,6 +2,7 @@
 #include "OpenGLVertexArray.h"
 
 #include <glad/glad.h>
+#include "OpenGLBuffer.h"
 
 namespace QuasarEngine
 {
@@ -20,7 +21,7 @@ namespace QuasarEngine
 		case ShaderDataType::IVec2:     return GL_INT;
 		case ShaderDataType::IVec3:     return GL_INT;
 		case ShaderDataType::IVec4:     return GL_INT;
-		case ShaderDataType::Bool:     return GL_BOOL;
+		case ShaderDataType::Bool:     return GL_UNSIGNED_BYTE;
 		}
 
 		return 0;
@@ -55,6 +56,13 @@ namespace QuasarEngine
         const auto& layout = vertexBuffer->GetLayout();
         for (const auto& element : layout)
         {
+            const GLuint index = m_VertexBufferIndex;
+            const GLsizei stride = layout.GetStride();
+            const GLboolean norm = element.Normalized ? GL_TRUE : GL_FALSE;
+            const GLvoid* ptr = (const void*)(uintptr_t)element.Offset;
+
+            const GLenum base = ShaderDataTypeToOpenGLBaseType(element.Type);
+
             switch (element.Type)
             {
             case ShaderDataType::Float:
@@ -62,16 +70,10 @@ namespace QuasarEngine
             case ShaderDataType::Vec3:
             case ShaderDataType::Vec4:
             {
-                glEnableVertexAttribArray(m_VertexBufferIndex);
-                glVertexAttribPointer(
-                    m_VertexBufferIndex,
-                    element.GetComponentCount(),
-                    ShaderDataTypeToOpenGLBaseType(element.Type),
-                    element.Normalized ? GL_TRUE : GL_FALSE,
-                    layout.GetStride(),
-                    (const void*)element.Offset
-                );
-                ++m_VertexBufferIndex;
+                glEnableVertexAttribArray(index);
+                glVertexAttribPointer(index, (GLint)element.GetComponentCount(),
+                    base, norm, stride, ptr);
+                m_VertexBufferIndex++;
                 break;
             }
 
@@ -82,42 +84,34 @@ namespace QuasarEngine
             case ShaderDataType::IVec4:
             case ShaderDataType::Bool:
             {
-                glEnableVertexAttribArray(m_VertexBufferIndex);
-                glVertexAttribIPointer(
-                    m_VertexBufferIndex,
-                    element.GetComponentCount(),
-                    ShaderDataTypeToOpenGLBaseType(element.Type),
-                    layout.GetStride(),
-                    (const void*)element.Offset
-                );
-                ++m_VertexBufferIndex;
+                glEnableVertexAttribArray(index);
+                glVertexAttribIPointer(index, (GLint)element.GetComponentCount(),
+                    base, stride, ptr);
+                m_VertexBufferIndex++;
                 break;
             }
 
             case ShaderDataType::Mat3:
             case ShaderDataType::Mat4:
             {
-                uint8_t count = element.GetComponentCount();
-                for (uint8_t i = 0; i < count; ++i)
+                const GLint cols = (element.Type == ShaderDataType::Mat3) ? 3 : 4;
+                for (GLint c = 0; c < cols; ++c)
                 {
                     glEnableVertexAttribArray(m_VertexBufferIndex);
                     glVertexAttribPointer(
                         m_VertexBufferIndex,
-                        count,
-                        ShaderDataTypeToOpenGLBaseType(element.Type),
-                        element.Normalized ? GL_TRUE : GL_FALSE,
-                        layout.GetStride(),
-                        (const void*)(element.Offset + sizeof(float) * count * i)
+                        cols,
+                        GL_FLOAT,
+                        norm,
+                        stride,
+                        (const void*)(element.Offset + sizeof(float) * cols * c)
                     );
-                    glVertexAttribDivisor(m_VertexBufferIndex, 0);
-                    ++m_VertexBufferIndex;
+                    m_VertexBufferIndex++;
                 }
                 break;
             }
 
-            default:
-                std::cout << "Unknown ShaderDataType!" << std::endl;
-                break;
+            default: break;
             }
         }
 
@@ -126,13 +120,11 @@ namespace QuasarEngine
         glBindVertexArray(0);
     }
 
-	void OpenGLVertexArray::SetIndexBuffer(const std::shared_ptr<IndexBuffer>& indexBuffer)
-	{
-		glBindVertexArray(m_RendererID);
-		indexBuffer->Bind();
+    void OpenGLVertexArray::SetIndexBuffer(const std::shared_ptr<IndexBuffer>& indexBuffer)
+    {
+        m_IndexBuffer = indexBuffer;
 
-		m_IndexBuffer = indexBuffer;
-
-		glBindVertexArray(0);
-	}
+        const auto* glIBO = static_cast<const OpenGLIndexBuffer*>(indexBuffer.get());
+        glVertexArrayElementBuffer(m_RendererID, glIBO->GetID());
+    }
 }

@@ -39,7 +39,7 @@ namespace QuasarEngine
 
             Rect r{ rx, ry, tw + padX * 2.f, th + padY * 2.f };
             ctx.batcher->PushRect(r, ctx.whiteTex, PackRGBA8({ 0,0,0,0.85f }), nullptr);
-            ctx.DrawText(tip.text.c_str(), r.x + padX, r.y + padY, { 1,1,1,1 });
+            ctx.CtxDrawText(tip.text.c_str(), r.x + padX, r.y + padY, { 1,1,1,1 });
         }
 
         bool HitTest(float /*x*/, float /*y*/) const override {

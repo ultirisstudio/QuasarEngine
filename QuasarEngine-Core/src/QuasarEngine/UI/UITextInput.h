@@ -89,7 +89,7 @@ namespace QuasarEngine {
 
             float tx = r.x + m_Style.padding;
             float ty = r.y + m_Style.padding;
-            ctx.DrawText(text.c_str(), tx, ty, m_Style.fg);
+            ctx.CtxDrawText(text.c_str(), tx, ty, m_Style.fg);
 
             if (IsFocused() && m_CaretBlinkOn) {
                 Rect rc = caretRect(ctx);

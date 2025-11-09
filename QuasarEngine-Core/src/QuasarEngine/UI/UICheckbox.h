@@ -52,7 +52,7 @@ namespace QuasarEngine
             }
             float lx = boxR.x + box + 6.f;
             float ly = r.y + (r.h - th) * 0.5f;
-            ctx.DrawText(label.c_str(), lx, ly, m_Style.fg);
+            ctx.CtxDrawText(label.c_str(), lx, ly, m_Style.fg);
         }
 
     private:
@@ -108,7 +108,7 @@ namespace QuasarEngine
             float th = ctx.defaultFont ? (ctx.defaultFont->Ascent() - ctx.defaultFont->Descent()) : 18.f;
             float lx = circ.x + d + 6.f;
             float ly = r.y + (r.h - th) * 0.5f;
-            ctx.DrawText(label.c_str(), lx, ly, m_Style.fg);
+            ctx.CtxDrawText(label.c_str(), lx, ly, m_Style.fg);
         }
 
     private:

@@ -57,12 +57,13 @@ namespace QuasarEngine {
 		glDebugMessageCallback(OpenGLMessageCallback, nullptr);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
 #endif
+		//glEnable(GL_FRAMEBUFFER_SRGB);
+
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LEQUAL);
-		glEnable(GL_LINE_SMOOTH);
+		glDepthFunc(GL_LESS);
 
 		glDisable(GL_SCISSOR_TEST);
 	}
