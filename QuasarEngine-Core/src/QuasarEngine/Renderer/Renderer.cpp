@@ -93,6 +93,7 @@ namespace QuasarEngine
 			glm::vec3 camera_position;
 			int usePointLight;
 			int useDirLight;
+			int prefilterLevels;
 			PointLight pointLights[4];
 			DirectionalLight dirLights[4];
 		};
@@ -107,8 +108,9 @@ namespace QuasarEngine
 			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3), offsetof(GlobalUniforms, camera_position), 0, 0, globalUniformsFlags},
 			{"usePointLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, usePointLight), 0, 0, globalUniformsFlags},
 			{"useDirLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, useDirLight), 0, 0, globalUniformsFlags},
+			{"prefilterLevels", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, prefilterLevels), 0, 0, globalUniformsFlags},
 			{"pointLights", Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4, offsetof(GlobalUniforms, pointLights), 0, 0, globalUniformsFlags},
-			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(GlobalUniforms, dirLights), 0, 0, globalUniformsFlags},
+			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(GlobalUniforms, dirLights), 0, 0, globalUniformsFlags}
 		};
 
 		struct ObjectUniforms {
@@ -148,7 +150,11 @@ namespace QuasarEngine
 			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+
+			{"irradiance_map", 1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"prefilter_map", 1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"brdf_lut", 1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
 		};
 
 		desc.blendMode = Shader::BlendMode::None;
@@ -794,6 +800,8 @@ namespace QuasarEngine
 		m_SceneData.m_Shader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
 		m_SceneData.m_Shader->SetUniform("camera_position", &camera.GetPosition(), sizeof(glm::vec3));
 
+		m_SceneData.m_Shader->SetUniform("prefilterLevels", &m_SceneData.m_SkyboxHDR->GetSettings().prefilterMipLevels, sizeof(int));
+
 		m_SceneData.nDirs = 0;
 		m_SceneData.nPts = 0;
 
@@ -878,6 +886,10 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness));
 			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic));
 			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(TextureType::AO));
+
+			m_SceneData.m_Shader->SetTexture("irradiance_map", m_SceneData.m_SkyboxHDR->GetIrradianceMap().get());
+			m_SceneData.m_Shader->SetTexture("prefilter_map", m_SceneData.m_SkyboxHDR->GetPrefilterMap().get());
+			m_SceneData.m_Shader->SetTexture("brdf_lut", m_SceneData.m_SkyboxHDR->GetBrdfLUT().get());
 
 			if (!m_SceneData.m_Shader->UpdateObject(&material)) continue;
 

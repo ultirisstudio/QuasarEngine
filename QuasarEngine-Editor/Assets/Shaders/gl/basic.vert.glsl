@@ -32,6 +32,8 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 	
 	int usePointLight;
 	int useDirLight;
+
+    int prefilterLevels;
 	
 	PointLight pointLights[NR_POINT_LIGHTS];
 	DirLight dirLights[NR_DIR_LIGHTS];

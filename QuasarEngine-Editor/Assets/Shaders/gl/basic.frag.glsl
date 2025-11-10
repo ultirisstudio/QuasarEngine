@@ -29,6 +29,8 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 	
 	int usePointLight;
 	int useDirLight;
+
+    int prefilterLevels;
 	
 	PointLight pointLights[NR_POINT_LIGHTS];
 	DirLight dirLights[NR_DIR_LIGHTS];
@@ -54,6 +56,10 @@ uniform sampler2D normal_texture;
 uniform sampler2D roughness_texture;
 uniform sampler2D metallic_texture;
 uniform sampler2D ao_texture;
+
+uniform samplerCube irradiance_map;
+uniform samplerCube prefilter_map;
+uniform sampler2D brdf_lut;
 
 const float PI = 3.14159265359;
 
@@ -206,11 +212,12 @@ vec3 calculateDirLightReflectance(DirLight light, vec3 V, vec3 N, vec3 F0, vec3 
 void main()
 {
 	vec4 albedo = getAlbedo();
+    vec3 albedo_color = albedo.rgb;
+    float albedo_alpha = albedo.a;
 	
-	if (albedo.a < 0.5)
+	if (albedo_alpha < 0.5)
 		discard;
 	
-	vec3 baseColor = albedo.rgb;
     float metallic = getMetallic();
     float roughness = clamp(getRoughness(), 0.05, 1.0);
     float ao = getAO();
@@ -219,16 +226,16 @@ void main()
     vec3 V = normalize(global_ubo.camera_position - inWorldPos);
     vec3 R = reflect(-V, N); 
 	
-    vec3 F0 = mix(vec3(0.04), baseColor, metallic);
+    vec3 F0 = mix(vec3(0.04), albedo_color, metallic);
 	
 	vec3 Lo = vec3(0.0);
     for(int i = 0; i < global_ubo.usePointLight; ++i)
     {
-        Lo += calculatePointLightReflectance(global_ubo.pointLights[i], V, N, F0, baseColor, roughness, metallic);
+        Lo += calculatePointLightReflectance(global_ubo.pointLights[i], V, N, F0, albedo_color, roughness, metallic);
     }
     for(int i = 0; i < global_ubo.useDirLight; ++i)
     {
-        Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, baseColor, roughness, metallic);
+        Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, albedo_color, roughness, metallic);
     }
 	
 	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
@@ -236,20 +243,23 @@ void main()
 	vec3 kS = F; 
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
-	
-	vec3 ambientColor = vec3(0.25, 0.26, 0.29);
-	vec3 diffuse = ambientColor * baseColor;
-	
-	vec3 specular = vec3(0.0);
-	
-	vec3 ambient = (kD * diffuse + specular) * ao;
-	
-	vec3 result = ambient + Lo;
-	
-	// HDR tonemapping
-	result = result / (result + vec3(1.0));
-	// gamma correct
-	// result = pow(result, vec3(1.0/2.2)); 
 
-	outColor = vec4(result, 1.0); //albedo.a
+    vec3 irradiance = texture(irradiance_map, N).rgb;
+    vec3 diffuse      = irradiance * albedo_color;
+
+    vec3 prefilteredColor = textureLod(prefilter_map, R,  roughness * global_ubo.prefilterLevels).rgb;    
+    vec2 brdf  = texture(brdf_lut, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+    vec3 ambient = (kD * diffuse + specular) * ao;
+    
+    vec3 result = ambient + Lo;
+
+    // HDR tonemapping
+    result = result / (result + vec3(1.0));
+    // gamma correct
+    //result = pow(result, vec3(1.0/2.2)); 
+
+    outColor = vec4(result, 1.0);
+    //outColor = vec4(irradiance, 1.0);
 }

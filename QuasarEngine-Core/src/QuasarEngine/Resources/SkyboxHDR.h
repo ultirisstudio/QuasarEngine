@@ -1,52 +1,3 @@
-/*#pragma once
-
-#include <QuasarEngine/Resources/Mesh.h>
-#include <QuasarEngine/Resources/Materials/CubeMap.h>
-#include <QuasarEngine/Shader/Shader.h>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-namespace QuasarEngine
-{
-	class SkyboxHDR
-	{
-	private:
-		std::shared_ptr<Mesh> m_CubeMesh;
-		std::shared_ptr<Mesh> m_QuadMesh;
-
-		std::shared_ptr<Shader> m_EquirectangularToCubemapShader;
-		std::shared_ptr<Shader> m_IrradianceShader;
-		std::shared_ptr<Shader> m_BackgroundShader;
-		std::shared_ptr<Shader> m_PrefilterShader;
-		std::shared_ptr<Shader> m_BrdfShader;
-
-		unsigned int hdrTexture;
-		unsigned int envCubemap;
-		unsigned int irradianceMap;
-		unsigned int brdfLUTTexture;
-		unsigned int prefilterMap;
-
-		unsigned int quadVAO = 0;
-		unsigned int quadVBO;
-
-		void RenderQuad();
-	public:
-		SkyboxHDR();
-
-		void BindCubeMap();
-
-		void BindIrradianceMap();
-
-		void BindPrefilterMap();
-
-		void BindBrdfLUT();
-
-		void Draw(const glm::mat4& view, const glm::mat4& projection);
-	};
-}
-*/
-
 #pragma once
 
 #include <memory>
@@ -73,10 +24,11 @@ namespace QuasarEngine
     public:
         struct Settings {
             std::string hdrPath = "Assets/HDR/kloofendal_48d_partly_cloudy_puresky_4k.hdr";
-            uint32_t    envRes = 1024;
-            uint32_t    irradianceRes = 32;
-            uint32_t    prefilterRes = 1024;
-            uint32_t    brdfRes = 512;
+            uint32_t envRes = 1024;
+            uint32_t irradianceRes = 32;
+            uint32_t prefilterRes = 1024;
+            uint32_t brdfRes = 512;
+			uint32_t prefilterMipLevels = 5;
         };
 
         explicit SkyboxHDR(const Settings& s = {});
@@ -93,6 +45,8 @@ namespace QuasarEngine
         void BindIrradianceMap(int unit = 0) const { if (m_IrradianceMap)  m_IrradianceMap->Bind(unit); }
         void BindPrefilterMap(int unit = 0)  const { if (m_PrefilterMap)   m_PrefilterMap->Bind(unit); }
         void BindBrdfLUT(int unit = 0)       const { if (m_BrdfLUT)        m_BrdfLUT->Bind(unit); }
+
+		Settings& GetSettings() { return m_Settings; }
 
     private:
         static const char* ExtFor(RendererAPI::API api, Shader::ShaderStageType s);

@@ -16,18 +16,18 @@ namespace QuasarEngine {
 	{
 		switch (type)
 		{
-		case ShaderDataType::Float:    return 4;
-		case ShaderDataType::Vec2:   return 4 * 2;
-		case ShaderDataType::Vec3:   return 4 * 3;
-		case ShaderDataType::Vec4:   return 4 * 4;
-		case ShaderDataType::Mat3:     return 4 * 3 * 3;
-		case ShaderDataType::Mat4:     return 4 * 4 * 4;
-		case ShaderDataType::Int:      return 4;
-		case ShaderDataType::Int4:     return 4 * 4;
-		case ShaderDataType::IVec2:     return 4 * 2;
-		case ShaderDataType::IVec3:     return 4 * 3;
-		case ShaderDataType::IVec4:     return 4 * 4;
-		case ShaderDataType::Bool:     return 1;
+		case ShaderDataType::Float:		return 4;
+		case ShaderDataType::Vec2:		return 4 * 2;
+		case ShaderDataType::Vec3:		return 4 * 3;
+		case ShaderDataType::Vec4:		return 4 * 4;
+		case ShaderDataType::Mat3:		return 4 * 3 * 3;
+		case ShaderDataType::Mat4:		return 4 * 4 * 4;
+		case ShaderDataType::Int:		return 4;
+		case ShaderDataType::Int4:		return 4 * 4;
+		case ShaderDataType::IVec2:		return 4 * 2;
+		case ShaderDataType::IVec3:		return 4 * 3;
+		case ShaderDataType::IVec4:		return 4 * 4;
+		case ShaderDataType::Bool:		return 1;
 		}
 
 		return 0;
