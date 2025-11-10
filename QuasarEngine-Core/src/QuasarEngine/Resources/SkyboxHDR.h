@@ -23,7 +23,15 @@ namespace QuasarEngine
     {
     public:
         struct Settings {
+<<<<<<< HEAD
+<<<<<<< HEAD
             std::string hdrPath = "Assets/HDR/kloofendal_48d_partly_cloudy_puresky_4k.hdr";
+=======
+            std::string hdrPath = "Assets/HDR/NightSkyHDRI008_16K_HDR.hdr";
+>>>>>>> parent of 6e4f8d6 (Update)
+=======
+            std::string hdrPath = "Assets/HDR/kloofendal_48d_partly_cloudy_puresky_4k.hdr";
+>>>>>>> parent of 97a81a4 (Update)
             uint32_t envRes = 1024;
             uint32_t irradianceRes = 32;
             uint32_t prefilterRes = 1024;

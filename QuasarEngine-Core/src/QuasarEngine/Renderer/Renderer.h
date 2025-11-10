@@ -27,7 +27,7 @@ namespace QuasarEngine
 			Scene* m_Scene;
 
 			std::shared_ptr<Shader> m_Shader;
-			std::shared_ptr<Shader> m_PhysicDebugShader;
+			//std::shared_ptr<Shader> m_PhysicDebugShader;
 			std::shared_ptr<Shader> m_TerrainShader;
 			std::shared_ptr<Shader> m_SkinnedShader;
 
@@ -55,6 +55,8 @@ namespace QuasarEngine
 		void RenderSkybox(BaseCamera& camera);
 		void RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi);
 		void EndScene();
+
+		void CollectLights(Scene& scene);
 
 		Scene* GetScene();
 

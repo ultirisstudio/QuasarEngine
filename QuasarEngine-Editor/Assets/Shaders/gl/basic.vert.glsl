@@ -15,7 +15,6 @@ struct PointLight {
     float attenuation;
     float power;
 };
-#define NR_POINT_LIGHTS 4
 
 struct DirLight {    
     vec3 direction;
@@ -23,7 +22,9 @@ struct DirLight {
 	
     float power;
 };
-#define NR_DIR_LIGHTS 4
+
+#define NR_POINT_LIGHTS 4
+#define NR_DIR_LIGHTS   4
 
 layout(std140, binding = 0) uniform global_uniform_object  {
     mat4 view;
@@ -33,10 +34,20 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 	int usePointLight;
 	int useDirLight;
 
+<<<<<<< HEAD
+    int  usePointLight;
+    int  useDirLight;
+
+    int  prefilterLevels;
+
+    PointLight pointLights[NR_POINT_LIGHTS];
+    DirLight   dirLights[NR_DIR_LIGHTS];
+=======
     int prefilterLevels;
 	
 	PointLight pointLights[NR_POINT_LIGHTS];
 	DirLight dirLights[NR_DIR_LIGHTS];
+>>>>>>> parent of 6e4f8d6 (Update)
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object  {

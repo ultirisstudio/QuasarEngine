@@ -10,6 +10,7 @@
 #include <QuasarEngine/Core/Application.h>
 #include <QuasarEngine/Core/Input.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
+#include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 
@@ -66,6 +67,10 @@ namespace QuasarEngine
 	{
 		if (!m_EditorFrameBuffer) return;
 
+		Renderer::Instance().BeginScene(scene);
+
+		Renderer::Instance().CollectLights(scene);
+
 		m_EditorFrameBuffer->Bind();
 		const auto& spec = m_EditorFrameBuffer->GetSpecification();
 		RenderCommand::Instance().SetViewport(0, 0, spec.Width, spec.Height);
@@ -76,7 +81,6 @@ namespace QuasarEngine
 		m_EditorFrameBuffer->ClearColor(0.1f, 0.8f, 0.1f, 1.0f);
 		m_EditorFrameBuffer->ClearDepth(1.0f);
 
-		Renderer::Instance().BeginScene(scene);
 		Renderer::Instance().RenderSkybox(camera);
 		Renderer::Instance().Render(camera);
 		//if (m_ShowGrid) Renderer::Instance().RenderDebug(camera);
@@ -295,6 +299,8 @@ namespace QuasarEngine
 				ImGui::Image(id, vpSize, uv0, uv1);
 			}*/
 			m_EditorFrameBuffer->Resolve();
+			//if (void* handle = Renderer::Instance().m_SceneData.m_DirShadowFBO[0]->GetDepthAttachment()) {
+			//if (auto& texture = Renderer::Instance().m_SceneData.m_DirShadowFBO[0]->GetDepthAttachmentTexture()) {
 			if (void* handle = m_EditorFrameBuffer->GetColorAttachment(0)) {
 				ImVec2 uv0 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 0, 1 } : ImVec2{ 0, 0 };
 				ImVec2 uv1 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 1, 0 } : ImVec2{ 1, 1 };

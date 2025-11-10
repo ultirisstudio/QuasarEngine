@@ -30,10 +30,20 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 	int usePointLight;
 	int useDirLight;
 
+<<<<<<< HEAD
+    int  usePointLight;
+    int  useDirLight;
+
+    int  prefilterLevels;
+
+    PointLight pointLights[NR_POINT_LIGHTS];
+    DirLight   dirLights[NR_DIR_LIGHTS];
+=======
     int prefilterLevels;
 	
 	PointLight pointLights[NR_POINT_LIGHTS];
 	DirLight dirLights[NR_DIR_LIGHTS];
+>>>>>>> parent of 6e4f8d6 (Update)
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object  {
@@ -59,7 +69,11 @@ uniform sampler2D ao_texture;
 
 uniform samplerCube irradiance_map;
 uniform samplerCube prefilter_map;
+<<<<<<< HEAD
+uniform sampler2D   brdf_lut;
+=======
 uniform sampler2D brdf_lut;
+>>>>>>> parent of 6e4f8d6 (Update)
 
 const float PI = 3.14159265359;
 
@@ -158,10 +172,18 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
+<<<<<<< HEAD
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0)
+                * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+vec3 calculatePointLightReflectance(PointLight light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic, int lightIndex)
+=======
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 } 
 
 vec3 calculatePointLightReflectance(PointLight light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic)
+>>>>>>> parent of 6e4f8d6 (Update)
 {
     vec3 L = normalize(light.position - inWorldPos);
     vec3 H = normalize(V + L);
@@ -188,18 +210,30 @@ vec3 calculatePointLightReflectance(PointLight light, vec3 V, vec3 N, vec3 F0, v
 
 vec3 calculateDirLightReflectance(DirLight light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic)
 {
+    float power  = max(light.power, 1.0);
+    vec3  color  = max(light.color, vec3(0.0001));
+
     vec3 L = normalize(light.direction);
     vec3 H = normalize(V + L);
-    vec3 radiance = light.color * vec3(light.power);
+    vec3 radiance = color * power;
 
     float NDF = DistributionGGX(N, H, roughness);
     float G   = GeometrySmith(N, V, L, roughness);
+<<<<<<< HEAD
+    vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0) + 0.0001;
+    vec3 specular     = numerator / denominator;
+
+=======
     vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
            
     vec3 numerator    = NDF * G * F; 
     float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
     vec3 specular = numerator / denominator;
     
+>>>>>>> parent of 6e4f8d6 (Update)
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
     kD *= 1.0 - metallic;	  
@@ -227,6 +261,17 @@ void main()
     vec3 R = reflect(-V, N); 
 	
     vec3 F0 = mix(vec3(0.04), albedo_color, metallic);
+<<<<<<< HEAD
+
+    vec3 Lo = vec3(0.0);
+
+    for (int i = 0; i < global_ubo.usePointLight; ++i) {
+        Lo += calculatePointLightReflectance(global_ubo.pointLights[i], V, N, F0, albedo_color, roughness, metallic, i);
+    }
+
+    for (int i = 0; i < global_ubo.useDirLight; ++i) {
+        Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, albedo_color, roughness, metallic, i);
+=======
 	
 	vec3 Lo = vec3(0.0);
     for(int i = 0; i < global_ubo.usePointLight; ++i)
@@ -236,6 +281,7 @@ void main()
     for(int i = 0; i < global_ubo.useDirLight; ++i)
     {
         Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, albedo_color, roughness, metallic);
+>>>>>>> parent of 6e4f8d6 (Update)
     }
 	
 	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);

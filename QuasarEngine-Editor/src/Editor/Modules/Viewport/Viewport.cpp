@@ -29,18 +29,8 @@ namespace QuasarEngine
 		if (!m_ViewportFrameBuffer)
 			return;
 
-		m_ViewportFrameBuffer->Bind();
-
-		const auto& spec = m_ViewportFrameBuffer->GetSpecification();
-		RenderCommand::Instance().SetViewport(0, 0, spec.Width, spec.Height);
-
-		RenderCommand::Instance().ClearColor(m_ClearColor);
-		RenderCommand::Instance().Clear();
-
 		if (scene.HasPrimaryCamera())
 		{
-			Renderer::Instance().BeginScene(scene);
-
 			Camera& camera = scene.GetPrimaryCamera();
 			const auto& spec = m_ViewportFrameBuffer->GetSpecification();
 			const int fbW = (int)spec.Width;
@@ -53,14 +43,24 @@ namespace QuasarEngine
 			else
 				dpiScale = ImGui::GetIO().DisplayFramebufferScale.x;
 
+			Renderer::Instance().BeginScene(scene);
+
+			Renderer::Instance().CollectLights(scene);
+
+			m_ViewportFrameBuffer->Bind();
+
+			RenderCommand::Instance().SetViewport(0, 0, spec.Width, spec.Height);
+
+			RenderCommand::Instance().ClearColor(m_ClearColor);
+			RenderCommand::Instance().Clear();
+
 			Renderer::Instance().RenderSkybox(camera);
 			Renderer::Instance().Render(camera);
 			//Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
-
 			Renderer::Instance().EndScene();
-		}
 
-		m_ViewportFrameBuffer->Unbind();
+			m_ViewportFrameBuffer->Unbind();
+		}
 	}
 
 	void Viewport::ResizeIfNeeded(Scene& scene, const ImVec2& panelSize)
@@ -117,7 +117,7 @@ namespace QuasarEngine
 			}
 		}
 
-		QuasarEngine::UIDebugOverlay::Instance().DrawImGui(vpMin);
+		//QuasarEngine::UIDebugOverlay::Instance().DrawImGui(vpMin);
 
 		ImGui::End();
 		ImGui::PopStyleVar();

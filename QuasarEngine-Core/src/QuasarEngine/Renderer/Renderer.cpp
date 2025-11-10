@@ -56,7 +56,6 @@ namespace QuasarEngine
 			}
 			};
 
-
 		Shader::ShaderDescription desc;
 
 		const auto api = RendererAPI::GetAPI();
@@ -91,14 +90,19 @@ namespace QuasarEngine
 			glm::mat4 view;
 			glm::mat4 projection;
 			glm::vec3 camera_position;
+
 			int usePointLight;
 			int useDirLight;
+
 			int prefilterLevels;
+
 			PointLight pointLights[4];
 			DirectionalLight dirLights[4];
 		};
 		static_assert(offsetof(GlobalUniforms, pointLights) % 16 == 0, "pointLights offset must be 16-aligned");
 		static_assert(offsetof(GlobalUniforms, dirLights) % 16 == 0, "dirLights offset must be 16-aligned");
+
+		static_assert(sizeof(GlobalUniforms) % 16 == 0, "GlobalUniforms must be 16-aligned");
 
 		constexpr Shader::ShaderStageFlags globalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
@@ -106,14 +110,21 @@ namespace QuasarEngine
 			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(GlobalUniforms, view), 0, 0, globalUniformsFlags},
 			{"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(GlobalUniforms, projection), 0, 0, globalUniformsFlags},
 			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3), offsetof(GlobalUniforms, camera_position), 0, 0, globalUniformsFlags},
+			
 			{"usePointLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, usePointLight), 0, 0, globalUniformsFlags},
 			{"useDirLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, useDirLight), 0, 0, globalUniformsFlags},
+
 			{"prefilterLevels", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, prefilterLevels), 0, 0, globalUniformsFlags},
+			
 			{"pointLights", Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4, offsetof(GlobalUniforms, pointLights), 0, 0, globalUniformsFlags},
+<<<<<<< HEAD
+			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(GlobalUniforms, dirLights), 0, 0, globalUniformsFlags},
+=======
 			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(GlobalUniforms, dirLights), 0, 0, globalUniformsFlags}
+>>>>>>> parent of 6e4f8d6 (Update)
 		};
 
-		struct ObjectUniforms {
+		struct alignas(16) ObjectUniforms {
 			glm::mat4 model;
 
 			glm::vec4 albedo;
@@ -127,6 +138,8 @@ namespace QuasarEngine
 			int has_metallic_texture;
 			int has_ao_texture;
 		};
+
+		static_assert(sizeof(ObjectUniforms) % 16 == 0, "ObjectUniforms must be 16-aligned");
 
 		constexpr Shader::ShaderStageFlags objectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
@@ -154,7 +167,11 @@ namespace QuasarEngine
 
 			{"irradiance_map", 1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"prefilter_map", 1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+<<<<<<< HEAD
+			{"brdf_lut", 1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+=======
 			{"brdf_lut", 1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+>>>>>>> parent of 6e4f8d6 (Update)
 		};
 
 		desc.blendMode = Shader::BlendMode::None;
@@ -170,7 +187,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_Shader = Shader::Create(desc);
 
-		Shader::ShaderDescription phyDebDesc;
+		/*Shader::ShaderDescription phyDebDesc;
 
 		std::string phyDebVertExt;
 		std::string phyDebFragExt;
@@ -243,7 +260,7 @@ namespace QuasarEngine
 		phyDebDesc.enableDynamicScissor = true;
 		phyDebDesc.enableDynamicLineWidth = false;
 
-		m_SceneData.m_PhysicDebugShader = Shader::Create(phyDebDesc);
+		m_SceneData.m_PhysicDebugShader = Shader::Create(phyDebDesc);*/
 
 		Shader::ShaderDescription terrainDesc;
 
@@ -287,8 +304,10 @@ namespace QuasarEngine
 			glm::mat4 view;
 			glm::mat4 projection;
 			glm::vec3 camera_position;
+
 			int usePointLight;
 			int useDirLight;
+
 			PointLight pointLights[4];
 			DirectionalLight dirLights[4];
 		};
@@ -305,8 +324,10 @@ namespace QuasarEngine
 			{"view",            Shader::ShaderUniformType::Mat4, sizeof(glm::mat4),                     offsetof(TerrainGlobalUniforms, view),            0, 0, TerrainGlobalStages},
 			{"projection",      Shader::ShaderUniformType::Mat4, sizeof(glm::mat4),                     offsetof(TerrainGlobalUniforms, projection),      0, 0, TerrainGlobalStages},
 			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3),                     offsetof(TerrainGlobalUniforms, camera_position), 0, 0, TerrainGlobalStages},
+
 			{"usePointLight",   Shader::ShaderUniformType::Int,  sizeof(int),                           offsetof(TerrainGlobalUniforms, usePointLight),   0, 0, TerrainGlobalStages},
 			{"useDirLight",     Shader::ShaderUniformType::Int,  sizeof(int),                           offsetof(TerrainGlobalUniforms, useDirLight),     0, 0, TerrainGlobalStages},
+
 			{"pointLights",     Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4,             offsetof(TerrainGlobalUniforms, pointLights),     0, 0, TerrainGlobalStages},
 			{"dirLights",       Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4,       offsetof(TerrainGlobalUniforms, dirLights),       0, 0, TerrainGlobalStages},
 		};
@@ -409,8 +430,12 @@ namespace QuasarEngine
 			glm::mat4 view;
 			glm::mat4 projection;
 			glm::vec3 camera_position;
+
 			int usePointLight;
 			int useDirLight;
+
+			int prefilterLevels;
+
 			PointLight pointLights[4];
 			DirectionalLight dirLights[4];
 		};
@@ -421,10 +446,18 @@ namespace QuasarEngine
 			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, view), 0, 0, SkinnedGlobalStages},
 			{"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, projection), 0, 0, SkinnedGlobalStages},
 			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3), offsetof(SkinnedGlobalUniforms, camera_position), 0, 0, SkinnedGlobalStages},
+
 			{"usePointLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, usePointLight), 0, 0, SkinnedGlobalStages},
 			{"useDirLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, useDirLight), 0, 0, SkinnedGlobalStages},
+
+			{"prefilterLevels", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, prefilterLevels), 0, 0, SkinnedGlobalStages},
+
 			{"pointLights", Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4, offsetof(SkinnedGlobalUniforms, pointLights), 0, 0, SkinnedGlobalStages},
+<<<<<<< HEAD
+			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(SkinnedGlobalUniforms, dirLights), 0, 0, SkinnedGlobalStages}
+=======
 			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(SkinnedGlobalUniforms, dirLights), 0, 0, SkinnedGlobalStages},
+>>>>>>> parent of 6e4f8d6 (Update)
 		};
 
 		struct alignas(16) SkinnedObjectUniforms {
@@ -466,7 +499,15 @@ namespace QuasarEngine
 			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+<<<<<<< HEAD
+			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+
+			{"irradiance_map", 1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"prefilter_map", 1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"brdf_lut", 1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+=======
 			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)}
+>>>>>>> parent of 6e4f8d6 (Update)
 		};
 
 		skinnedDesc.blendMode = Shader::BlendMode::None;
@@ -495,8 +536,9 @@ namespace QuasarEngine
 			"Assets/Textures/Skybox/back.jpg"     // -Z
 		});*/
 
-		m_SceneData.m_SkyboxHDR = std::make_shared<SkyboxHDR>();
-		//m_SceneData.m_SkyboxHDR->LoadFromHDR("Assets/HDR/kloofendal_43d_clear_puresky_4k.hdr");
+		SkyboxHDR::Settings skyboxSettings;
+		skyboxSettings.hdrPath = "Assets/HDR/kloofendal_48d_partly_cloudy_puresky_4k.hdr";
+		m_SceneData.m_SkyboxHDR = std::make_shared<SkyboxHDR>(skyboxSettings);
 
 		m_SceneData.m_ScriptSystem = std::make_unique<ScriptSystem>();
 		m_SceneData.m_ScriptSystem->Initialize();
@@ -505,6 +547,8 @@ namespace QuasarEngine
 		m_SceneData.m_DirectionalsBuffer.fill(DirectionalLight());
 
 		m_SceneData.m_UI = std::make_unique<UISystem>();
+<<<<<<< HEAD
+=======
 		
 		struct UISharedState {
 			int quality = 1;
@@ -747,6 +791,7 @@ namespace QuasarEngine
 		tooltip->Show("Astuce: Tab pour naviguer, Espace/Entree pour activer.", 28.f, 80.f);
 
 		m_SceneData.m_UI->SetRoot(root);
+>>>>>>> parent of 6e4f8d6 (Update)
 	}
 
 	void Renderer::Shutdown()
@@ -754,7 +799,7 @@ namespace QuasarEngine
 		//m_SceneData.m_Skybox.reset();
 		m_SceneData.m_SkyboxHDR.reset();
 		m_SceneData.m_Shader.reset();
-		m_SceneData.m_PhysicDebugShader.reset();
+		//m_SceneData.m_PhysicDebugShader.reset();
 		m_SceneData.m_SkinnedShader.reset();
 		m_SceneData.m_TerrainShader.reset();
 		m_SceneData.m_UI.reset();
@@ -767,7 +812,11 @@ namespace QuasarEngine
 	}
 
 	void Renderer::Render(BaseCamera& camera)
+<<<<<<< HEAD
+	{		
+=======
 	{
+>>>>>>> parent of 6e4f8d6 (Update)
 		auto FindAnimatorForEntity = [&](Entity e) -> AnimationComponent*
 			{
 				if (e.HasComponent<AnimationComponent>())
@@ -802,6 +851,8 @@ namespace QuasarEngine
 
 		m_SceneData.m_Shader->SetUniform("prefilterLevels", &m_SceneData.m_SkyboxHDR->GetSettings().prefilterMipLevels, sizeof(int));
 
+<<<<<<< HEAD
+=======
 		m_SceneData.nDirs = 0;
 		m_SceneData.nPts = 0;
 
@@ -826,6 +877,7 @@ namespace QuasarEngine
 			}
 		}
 
+>>>>>>> parent of 6e4f8d6 (Update)
 		m_SceneData.m_Shader->SetUniform("usePointLight", &m_SceneData.nPts, sizeof(int));
 		m_SceneData.m_Shader->SetUniform("useDirLight", &m_SceneData.nDirs, sizeof(int));
 
@@ -909,6 +961,8 @@ namespace QuasarEngine
 		m_SceneData.m_SkinnedShader->SetUniform("usePointLight", &m_SceneData.nPts, sizeof(int));
 		m_SceneData.m_SkinnedShader->SetUniform("useDirLight", &m_SceneData.nDirs, sizeof(int));
 
+		m_SceneData.m_SkinnedShader->SetUniform("prefilterLevels", &m_SceneData.m_SkyboxHDR->GetSettings().prefilterMipLevels, sizeof(int));
+
 		m_SceneData.m_SkinnedShader->SetUniform("pointLights", m_SceneData.m_PointsBuffer.data(), sizeof(PointLight) * 4);
 		m_SceneData.m_SkinnedShader->SetUniform("dirLights", m_SceneData.m_DirectionalsBuffer.data(), sizeof(DirectionalLight) * 4);
 
@@ -966,6 +1020,10 @@ namespace QuasarEngine
 			m_SceneData.m_SkinnedShader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness));
 			m_SceneData.m_SkinnedShader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic));
 			m_SceneData.m_SkinnedShader->SetTexture("ao_texture", material.GetTexture(TextureType::AO));
+
+			m_SceneData.m_SkinnedShader->SetTexture("irradiance_map", m_SceneData.m_SkyboxHDR->GetIrradianceMap().get());
+			m_SceneData.m_SkinnedShader->SetTexture("prefilter_map", m_SceneData.m_SkyboxHDR->GetPrefilterMap().get());
+			m_SceneData.m_SkinnedShader->SetTexture("brdf_lut", m_SceneData.m_SkyboxHDR->GetBrdfLUT().get());
 
 			const AnimationComponent* anim = FindAnimatorForEntity(entity);
 			if (anim && !anim->GetFinalBoneMatrices().empty()) {
@@ -1114,7 +1172,7 @@ namespace QuasarEngine
 
 	void Renderer::RenderDebug(BaseCamera& camera)
 	{
-		if (PhysicEngine::Instance().GetDebugVertexArray())
+		/*if (PhysicEngine::Instance().GetDebugVertexArray())
 		{
 			glm::mat4 viewMatrix = camera.getViewMatrix();
 			glm::mat4 projectionMatrix = camera.getProjectionMatrix();
@@ -1135,7 +1193,7 @@ namespace QuasarEngine
 			RenderCommand::Instance().DrawArrays(DrawMode::LINES, static_cast<uint32_t>(PhysicEngine::Instance().GetDebugVertexArray()->GetVertexBuffers()[0]->GetSize() / sizeof(float) / 6));
 
 			m_SceneData.m_PhysicDebugShader->Unuse();
-		}
+		}*/
 	}
 
 	void Renderer::RenderSkybox(BaseCamera& camera)
@@ -1173,6 +1231,50 @@ namespace QuasarEngine
 	void Renderer::EndScene()
 	{
 
+	}
+
+	void Renderer::CollectLights(Scene& scene)
+	{
+		m_SceneData.nPts = 0;
+		m_SceneData.nDirs = 0;
+
+		for (auto e : scene.GetAllEntitiesWith<TransformComponent, LightComponent>())
+		{
+			Entity ent{ e, scene.GetRegistry() };
+			const auto& tr = ent.GetComponent<TransformComponent>();
+			const auto& lc = ent.GetComponent<LightComponent>();
+
+			if (lc.lightType == LightComponent::LightType::DIRECTIONAL)
+			{
+				if (m_SceneData.nDirs < 4) {
+					DirectionalLight L{};
+					glm::vec3 dir = glm::vec3(0.0f, -1.0f, 0.0f);
+					if (glm::length2(tr.Rotation) > 0.0f) {
+						const glm::vec3 eulDeg = tr.Rotation;
+						const glm::quat q = glm::quat(eulDeg);
+						dir = glm::normalize(q * glm::vec3(0.0f, 0.0f, -1.0f));
+					}
+					L.direction = dir;
+					L.color = lc.directional_light.color;
+					L.power = lc.directional_light.power;
+					m_SceneData.m_DirectionalsBuffer[m_SceneData.nDirs++] = L;
+				}
+			}
+			else if (lc.lightType == LightComponent::LightType::POINT)
+			{
+				if (m_SceneData.nPts < 4) {
+					PointLight L{};
+					L.position = glm::vec3(tr.Position);
+					L.color = lc.point_light.color;
+					L.attenuation = lc.point_light.attenuation;
+					L.power = lc.point_light.power;
+					m_SceneData.m_PointsBuffer[m_SceneData.nPts++] = L;
+				}
+			}
+		}
+
+		for (int i = m_SceneData.nDirs; i < 4; ++i) m_SceneData.m_DirectionalsBuffer[i] = DirectionalLight{};
+		for (int i = m_SceneData.nPts; i < 4; ++i) m_SceneData.m_PointsBuffer[i] = PointLight{};
 	}
 
 	Scene* Renderer::GetScene()
