@@ -2,6 +2,8 @@
 #include "OpenGLBuffer.h"
 
 #include <glad/glad.h>
+#include <cstring>
+#include <stdexcept>
 
 #include <QuasarEngine/Core/Logger.h>
 
@@ -10,16 +12,17 @@ namespace QuasarEngine
 	OpenGLUniformBuffer::OpenGLUniformBuffer(size_t size, uint32_t binding)
 		: m_Size(size), m_Binding(binding)
 	{
-		if (size > 0) {
+		m_ID = 0;
+		if (m_Size > 0) {
 			glCreateBuffers(1, &m_ID);
-			glNamedBufferData(m_ID, size, nullptr, GL_DYNAMIC_DRAW);
-			glBindBufferBase(GL_UNIFORM_BUFFER, binding, m_ID);
+			glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
+			glBindBufferBase(GL_UNIFORM_BUFFER, m_Binding, m_ID);
 		}
 	}
 
 	OpenGLUniformBuffer::~OpenGLUniformBuffer()
 	{
-		glDeleteBuffers(1, &m_ID);
+		if (m_ID) glDeleteBuffers(1, &m_ID);
 	}
 
 	void OpenGLUniformBuffer::SetData(const void* data, size_t size)
@@ -37,6 +40,7 @@ namespace QuasarEngine
 
 		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 		glNamedBufferSubData(m_ID, 0, size, data);
+		glBindBufferBase(GL_UNIFORM_BUFFER, m_Binding, m_ID);
 	}
 
 	void OpenGLUniformBuffer::BindToShader(uint32_t programID, const std::string& blockName)
@@ -49,36 +53,37 @@ namespace QuasarEngine
 			return;
 		}
 		glUniformBlockBinding(programID, index, m_Binding);
+		glBindBufferBase(GL_UNIFORM_BUFFER, m_Binding, m_ID);
 	}
 
+	GLuint OpenGLUniformBuffer::GetID() const { return m_ID; }
 
-	GLuint OpenGLUniformBuffer::GetID() const
+	OpenGLVertexBuffer::OpenGLVertexBuffer()
+		: m_Size(0), m_Layout(), m_ID(0), m_IsPersistent(false), m_Mapped(nullptr)
 	{
-		return m_ID;
-	}
-
-	OpenGLVertexBuffer::OpenGLVertexBuffer() : m_Size(0), m_Layout(), m_ID(0)
-	{
-
 	}
 
 	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size)
-		: m_Size(size)
+		: m_Size(size), m_Layout(), m_ID(0), m_IsPersistent(false), m_Mapped(nullptr)
 	{
 		glCreateBuffers(1, &m_ID);
-		glNamedBufferData(m_ID, size, nullptr, GL_DYNAMIC_DRAW);
+		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 	}
 
 	OpenGLVertexBuffer::OpenGLVertexBuffer(const void* data, uint32_t size)
-		: m_Size(size)
+		: m_Size(size), m_Layout(), m_ID(0), m_IsPersistent(false), m_Mapped(nullptr)
 	{
 		glCreateBuffers(1, &m_ID);
-		glNamedBufferData(m_ID, size, data, GL_STATIC_DRAW);
+		glNamedBufferData(m_ID, m_Size, data, GL_STATIC_DRAW);
 	}
 
 	OpenGLVertexBuffer::~OpenGLVertexBuffer()
 	{
-		glDeleteBuffers(1, &m_ID);
+		if (m_IsPersistent && m_Mapped) {
+			glUnmapNamedBuffer(m_ID);
+			m_Mapped = nullptr;
+		}
+		if (m_ID) glDeleteBuffers(1, &m_ID);
 	}
 
 	void OpenGLVertexBuffer::Bind() const
@@ -95,11 +100,17 @@ namespace QuasarEngine
 	{
 		if (m_ID) glDeleteBuffers(1, &m_ID);
 		glCreateBuffers(1, &m_ID);
+
 		m_Size = size;
-		const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-		glNamedBufferStorage(m_ID, m_Size, nullptr, flags);
-		m_Mapped = glMapNamedBufferRange(m_ID, 0, m_Size, flags);
+		const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT;
+		glNamedBufferStorage(m_ID, m_Size, nullptr, storageFlags);
+
+		const GLbitfield mapFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+		m_Mapped = glMapNamedBufferRange(m_ID, 0, m_Size, mapFlags);
 		m_IsPersistent = (m_Mapped != nullptr);
+		if (!m_IsPersistent) {
+			Q_ERROR("Persistent map failed for VBO. Falling back to subdata.");
+		}
 	}
 
 	void OpenGLVertexBuffer::Upload(const void* data, uint32_t size)
@@ -112,6 +123,7 @@ namespace QuasarEngine
 
 		if (m_IsPersistent && m_Mapped) {
 			std::memcpy(m_Mapped, data, size);
+			glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		}
 		else {
 			glNamedBufferSubData(m_ID, 0, size, data);
@@ -125,7 +137,8 @@ namespace QuasarEngine
 		if (end > m_Size) Reserve(end);
 
 		if (m_IsPersistent && m_Mapped) {
-			std::memcpy(static_cast<std::byte*>(m_Mapped) + offset, data, size);
+			std::memcpy(static_cast<char*>(m_Mapped) + offset, data, size);
+			glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		}
 		else {
 			glNamedBufferSubData(m_ID, offset, size, data);
@@ -145,27 +158,32 @@ namespace QuasarEngine
 		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 	}
 
-	OpenGLIndexBuffer::OpenGLIndexBuffer() : m_Size(0), m_ID(0)
+	OpenGLIndexBuffer::OpenGLIndexBuffer()
+		: m_Size(0), m_ID(0), m_IsPersistent(false), m_Mapped(nullptr)
 	{
 	}
 
 	OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t size)
-		: m_Size(size)
+		: m_Size(size), m_ID(0), m_IsPersistent(false), m_Mapped(nullptr)
 	{
 		glCreateBuffers(1, &m_ID);
-		glNamedBufferData(m_ID, size, nullptr, GL_DYNAMIC_DRAW);
+		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 	}
 
 	OpenGLIndexBuffer::OpenGLIndexBuffer(const void* data, uint32_t size)
-		: m_Size(size)
+		: m_Size(size), m_ID(0), m_IsPersistent(false), m_Mapped(nullptr)
 	{
 		glCreateBuffers(1, &m_ID);
-		glNamedBufferData(m_ID, size, data, GL_STATIC_DRAW);
+		glNamedBufferData(m_ID, m_Size, data, GL_STATIC_DRAW);
 	}
 
 	OpenGLIndexBuffer::~OpenGLIndexBuffer()
 	{
-		glDeleteBuffers(1, &m_ID);
+		if (m_IsPersistent && m_Mapped) {
+			glUnmapNamedBuffer(m_ID);
+			m_Mapped = nullptr;
+		}
+		if (m_ID) glDeleteBuffers(1, &m_ID);
 	}
 
 	void OpenGLIndexBuffer::Bind() const
@@ -182,11 +200,17 @@ namespace QuasarEngine
 	{
 		if (m_ID) glDeleteBuffers(1, &m_ID);
 		glCreateBuffers(1, &m_ID);
+
 		m_Size = size;
-		const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-		glNamedBufferStorage(m_ID, m_Size, nullptr, flags);
-		m_Mapped = glMapNamedBufferRange(m_ID, 0, m_Size, flags);
+		const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT;
+		glNamedBufferStorage(m_ID, m_Size, nullptr, storageFlags);
+
+		const GLbitfield mapFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+		m_Mapped = glMapNamedBufferRange(m_ID, 0, m_Size, mapFlags);
 		m_IsPersistent = (m_Mapped != nullptr);
+		if (!m_IsPersistent) {
+			Q_ERROR("Persistent map failed for IBO. Falling back to subdata.");
+		}
 	}
 
 	void OpenGLIndexBuffer::Upload(const void* data, uint32_t size)
@@ -199,6 +223,7 @@ namespace QuasarEngine
 
 		if (m_IsPersistent && m_Mapped) {
 			std::memcpy(m_Mapped, data, size);
+			glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		}
 		else {
 			glNamedBufferSubData(m_ID, 0, size, data);
@@ -212,7 +237,8 @@ namespace QuasarEngine
 		if (end > m_Size) Reserve(end);
 
 		if (m_IsPersistent && m_Mapped) {
-			std::memcpy(static_cast<std::byte*>(m_Mapped) + offset, data, size);
+			std::memcpy(static_cast<char*>(m_Mapped) + offset, data, size);
+			glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		}
 		else {
 			glNamedBufferSubData(m_ID, offset, size, data);

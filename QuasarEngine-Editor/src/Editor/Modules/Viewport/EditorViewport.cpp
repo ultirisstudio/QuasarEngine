@@ -285,7 +285,7 @@ namespace QuasarEngine
 		m_EditorViewportBounds[1] = { vpMin.x + vpSize.x, vpMin.y + vpSize.y };
 
 		if (m_EditorFrameBuffer) {
-			m_EditorFrameBuffer->Resolve();
+			/*m_EditorFrameBuffer->Resolve();
 			auto tex = m_EditorFrameBuffer->GetColorAttachmentTexture(0);
 			ImTextureID id = (ImTextureID)(intptr_t)tex->GetHandle();
 			if (tex)
@@ -293,12 +293,13 @@ namespace QuasarEngine
 				ImVec2 uv0 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 0, 1 } : ImVec2{ 0, 0 };
 				ImVec2 uv1 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 1, 0 } : ImVec2{ 1, 1 };
 				ImGui::Image(id, vpSize, uv0, uv1);
-			}
-			/*if (void* handle = m_EditorFrameBuffer->GetColorAttachment(0)) {
+			}*/
+			m_EditorFrameBuffer->Resolve();
+			if (void* handle = m_EditorFrameBuffer->GetColorAttachment(0)) {
 				ImVec2 uv0 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 0, 1 } : ImVec2{ 0, 0 };
 				ImVec2 uv1 = (RendererAPI::GetAPI() == RendererAPI::API::OpenGL) ? ImVec2{ 1, 0 } : ImVec2{ 1, 1 };
 				ImGui::Image((ImTextureID)handle, vpSize, uv0, uv1);
-			}*/
+			}
 		}
 
 		ImGuizmo::SetOrthographic(false);
