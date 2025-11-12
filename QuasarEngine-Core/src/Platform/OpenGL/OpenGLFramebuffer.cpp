@@ -523,6 +523,22 @@ namespace QuasarEngine
         return m_ColorAttachmentViews[index];
     }
 
+    std::shared_ptr<Texture> OpenGLFramebuffer::GetDepthAttachmentTexture() const
+    {
+        if (!m_DepthIsTexture || m_DepthTexture == 0)
+            return {};
+
+        TextureSpecification spec{};
+        spec.width = m_Specification.Width;
+        spec.height = m_Specification.Height;
+        spec.internal_format = (m_DepthAttachmentSpecification.TextureFormat == FramebufferTextureFormat::DEPTH24STENCIL8)
+                                  ? TextureFormat::DEPTH24STENCIL8
+                                  : TextureFormat::DEPTH24;
+        spec.format = TextureFormat::DEPTH24;
+
+        return std::make_shared<OpenGLTexture2DView>(m_DepthTexture, GL_TEXTURE_2D, spec);;
+    }
+
     void OpenGLFramebuffer::UpdateDrawBuffers() const
     {
         const uint32_t nInternal = (uint32_t)m_ColorAttachments.size();

@@ -5,10 +5,10 @@
 #include <imgui/imgui_internal.h>
 
 #include <Editor/Editor.h>
-#include <Editor/SceneManager.h>
 
 #include <QuasarEngine/Core/Application.h>
 #include <QuasarEngine/Core/Input.h>
+#include <QuasarEngine/Scene/SceneManager.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>

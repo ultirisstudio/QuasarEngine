@@ -8,12 +8,12 @@
 #include <ctime>
 
 #include "imgui/imgui.h"
-#include "Editor/Importer/TextureConfigImporter.h"
-#include "Editor/Importer/TextureImporter.h"
 
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Asset/Asset.h>
 #include <QuasarEngine/Core/Logger.h>
+#include <QuasarEngine/Scene/Importer/TextureConfigImporter.h>
+#include <QuasarEngine/Scene/Importer/TextureImporter.h>
 
 #include "Editor/Resources/images_data.h"
 #include <imgui/imgui_internal.h>

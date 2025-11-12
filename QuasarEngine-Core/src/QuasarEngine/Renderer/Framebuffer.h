@@ -97,6 +97,7 @@ namespace QuasarEngine
         virtual void* GetDepthAttachment() const = 0;
 
         virtual std::shared_ptr<Texture> GetColorAttachmentTexture(uint32_t index) const = 0;
+        virtual std::shared_ptr<Texture> GetDepthAttachmentTexture() const = 0;
 
 		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
 

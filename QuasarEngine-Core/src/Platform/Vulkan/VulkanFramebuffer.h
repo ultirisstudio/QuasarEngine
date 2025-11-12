@@ -48,6 +48,7 @@ namespace QuasarEngine
         const std::vector<std::unique_ptr<VulkanImage>>& GetAttachments() const { return m_Attachments; }
 
         std::shared_ptr<Texture> GetColorAttachmentTexture(uint32_t index) const override { return nullptr; }
+        std::shared_ptr<Texture> GetDepthAttachmentTexture() const override { return nullptr; }
 
     private:
         void Cleanup();

@@ -9,7 +9,7 @@
 #include <QuasarEngine/Entity/Components/MaterialComponent.h>
 #include <QuasarEngine/Resources/Texture2D.h>
 
-#include "Editor/Importer/TextureConfigImporter.h"
+#include <QuasarEngine/Scene/Importer/TextureConfigImporter.h>
 
 namespace QuasarEngine
 {

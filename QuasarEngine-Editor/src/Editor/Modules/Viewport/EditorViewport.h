@@ -4,13 +4,13 @@
 #include <string>
 #include <optional>
 
-#include <Editor/SceneManager.h>
 #include <Editor/EditorCamera.h>
 #include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
 
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Renderer/Framebuffer.h>
 #include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Scene/SceneManager.h>
 
 #include "imgui/imgui.h"
 #include <ImGuizmo.h>

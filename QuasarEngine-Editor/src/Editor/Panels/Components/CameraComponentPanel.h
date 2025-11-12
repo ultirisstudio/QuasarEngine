@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Editor/SceneManager.h>
-
 #include <Editor/Panels/IComponentPanel.h>
 
 namespace QuasarEngine

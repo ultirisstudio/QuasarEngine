@@ -40,6 +40,7 @@ namespace QuasarEngine
         void SetColorAttachment(uint32_t index, const AttachmentRef& ref) override {}
 
         std::shared_ptr<Texture> GetColorAttachmentTexture(uint32_t index) const override { return nullptr; }
+        std::shared_ptr<Texture> GetDepthAttachmentTexture() const override { return nullptr; }
 
     private:
         struct ColorAttachmentDX

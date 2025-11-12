@@ -11,7 +11,7 @@
 #include <Editor/Modules/CodeEditor/CodeEditor.h>
 
 #include <QuasarEngine/Resources/Texture2D.h>
-#include "Editor/Importer/AssetImporter.h"
+#include <QuasarEngine/Scene/Importer/AssetImporter.h>
 
 namespace QuasarEngine
 {

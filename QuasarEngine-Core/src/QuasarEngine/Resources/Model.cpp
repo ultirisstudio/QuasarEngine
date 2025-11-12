@@ -42,7 +42,7 @@ namespace QuasarEngine
             if (!std::filesystem::exists(abs, ec)) return std::nullopt;
             auto rel = std::filesystem::relative(abs, projectRoot, ec);
             if (ec || rel.empty()) return std::nullopt;
-            return std::string("Assets/") + rel.generic_string();
+            return rel.generic_string();
             };
 
         auto loadTextureType = [&](aiTextureType type, std::optional<std::string>& target) {

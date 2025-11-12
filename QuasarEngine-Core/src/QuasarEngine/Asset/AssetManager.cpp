@@ -162,10 +162,12 @@ namespace QuasarEngine
 					if (spec.compressed)
 					{
 						texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
+						texture->GenerateMips();
 					}
 					else
 					{
 						texture->LoadFromData({ static_cast<unsigned char*>(asset.data), asset.size });
+						texture->GenerateMips();
 					}
 				}
 				else
@@ -176,6 +178,7 @@ namespace QuasarEngine
 						break;
 					}
 					texture->LoadFromPath(asset.path);
+					texture->GenerateMips();
 				}
 
 				{

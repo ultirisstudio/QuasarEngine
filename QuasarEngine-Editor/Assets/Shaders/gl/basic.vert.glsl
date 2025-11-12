@@ -8,18 +8,16 @@ layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out vec3 outWorldPos;
 layout(location = 2) out vec3 outNormal;
 
-struct PointLight {    
+struct PointLight {
     vec3 position;
     vec3 color;
-	
     float attenuation;
     float power;
 };
 
-struct DirLight {    
+struct DirLight {
     vec3 direction;
-	vec3 color;
-	
+    vec3 color;
     float power;
 };
 
@@ -28,13 +26,9 @@ struct DirLight {
 
 layout(std140, binding = 0) uniform global_uniform_object  {
     mat4 view;
-	mat4 projection;
-	vec3 camera_position;
-	
-	int usePointLight;
-	int useDirLight;
+    mat4 projection;
+    vec3 camera_position;
 
-<<<<<<< HEAD
     int  usePointLight;
     int  useDirLight;
 
@@ -42,22 +36,16 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 
     PointLight pointLights[NR_POINT_LIGHTS];
     DirLight   dirLights[NR_DIR_LIGHTS];
-=======
-    int prefilterLevels;
-	
-	PointLight pointLights[NR_POINT_LIGHTS];
-	DirLight dirLights[NR_DIR_LIGHTS];
->>>>>>> parent of 6e4f8d6 (Update)
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object  {
     mat4 model;
-	
-    vec4 albedo;
+
+    vec4  albedo;
     float roughness;
     float metallic;
     float ao;
-	
+
     int has_albedo_texture;
     int has_normal_texture;
     int has_roughness_texture;
@@ -68,8 +56,11 @@ layout(std140, binding = 1) uniform local_uniform_object  {
 void main()
 {
     outTexCoord = inTexCoord;
+
+    outWorldPos = vec3(object_ubo.model * vec4(inPosition, 1.0));
+
     mat3 normalMatrix = transpose(inverse(mat3(object_ubo.model)));
     outNormal = normalMatrix * inNormal;
-    outWorldPos = vec3(object_ubo.model * vec4(inPosition, 1.0));
+
     gl_Position = global_ubo.projection * global_ubo.view * vec4(outWorldPos, 1.0);
 }

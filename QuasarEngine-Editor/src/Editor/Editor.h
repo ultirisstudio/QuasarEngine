@@ -6,6 +6,8 @@
 #include <QuasarEngine.h>
 #include <QuasarEngine/Events/Event.h>
 #include <QuasarEngine/Events/MouseEvent.h>
+#include <QuasarEngine/Scene/SceneManager.h>
+#include <QuasarEngine/Scene/Importer/AssetImporter.h>
 
 #include <Editor/Modules/ContentBrowser/ContentBrowser.h>
 #include <Editor/Modules/EntityPropertie/EntityPropertie.h>
@@ -18,9 +20,7 @@
 #include <Editor/Modules/UIEditor/UserInterfaceEditor.h>
 #include <Editor/Modules/SpriteEditor/SpriteEditor.h>
 
-#include <Editor/SceneManager.h>
 #include <Editor/EditorCamera.h>
-#include <Editor/Importer/AssetImporter.h>
 
 namespace QuasarEngine
 {
