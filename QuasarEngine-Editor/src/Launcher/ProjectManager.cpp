@@ -1,6 +1,6 @@
 #include "ProjectManager.h"
 
-#include "Tools/Utils.h"
+#include <QuasarEngine/Tools/Utils.h>
 #include <QuasarEngine/Core/Application.h>
 
 #include <imgui/imgui.h>

@@ -6,13 +6,13 @@
 #include <algorithm>
 #include <cctype>
 
-#include <Editor/SceneManager.h>
 #include <Editor/Panels/AllPanels.h>
 #include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
+
 #include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Core/UUID.h>
-
+#include <QuasarEngine/Scene/SceneManager.h>
 #include <QuasarEngine/Entity/AllComponents.h>
 #include <QuasarEngine/Core/UUID.h>
 #include <QuasarEngine/Renderer/Renderer.h>

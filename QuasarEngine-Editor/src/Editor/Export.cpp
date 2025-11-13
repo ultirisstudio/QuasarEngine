@@ -6,7 +6,7 @@
 
 #include <intrin.h>
 
-#include "Tools/Utils.h"
+#include <QuasarEngine/Tools/Utils.h>
 
 namespace QuasarEngine
 {

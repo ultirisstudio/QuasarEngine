@@ -12,8 +12,7 @@
 #include <QuasarEngine/Entity/Components/2D/SpriteComponent.h>
 #include <QuasarEngine/Resources/Texture2D.h>
 #include <QuasarEngine/Asset/AssetManager.h>
-
-#include "Editor/Importer/TextureConfigImporter.h"
+#include <QuasarEngine/Scene/Importer/TextureConfigImporter.h>
 
 namespace QuasarEngine
 {
