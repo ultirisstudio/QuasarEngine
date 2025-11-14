@@ -263,6 +263,7 @@ namespace QuasarEngine
 				if (asset.data && asset.size > 0)
 				{
 					texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
+					texture->GenerateMips();
 				}
 				else
 				{
@@ -272,6 +273,7 @@ namespace QuasarEngine
 						continue;
 					}
 					texture->LoadFromPath(asset.path);
+					texture->GenerateMips();
 				}
 
 				{

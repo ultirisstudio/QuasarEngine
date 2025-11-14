@@ -3,6 +3,7 @@
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) in vec3 inWorldPos;
 layout(location = 2) in vec3 inNormal;
+layout(location = 3) in vec3 inTangent;
 
 out vec4 outColor;
 
@@ -63,30 +64,11 @@ uniform sampler2D   brdf_lut;
 
 const float PI = 3.14159265359;
 
-vec3 getNormalFromMap()
+vec4 getAlbedo()
 {
-    vec3 tangentNormal = texture(normal_texture, inTexCoord).xyz * 2.0 - 1.0;
-
-    vec3 Q1  = dFdx(inWorldPos);
-    vec3 Q2  = dFdy(inWorldPos);
-    vec2 st1 = dFdx(inTexCoord);
-    vec2 st2 = dFdy(inTexCoord);
-
-    vec3 N   = normalize(inNormal);
-    vec3 T   = normalize(Q1 * st2.t - Q2 * st1.t);
-    vec3 B   = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
-
-    return normalize(TBN * tangentNormal).xyz;
-}
-
-vec3 getNormal()
-{
-    vec3 n = normalize(inNormal);
-    if (object_ubo.has_normal_texture != 0) {
-        n = getNormalFromMap();
-    }
-    return n;
+    if (object_ubo.has_albedo_texture != 0)
+        return texture(albedo_texture, inTexCoord);
+    return object_ubo.albedo;
 }
 
 float getRoughness()
@@ -110,11 +92,25 @@ float getAO()
     return object_ubo.ao;
 }
 
-vec4 getAlbedo()
+vec3 getNormalFromMap(vec3 N)
 {
-    if (object_ubo.has_albedo_texture != 0)
-        return texture(albedo_texture, inTexCoord);
-    return object_ubo.albedo;
+    vec3 tangentNormal = texture(normal_texture, inTexCoord).xyz * 2.0 - 1.0;
+
+    vec3 T = normalize(inTangent);
+    T = normalize(T - dot(T, N) * N);
+    vec3 B = normalize(cross(N, T));
+
+    mat3 TBN = mat3(T, B, N);
+    return normalize(TBN * tangentNormal);
+}
+
+vec3 getNormal()
+{
+    vec3 N = normalize(inNormal);
+    if (object_ubo.has_normal_texture != 0) {
+        N = getNormalFromMap(N);
+    }
+    return N;
 }
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -134,17 +130,15 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
-    float k = (r*r) / 8.0;
+    float k = (r * r) / 8.0;
     return NdotV / (NdotV * (1.0 - k) + k);
 }
 
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+float GeometrySmith(float NdotV, float NdotL, float roughness)
 {
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-    return ggx1 * ggx2;
+    float ggxV = GeometrySchlickGGX(NdotV, roughness);
+    float ggxL = GeometrySchlickGGX(NdotL, roughness);
+    return ggxV * ggxL;
 }
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -155,98 +149,139 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0)
-                * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+             * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 calculatePointLightReflectance(PointLight light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic, int lightIndex)
+struct PBRContext {
+    vec3 N;
+    vec3 V;
+    vec3 F0;
+    vec3 albedo;
+    float roughness;
+    float metallic;
+    float NdotV;
+};
+
+vec3 BRDF_PBR(PBRContext ctx, vec3 L, float NdotL, vec3 radiance)
 {
-    vec3 L = normalize(light.position - inWorldPos);
-    vec3 H = normalize(V + L);
+    if (NdotL <= 0.0 || ctx.NdotV <= 0.0)
+        return vec3(0.0);
 
-    float distance = length(light.position - inWorldPos);
-    float attenuation = 1.0 / ((1.0 + 0.09 * distance + 0.032 * (distance * distance)) * light.attenuation);
-    vec3 radiance = (light.color * vec3(light.power)) * attenuation;
+    vec3 H = normalize(ctx.V + L);
 
-    float NDF = DistributionGGX(N, H, roughness);
-    float G   = GeometrySmith(N, V, L, roughness);
-    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+    float NDF = DistributionGGX(ctx.N, H, ctx.roughness);
+    float G   = GeometrySmith(ctx.NdotV, NdotL, ctx.roughness);
+    vec3  F   = fresnelSchlick(max(dot(H, ctx.V), 0.0), ctx.F0);
 
-    vec3 numerator    = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    vec3 specular = numerator / denominator;
+    vec3 numerator = NDF * G * F;
+    float denom    = 4.0 * ctx.NdotV * NdotL + 0.0001;
+    vec3 specular  = numerator / denom;
+
+    vec3 F_energy = fresnelSchlickRoughness(ctx.NdotV, ctx.F0, ctx.roughness);
+    float avgF    = (F_energy.r + F_energy.g + F_energy.b) * 0.3333333;
+    float energyComp = 1.0 + avgF * 0.5; // à ajuster si besoin
 
     vec3 kS = F;
-    vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+    vec3 kD = (vec3(1.0) - kS) * (1.0 - ctx.metallic) * energyComp;
 
-    float NdotL = max(dot(N, L), 0.0);
+    vec3 diffuse = kD * ctx.albedo / PI;
 
-    return (kD * albedo / PI + specular) * radiance * NdotL;
+    return (diffuse + specular) * radiance * NdotL;
 }
 
-vec3 calculateDirLightReflectance(DirLight light, vec3 V, vec3 N, vec3 F0, vec3 albedo, float roughness, float metallic, int lightIndex)
+vec3 evaluatePointLight(PointLight light, PBRContext ctx, vec3 worldPos)
 {
-    float power  = max(light.power, 1.0);
-    vec3  color  = max(light.color, vec3(0.0001));
+    vec3 L = normalize(light.position - worldPos);
+    float distance = length(light.position - worldPos);
+
+    float NdotL = max(dot(ctx.N, L), 0.0);
+    if (NdotL <= 0.0)
+        return vec3(0.0);
+
+    float attenuation = 1.0 / ((1.0 + 0.09 * distance + 0.032 * (distance * distance)) * light.attenuation);
+    vec3 radiance = (light.color * light.power) * attenuation;
+
+    return BRDF_PBR(ctx, L, NdotL, radiance);
+}
+
+vec3 evaluateDirLight(DirLight light, PBRContext ctx)
+{
+    float power = max(light.power, 0.0);
+    vec3  color = max(light.color, vec3(0.0));
+
+    if (power <= 0.0)
+        return vec3(0.0);
 
     vec3 L = normalize(light.direction);
-    vec3 H = normalize(V + L);
+    float NdotL = max(dot(ctx.N, L), 0.0);
+    if (NdotL <= 0.0)
+        return vec3(0.0);
+
     vec3 radiance = color * power;
-
-    float NDF = DistributionGGX(N, H, roughness);
-    float G   = GeometrySmith(N, V, L, roughness);
-    vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-    vec3 numerator    = NDF * G * F;
-    float denominator = 4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0) + 0.0001;
-    vec3 specular     = numerator / denominator;
-
-    vec3 kS = F;
-    vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
-
-    float NdotL = max(dot(N, L), 0.0);
-
-    return (kD * albedo / PI + specular) * radiance * NdotL;
+    return BRDF_PBR(ctx, L, NdotL, radiance);
 }
 
 void main()
 {
-    vec4 albedo = getAlbedo();
-    if (albedo.a < 0.5)
+    vec4 albedoSample = getAlbedo();
+    if (albedoSample.a < 0.5)
         discard;
 
-    vec3  albedo_color = albedo.rgb;
-    float metallic     = getMetallic();
-    float roughness    = clamp(getRoughness(), 0.05, 1.0);
-    float ao           = getAO();
+    vec3  albedo    = albedoSample.rgb;
+    float metallic  = getMetallic();
+    float roughness = clamp(getRoughness(), 0.05, 1.0);
+    float ao        = getAO();
 
     vec3 N = getNormal();
     vec3 V = normalize(global_ubo.camera_position - inWorldPos);
+    float NdotV = max(dot(N, V), 0.0);
+
+    if (NdotV <= 0.0) {
+        outColor = vec4(0.0);
+        return;
+    }
+
     vec3 R = reflect(-V, N);
 
-    vec3 F0 = mix(vec3(0.04), albedo_color, metallic);
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+
+    PBRContext ctx;
+    ctx.N        = N;
+    ctx.V        = V;
+    ctx.F0       = F0;
+    ctx.albedo   = albedo;
+    ctx.roughness= roughness;
+    ctx.metallic = metallic;
+    ctx.NdotV    = NdotV;
 
     vec3 Lo = vec3(0.0);
 
     for (int i = 0; i < global_ubo.usePointLight; ++i) {
-        Lo += calculatePointLightReflectance(global_ubo.pointLights[i], V, N, F0, albedo_color, roughness, metallic, i);
+        Lo += evaluatePointLight(global_ubo.pointLights[i], ctx, inWorldPos);
     }
 
     for (int i = 0; i < global_ubo.useDirLight; ++i) {
-        Lo += calculateDirLightReflectance(global_ubo.dirLights[i], V, N, F0, albedo_color, roughness, metallic, i);
+        Lo += evaluateDirLight(global_ubo.dirLights[i], ctx);
     }
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
-    vec3 irradiance = texture(irradiance_map, N).rgb;
-    vec3 diffuse    = irradiance * albedo_color;
+    vec3 F_energy = fresnelSchlickRoughness(NdotV, F0, roughness);
+    float avgF    = (F_energy.r + F_energy.g + F_energy.b) * 0.3333333;
+    float energyComp = 1.0 + avgF * 0.5;
+    kD *= energyComp;
 
-    vec3 prefilteredColor = textureLod(prefilter_map, R, roughness * float(global_ubo.prefilterLevels)).rgb;
-    vec2 brdf = texture(brdf_lut, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+    vec3 irradiance    = texture(irradiance_map, N).rgb;
+    vec3 diffuseIBL    = irradiance * albedo;
 
-    vec3 ambient = (kD * diffuse + specular) * ao;
+    float maxLevel = max(float(global_ubo.prefilterLevels - 1), 0.0);
+    vec3 prefilteredColor = textureLod(prefilter_map, R, roughness * maxLevel).rgb;
+    vec2 brdfSample       = texture(brdf_lut, vec2(NdotV, roughness)).rg;
+    vec3 specularIBL      = prefilteredColor * (F * brdfSample.x + brdfSample.y);
+
+    vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
 
     vec3 result = ambient + Lo;
 

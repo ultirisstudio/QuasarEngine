@@ -75,7 +75,8 @@ namespace QuasarEngine
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
-					{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""}
+					{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""},
+					{3, Shader::ShaderIOType::Vec3, "inTangent",  true, ""}
 				}
 			},
 			Shader::ShaderModuleInfo{
@@ -124,6 +125,7 @@ namespace QuasarEngine
 			glm::mat4 model;
 
 			glm::vec4 albedo;
+
 			float roughness;
 			float metallic;
 			float ao;
@@ -137,33 +139,39 @@ namespace QuasarEngine
 
 		static_assert(sizeof(ObjectUniforms) % 16 == 0, "ObjectUniforms must be 16-aligned");
 
-		constexpr Shader::ShaderStageFlags objectUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+		static_assert(sizeof(ObjectUniforms) % 16 == 0, "ObjectUniforms must be 16-aligned");
+
+		constexpr Shader::ShaderStageFlags objectUniformsFlags =
+			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
+			Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		desc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(ObjectUniforms, model), 1, 0, objectUniformsFlags},
+			{"model",					Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),  offsetof(ObjectUniforms, model),					1, 0, objectUniformsFlags},
 
-			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(ObjectUniforms, albedo), 1, 0, objectUniformsFlags},
-			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, roughness), 1, 0, objectUniformsFlags},
-			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, metallic), 1, 0, objectUniformsFlags},
-			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(ObjectUniforms, ao), 1, 0, objectUniformsFlags},
+			{"albedo",					Shader::ShaderUniformType::Vec4,	sizeof(glm::vec4),  offsetof(ObjectUniforms, albedo),					1, 0, objectUniformsFlags},
 
-			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_albedo_texture), 1, 0, objectUniformsFlags},
-			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_normal_texture), 1, 0, objectUniformsFlags},
-			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_roughness_texture), 1, 0, objectUniformsFlags},
-			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_metallic_texture), 1, 0, objectUniformsFlags},
-			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(ObjectUniforms, has_ao_texture), 1, 0, objectUniformsFlags},
+			{"roughness",				Shader::ShaderUniformType::Float,	sizeof(float),      offsetof(ObjectUniforms, roughness),				1, 0, objectUniformsFlags},
+			{"metallic",				Shader::ShaderUniformType::Float,	sizeof(float),      offsetof(ObjectUniforms, metallic),					1, 0, objectUniformsFlags},
+			{"ao",						Shader::ShaderUniformType::Float,	sizeof(float),      offsetof(ObjectUniforms, ao),						1, 0, objectUniformsFlags},
+
+			{"has_albedo_texture",		Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_albedo_texture),		1, 0, objectUniformsFlags},
+			{"has_normal_texture",		Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_normal_texture),		1, 0, objectUniformsFlags},
+			{"has_roughness_texture",	Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_roughness_texture),	1, 0, objectUniformsFlags},
+			{"has_metallic_texture",	Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_metallic_texture),		1, 0, objectUniformsFlags},
+			{"has_ao_texture",			Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_ao_texture),			1, 0, objectUniformsFlags}
 		};
 
 		desc.samplers = {
-			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"albedo_texture",   1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"normal_texture",   1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"roughness_texture",1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-
-			{"irradiance_map", 1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"prefilter_map", 1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"brdf_lut", 1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"ao_texture",       1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"irradiance_map",   1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"prefilter_map",    1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"brdf_lut",         1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"emissive_texture", 1, 9, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 		};
 
 		desc.blendMode = Shader::BlendMode::None;

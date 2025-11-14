@@ -103,24 +103,31 @@ namespace QuasarEngine
         const bool useCustomLayout = opt.vertexLayout.has_value();
 
         if (!useCustomLayout) {
-            out.vertices.reserve(static_cast<size_t>(mesh->mNumVertices) * 8);
+            out.vertices.reserve(static_cast<size_t>(mesh->mNumVertices) * 11);
+
             for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
                 const aiVector3D& p = mesh->mVertices[i];
                 out.vertices.insert(out.vertices.end(), { p.x, p.y, p.z });
+
+                aiVector3D n(0.f, 0.f, 0.f);
                 if (hasN) {
-                    const aiVector3D& n = mesh->mNormals[i];
-                    out.vertices.insert(out.vertices.end(), { n.x, n.y, n.z });
+                    n = mesh->mNormals[i];
                 }
-                else {
-                    out.vertices.insert(out.vertices.end(), { 0.f, 0.f, 0.f });
-                }
+                out.vertices.insert(out.vertices.end(), { n.x, n.y, n.z });
+
+                float u = 0.f, v = 0.f;
                 if (hasUV) {
-                    out.vertices.push_back(mesh->mTextureCoords[0][i].x);
-                    out.vertices.push_back(mesh->mTextureCoords[0][i].y);
+                    u = mesh->mTextureCoords[0][i].x;
+                    v = mesh->mTextureCoords[0][i].y;
                 }
-                else {
-                    out.vertices.insert(out.vertices.end(), { 0.f, 0.f });
+                out.vertices.push_back(u);
+                out.vertices.push_back(v);
+
+                aiVector3D t(1.f, 0.f, 0.f);
+                if (hasTan) {
+                    t = mesh->mTangents[i];
                 }
+                out.vertices.insert(out.vertices.end(), { t.x, t.y, t.z });
             }
         }
         else {

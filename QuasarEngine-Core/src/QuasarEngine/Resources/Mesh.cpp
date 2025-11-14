@@ -56,7 +56,7 @@ namespace QuasarEngine
         m_vertexArray->Bind();
         const uint32_t count = m_indexBuffer ? m_indexBuffer->GetCount() : 0u;
         if (count == 0)
-            RenderCommand::Instance().DrawArrays(m_drawMode, static_cast<uint32_t>(m_vertices.size() / 8));
+            RenderCommand::Instance().DrawArrays(m_drawMode, static_cast<uint32_t>(m_vertices.size() / 11));
         else
             RenderCommand::Instance().DrawElements(m_drawMode, count);
     }
@@ -73,7 +73,8 @@ namespace QuasarEngine
             m_vertexBuffer->SetLayout({
                 { ShaderDataType::Vec3, "inPosition" },
                 { ShaderDataType::Vec3, "inNormal"   },
-                { ShaderDataType::Vec2, "inTexCoord" }
+                { ShaderDataType::Vec2, "inTexCoord" },
+                { ShaderDataType::Vec3, "inTangent"  }
                 });
         }
         m_vertexArray->AddVertexBuffer(m_vertexBuffer);

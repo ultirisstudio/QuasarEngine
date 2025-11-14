@@ -127,15 +127,77 @@ namespace QuasarEngine
 				}
 
 				const std::string fileName = std::filesystem::path(id).stem().string();
-				Entity entity = GetActiveScene().CreateEntity(fileName);
+				Entity rootEntity = GetActiveScene().CreateEntity(fileName);
+
+				std::unordered_map<std::string, Entity> nodeEntities;
+
+				nodeEntities[""] = rootEntity;
 
 				auto clips = QuasarEngine::LoadAnimationClips(full);
 				if (!clips.empty())
 				{
-					auto& anim = entity.AddComponent<QuasarEngine::AnimationComponent>(id);
+					auto& anim = rootEntity.AddComponent<QuasarEngine::AnimationComponent>(id);
 					anim.SetClips(std::move(clips));
 					anim.Play(0, true, 1.0f);
 				}
+
+				auto NormalizeNodePath = [](const std::string& path) -> std::string
+					{
+						std::string result;
+						size_t start = 0;
+						while (start < path.size())
+						{
+							size_t slash = path.find('/', start);
+							std::string seg = (slash == std::string::npos)
+								? path.substr(start)
+								: path.substr(start, slash - start);
+
+							if (!seg.empty() && seg != "ROOT")
+							{
+								if (!result.empty())
+									result += '/';
+								result += seg;
+							}
+
+							if (slash == std::string::npos)
+								break;
+							start = slash + 1;
+						}
+						return result;
+					};
+
+				std::function<Entity(const std::string&)> GetOrCreateNodeEntity =
+					[&](const std::string& normalizedPath) -> Entity
+					{
+						if (normalizedPath.empty())
+							return rootEntity;
+
+						if (auto it = nodeEntities.find(normalizedPath); it != nodeEntities.end())
+							return it->second;
+
+						size_t slash = normalizedPath.rfind('/');
+						std::string parentPath;
+						std::string nodeName;
+						if (slash == std::string::npos)
+						{
+							parentPath = "";
+							nodeName = normalizedPath;
+						}
+						else
+						{
+							parentPath = normalizedPath.substr(0, slash);
+							nodeName = normalizedPath.substr(slash + 1);
+						}
+
+						Entity parentEntity = GetOrCreateNodeEntity(parentPath);
+
+						Entity nodeEntity = GetActiveScene().CreateEntity(nodeName);
+						parentEntity.GetComponent<HierarchyComponent>()
+							.AddChild(parentEntity.GetUUID(), nodeEntity.GetUUID());
+
+						nodeEntities[normalizedPath] = nodeEntity;
+						return nodeEntity;
+					};
 
 				auto fillTexSpec = [&](const std::optional<std::string>& texId,
 					std::optional<TextureSpecification>& outSpec)
@@ -149,10 +211,14 @@ namespace QuasarEngine
 				modelPtr->ForEachInstance(
 					[&](const MeshInstance& inst, const glm::mat4& nodeLocal, const std::string& nodePath)
 					{
-						Entity child = GetActiveScene().CreateEntity(inst.name);
-						child.AddComponent<MeshRendererComponent>();
+						const std::string logicalPath = NormalizeNodePath(nodePath);
 
-						auto& mc = child.AddComponent<MeshComponent>(inst.name);
+						Entity nodeEntity = GetOrCreateNodeEntity(logicalPath);
+
+						Entity meshEntity = GetActiveScene().CreateEntity(inst.name);
+						meshEntity.AddComponent<MeshRendererComponent>();
+
+						auto& mc = meshEntity.AddComponent<MeshComponent>(inst.name);
 						mc.SetMesh(inst.mesh.get());
 						mc.SetModelPath(full);
 						mc.SetNodePath(nodePath);
@@ -165,9 +231,10 @@ namespace QuasarEngine
 						fillTexSpec(matSpec.RoughnessTexture, matSpec.RoughnessTextureSpec);
 						fillTexSpec(matSpec.AOTexture, matSpec.AOTextureSpec);
 
-						child.AddComponent<MaterialComponent>(matSpec);
+						meshEntity.AddComponent<MaterialComponent>(matSpec);
 
-						entity.GetComponent<HierarchyComponent>().AddChild(entity.GetUUID(), child.GetUUID());
+						nodeEntity.GetComponent<HierarchyComponent>()
+							.AddChild(nodeEntity.GetUUID(), meshEntity.GetUUID());
 					}
 				);
 			}
@@ -208,17 +275,59 @@ namespace QuasarEngine
 
 		bool oddRow = false;
 
+		vertices.reserve((X_SEGMENTS + 1) * (Y_SEGMENTS + 1) * 11);
+
 		for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
 		{
 			for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
 			{
 				float xSegment = (float)x / (float)X_SEGMENTS;
 				float ySegment = (float)y / (float)Y_SEGMENTS;
-				float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
-				float yPos = std::cos(ySegment * PI);
-				float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
 
-				vertices.insert(vertices.end(), { xPos, yPos, zPos, xPos, yPos, zPos, xSegment, ySegment });
+				float theta = xSegment * 2.0f * PI;
+				float phi = ySegment * PI;
+
+				float sinPhi = std::sin(phi);
+				float cosPhi = std::cos(phi);
+				float sinTheta = std::sin(theta);
+				float cosTheta = std::cos(theta);
+
+				float xPos = cosTheta * sinPhi;
+				float yPos = cosPhi;
+				float zPos = sinTheta * sinPhi;
+
+				float nx = xPos;
+				float ny = yPos;
+				float nz = zPos;
+
+				float u = xSegment;
+				float v = ySegment;
+
+				float tx = -sinTheta * sinPhi;
+				float ty = 0.0f;
+				float tz = cosTheta * sinPhi;
+
+				if (sinPhi < 0.0001f)
+				{
+					tx = 1.0f;
+					ty = 0.0f;
+					tz = 0.0f;
+				}
+
+				vertices.push_back(xPos);
+				vertices.push_back(yPos);
+				vertices.push_back(zPos);
+
+				vertices.push_back(nx);
+				vertices.push_back(ny);
+				vertices.push_back(nz);
+
+				vertices.push_back(u);
+				vertices.push_back(v);
+
+				vertices.push_back(tx);
+				vertices.push_back(ty);
+				vertices.push_back(tz);
 			}
 		}
 
@@ -245,7 +354,12 @@ namespace QuasarEngine
 
 		temp.AddComponent<MaterialComponent>();
 		temp.AddComponent<MeshRendererComponent>();
-		temp.AddComponent<MeshComponent>().GenerateMesh(vertices, indices, {}, DrawMode::TRIANGLE_STRIP);
+		temp.AddComponent<MeshComponent>().GenerateMesh(
+			vertices,
+			indices,
+			{},
+			DrawMode::TRIANGLE_STRIP
+		);
 	}
 
 	void SceneManager::AddPlane()

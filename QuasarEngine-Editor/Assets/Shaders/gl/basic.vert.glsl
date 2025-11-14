@@ -3,10 +3,12 @@
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
+layout(location = 3) in vec3 inTangent;
 
 layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out vec3 outWorldPos;
 layout(location = 2) out vec3 outNormal;
+layout(location = 3) out vec3 outTangent;
 
 struct PointLight {
     vec3 position;
@@ -39,7 +41,7 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object  {
-    mat4 model;
+    mat4  model;
 
     vec4  albedo;
     float roughness;
@@ -57,10 +59,14 @@ void main()
 {
     outTexCoord = inTexCoord;
 
-    outWorldPos = vec3(object_ubo.model * vec4(inPosition, 1.0));
+    vec4 worldPos = object_ubo.model * vec4(inPosition, 1.0);
+    outWorldPos = worldPos.xyz;
 
     mat3 normalMatrix = transpose(inverse(mat3(object_ubo.model)));
-    outNormal = normalMatrix * inNormal;
+    outNormal = normalize(normalMatrix * inNormal);
 
-    gl_Position = global_ubo.projection * global_ubo.view * vec4(outWorldPos, 1.0);
+    mat3 model3 = mat3(object_ubo.model);
+    outTangent = normalize(model3 * inTangent);
+
+    gl_Position = global_ubo.projection * global_ubo.view * worldPos;
 }

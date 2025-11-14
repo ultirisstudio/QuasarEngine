@@ -442,8 +442,8 @@ namespace QuasarEngine
 						opts.improveCacheLocality = false;
 						opts.genUVIfMissing = false;
 						opts.generateNormals = false;
-						opts.generateTangents = false;
-						opts.loadTangents = false;
+						opts.generateTangents = true;
+						opts.loadTangents = true;
 
 						AssetToLoad a{};
 						a.id = id;
