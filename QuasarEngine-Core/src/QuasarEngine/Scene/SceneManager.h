@@ -33,6 +33,8 @@ namespace QuasarEngine
 		void Update(double dt);
 
 		Scene& GetActiveScene() { return m_SceneObject->GetScene(); }
+		const Scene& GetActiveScene() const { return m_SceneObject->GetScene(); }
+
 		SceneObject& GetSceneObject() { return *m_SceneObject; }
 
 		void LoadModel(const ModelToLoad& modelToLoad);

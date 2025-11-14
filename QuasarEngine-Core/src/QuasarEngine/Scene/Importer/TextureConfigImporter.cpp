@@ -12,7 +12,7 @@ namespace QuasarEngine
 {
 	TextureSpecification TextureConfigImporter::ImportTextureConfig(std::filesystem::path path)
 	{
-		std::string filePath = path.parent_path().string() + "/" + path.stem().string() + ".ultconf";
+		auto filePath = path.parent_path() / (path.stem().string() + ".ultconf");
 
 		TextureSpecification spec;
 
@@ -80,8 +80,6 @@ namespace QuasarEngine
 		}
 		else
 		{
-			TextureSpecification spec;
-
 			spec.flip = true;
 
 			YAML::Emitter out;
@@ -106,7 +104,7 @@ namespace QuasarEngine
 
 	void TextureConfigImporter::ExportTextureConfig(std::filesystem::path path, const TextureSpecification& specification)
 	{
-		std::string filePath = path.parent_path().string() + "\\" + path.stem().string() + ".ultconf";
+		auto filePath = path.parent_path() / (path.stem().string() + ".ultconf");
 
 		YAML::Emitter out;
 		out << YAML::BeginMap;

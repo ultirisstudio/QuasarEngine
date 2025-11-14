@@ -36,14 +36,16 @@ namespace QuasarEngine
 		friend class Scene;
 	public:
 		Camera();
+		~Camera() override = default;
+
 		void Init(TransformComponent* transformComponent);
 
 		const glm::mat4& getViewMatrix() const override;
 		const glm::mat4& getProjectionMatrix() const override;
 
-		glm::vec3 GetPosition() override;
-		glm::mat4 GetTransform() override;
-		glm::vec3 GetFront() override;
+		glm::vec3 GetPosition() const override;
+		glm::mat4 GetTransform() const override;
+		glm::vec3 GetFront() const override;
 
 		void updateProjectionMatrix();
 

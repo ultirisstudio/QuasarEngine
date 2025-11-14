@@ -11,6 +11,7 @@
 #include <QuasarEngine/Scene/SceneManager.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Resources/Model.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 

@@ -25,17 +25,17 @@ namespace QuasarEngine
 		return m_projectionMatrix;
 	}
 
-	glm::vec3 Camera::GetPosition()
+	glm::vec3 Camera::GetPosition() const
 	{
 		return m_TransformComponent ? m_TransformComponent->Position : glm::vec3(0.0f);
 	}
 
-	glm::mat4 Camera::GetTransform()
+	glm::mat4 Camera::GetTransform() const
 	{
 		return m_TransformComponent ? m_TransformComponent->GetGlobalTransform() : glm::mat4(1.0f);
 	}
 
-	glm::vec3 Camera::GetFront()
+	glm::vec3 Camera::GetFront() const
 	{
 		if (!m_TransformComponent)
 			return glm::vec3(0, 0, -1);

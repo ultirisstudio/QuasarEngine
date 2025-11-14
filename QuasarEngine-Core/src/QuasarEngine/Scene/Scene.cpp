@@ -19,7 +19,6 @@ namespace QuasarEngine
 {
     Scene::Scene() :
         m_OnRuntime(false),
-        m_LightsCount(0),
         m_PrimaryCameraUUID(0)
     {
         m_Registry = std::make_unique<Registry>();
@@ -165,10 +164,11 @@ namespace QuasarEngine
     {
         ProcessEntityDestructions();
 
-        for (auto e : GetAllEntitiesWith<AnimationComponent>())
+        auto view = m_Registry->GetRegistry().view<AnimationComponent>();
+        for (auto entity : view)
         {
-            Entity entity = { e, m_Registry.get() };
-            entity.GetComponent<AnimationComponent>().Update(deltaTime);
+            auto& anim = view.get<AnimationComponent>(entity);
+            anim.Update(deltaTime);
         }
 
         if (m_OnRuntime)
@@ -179,10 +179,11 @@ namespace QuasarEngine
     {
         PhysicEngine::Instance().Step(deltaTime);
 
-        for (auto e : GetAllEntitiesWith<RigidBodyComponent>())
+        auto view = m_Registry->GetRegistry().view<RigidBodyComponent>();
+        for (auto entity : view)
         {
-            Entity entity = { e, m_Registry.get() };
-            entity.GetComponent<RigidBodyComponent>().Update(deltaTime);
+            auto& rigid = view.get<RigidBodyComponent>(entity);
+            rigid.Update(deltaTime);
         }
 
         Renderer::Instance().m_SceneData.m_ScriptSystem->Update(deltaTime);

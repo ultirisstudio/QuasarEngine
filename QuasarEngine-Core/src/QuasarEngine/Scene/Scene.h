@@ -5,8 +5,6 @@
 #include <string>
 #include <optional>
 #include <QuasarEngine/Scene/Camera.h>
-#include <QuasarEngine/Tools/Chronometer.h>
-#include <QuasarEngine/Scene/Skybox.h>
 #include <QuasarEngine/ECS/Registry.h>
 #include <QuasarEngine/Core/UUID.h>
 
@@ -41,8 +39,6 @@ namespace QuasarEngine
         Camera& GetPrimaryCamera();
         bool HasPrimaryCamera() const;
 
-        int m_LightsCount;
-
         bool isOnRuntime() const { return m_OnRuntime; }
 
         void ClearEntities();
@@ -55,6 +51,12 @@ namespace QuasarEngine
         auto GetAllEntitiesWith()
         {
             return m_Registry->GetRegistry().view<Components...>();
+        }
+
+        template<typename... Owned, typename... Get>
+        auto Group(entt::get_t<Get...> getter)
+        {
+            return m_Registry.group<Owned...>(getter);
         }
 
     private:

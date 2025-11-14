@@ -605,15 +605,17 @@ namespace QuasarEngine
 			return;
 		}
 
-		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, MeshComponent, MeshRendererComponent>())
+		auto& registry = m_SceneData.m_Scene->GetRegistry()->GetRegistry();
+
+		auto group = registry.group<
+			TransformComponent,
+			MeshComponent,
+			MaterialComponent,
+			MeshRendererComponent
+		>();
+
+		for (auto [e, tr, mc, matc, mr] : group.each())
 		{
-			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
-
-			auto& tr = entity.GetComponent<TransformComponent>();
-			auto& mc = entity.GetComponent<MeshComponent>();
-			auto& matc = entity.GetComponent<MaterialComponent>();
-			auto& mr = entity.GetComponent<MeshRendererComponent>();
-
 			if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
 			if (mc.GetMesh().HasSkinning()) continue;
@@ -621,9 +623,13 @@ namespace QuasarEngine
 			glm::mat4 model = tr.GetGlobalTransform();
 			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
 
+			//totalEntity++;
+
 			if (!mc.GetMesh().IsVisible(frustum, model)) {
-				// continue;
+				continue;
 			}
+
+			//entityDraw++;
 
 			Material& material = matc.GetMaterial();
 
@@ -668,6 +674,8 @@ namespace QuasarEngine
 
 		m_SceneData.m_Shader->Unuse();
 
+		//std::cout << entityDraw << "/" << totalEntity << std::endl;
+
 		m_SceneData.m_SkinnedShader->Use();
 
 		m_SceneData.m_SkinnedShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
@@ -687,15 +695,8 @@ namespace QuasarEngine
 			return;
 		}
 
-		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, MeshComponent, MeshRendererComponent>())
+		for (auto [e, tr, mc, matc, mr] : group.each())
 		{
-			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
-
-			auto& tr = entity.GetComponent<TransformComponent>();
-			auto& mc = entity.GetComponent<MeshComponent>();
-			auto& matc = entity.GetComponent<MaterialComponent>();
-			auto& mr = entity.GetComponent<MeshRendererComponent>();
-
 			if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
 			if (!mc.GetMesh().HasSkinning()) continue;
@@ -704,7 +705,7 @@ namespace QuasarEngine
 			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
 
 			if (!mc.GetMesh().IsVisible(frustum, model)) {
-				// continue;
+				continue;
 			}
 
 			m_SceneData.m_SkinnedShader->SetUniform("model", &model, sizeof(glm::mat4));
@@ -741,6 +742,7 @@ namespace QuasarEngine
 			m_SceneData.m_SkinnedShader->SetTexture("prefilter_map", m_SceneData.m_SkyboxHDR->GetPrefilterMap().get());
 			m_SceneData.m_SkinnedShader->SetTexture("brdf_lut", m_SceneData.m_SkyboxHDR->GetBrdfLUT().get());
 
+			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
 			const AnimationComponent* anim = FindAnimatorForEntity(entity);
 			if (anim && !anim->GetFinalBoneMatrices().empty()) {
 				std::vector<glm::mat4> mats = anim->GetFinalBoneMatrices();
@@ -785,14 +787,13 @@ namespace QuasarEngine
 			return;
 		}
 
-		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MaterialComponent, TerrainComponent, MeshRendererComponent>())
+		for (auto [e, tr, tc, matc, mr] : registry.group<
+			TransformComponent,
+			TerrainComponent,
+			MaterialComponent,
+			MeshRendererComponent
+		>().each())
 		{
-			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
-
-			auto& tr = entity.GetComponent<TransformComponent>();
-			auto& tc = entity.GetComponent<TerrainComponent>();
-			auto& mr = entity.GetComponent<MeshRendererComponent>();
-
 			if (!mr.m_Rendered) continue;
 
 			auto mesh = tc.GetMesh();
@@ -804,7 +805,7 @@ namespace QuasarEngine
 			m_SceneData.m_TerrainShader->SetUniform("heightMult", &tc.heightMult, sizeof(float));
 			m_SceneData.m_TerrainShader->SetUniform("uTextureScale", &tc.textureScale, sizeof(int));
 
-			Material& mat = entity.GetComponent<MaterialComponent>().GetMaterial();
+			Material& mat = matc.GetMaterial();
 
 			m_SceneData.m_TerrainShader->SetUniform("albedo", &mat.GetAlbedo(), sizeof(glm::vec4));
 			float rough = mat.GetRoughness();
@@ -858,8 +859,6 @@ namespace QuasarEngine
 		}
 
 		m_SceneData.m_TerrainShader->Unuse();
-
-		//std::cout << entityDraw << "/" << totalEntity << std::endl;
 
 		{
 			Renderer2D::Instance().BeginScene(camera);

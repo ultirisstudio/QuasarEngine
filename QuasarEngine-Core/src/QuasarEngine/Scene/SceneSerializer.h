@@ -25,7 +25,7 @@ namespace QuasarEngine
         void SetAssetPath(std::filesystem::path p) noexcept { m_AssetPath = std::move(p); }
 
     private:
-        void SerializeEntity(YAML::Emitter& out, Entity entity, const std::string& assetPath) const;
+        void SerializeEntity(YAML::Emitter& out, Scene& scene, Entity entity, const std::string& assetPath) const;
         bool LoadEntities(const YAML::Node& entities, Scene& scene, const std::string& assetPath);
         bool SetupHierarchy(const YAML::Node& entities, Scene& scene);
 

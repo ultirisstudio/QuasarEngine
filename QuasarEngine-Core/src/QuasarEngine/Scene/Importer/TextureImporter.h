@@ -3,10 +3,11 @@
 #include <filesystem>
 #include <fstream>
 
+#include <QuasarEngine/File/FileUtils.h>
 #include <QuasarEngine/Resources/Texture2D.h>
 #include <QuasarEngine/Asset/AssetHeader.h>
-
-#include "QuasarEngine/Asset/AssetManager.h"
+#include <QuasarEngine/Asset/AssetManager.h>
+#include <QuasarEngine/Scene/Importer/TextureConfigImporter.h>
 
 namespace QuasarEngine
 {
@@ -16,11 +17,9 @@ namespace QuasarEngine
 		static void exportTexture(const std::string& path, const std::string& out)
 		{
 			size_t size = 0;
-			std::unique_ptr<unsigned char[]> data; // (Texture2D::LoadDataFromPath(path, &size));
+			std::unique_ptr<unsigned char[]> data = FileUtils::ReadFileToBuffer(path, size); // (Texture2D::LoadDataFromPath(path, &size));
 
-			TextureSpecification spec;
-			std::shared_ptr<Texture2D> texture = Texture2D::Create(spec);
-			texture->LoadFromPath(path);
+			TextureSpecification spec = TextureConfigImporter::ImportTextureConfig(path);
 
 			std::ofstream file(out, std::ios::binary);
 
@@ -31,7 +30,7 @@ namespace QuasarEngine
 			};
 			file.write(reinterpret_cast<const char*>(&assetHeader), sizeof(assetHeader));
 
-			file.write(reinterpret_cast<const char*>(&texture->GetSpecification()), sizeof(TextureSpecification));
+			file.write(reinterpret_cast<const char*>(&spec), sizeof(TextureSpecification));
 
 			file.write(reinterpret_cast<const char*>(data.get()), size);
 

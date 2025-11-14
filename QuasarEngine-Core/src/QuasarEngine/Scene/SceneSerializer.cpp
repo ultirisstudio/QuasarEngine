@@ -3,9 +3,9 @@
 
 #include "SceneObject.h"
 
-#include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Entity/AllComponents.h>
+#include <QuasarEngine/Asset/AssetManager.h>
 #include <QuasarEngine/Core/UUID.h>
 #include "QuasarEngine/Tools/Utils.h"
 
@@ -297,7 +297,7 @@ namespace QuasarEngine
         for (auto e : m_SceneObject->GetScene().GetAllEntitiesWith<IDComponent>()) {
             Entity entity(e, m_SceneObject->GetScene().GetRegistry());
             if (entity.GetComponent<HierarchyComponent>().m_Parent == UUID::Null())
-                SerializeEntity(out, entity, m_AssetPath.string());
+                SerializeEntity(out, m_SceneObject->GetScene(), entity, m_AssetPath.string());
         }
 
         out << YAML::EndSeq;
@@ -699,7 +699,7 @@ namespace QuasarEngine
         return true;
     }
 
-    void SceneSerializer::SerializeEntity(YAML::Emitter& out, Entity entity, const std::string& assetPath) const
+    void SceneSerializer::SerializeEntity(YAML::Emitter& out, Scene& scene, Entity entity, const std::string& assetPath) const
     {
         out << YAML::BeginMap;
         out << YAML::Key << "Entity" << YAML::Value << entity.GetName();
@@ -937,8 +937,8 @@ namespace QuasarEngine
 
         const auto& childrens = entity.GetComponent<HierarchyComponent>().m_Childrens;
         for (auto childUUID : childrens) {
-            if (auto childEntity = Renderer::Instance().m_SceneData.m_Scene->GetEntityByUUID(childUUID)) {
-                SerializeEntity(out, *childEntity, assetPath);
+            if (auto childEntity = scene.GetEntityByUUID(childUUID)) {
+                SerializeEntity(out, scene, childEntity.value_or({}), assetPath);
             }
         }
     }

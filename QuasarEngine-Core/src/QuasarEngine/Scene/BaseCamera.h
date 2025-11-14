@@ -7,11 +7,13 @@ namespace QuasarEngine
 	class BaseCamera
 	{
 	public:
+		virtual ~BaseCamera() = default;
+
 		virtual const glm::mat4& getViewMatrix() const = 0;
 		virtual const glm::mat4& getProjectionMatrix() const = 0;
 
-		virtual glm::vec3 GetPosition() = 0;
-		virtual glm::mat4 GetTransform()  = 0;
-		virtual glm::vec3 GetFront()  = 0;
+		virtual glm::vec3 GetPosition() const = 0;
+		virtual glm::mat4 GetTransform() const = 0;
+		virtual glm::vec3 GetFront() const = 0;
 	};
 }
