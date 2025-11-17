@@ -3,61 +3,91 @@
 #include "Chunk.h"
 #include "ChunkMapping.h"
 
-#include "../Blocks/Block.h"
-#include "../Blocks/BlockInfos.h"
-
-#include "../Biomes/BiomeInfos.h"
-
 #include "../Generation/TerrainGenerator.h"
-
 #include "../../Utils/Math.h"
+#include "../Blocks/BlockInfos.h"
+#include "../Biomes/BiomeInfos.h"
+#include "../../World/Constants.h"
 
-#include <memory>
-#include <unordered_map>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
+#include <QuasarEngine/Thread/ThreadPool.h>
 #include <QuasarEngine/Core/UUID.h>
+
+#include <unordered_map>
+#include <queue>
+#include <mutex>
+#include <atomic>
+
+struct ChunkBlocksResult
+{
+	glm::ivec3 position;
+	std::array<Block, CHUNK_VOLUME> blocks;
+	int maxHeight;
+};
+
+struct ChunkMeshResult
+{
+	glm::ivec3 position;
+	std::vector<float> vertices;
+	std::vector<unsigned int> indices;
+};
 
 class ChunkManager
 {
 public:
-	ChunkManager();
-	~ChunkManager() = default;
+    ChunkManager();
+    ~ChunkManager() = default;
 
-	static ChunkManager* GetInstance() { return s_Instance; }
+    static ChunkManager* GetInstance() { return s_Instance; }
 
-	void SetBlock(const glm::ivec3& position, BlockType voxel);
-	const Block* GetBlock(const glm::ivec3& position);
-	const BlockType GetBlockType(const glm::ivec3& position);
+    void SetBlock(const glm::ivec3& position, BlockType voxel);
+    const Block* GetBlock(const glm::ivec3& position);
+    const BlockType GetBlockType(const glm::ivec3& position);
 
-	void AddChunk(const glm::ivec3& position);
-	Chunk* GetChunk(const glm::ivec3& position);
-	const Chunk* GetChunk(const glm::ivec3& position) const;
+    Chunk* GetChunk(const glm::ivec3& position);
+    const Chunk* GetChunk(const glm::ivec3& position) const;
 
-	int NeighborCount(glm::ivec3 coord, glm::ivec3 exclude) const;
-	bool ChunkInRange(glm::vec3 playerPos, glm::vec3 chunkPos) const;
+    void UpdateChunks(const glm::ivec3& playerPos, float dt);
 
-	void UpdateChunk(const glm::ivec3& playerPos, float dt);
-	bool IsTransparent(const glm::ivec3& position);
+    BlockInfos& GetBlockInfos(const BlockType& type);
+    BiomeInfos& GetBiomeInfos(const BiomeType& type);
+    bool IsTransparent(const glm::ivec3& position);
 
-	BlockInfos& GetBlockInfos(const BlockType& type);
-	BiomeInfos& GetBiomeInfos(const BiomeType& type);
 private:
-	static ChunkManager* s_Instance;
+    static ChunkManager* s_Instance;
 
-	//typedef std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>, ChunkMapping, ChunkMapping> ChunkMap;
-	typedef std::unordered_map<glm::ivec3, QuasarEngine::UUID, ChunkMapping, ChunkMapping> EntityMap;
+    using EntityMap = std::unordered_map<glm::ivec3, QuasarEngine::UUID, ChunkMapping, ChunkMapping>;
 
-	std::unordered_map<BlockType, BlockInfos> m_BlockInfos;
-	std::unordered_map<BiomeType, BiomeInfos> m_BiomeInfos;
+    EntityMap m_EntityMap;
 
-	//ChunkMap m_ChunkMap;
-	EntityMap m_EntityMap;
+    std::unordered_map<BlockType, BlockInfos> m_BlockInfos;
+    std::unordered_map<BiomeType, BiomeInfos> m_BiomeInfos;
 
-	std::unique_ptr<TerrainGenerator> m_Generator;
+    std::unique_ptr<TerrainGenerator> m_Generator;
+
+    QuasarEngine::ThreadPool m_GenerationPool;
+    QuasarEngine::ThreadPool m_MeshPool;
+
+    std::mutex m_GenResultMutex;
+    std::queue<ChunkBlocksResult> m_GenResults;
+
+    std::mutex m_MeshResultMutex;
+    std::queue<ChunkMeshResult> m_MeshResults;
+
+    std::mutex m_ChunkMapMutex;
+
+private:
+    void RequestChunk(const glm::ivec3& chunkPos);
+    void UnloadFarChunks(const glm::ivec3& playerChunkPos);
+
+    void ProcessGenerationResults();
+    void ProcessMeshResults();
+
+    void AsyncGenerateBlocks(const glm::ivec3& chunkPos);
+    void AsyncGenerateMesh(const glm::ivec3& chunkPos);
+
+    bool ChunkInRange(const glm::ivec3& playerChunkPos, const glm::ivec3& chunkPos) const;
+
 public:
-	ChunkManager(ChunkManager const&) = delete;
-	void operator=(ChunkManager const&) = delete;
+    ChunkManager(ChunkManager const&) = delete;
+    void operator=(ChunkManager const&) = delete;
 };

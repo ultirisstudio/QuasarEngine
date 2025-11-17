@@ -13,12 +13,12 @@
 class Player
 {
 private:
-	struct RaycastResult
+	struct RaycastHit
 	{
-		bool hit;
-		BlockInfo block;
-		glm::vec3 pos;
-		QuasarEngine::Math::Direction normal;
+		bool hit = false;
+		glm::ivec3 blockPos;
+		glm::ivec3 normal;
+		BlockType type = BlockType::AIR;
 	};
 
 	//QuasarEngine::UUID m_uuid;
@@ -36,7 +36,7 @@ public:
 
 	void Update(float dt);
 
-	RaycastResult Raycast(glm::vec3 pos, glm::vec3 dir, float length = INFINITY);
+	RaycastHit VoxelRaycast(const glm::vec3& origin, const glm::vec3& dir, float maxDistance);
 
 	const glm::vec3& GetPosition() const;
 

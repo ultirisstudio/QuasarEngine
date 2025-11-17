@@ -5,7 +5,7 @@ constexpr int CHUNK_HEIGHT = 256;
 constexpr int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 constexpr int CHUNK_VOLUME = CHUNK_AREA * CHUNK_HEIGHT;
 
-constexpr int RENDER_DISTANCE = 10;
+constexpr int RENDER_DISTANCE = 60;
 
 constexpr int NUMBER_OF_CHUNKS_TO_GENERATE = 2;
 

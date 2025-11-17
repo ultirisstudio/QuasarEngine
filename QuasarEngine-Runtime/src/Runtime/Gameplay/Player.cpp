@@ -10,6 +10,7 @@
 #include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Entity/Components/CameraComponent.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
+#include <QuasarEngine/Tools/Math.h>
 
 float deltaTime = 0;
 float lastFrame = 0;
@@ -41,21 +42,29 @@ void Player::Update(float dt)
 
     if (QuasarEngine::Input::IsMouseButtonPressed(QuasarEngine::Mouse::ButtonLeft))
     {
-        RaycastResult raycast = Raycast(position + 0.5f, m_Camera->GetFront(), INFINITY);
+        RaycastHit raycast = VoxelRaycast(position + 0.5f, m_Camera->GetFront(), INFINITY);
 
-        if (raycast.hit && raycast.block.second.GetType() != BlockType::BLOCK_ERROR && ChunkManager::GetInstance()->GetChunk(Math::ToChunkPosition(raycast.pos)) != nullptr && ChunkManager::GetInstance()->GetChunk(Math::ToChunkPosition(raycast.pos))->IsMeshGenerated())
+        if (raycast.hit && raycast.type != BlockType::BLOCK_ERROR && ChunkManager::GetInstance()->GetChunk(Math::ToChunkPosition(raycast.blockPos)) != nullptr && ChunkManager::GetInstance()->GetChunk(Math::ToChunkPosition(raycast.blockPos))->IsMeshGenerated())
         {
-            ChunkManager::GetInstance()->SetBlock(raycast.block.first, BlockType::AIR);
+            ChunkManager::GetInstance()->SetBlock(raycast.blockPos, BlockType::AIR);
         }
     }
 
     if (QuasarEngine::Input::IsMouseButtonPressed(QuasarEngine::Mouse::ButtonRight))
     {
-		RaycastResult raycast = Raycast(position + 0.5f, m_Camera->GetFront(), INFINITY);
+        RaycastHit raycast = VoxelRaycast(position + 0.5f, m_Camera->GetFront(), INFINITY);
 
-        if (raycast.hit && raycast.block.second.GetType() != BlockType::BLOCK_ERROR && ChunkManager::GetInstance()->GetChunk(Math::ToChunkPosition(raycast.pos)) != nullptr && ChunkManager::GetInstance()->GetChunk(Math::ToChunkPosition(raycast.pos))->IsMeshGenerated())
+        if (raycast.hit && raycast.type != BlockType::BLOCK_ERROR)
         {
-            ChunkManager::GetInstance()->SetBlock(raycast.block.first + glm::ivec3(QuasarEngine::Math::directionVectors[raycast.normal]), BlockType(scroll));
+            glm::ivec3 placePos = raycast.blockPos + raycast.normal;
+
+            glm::ivec3 chunkPos = Math::ToChunkPosition(placePos);
+            Chunk* chunk = ChunkManager::GetInstance()->GetChunk(chunkPos);
+
+            if (chunk && chunk->IsMeshGenerated())
+            {
+                ChunkManager::GetInstance()->SetBlock(placePos, BlockType(scroll));
+            }
         }
     }
 
@@ -88,69 +97,68 @@ void Player::Update(float dt)
 		QuasarEngine::Renderer::m_SceneData.m_Scene->GetEntityByUUID(m_uuid).GetComponent<QuasarEngine::TransformComponent>().Position.y += 0.1;*/
 }
 
-Player::RaycastResult Player::Raycast(glm::vec3 pos, glm::vec3 dir, float length)
+Player::RaycastHit Player::VoxelRaycast(const glm::vec3& origin, const glm::vec3& dir, float maxDistance)
 {
-	dir = glm::normalize(dir);
+    RaycastHit result;
 
-	{
-		glm::ivec3 coord = glm::floor(pos);
-		Block block = ChunkManager::GetInstance()->GetBlockType(coord);
-		if (block.GetType() != BlockType::AIR)
-		{
-			RaycastResult result;
-			result.hit = true;
-			result.block = BlockInfo(coord, block);
-			result.pos = pos;
-			result.normal = QuasarEngine::Math::VectorToDir(-dir);
-			return result;
-		}
-	}
+    glm::vec3 rayDir = glm::normalize(dir);
 
-	while (true)
-	{
-		float dists[QuasarEngine::Math::AXIS_COUNT];
-		float min = INFINITY;
-		int axis;
+    glm::ivec3 voxel = glm::floor(origin);
+    glm::vec3 tMax;
+    glm::vec3 tDelta;
+    glm::ivec3 step;
 
-		for (int i = 0; i < QuasarEngine::Math::AXIS_COUNT; i++)
-		{
-			dists[i] = Math::DistToBlock(pos, QuasarEngine::Math::Axis(i), dir);
-			dists[i] *= glm::abs(1.f / dir[i]);
-			if (dists[i] < min)
-			{
-				min = dists[i];
-				axis = i;
-			}
-		}
+    for (int i = 0; i < 3; ++i)
+    {
+        if (rayDir[i] > 0)
+        {
+            step[i] = 1;
+            float nextVoxel = voxel[i] + 1.0f;
+            tMax[i] = (nextVoxel - origin[i]) / rayDir[i];
+            tDelta[i] = 1.0f / rayDir[i];
+        }
+        else if (rayDir[i] < 0)
+        {
+            step[i] = -1;
+            float nextVoxel = voxel[i];
+            tMax[i] = (nextVoxel - origin[i]) / rayDir[i];
+            tDelta[i] = -1.0f / rayDir[i];
+        }
+        else
+        {
+            step[i] = 0;
+            tMax[i] = std::numeric_limits<float>::infinity();
+            tDelta[i] = std::numeric_limits<float>::infinity();
+        }
+    }
 
-		length -= min;
+    float dist = 0.0f;
+    glm::ivec3 lastStep(0);
 
-		if (length <= 0)
-		{
-			RaycastResult result;
-			result.hit = false;
-			return result;
-		}
+    while (dist <= maxDistance)
+    {
+        BlockType type = ChunkManager::GetInstance()->GetBlockType(voxel);
+        if (type != BlockType::AIR && type != BlockType::BLOCK_ERROR)
+        {
+            result.hit = true;
+            result.blockPos = voxel;
+            result.normal = -lastStep;
+            result.type = type;
+            return result;
+        }
 
-		pos += dir * min;
+        int axis = 0;
+        if (tMax.y < tMax.x) axis = 1;
+        if (tMax.z < tMax[axis]) axis = 2;
 
-		glm::ivec3 blockCoord = glm::floor(pos);
+        voxel[axis] += step[axis];
+        dist = tMax[axis];
+        tMax[axis] += tDelta[axis];
+        lastStep = glm::ivec3(0);
+        lastStep[axis] = step[axis];
+    }
 
-		if (dir[axis] < 0.0f)
-			blockCoord[axis]--;
-
-		Block block = ChunkManager::GetInstance()->GetBlockType(blockCoord);
-
-		if (block.GetType() != BlockType::AIR)
-		{
-			RaycastResult result;
-			result.hit = true;
-			result.block = BlockInfo(blockCoord, block);
-			result.pos = pos;
-			result.normal = QuasarEngine::Math::AxisToDir(QuasarEngine::Math::Axis(axis), !(dir[axis] < 0.0f));
-			return result;
-		}
-	}
+    return result;
 }
 
 const glm::vec3& Player::GetPosition() const

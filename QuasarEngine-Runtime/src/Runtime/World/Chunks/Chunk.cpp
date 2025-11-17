@@ -116,110 +116,26 @@ void Chunk::Generate(TerrainGenerator& generator)
 void Chunk::GenerateMesh()
 {
 	std::vector<float> vertices;
-
-	for (int y = 0; y <= m_MaxHeight; y++)
-	{
-		for (int z = 0; z < CHUNK_SIZE; z++)
-		{
-			for (int x = 0; x < CHUNK_SIZE; x++)
-			{
-				BlockType block = m_Blocks.at(ToIndex({ x, y, z })).GetType();
-
-				if (block != BlockType::AIR)
-				{
-					static std::mt19937 generator(std::random_device{}());
-					static std::uniform_int_distribution<int> distribution(0, 10000);
-
-					int seed = distribution(generator);
-
-					std::array<float, 6> texCoords = ChunkManager::GetInstance()->GetBlockInfos(block).GetTexCoords();
-
-					if (x == CHUNK_SIZE - 1 ? ChunkManager::GetInstance()->IsTransparent({ m_Position.x + x + 1, m_Position.y + y, m_Position.z + z }) == true : ChunkManager::GetInstance()->GetBlockInfos(m_Blocks.at(ToIndex({ x + 1, y, z })).GetType()).IsTransparent() == true)
-					{
-						vertices.insert(vertices.end(), {
-							0.5f + x + m_Position.x, -0.5f + y + m_Position.y,  0.5f + z + m_Position.z, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,// texCoords.at(3),
-							0.5f + x + m_Position.x, -0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,// texCoords.at(3),
-							0.5f + x + m_Position.x,  0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,// texCoords.at(3),
-							0.5f + x + m_Position.x,  0.5f + y + m_Position.y,  0.5f + z + m_Position.z, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f//, texCoords.at(3)
-						});
-					}
-
-					if (x == 0 ? ChunkManager::GetInstance()->IsTransparent({ m_Position.x + x - 1, m_Position.y + y, m_Position.z + z }) == true : ChunkManager::GetInstance()->GetBlockInfos(m_Blocks.at(ToIndex({ x - 1, y, z })).GetType()).IsTransparent() == true)
-					{
-						vertices.insert(vertices.end(), {
-							-0.5f + x + m_Position.x, -0.5f + y + m_Position.y, -0.5f + z + m_Position.z, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f,// texCoords.at(2),
-							-0.5f + x + m_Position.x, -0.5f + y + m_Position.y,  0.5f + z + m_Position.z, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f,// texCoords.at(2),
-							-0.5f + x + m_Position.x,  0.5f + y + m_Position.y,  0.5f + z + m_Position.z, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,// texCoords.at(2),
-							-0.5f + x + m_Position.x,  0.5f + y + m_Position.y, -0.5f + z + m_Position.z, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f//, texCoords.at(2)
-						});
-					}
-
-					if (z == CHUNK_SIZE - 1 ? ChunkManager::GetInstance()->IsTransparent({ m_Position.x + x, m_Position.y + y, m_Position.z + z + 1 }) == true : ChunkManager::GetInstance()->GetBlockInfos(m_Blocks.at(ToIndex({ x, y, z + 1 })).GetType()).IsTransparent() == true)
-					{
-						vertices.insert(vertices.end(), {
-							-0.5f + x + m_Position.x, -0.5f + y + m_Position.y, 0.5f + z + m_Position.z, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,// texCoords.at(4),
-							 0.5f + x + m_Position.x, -0.5f + y + m_Position.y, 0.5f + z + m_Position.z, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,// texCoords.at(4),
-							 0.5f + x + m_Position.x,  0.5f + y + m_Position.y, 0.5f + z + m_Position.z, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,// texCoords.at(4),
-							-0.5f + x + m_Position.x,  0.5f + y + m_Position.y, 0.5f + z + m_Position.z, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f//, texCoords.at(4)
-						});
-					}
-
-					if (z == 0 ? ChunkManager::GetInstance()->IsTransparent({ m_Position.x + x, m_Position.y + y, m_Position.z + z - 1 }) == true : ChunkManager::GetInstance()->GetBlockInfos(m_Blocks.at(ToIndex({ x, y, z - 1 })).GetType()).IsTransparent() == true)
-					{
-						vertices.insert(vertices.end(), {
-							 0.5f + x + m_Position.x, -0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f,// texCoords.at(5),
-							-0.5f + x + m_Position.x, -0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f,// texCoords.at(5),
-							-0.5f + x + m_Position.x,  0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f,// texCoords.at(5),
-							 0.5f + x + m_Position.x,  0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f//, texCoords.at(5)
-						});
-					}
-
-					if (ChunkManager::GetInstance()->GetBlockInfos(GetBlockType({ x, y - 1, z })).IsTransparent() == true)
-					{
-						vertices.insert(vertices.end(), {
-							-0.5f + x + m_Position.x, -0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,// texCoords.at(1),
-							 0.5f + x + m_Position.x, -0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, -1.0f, 0.0f, 1.0f, 1.0f,// texCoords.at(1),
-							 0.5f + x + m_Position.x, -0.5f + y + m_Position.y,  0.5f + z + m_Position.z, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f,// texCoords.at(1),
-							-0.5f + x + m_Position.x, -0.5f + y + m_Position.y,  0.5f + z + m_Position.z, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f//, texCoords.at(1)
-						});
-					}
-
-					if (ChunkManager::GetInstance()->GetBlockInfos(GetBlockType({ x, y + 1, z })).IsTransparent() == true)
-					{
-						vertices.insert(vertices.end(), {
-							-0.5f + x + m_Position.x, 0.5f + y + m_Position.y,  0.5f + z + m_Position.z, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,// texCoords.at(0),
-							 0.5f + x + m_Position.x, 0.5f + y + m_Position.y,  0.5f + z + m_Position.z, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,// texCoords.at(0),
-							 0.5f + x + m_Position.x, 0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,// texCoords.at(0),
-							-0.5f + x + m_Position.x, 0.5f + y + m_Position.y, -0.5f + z + m_Position.z, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f//, texCoords.at(0)
-						});
-					}
-				}
-			}
-		}
-	}
-
 	std::vector<unsigned int> indices;
-	indices.reserve(vertices.size() / 4 * 6);
 
-	for (unsigned int i = 0; i < vertices.size() / 4; i++)
+	BuildGreedyMeshData(vertices, indices);
+
+	if (vertices.empty() || indices.empty())
 	{
-		indices.insert(indices.end(), { i * 4 + 0, i * 4 + 1, i * 4 + 2, i * 4 + 0, i * 4 + 2, i * 4 + 3 });
+		ClearMesh();
+		return;
 	}
-
-	if (vertices.size() == 0)
-		return;
-
-	if (indices.size() == 0)
-		return;
 
 	QuasarEngine::Entity entity{ entt_entity, registry };
+	auto& meshComp = entity.GetComponent<QuasarEngine::MeshComponent>();
+
 	QuasarEngine::BufferLayout layout = {
-		{ QuasarEngine::ShaderDataType::Vec3,  "vPosition"				},
-		{ QuasarEngine::ShaderDataType::Vec3,  "vNormal"				},
-		{ QuasarEngine::ShaderDataType::Vec2,  "vTextureCoordinates"	}//,
-		//{ QuasarEngine::ShaderDataType::Float, "vTextureIndice"	}
+		{ QuasarEngine::ShaderDataType::Vec3,  "vPosition" },
+		{ QuasarEngine::ShaderDataType::Vec3,  "vNormal"   },
+		{ QuasarEngine::ShaderDataType::Vec2,  "vTextureCoordinates" }
 	};
-	entity.GetComponent<QuasarEngine::MeshComponent>().GenerateMesh(vertices, indices, layout);
+
+	meshComp.GenerateMesh(vertices, indices, layout);
 }
 
 const glm::vec3& Chunk::GetRenderPos() const
@@ -252,18 +168,460 @@ bool Chunk::HeightTimerHitZero() const
 	return m_HeightTimer == 0.0f && !m_HeightTimerIncreasing;
 }
 
+void Chunk::SetBlocksFromExternal(const std::array<Block, CHUNK_VOLUME>& blocks, int maxHeight)
+{
+	m_Blocks = blocks;
+	m_MaxHeight = maxHeight;
+}
+
+void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsigned int>& indices) const
+{
+    vertices.clear();
+    indices.clear();
+
+    unsigned int indexOffset = 0;
+
+    auto pushQuad = [&](const glm::vec3& v0,
+        const glm::vec3& v1,
+        const glm::vec3& v2,
+        const glm::vec3& v3,
+        const glm::vec3& normal)
+        {
+            vertices.push_back(v0.x); vertices.push_back(v0.y); vertices.push_back(v0.z);
+            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+            vertices.push_back(0.0f); vertices.push_back(0.0f);
+
+            vertices.push_back(v1.x); vertices.push_back(v1.y); vertices.push_back(v1.z);
+            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+            vertices.push_back(1.0f); vertices.push_back(0.0f);
+
+            vertices.push_back(v2.x); vertices.push_back(v2.y); vertices.push_back(v2.z);
+            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+            vertices.push_back(1.0f); vertices.push_back(1.0f);
+
+            vertices.push_back(v3.x); vertices.push_back(v3.y); vertices.push_back(v3.z);
+            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+            vertices.push_back(0.0f); vertices.push_back(1.0f);
+
+            indices.push_back(indexOffset + 0);
+            indices.push_back(indexOffset + 1);
+            indices.push_back(indexOffset + 2);
+            indices.push_back(indexOffset + 0);
+            indices.push_back(indexOffset + 2);
+            indices.push_back(indexOffset + 3);
+
+            indexOffset += 4;
+        };
+
+    const int S = CHUNK_SIZE;
+    const int H = CHUNK_HEIGHT;
+
+    std::vector<BlockType> mask(S * S);
+
+    for (int y = 0; y < H; ++y)
+    {
+        for (int z = 0; z < S; ++z)
+        {
+            for (int x = 0; x < S; ++x)
+            {
+                BlockType t = GetBlockFast(x, y, z).GetType();
+                bool solid = (t != BlockType::AIR);
+                bool neighborSolid = (y + 1 < H) && IsSolid(x, y + 1, z);
+
+                mask[z * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
+            }
+        }
+
+        int z = 0;
+        while (z < S)
+        {
+            int x = 0;
+            while (x < S)
+            {
+                BlockType t = mask[z * S + x];
+                if (t == BlockType::AIR) { x++; continue; }
+
+                int w = 1;
+                while (x + w < S && mask[z * S + (x + w)] == t) w++;
+
+                int h = 1;
+                bool stop = false;
+                while (z + h < S && !stop)
+                {
+                    for (int k = 0; k < w; ++k)
+                    {
+                        if (mask[(z + h) * S + (x + k)] != t)
+                        {
+                            stop = true; break;
+                        }
+                    }
+                    if (!stop) h++;
+                }
+
+                for (int dz = 0; dz < h; ++dz)
+                    for (int dx = 0; dx < w; ++dx)
+                        mask[(z + dz) * S + (x + dx)] = BlockType::AIR;
+
+                float x0 = m_Position.x + x - 0.5f;
+                float x1 = m_Position.x + x + w - 0.5f;
+                float z0 = m_Position.z + z - 0.5f;
+                float z1 = m_Position.z + z + h - 0.5f;
+                float yy = m_Position.y + y + 0.5f;
+
+                glm::vec3 n(0.0f, 1.0f, 0.0f);
+
+                glm::vec3 v0(x0, yy, z0);
+                glm::vec3 v1(x1, yy, z0);
+                glm::vec3 v2(x1, yy, z1);
+                glm::vec3 v3(x0, yy, z1);
+
+                pushQuad(v0, v1, v2, v3, n);
+
+                x += w;
+            }
+            z++;
+        }
+    }
+
+    for (int y = 0; y < H; ++y)
+    {
+        for (int z = 0; z < S; ++z)
+        {
+            for (int x = 0; x < S; ++x)
+            {
+                BlockType t = GetBlockFast(x, y, z).GetType();
+                bool solid = (t != BlockType::AIR);
+                bool neighborSolid = (y - 1 >= 0) && IsSolid(x, y - 1, z);
+
+                mask[z * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
+            }
+        }
+
+        int z = 0;
+        while (z < S)
+        {
+            int x = 0;
+            while (x < S)
+            {
+                BlockType t = mask[z * S + x];
+                if (t == BlockType::AIR) { x++; continue; }
+
+                int w = 1;
+                while (x + w < S && mask[z * S + (x + w)] == t) w++;
+
+                int h = 1;
+                bool stop = false;
+                while (z + h < S && !stop)
+                {
+                    for (int k = 0; k < w; ++k)
+                    {
+                        if (mask[(z + h) * S + (x + k)] != t)
+                        {
+                            stop = true; break;
+                        }
+                    }
+                    if (!stop) h++;
+                }
+
+                for (int dz = 0; dz < h; ++dz)
+                    for (int dx = 0; dx < w; ++dx)
+                        mask[(z + dz) * S + (x + dx)] = BlockType::AIR;
+
+                float x0 = m_Position.x + x - 0.5f;
+                float x1 = m_Position.x + x + w - 0.5f;
+                float z0 = m_Position.z + z - 0.5f;
+                float z1 = m_Position.z + z + h - 0.5f;
+                float yy = m_Position.y + y - 0.5f;
+
+                glm::vec3 n(0.0f, -1.0f, 0.0f);
+
+                glm::vec3 v0(x0, yy, z1);
+                glm::vec3 v1(x1, yy, z1);
+                glm::vec3 v2(x1, yy, z0);
+                glm::vec3 v3(x0, yy, z0);
+
+                pushQuad(v0, v1, v2, v3, n);
+
+                x += w;
+            }
+            z++;
+        }
+    }
+
+    mask.resize(H * S);
+
+    for (int x = 0; x < S; ++x)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int z = 0; z < S; ++z)
+            {
+                BlockType t = GetBlockFast(x, y, z).GetType();
+                bool solid = (t != BlockType::AIR);
+                bool neighborSolid = (x + 1 < S) && IsSolid(x + 1, y, z);
+
+                mask[y * S + z] = (solid && !neighborSolid) ? t : BlockType::AIR;
+            }
+        }
+
+        int y = 0;
+        while (y < H)
+        {
+            int z = 0;
+            while (z < S)
+            {
+                BlockType t = mask[y * S + z];
+                if (t == BlockType::AIR) { z++; continue; }
+
+                int w = 1;
+                while (z + w < S && mask[y * S + (z + w)] == t) w++;
+
+                int h = 1;
+                bool stop = false;
+                while (y + h < H && !stop)
+                {
+                    for (int k = 0; k < w; ++k)
+                    {
+                        if (mask[(y + h) * S + (z + k)] != t)
+                        {
+                            stop = true; break;
+                        }
+                    }
+                    if (!stop) h++;
+                }
+
+                for (int dy = 0; dy < h; ++dy)
+                    for (int dz = 0; dz < w; ++dz)
+                        mask[(y + dy) * S + (z + dz)] = BlockType::AIR;
+
+                float xx = m_Position.x + x + 0.5f;
+                float y0 = m_Position.y + y - 0.5f;
+                float y1 = m_Position.y + y + h - 0.5f;
+                float z0 = m_Position.z + z - 0.5f;
+                float z1 = m_Position.z + z + w - 0.5f;
+
+                glm::vec3 n(1.0f, 0.0f, 0.0f);
+
+                glm::vec3 v0(xx, y0, z0);
+                glm::vec3 v1(xx, y1, z0);
+                glm::vec3 v2(xx, y1, z1);
+                glm::vec3 v3(xx, y0, z1);
+
+                pushQuad(v0, v1, v2, v3, n);
+
+                z += w;
+            }
+            y++;
+        }
+    }
+
+    for (int x = 0; x < S; ++x)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int z = 0; z < S; ++z)
+            {
+                BlockType t = GetBlockFast(x, y, z).GetType();
+                bool solid = (t != BlockType::AIR);
+                bool neighborSolid = (x - 1 >= 0) && IsSolid(x - 1, y, z);
+
+                mask[y * S + z] = (solid && !neighborSolid) ? t : BlockType::AIR;
+            }
+        }
+
+        int y = 0;
+        while (y < H)
+        {
+            int z = 0;
+            while (z < S)
+            {
+                BlockType t = mask[y * S + z];
+                if (t == BlockType::AIR) { z++; continue; }
+
+                int w = 1;
+                while (z + w < S && mask[y * S + (z + w)] == t) w++;
+
+                int h = 1;
+                bool stop = false;
+                while (y + h < H && !stop)
+                {
+                    for (int k = 0; k < w; ++k)
+                    {
+                        if (mask[(y + h) * S + (z + k)] != t)
+                        {
+                            stop = true; break;
+                        }
+                    }
+                    if (!stop) h++;
+                }
+
+                for (int dy = 0; dy < h; ++dy)
+                    for (int dz = 0; dz < w; ++dz)
+                        mask[(y + dy) * S + (z + dz)] = BlockType::AIR;
+
+                float xx = m_Position.x + x - 0.5f;
+                float y0 = m_Position.y + y - 0.5f;
+                float y1 = m_Position.y + y + h - 0.5f;
+                float z0 = m_Position.z + z + w - 0.5f;
+                float z1 = m_Position.z + z - 0.5f;
+
+                glm::vec3 n(-1.0f, 0.0f, 0.0f);
+
+                glm::vec3 v0(xx, y0, z0);
+                glm::vec3 v1(xx, y1, z0);
+                glm::vec3 v2(xx, y1, z1);
+                glm::vec3 v3(xx, y0, z1);
+
+                pushQuad(v0, v1, v2, v3, n);
+
+                z += w;
+            }
+            y++;
+        }
+    }
+
+    mask.resize(H * S);
+
+    for (int z = 0; z < S; ++z)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int x = 0; x < S; ++x)
+            {
+                BlockType t = GetBlockFast(x, y, z).GetType();
+                bool solid = (t != BlockType::AIR);
+                bool neighborSolid = (z + 1 < S) && IsSolid(x, y, z + 1);
+
+                mask[y * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
+            }
+        }
+
+        int y = 0;
+        while (y < H)
+        {
+            int x = 0;
+            while (x < S)
+            {
+                BlockType t = mask[y * S + x];
+                if (t == BlockType::AIR) { x++; continue; }
+
+                int w = 1;
+                while (x + w < S && mask[y * S + (x + w)] == t) w++;
+
+                int h = 1;
+                bool stop = false;
+                while (y + h < H && !stop)
+                {
+                    for (int k = 0; k < w; ++k)
+                    {
+                        if (mask[(y + h) * S + (x + k)] != t)
+                        {
+                            stop = true; break;
+                        }
+                    }
+                    if (!stop) h++;
+                }
+
+                for (int dy = 0; dy < h; ++dy)
+                    for (int dx = 0; dx < w; ++dx)
+                        mask[(y + dy) * S + (x + dx)] = BlockType::AIR;
+
+                float zz = m_Position.z + z + 0.5f;
+                float x0 = m_Position.x + x - 0.5f;
+                float x1 = m_Position.x + x + w - 0.5f;
+                float y0 = m_Position.y + y - 0.5f;
+                float y1 = m_Position.y + y + h - 0.5f;
+
+                glm::vec3 n(0.0f, 0.0f, 1.0f);
+
+                glm::vec3 v0(x0, y0, zz);
+                glm::vec3 v1(x1, y0, zz);
+                glm::vec3 v2(x1, y1, zz);
+                glm::vec3 v3(x0, y1, zz);
+
+                pushQuad(v0, v1, v2, v3, n);
+
+                x += w;
+            }
+            y++;
+        }
+    }
+
+    for (int z = 0; z < S; ++z)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int x = 0; x < S; ++x)
+            {
+                BlockType t = GetBlockFast(x, y, z).GetType();
+                bool solid = (t != BlockType::AIR);
+                bool neighborSolid = (z - 1 >= 0) && IsSolid(x, y, z - 1);
+
+                mask[y * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
+            }
+        }
+
+        int y = 0;
+        while (y < H)
+        {
+            int x = 0;
+            while (x < S)
+            {
+                BlockType t = mask[y * S + x];
+                if (t == BlockType::AIR) { x++; continue; }
+
+                int w = 1;
+                while (x + w < S && mask[y * S + (x + w)] == t) w++;
+
+                int h = 1;
+                bool stop = false;
+                while (y + h < H && !stop)
+                {
+                    for (int k = 0; k < w; ++k)
+                    {
+                        if (mask[(y + h) * S + (x + k)] != t)
+                        {
+                            stop = true; break;
+                        }
+                    }
+                    if (!stop) h++;
+                }
+
+                for (int dy = 0; dy < h; ++dy)
+                    for (int dx = 0; dx < w; ++dx)
+                        mask[(y + dy) * S + (x + dx)] = BlockType::AIR;
+
+                float zz = m_Position.z + z - 0.5f;
+                float x0 = m_Position.x + x + w - 0.5f;
+                float x1 = m_Position.x + x - 0.5f;
+                float y0 = m_Position.y + y - 0.5f;
+                float y1 = m_Position.y + y + h - 0.5f;
+
+                glm::vec3 n(0.0f, 0.0f, -1.0f);
+
+                glm::vec3 v0(x0, y0, zz);
+                glm::vec3 v1(x1, y0, zz);
+                glm::vec3 v2(x1, y1, zz);
+                glm::vec3 v3(x0, y1, zz);
+
+                pushQuad(v0, v1, v2, v3, n);
+
+                x += w;
+            }
+            y++;
+        }
+    }
+}
+
 void Chunk::ClearMesh()
 {
 	QuasarEngine::Entity entity{ entt_entity, registry };
 	entity.GetComponent<QuasarEngine::MeshComponent>().ClearMesh();
-	//QuasarEngine::Entity entity{ entt_entity, registry };
-	//entity.GetComponent<QuasarEngine::MeshComponent>().Clear();
 	m_HeightTimer = 0.0f;
 }
 
 bool Chunk::IsMeshGenerated() const
 {
-	//return m_Mesh->Size() != 0;
 	QuasarEngine::Entity entity{ entt_entity, registry };
 	if (entity.GetComponent<QuasarEngine::MeshComponent>().HasMesh())
 		return entity.GetComponent<QuasarEngine::MeshComponent>().GetMesh().IsMeshGenerated();
@@ -271,16 +629,27 @@ bool Chunk::IsMeshGenerated() const
 		return false;
 }
 
-int Chunk::ToIndex(const glm::ivec3& position) const
+inline int Chunk::ToIndex(int x, int y, int z) const
 {
-	if (position.x < 0 || position.x >= CHUNK_SIZE)
-		return -1;
+	return y * CHUNK_AREA + z * CHUNK_SIZE + x;
+}
 
-	if (position.y < 0 || position.y >= CHUNK_HEIGHT)
-		return -1;
+inline int Chunk::ToIndex(const glm::ivec3& p) const
+{
+	return ToIndex(p.x, p.y, p.z);
+}
 
-	if (position.z < 0 || position.z >= CHUNK_SIZE)
-		return -1;
+inline const Block& Chunk::GetBlockFast(int x, int y, int z) const
+{
+	return m_Blocks[ToIndex(x, y, z)];
+}
 
-	return position.y * (CHUNK_AREA)+position.z * (CHUNK_SIZE)+position.x;
+inline bool Chunk::IsSolid(int x, int y, int z) const
+{
+	if (x < 0 || x >= CHUNK_SIZE ||
+		y < 0 || y >= CHUNK_HEIGHT ||
+		z < 0 || z >= CHUNK_SIZE)
+		return false;
+
+	return GetBlockFast(x, y, z).GetType() != BlockType::AIR;
 }

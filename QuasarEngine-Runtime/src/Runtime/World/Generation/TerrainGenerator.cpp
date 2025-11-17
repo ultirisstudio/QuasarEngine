@@ -110,6 +110,18 @@ int TerrainGenerator::GetHeight(glm::vec2 pos)
 	return surfaceHeight;
 }
 
+void TerrainGenerator::GenerateHeightmap(const glm::ivec3& chunkPos, int outHeight[CHUNK_SIZE][CHUNK_SIZE])
+{
+	for (int x = 0; x < CHUNK_SIZE; ++x)
+	{
+		for (int z = 0; z < CHUNK_SIZE; ++z)
+		{
+			glm::ivec2 worldXZ(chunkPos.x + x, chunkPos.z + z);
+			outHeight[x][z] = GetHeight(worldXZ);
+		}
+	}
+}
+
 float TerrainGenerator::GetY(float noise_value, const glm::vec2& pos, const std::vector<glm::vec2>& list)
 {
 	noise_value = QuasarEngine::Math::MapRange(noise_value, -1.0f, 1.0f, list.front().x, list.back().x);

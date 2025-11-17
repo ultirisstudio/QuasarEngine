@@ -16,6 +16,8 @@ public:
 	
 	int GetHeight(glm::vec2 pos);
 
+	void GenerateHeightmap(const glm::ivec3& chunkPos, int outHeight[CHUNK_SIZE][CHUNK_SIZE]);
+
 	void GenerateCave();
 	void GenerateTree(Chunk& chunk, int x, int y, int z);
 

@@ -125,7 +125,10 @@ namespace QuasarEngine
 		FramebufferSpecification spec;
 		spec.Width = Application::Get().GetWindow().GetWidth();
 		spec.Height = Application::Get().GetWindow().GetHeight();
-		spec.Attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::DEPTH24 };
+		spec.Attachments = {
+				FramebufferTextureFormat::RGBA8,
+				FramebufferTextureFormat::Depth
+		};
 		spec.Samples = 1;
 
 		m_FrameBuffer = Framebuffer::Create(spec);
@@ -158,6 +161,9 @@ namespace QuasarEngine
 		player_light_component.SetType(QuasarEngine::LightComponent::LightType::POINT);
 		player_light_component.point_light.power = 60.0f;
 		player_light_component.point_light.attenuation = 0.2f;
+
+		//Application::Get().GetWindow().SetCursorVisibility(false);
+		//Application::Get().GetWindow().SetInputMode(true, false);
 	}
 
 	void Runtime::OnDetach()
@@ -179,7 +185,7 @@ namespace QuasarEngine
 
 		m_Player->GetCamera().Update();
 
-		m_ChunkManager->UpdateChunk(m_Player->GetPosition(), dt);
+		m_ChunkManager->UpdateChunks(glm::floor(m_Player->GetPosition()), dt);
 
 		//m_SceneManager->Update(dt);
 
@@ -207,12 +213,16 @@ namespace QuasarEngine
 		//Renderer::Instance().BeginScene(m_SceneManager->GetActiveScene());
 		Renderer::Instance().BeginScene(*m_Scene.get());
 
+		Renderer::Instance().CollectLights(*m_Scene.get());
+
 		//if (m_SceneManager->GetActiveScene().HasPrimaryCamera()) {
 
 			//Camera& camera = m_SceneManager->GetActiveScene().GetPrimaryCamera();
 
 			//Renderer::Instance().RenderSkybox(camera);
 			//Renderer::Instance().Render(camera);
+
+			Renderer::Instance().RenderSkybox(m_Player->GetCamera());
 			Renderer::Instance().Render(m_Player->GetCamera());
 			Renderer::Instance().EndScene();
 		//}
