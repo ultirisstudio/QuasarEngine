@@ -80,7 +80,7 @@ void Chunk::Generate(TerrainGenerator& generator)
 				else
 					temp = Block(BlockType::GRASS);
 
-				SetBlock(glm::vec3(i, j, k), temp);
+				SetBlock(glm::ivec3(i, j, k), temp);
 			}
 
 			/*if (height < 45)
@@ -204,11 +204,11 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             vertices.push_back(0.0f); vertices.push_back(1.0f);
 
             indices.push_back(indexOffset + 0);
+            indices.push_back(indexOffset + 2);
             indices.push_back(indexOffset + 1);
-            indices.push_back(indexOffset + 2);
             indices.push_back(indexOffset + 0);
-            indices.push_back(indexOffset + 2);
             indices.push_back(indexOffset + 3);
+            indices.push_back(indexOffset + 2);
 
             indexOffset += 4;
         };
@@ -226,7 +226,7 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             {
                 BlockType t = GetBlockFast(x, y, z).GetType();
                 bool solid = (t != BlockType::AIR);
-                bool neighborSolid = (y + 1 < H) && IsSolid(x, y + 1, z);
+                bool neighborSolid = IsSolid(x, y + 1, z);
 
                 mask[z * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
             }
@@ -291,7 +291,7 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             {
                 BlockType t = GetBlockFast(x, y, z).GetType();
                 bool solid = (t != BlockType::AIR);
-                bool neighborSolid = (y - 1 >= 0) && IsSolid(x, y - 1, z);
+                bool neighborSolid = IsSolid(x, y - 1, z);
 
                 mask[z * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
             }
@@ -358,7 +358,7 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             {
                 BlockType t = GetBlockFast(x, y, z).GetType();
                 bool solid = (t != BlockType::AIR);
-                bool neighborSolid = (x + 1 < S) && IsSolid(x + 1, y, z);
+                bool neighborSolid = IsSolid(x + 1, y, z);
 
                 mask[y * S + z] = (solid && !neighborSolid) ? t : BlockType::AIR;
             }
@@ -423,7 +423,7 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             {
                 BlockType t = GetBlockFast(x, y, z).GetType();
                 bool solid = (t != BlockType::AIR);
-                bool neighborSolid = (x - 1 >= 0) && IsSolid(x - 1, y, z);
+                bool neighborSolid = IsSolid(x - 1, y, z);
 
                 mask[y * S + z] = (solid && !neighborSolid) ? t : BlockType::AIR;
             }
@@ -490,7 +490,7 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             {
                 BlockType t = GetBlockFast(x, y, z).GetType();
                 bool solid = (t != BlockType::AIR);
-                bool neighborSolid = (z + 1 < S) && IsSolid(x, y, z + 1);
+                bool neighborSolid = IsSolid(x, y, z + 1);
 
                 mask[y * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
             }
@@ -555,7 +555,7 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             {
                 BlockType t = GetBlockFast(x, y, z).GetType();
                 bool solid = (t != BlockType::AIR);
-                bool neighborSolid = (z - 1 >= 0) && IsSolid(x, y, z - 1);
+                bool neighborSolid = IsSolid(x, y, z - 1);
 
                 mask[y * S + x] = (solid && !neighborSolid) ? t : BlockType::AIR;
             }
@@ -646,10 +646,20 @@ inline const Block& Chunk::GetBlockFast(int x, int y, int z) const
 
 inline bool Chunk::IsSolid(int x, int y, int z) const
 {
-	if (x < 0 || x >= CHUNK_SIZE ||
-		y < 0 || y >= CHUNK_HEIGHT ||
-		z < 0 || z >= CHUNK_SIZE)
-		return false;
+    if (x >= 0 && x < CHUNK_SIZE &&
+        y >= 0 && y < CHUNK_HEIGHT &&
+        z >= 0 && z < CHUNK_SIZE)
+    {
+        return GetBlockFast(x, y, z).GetType() != BlockType::AIR;
+    }
 
-	return GetBlockFast(x, y, z).GetType() != BlockType::AIR;
+    glm::ivec3 worldPos = m_Position + glm::ivec3(x, y, z);
+
+    ChunkManager* cm = ChunkManager::GetInstance();
+    if (!cm)
+        return false;
+
+    BlockType t = cm->GetBlockType(worldPos);
+
+    return t != BlockType::AIR && t != BlockType::BLOCK_ERROR;
 }
