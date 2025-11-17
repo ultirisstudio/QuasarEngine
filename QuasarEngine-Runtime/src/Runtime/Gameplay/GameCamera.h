@@ -52,7 +52,9 @@ public:
 	const glm::mat4& getViewMatrix() const override;
 	const glm::mat4& getProjectionMatrix() const override;
 
-	glm::vec3 GetFront() override;
+	glm::vec3 GetFront() const override;
+	glm::mat4 GetTransform() const override;
+	glm::vec3 GetPosition() const override;
 
 	glm::vec3 GetPosition();
 

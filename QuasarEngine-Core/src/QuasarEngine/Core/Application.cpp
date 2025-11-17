@@ -10,7 +10,7 @@
 #if !defined(NDEBUG)
 #define QE_PROFILE_APP_TIMERS 1
 #else
-#define QE_PROFILE_APP_TIMERS 1
+#define QE_PROFILE_APP_TIMERS 0
 #endif
 #endif
 
@@ -79,7 +79,7 @@ namespace QuasarEngine
 
 	void Application::MaximizeWindow(bool value)
 	{
-		if (m_Window->IsMaximized())
+		if (value)
 		{
 			m_Window->Maximize();
 		}
@@ -111,7 +111,7 @@ namespace QuasarEngine
         using clock = std::chrono::steady_clock;
 
         auto lastFrameBegin = clock::now();
-        auto lastImGuiTick = lastFrameBegin;
+		auto lastImGuiTick = lastFrameBegin;
 
         const bool capFps = (m_Specification.MaxFPS > 0);
         const double frameMs = capFps ? (1000.0 / m_Specification.MaxFPS) : 0.0;
@@ -125,7 +125,7 @@ namespace QuasarEngine
             const double dt = std::chrono::duration<double>(frameBegin - lastFrameBegin).count();
             lastFrameBegin = frameBegin;
 
-            deltaTime = static_cast<float>(std::min(dt, 0.1));
+			deltaTime = static_cast<float>(std::min(dt, 0.1));
 
 #if QE_PROFILE_APP_TIMERS
             ApplicationInfos nextInfos{};
@@ -232,7 +232,7 @@ namespace QuasarEngine
             const auto frameEnd = clock::now();
             const double frameTimeMs = dmsec(frameEnd - frameBegin).count();
 
-            if (m_Specification.MinimizedSleep && m_Minimized) {
+			if (m_Specification.MinimizedSleep && m_Minimized) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(66));
             }
             else if (capFps) {

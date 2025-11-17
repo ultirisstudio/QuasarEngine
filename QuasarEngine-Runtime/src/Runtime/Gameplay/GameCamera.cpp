@@ -77,13 +77,24 @@ const glm::mat4& GameCamera::getProjectionMatrix() const
 	return m_projectionMatrix;
 }
 
-glm::vec3 GameCamera::GetFront()
+glm::vec3 GameCamera::GetFront() const
 {
 	glm::vec3 front;
 	front.x = cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
 	front.y = sin(glm::radians(m_pitch));
 	front.z = sin(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
 	return glm::normalize(front);
+}
+
+glm::mat4 GameCamera::GetTransform() const
+{
+	glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(m_pitch), { 1, 0, 0 }) * glm::rotate(glm::mat4(1.0f), glm::radians(m_yaw), { 0, 1, 0 }) * glm::rotate(glm::mat4(1.0f), 0.0f, { 0, 0, 1 });
+	return glm::translate(glm::mat4(1.f), m_position) * rotation;
+}
+
+glm::vec3 GameCamera::GetPosition() const
+{
+	return m_position;
 }
 
 glm::vec3 GameCamera::GetPosition()

@@ -209,7 +209,7 @@ namespace QuasarEngine
     {
         m_Data.Width = width;
         m_Data.Height = height;
-        m_Context->Resize(width, height);
+        //m_Context->Resize(width, height);
     }
 
 /*#if defined(_WIN32)
