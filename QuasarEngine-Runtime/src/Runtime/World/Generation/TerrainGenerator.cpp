@@ -9,11 +9,11 @@
 #include <glm/gtx/spline.hpp>
 #include <string>
 
-TerrainGenerator::TerrainGenerator() : seed(8173561), perlin()
+TerrainGenerator::TerrainGenerator() : seed(8173561), perlin(seed)
 {
 	continetalnessCurve = loadCurve("Assets/Curves/continentalness.csv");
-	erosionCurve = loadCurve("Assets/Curves/erosion.csv");
-	peaksAndValleyCurve = loadCurve("Assets/Curves/peaks_and_valleys.csv");
+	//erosionCurve = loadCurve("Assets/Curves/erosion.csv");
+	//peaksAndValleyCurve = loadCurve("Assets/Curves/peaks_and_valleys.csv");
 }
 
 TerrainGenerator::~TerrainGenerator()
@@ -39,20 +39,20 @@ std::vector<glm::vec2> TerrainGenerator::loadCurve(const std::string& path)
 	return controlPoints;
 }
 
-int TerrainGenerator::GetHeight(glm::vec2 pos)
+/*int TerrainGenerator::GetHeight(glm::vec2 pos)
 {
 	float continentalnessNoise = perlin.octave2D(pos.x * 0.0009f, pos.y * 0.0009f, 10);
 	float erosionNoise = perlin.octave2D(pos.x * 0.0038f, pos.y * 0.0038f, 5);
 	float peaksAndValleysNoise = perlin.octave2D(pos.x * 0.001f, pos.y * 0.001f, 10);
 
 	float continentalness = QuasarEngine::Math::MapRange(GetY(continentalnessNoise, pos, continetalnessCurve), 0.0f, 255.0f, 0.0f, 255.0f);
-	float erosion = QuasarEngine::Math::MapRange(GetY(erosionNoise, pos, erosionCurve), 0.0f, 255.0f, 0.0f, 255.0f);
-	float peaksAndValley = QuasarEngine::Math::MapRange(GetY(peaksAndValleysNoise, pos, peaksAndValleyCurve), 0.0f, 255.0f, 0.0f, 255.0f);
+	//float erosion = QuasarEngine::Math::MapRange(GetY(erosionNoise, pos, erosionCurve), 0.0f, 255.0f, 0.0f, 255.0f);
+	//float peaksAndValley = QuasarEngine::Math::MapRange(GetY(peaksAndValleysNoise, pos, peaksAndValleyCurve), 0.0f, 255.0f, 0.0f, 255.0f);
 
 	std::vector<glm::vec2> positions;
 	int valC = static_cast<int>(continentalness);
-	int valE = static_cast<int>(erosion);
-	int valPV = static_cast<int>(peaksAndValley);
+	//int valE = static_cast<int>(erosion);
+	//int valPV = static_cast<int>(peaksAndValley);
 
 	for (int i = -1; i <= 1; ++i)
 	{
@@ -68,46 +68,41 @@ int TerrainGenerator::GetHeight(glm::vec2 pos)
 	for (unsigned int i = 0; i < positions.size(); ++i)
 	{
 		float c = QuasarEngine::Math::MapRange(GetY(continentalnessNoise, positions[i], continetalnessCurve), 0.0f, 255.0f, 0.0f, 255.0f);
-		float e = QuasarEngine::Math::MapRange(GetY(erosionNoise, positions[i], erosionCurve), 0.0f, 255.0f, 0.0f, 255.0f);
-		float pv = QuasarEngine::Math::MapRange(GetY(peaksAndValleysNoise, positions[i], peaksAndValleyCurve), 0.0f, 255.0f, 0.0f, 150.0f);
+		//float e = QuasarEngine::Math::MapRange(GetY(erosionNoise, positions[i], erosionCurve), 0.0f, 255.0f, 0.0f, 255.0f);
+		//float pv = QuasarEngine::Math::MapRange(GetY(peaksAndValleysNoise, positions[i], peaksAndValleyCurve), 0.0f, 255.0f, 0.0f, 150.0f);
 
 		valC += static_cast<int>(c);
-		valE += static_cast<int>(e);
-		valPV += static_cast<int>(pv);
+		//valE += static_cast<int>(e);
+		//valPV += static_cast<int>(pv);
 	}
 
 	valC /= 9.0f;
-	valE /= 9.0f;
-	valPV /= 9.0f;
+	//valE /= 9.0f;
+	//valPV /= 9.0f;
 
-	int surfaceHeight = peaksAndValley;
+	return continentalness;
 
-	/*if (continentalnessNoise > 0.17f)
-	{
-		int delta = 0;
+	//int surfaceHeight = peaksAndValley;
 
-		if (valC > valPV)
-			delta = valPV - valC;
-		else
-			delta = valC - valPV;
+	//return surfaceHeight;
+}*/
 
-		surfaceHeight = valC + delta;
+int TerrainGenerator::GetHeight(glm::vec2 pos)
+{
+	const float frequency = 0.001f;
 
-		if (erosionNoise > 0.0f)
-		{
-			surfaceHeight = valPV;
-		}
-		else
-		{
-			surfaceHeight = valE;
-		}
-	}
-	else
-	{
-		surfaceHeight = valC;
-	}*/
+	float n = perlin.octave2D(pos.x * frequency, pos.y * frequency, 6);
 
-	return surfaceHeight;
+	n = (n + 1.0f) * 0.5f;
+
+	float heightF = MIN_HEIGHT + n * (MAX_HEIGHT - MIN_HEIGHT);
+
+	int height = static_cast<int>(heightF);
+
+	if (height < 1) height = 1;
+	if (height >= CHUNK_HEIGHT) height = CHUNK_HEIGHT - 1;
+
+	return height;
 }
 
 void TerrainGenerator::GenerateHeightmap(const glm::ivec3& chunkPos, int outHeight[CHUNK_SIZE][CHUNK_SIZE])
@@ -138,8 +133,8 @@ float TerrainGenerator::GetY(float noise_value, const glm::vec2& pos, const std:
 
 	float value = QuasarEngine::Math::MapRange(noise_value - points[1].x, 0.0f, points[2].x - points[1].x, 0.0f, 1.0f);
 	//float y = glm::catmullRom(points[0], points[1], points[2], points[3], value).y;
-	//float y = interpolator.LinearInterpolation(value, points[1], points[2]).y;
-	float y = QuasarEngine::Interpolator::CatmullRomInterpolation(value, points[0], points[1], points[2], points[3]).y;
+	float y = QuasarEngine::Interpolator::LinearInterpolation(value, points[1], points[2]).y;
+	//float y = QuasarEngine::Interpolator::CatmullRomInterpolation(value, points[0], points[1], points[2], points[3]).y;
 
 	return y;
 }

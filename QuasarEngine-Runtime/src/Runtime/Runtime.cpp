@@ -200,6 +200,22 @@ namespace QuasarEngine
 	{
 		m_FrameBuffer->Bind();
 
+		/*glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		glDepthMask(GL_TRUE);
+
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+		glFrontFace(GL_CCW);
+
+		glDisable(GL_BLEND);
+		glDisable(GL_SCISSOR_TEST);
+		glDisable(GL_STENCIL_TEST);
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);*/
+
 		RenderCommand::Instance().ClearColor({ 0.8f, 0.8f, 0.8f, 1.0f });
 		RenderCommand::Instance().Clear();
 
@@ -249,7 +265,11 @@ namespace QuasarEngine
 
 	void Runtime::OnGuiRender()
 	{
+		/*ImGui::Begin("Runtime");
 
+		ImGui::Image((ImTextureID)(uintptr_t)m_FrameBuffer->GetColorAttachmentTexture(0)->GetHandle(), ImVec2(512, 512), ImVec2(0, 1), ImVec2(1, 0));
+
+		ImGui::End();*/
 	}
 
 	void Runtime::OnEvent(Event& e)

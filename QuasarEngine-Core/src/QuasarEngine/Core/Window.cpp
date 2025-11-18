@@ -253,11 +253,7 @@ namespace QuasarEngine
     {
         if (cursorDisabled) {
             glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            glfwSetInputMode(
-                m_Window,
-                GLFW_RAW_MOUSE_MOTION,
-                (rawMouseMotion && glfwRawMouseMotionSupported()) ? GLFW_TRUE : GLFW_FALSE
-            );
+            glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, (rawMouseMotion && glfwRawMouseMotionSupported()) ? GLFW_TRUE : GLFW_FALSE);
         }
         else {
             glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

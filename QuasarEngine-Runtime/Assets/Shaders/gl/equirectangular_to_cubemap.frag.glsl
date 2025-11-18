@@ -4,7 +4,7 @@ layout(location = 0) in vec3 inWorldPos;
 
 layout(location = 0) out vec4 outColor;
 
-uniform sampler2D equirectangularMap;
+layout(binding = 1) uniform sampler2D equirectangularMap;
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
 

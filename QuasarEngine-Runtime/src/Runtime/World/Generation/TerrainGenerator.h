@@ -38,8 +38,8 @@ private:
 	const glm::vec2& GetRightPoint(const std::vector<glm::vec2>& points, float x) const;
 
 	std::vector<glm::vec2> continetalnessCurve;
-	std::vector<glm::vec2> erosionCurve;
-	std::vector<glm::vec2> peaksAndValleyCurve;
+	//std::vector<glm::vec2> erosionCurve;
+	//std::vector<glm::vec2> peaksAndValleyCurve;
 
 	const siv::PerlinNoise::seed_type seed;
 	const siv::PerlinNoise perlin; //{seed}

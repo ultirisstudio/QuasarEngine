@@ -62,12 +62,14 @@ const BlockType Chunk::GetBlockType(const glm::ivec3& position) const
 
 void Chunk::Generate(TerrainGenerator& generator)
 {
+    int outHeight[CHUNK_SIZE][CHUNK_SIZE];
+	generator.GenerateHeightmap(m_Position, outHeight);
+
 	for (int i = 0; i < CHUNK_SIZE; i++)
 	{
 		for (int k = 0; k < CHUNK_SIZE; k++)
 		{
-			glm::ivec2 hpos = glm::ivec2(m_Position.x + i, m_Position.z + k);
-			int height = generator.GetHeight(hpos);
+			int height = outHeight[i][k];
 
 			for (int j = 0; j < height; j++)
 			{
@@ -204,11 +206,11 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
             vertices.push_back(0.0f); vertices.push_back(1.0f);
 
             indices.push_back(indexOffset + 0);
-            indices.push_back(indexOffset + 2);
             indices.push_back(indexOffset + 1);
-            indices.push_back(indexOffset + 0);
-            indices.push_back(indexOffset + 3);
             indices.push_back(indexOffset + 2);
+            indices.push_back(indexOffset + 0);
+            indices.push_back(indexOffset + 2);
+            indices.push_back(indexOffset + 3);
 
             indexOffset += 4;
         };
@@ -270,10 +272,10 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
 
                 glm::vec3 n(0.0f, 1.0f, 0.0f);
 
-                glm::vec3 v0(x0, yy, z0);
-                glm::vec3 v1(x1, yy, z0);
-                glm::vec3 v2(x1, yy, z1);
-                glm::vec3 v3(x0, yy, z1);
+                glm::vec3 v0(x0, yy, z1);
+                glm::vec3 v1(x1, yy, z1);
+                glm::vec3 v2(x1, yy, z0);
+                glm::vec3 v3(x0, yy, z0);
 
                 pushQuad(v0, v1, v2, v3, n);
 
@@ -335,10 +337,10 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
 
                 glm::vec3 n(0.0f, -1.0f, 0.0f);
 
-                glm::vec3 v0(x0, yy, z1);
-                glm::vec3 v1(x1, yy, z1);
-                glm::vec3 v2(x1, yy, z0);
-                glm::vec3 v3(x0, yy, z0);
+                glm::vec3 v0(x0, yy, z0);
+                glm::vec3 v1(x1, yy, z0);
+                glm::vec3 v2(x1, yy, z1);
+                glm::vec3 v3(x0, yy, z1);
 
                 pushQuad(v0, v1, v2, v3, n);
 
@@ -402,10 +404,10 @@ void Chunk::BuildGreedyMeshData(std::vector<float>& vertices, std::vector<unsign
 
                 glm::vec3 n(1.0f, 0.0f, 0.0f);
 
-                glm::vec3 v0(xx, y0, z0);
-                glm::vec3 v1(xx, y1, z0);
-                glm::vec3 v2(xx, y1, z1);
-                glm::vec3 v3(xx, y0, z1);
+                glm::vec3 v0(xx, y0, z1);
+                glm::vec3 v1(xx, y0, z0);
+                glm::vec3 v2(xx, y1, z0);
+                glm::vec3 v3(xx, y1, z1);
 
                 pushQuad(v0, v1, v2, v3, n);
 

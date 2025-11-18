@@ -8,10 +8,6 @@
 #include <stb_image.h>
 #include <QuasarEngine/Core/Logger.h>
 
-#include <glad/glad.h>
-
-#include <Platform/OpenGL/OpenGLFramebuffer.h>
-
 namespace QuasarEngine
 {
     const char* SkyboxHDR::ExtFor(RendererAPI::API api, Shader::ShaderStageType s)

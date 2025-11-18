@@ -19,6 +19,7 @@ project "QuasarEngine-Runtime"
 		"%{IncludeDir.QuasarEngineCore}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.zlib}",
+		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.yaml_cpp}",
 		"%{IncludeDir.ImGuizmo}",
@@ -39,6 +40,7 @@ project "QuasarEngine-Runtime"
 		"mbedtls",
 		"zlib",
 		"lua",
+		"Glad",
 		
 		"%{LibraryDir.PhysX}/PhysXExtensions_static_64.lib",
 		"%{LibraryDir.PhysX}/PhysXCooking_64.lib",

@@ -212,6 +212,8 @@ void ChunkManager::RequestChunk(const glm::ivec3& chunkPos)
 	entity.AddComponent<QuasarEngine::MeshComponent>();
 	QuasarEngine::MaterialSpecification spec;
 	spec.AlbedoTexture = "Assets/Textures/dark_grass_block_top.png";
+	spec.Metallic = 0.0f;
+	spec.Roughness = 1.0f;
 	entity.AddComponent<QuasarEngine::MaterialComponent>(spec);
 	entity.AddComponent<QuasarEngine::MeshRendererComponent>();
 	entity.AddComponent<Chunk>(chunkPos);
@@ -291,6 +293,25 @@ void ChunkManager::ProcessGenerationResults()
 		m_MeshPool.Enqueue([this, pos = res.position]() {
 			AsyncGenerateMesh(pos);
 			});
+
+		std::array<glm::ivec3, 4> neighbors = {
+			res.position + glm::ivec3(CHUNK_SIZE, 0,          0),
+			res.position + glm::ivec3(-CHUNK_SIZE, 0,          0),
+			res.position + glm::ivec3(0,          0,  CHUNK_SIZE),
+			res.position + glm::ivec3(0,          0, -CHUNK_SIZE)
+		};
+
+		for (const auto& nPos : neighbors)
+		{
+			std::lock_guard<std::mutex> lock(m_ChunkMapMutex);
+			auto nit = m_EntityMap.find(nPos);
+			if (nit == m_EntityMap.end())
+				continue;
+
+			m_MeshPool.Enqueue([this, pos = nPos]() {
+				AsyncGenerateMesh(pos);
+				});
+		}
 	}
 }
 
