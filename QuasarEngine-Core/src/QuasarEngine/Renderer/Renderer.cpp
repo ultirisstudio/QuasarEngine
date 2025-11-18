@@ -626,7 +626,7 @@ namespace QuasarEngine
 			//totalEntity++;
 
 			if (!mc.GetMesh().IsVisible(frustum, model)) {
-				continue;
+				//continue;
 			}
 
 			//entityDraw++;
@@ -705,7 +705,7 @@ namespace QuasarEngine
 			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
 
 			if (!mc.GetMesh().IsVisible(frustum, model)) {
-				continue;
+				//continue;
 			}
 
 			m_SceneData.m_SkinnedShader->SetUniform("model", &model, sizeof(glm::mat4));
