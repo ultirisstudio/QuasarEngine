@@ -1,0 +1,251 @@
+Scene: script_test
+Entities:
+  - Entity: Spawner
+    ID: 18192300709404587340
+    ParentID: 0
+    Components:
+      - TagComponent:
+          Name: Spawner
+          Mask:
+            []
+          MaskHex: 0x0000000000000000
+      - TransformComponent:
+          Position: [0, 0, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+      - ScriptComponent:
+          scriptPath: Assets/Scripts/EnemySpawner.lua
+  - Entity: Light
+    ID: 12864736185128758218
+    ParentID: 0
+    Components:
+      - TagComponent:
+          Name: Light
+          Mask:
+            []
+          MaskHex: 0x0000000000000000
+      - TransformComponent:
+          Position: [0, 6, 0]
+          Rotation: [-0.471238881, -0.0558505356, 0]
+          Scale: [1, 1, 1]
+      - LightComponent:
+          lightType: Point
+          color: [1, 1, 1]
+          attenuation: 1
+          power: 23.1830006
+  - Entity: PlayerCamera
+    ID: 11951825199843277956
+    ParentID: 0
+    Components:
+      - TagComponent:
+          Name: PlayerCamera
+          Mask:
+            []
+          MaskHex: 0x0000000000000000
+      - TransformComponent:
+          Position: [18.0014973, 1.20999575, -7.61113119]
+          Rotation: [-0.00698143197, -0.0069811265, 1.81903364e-12]
+          Scale: [1, 1, 1]
+      - CameraComponent:
+          fov: 60
+          primary: true
+  - Entity: Cube
+    ID: 5193034098712769296
+    ParentID: 0
+    Components:
+      - TagComponent:
+          Name: Cube
+          Mask:
+            - Enemy
+            - Static
+          MaskHex: 0x0000000000000022
+      - TransformComponent:
+          Position: [-7.68632078, 0, -13.19666]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+      - RigidBodyComponent:
+          enableGravity: true
+          bodyType: DYNAMIC
+          linearAxisFactor_X: true
+          linearAxisFactor_Y: true
+          linearAxisFactor_Z: true
+          angularAxisFactor_X: true
+          angularAxisFactor_Y: true
+          angularAxisFactor_Z: true
+          linearDamping: 0.00999999978
+          angularDamping: 0.0500000007
+      - BoxColliderComponent:
+          mass: 1
+          friction: 0.5
+          bounciness: 0.200000003
+          useEntityScale: true
+          size: [1, 1, 1]
+  - Entity: cube
+    ID: 10840230187067256999
+    ParentID: 5193034098712769296
+    Components:
+      - TagComponent:
+          Name: cube
+          Mask:
+            []
+          MaskHex: 0x0000000000000000
+      - TransformComponent:
+          Position: [0, 0, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+      - MaterialComponent:
+          albedo: [0.221555397, 0.786046505, 0.157209292, 1]
+          metallic: 0
+          roughness: 0
+          ao: 1
+      - MeshRendererComponent:
+          Rendered: true
+      - MeshComponent:
+          Path: Assets/Models/cube.obj
+          Name: cube
+  - Entity: Player
+    ID: 4200355921725127263
+    ParentID: 0
+    Components:
+      - TagComponent:
+          Name: Player
+          Mask:
+            - Dynamic
+            - Player
+          MaskHex: 0x0000000000000041
+      - TransformComponent:
+          Position: [0, 0, 0]
+          Rotation: [0, -0.00698131695, 0]
+          Scale: [1, 1, 1]
+      - ScriptComponent:
+          scriptPath: Assets/Scripts/FpsPlayer.lua
+  - Entity: cube
+    ID: 9426588678654157130
+    ParentID: 4200355921725127263
+    Components:
+      - TagComponent:
+          Name: cube
+          Mask:
+            []
+          MaskHex: 0x0000000000000000
+      - TransformComponent:
+          Position: [0, 0, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+      - MaterialComponent:
+          albedo: [0.600000024, 0.600000024, 0.600000024, 1]
+          metallic: 0
+          roughness: 1
+          ao: 1
+      - MeshRendererComponent:
+          Rendered: true
+      - MeshComponent:
+          Path: Assets/Models/cube.obj
+          Name: cube
+  - Entity: Gound
+    ID: 9977869404433062610
+    ParentID: 0
+    Components:
+      - TagComponent:
+          Name: Gound
+          Mask:
+            - Static
+          MaskHex: 0x0000000000000020
+      - TransformComponent:
+          Position: [0, -2.5, 0]
+          Rotation: [0, -0, 0]
+          Scale: [60, 1, 60]
+      - RigidBodyComponent:
+          enableGravity: false
+          bodyType: STATIC
+          linearAxisFactor_X: true
+          linearAxisFactor_Y: true
+          linearAxisFactor_Z: true
+          angularAxisFactor_X: true
+          angularAxisFactor_Y: true
+          angularAxisFactor_Z: true
+          linearDamping: 0.00999999978
+          angularDamping: 0.0500000007
+      - BoxColliderComponent:
+          mass: 1
+          friction: 0.5
+          bounciness: 0.200000003
+          useEntityScale: true
+          size: [1, 1, 1]
+  - Entity: cube
+    ID: 16386157800653832697
+    ParentID: 9977869404433062610
+    Components:
+      - TagComponent:
+          Name: cube
+          Mask:
+            []
+          MaskHex: 0x0000000000000000
+      - TransformComponent:
+          Position: [0, 0, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+      - MaterialComponent:
+          albedo: [0.600000024, 0.600000024, 0.600000024, 1]
+          metallic: 0
+          roughness: 1
+          ao: 1
+      - MeshRendererComponent:
+          Rendered: true
+      - MeshComponent:
+          Path: Assets/Models/cube.obj
+          Name: cube
+  - Entity: Cube2
+    ID: 4543893077840631348
+    ParentID: 0
+    Components:
+      - TagComponent:
+          Name: Cube2
+          Mask:
+            - Dynamic
+            - Enemy
+          MaskHex: 0x0000000000000042
+      - TransformComponent:
+          Position: [9.0000782, 0, 11.2689161]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+      - RigidBodyComponent:
+          enableGravity: true
+          bodyType: DYNAMIC
+          linearAxisFactor_X: true
+          linearAxisFactor_Y: true
+          linearAxisFactor_Z: true
+          angularAxisFactor_X: true
+          angularAxisFactor_Y: true
+          angularAxisFactor_Z: true
+          linearDamping: 0.00999999978
+          angularDamping: 0.0500000007
+      - BoxColliderComponent:
+          mass: 1
+          friction: 0.5
+          bounciness: 0.200000003
+          useEntityScale: true
+          size: [1, 1, 1]
+  - Entity: cube
+    ID: 6745860602449759903
+    ParentID: 4543893077840631348
+    Components:
+      - TagComponent:
+          Name: cube
+          Mask:
+            []
+          MaskHex: 0x0000000000000000
+      - TransformComponent:
+          Position: [0, 0, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+      - MaterialComponent:
+          albedo: [0.865116298, 0.0523093417, 0.0523093417, 1]
+          metallic: 0
+          roughness: 0
+          ao: 1
+      - MeshRendererComponent:
+          Rendered: true
+      - MeshComponent:
+          Path: Assets/Models/cube.obj
+          Name: cube
