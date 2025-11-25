@@ -107,8 +107,6 @@ namespace QuasarEngine
         Brush m_Brush;
 
         EditorCanvas m_Canvas;
-        float  m_GridStep = 32.f;
-		bool m_ShowGrid = true;
 
         int  m_HoverX = -1, m_HoverY = -1;
         bool m_HoverValid = false;

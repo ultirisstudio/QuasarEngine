@@ -239,12 +239,12 @@ namespace QuasarEngine
         ImGui::Text("Design: %ux%u", m_DesignW, m_DesignH);
 
         ImGui::SameLine(0, 24);
-        ImGui::Checkbox("Grille", &m_ShowGrid);
+        ImGui::Checkbox("Grille", &m_Canvas.showGrid);
         ImGui::SameLine();
         ImGui::Checkbox("Snap", &m_SnapToGrid);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(80);
-        ImGui::DragFloat("Pas", &m_GridStep, 0.5f, 2.f, 64.f, "%.0f");
+        ImGui::DragFloat("Pas", &m_Canvas.baseGridStep, 0.5f, 2.f, 64.f, "%.0f");
 
         ImGui::SameLine(0, 24);
         ImGui::SetNextItemWidth(90);
@@ -372,8 +372,8 @@ namespace QuasarEngine
         default:                     e = std::make_shared<UIElement>(MakeUniqueId("element", m_Root)); break;
         }
         if (m_SnapToGrid) {
-            float x = Snap(pos.x, m_GridStep);
-            float y = Snap(pos.y, m_GridStep);
+            float x = Snap(pos.x, m_Canvas.baseGridStep);
+            float y = Snap(pos.y, m_Canvas.baseGridStep);
             e->Transform().pos = { x, y };
         }
         else {
@@ -519,7 +519,7 @@ namespace QuasarEngine
         Rect& r = sel->Transform().rect;
         float nx = mouseCanvas.x - m_DragOffset.x;
         float ny = mouseCanvas.y - m_DragOffset.y;
-        if (m_SnapToGrid) { nx = Snap(nx, m_GridStep); ny = Snap(ny, m_GridStep); }
+        if (m_SnapToGrid) { nx = Snap(nx, m_Canvas.baseGridStep); ny = Snap(ny, m_Canvas.baseGridStep); }
         r.x = nx; r.y = ny;
         ClampRect(r);
     }
@@ -533,33 +533,33 @@ namespace QuasarEngine
         switch (m_ResizeHandle) {
         case 0: {
             float rx = mouseCanvas.x; float ry = mouseCanvas.y;
-            if (m_SnapToGrid) { rx = Snap(rx, m_GridStep); ry = Snap(ry, m_GridStep); }
+            if (m_SnapToGrid) { rx = Snap(rx, m_Canvas.baseGridStep); ry = Snap(ry, m_Canvas.baseGridStep); }
             float dx = r.x + r.w - rx; float dy = r.y + r.h - ry;
             r.x = rx; r.y = ry; r.w = std::max(minW, dx); r.h = std::max(minH, dy);
         } break;
         case 1: {
-            float ry = mouseCanvas.y; if (m_SnapToGrid) ry = Snap(ry, m_GridStep);
+            float ry = mouseCanvas.y; if (m_SnapToGrid) ry = Snap(ry, m_Canvas.baseGridStep);
             float dy = r.y + r.h - ry; r.y = ry; r.h = std::max(minH, dy);
         } break;
         case 2: {
-            float ry = mouseCanvas.y; if (m_SnapToGrid) ry = Snap(ry, m_GridStep);
-            float dx = mouseCanvas.x - r.x; r.w = std::max(minW, m_SnapToGrid ? Snap(dx, m_GridStep) : dx);
+            float ry = mouseCanvas.y; if (m_SnapToGrid) ry = Snap(ry, m_Canvas.baseGridStep);
+            float dx = mouseCanvas.x - r.x; r.w = std::max(minW, m_SnapToGrid ? Snap(dx, m_Canvas.baseGridStep) : dx);
             float dy = r.y + r.h - ry; r.y = ry; r.h = std::max(minH, dy);
         } break;
-        case 3: { float dx = mouseCanvas.x - r.x; r.w = std::max(minW, m_SnapToGrid ? Snap(dx, m_GridStep) : dx); } break;
+        case 3: { float dx = mouseCanvas.x - r.x; r.w = std::max(minW, m_SnapToGrid ? Snap(dx, m_Canvas.baseGridStep) : dx); } break;
         case 4: {
             float dx = mouseCanvas.x - r.x; float dy = mouseCanvas.y - r.y;
-            r.w = std::max(minW, m_SnapToGrid ? Snap(dx, m_GridStep) : dx);
-            r.h = std::max(minH, m_SnapToGrid ? Snap(dy, m_GridStep) : dy);
+            r.w = std::max(minW, m_SnapToGrid ? Snap(dx, m_Canvas.baseGridStep) : dx);
+            r.h = std::max(minH, m_SnapToGrid ? Snap(dy, m_Canvas.baseGridStep) : dy);
         } break;
-        case 5: { float dy = mouseCanvas.y - r.y; r.h = std::max(minH, m_SnapToGrid ? Snap(dy, m_GridStep) : dy); } break;
+        case 5: { float dy = mouseCanvas.y - r.y; r.h = std::max(minH, m_SnapToGrid ? Snap(dy, m_Canvas.baseGridStep) : dy); } break;
         case 6: {
-            float rx = mouseCanvas.x; if (m_SnapToGrid) rx = Snap(rx, m_GridStep);
-            float dy = mouseCanvas.y - r.y; r.h = std::max(minH, m_SnapToGrid ? Snap(dy, m_GridStep) : dy);
+            float rx = mouseCanvas.x; if (m_SnapToGrid) rx = Snap(rx, m_Canvas.baseGridStep);
+            float dy = mouseCanvas.y - r.y; r.h = std::max(minH, m_SnapToGrid ? Snap(dy, m_Canvas.baseGridStep) : dy);
             float dx = r.x + r.w - rx; r.x = rx; r.w = std::max(minW, dx);
         } break;
         case 7: {
-            float rx = mouseCanvas.x; if (m_SnapToGrid) rx = Snap(rx, m_GridStep);
+            float rx = mouseCanvas.x; if (m_SnapToGrid) rx = Snap(rx, m_Canvas.baseGridStep);
             float dx = r.x + r.w - rx; r.x = rx; r.w = std::max(minW, dx);
         } break;
         default: break;
@@ -642,7 +642,7 @@ namespace QuasarEngine
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImVec2 size = ImGui::GetContentRegionAvail();
         m_Canvas.BeginRegion(pos, size);
-        m_Canvas.baseGridStep = m_GridStep;
+        m_Canvas.baseGridStep = m_Canvas.baseGridStep;
 
         dl->AddRectFilled(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(22, 24, 28, 255), 6.0f);
         dl->AddRect(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(90, 90, 100, 180), 6.0f);
@@ -683,9 +683,9 @@ namespace QuasarEngine
             m_Canvas.HandlePanAndZoom(ImGui::GetIO(), true, 0.4f, 4.0f);
         }
 
-        m_Canvas.showGrid = m_ShowGrid;
-        m_Canvas.baseGridStep = m_GridStep;
-        if (m_ShowGrid)
+        m_Canvas.showGrid = m_Canvas.showGrid;
+        m_Canvas.baseGridStep = m_Canvas.baseGridStep;
+        if (m_Canvas.showGrid)
             m_Canvas.DrawGrid(dl);
 
         if (hovering && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ImGui::OpenPopup("QUI_CanvasMenu");
@@ -796,10 +796,10 @@ namespace QuasarEngine
         ImGui::SeparatorText("Transform");
         Rect rc = e.Transform().rect;
         float x = rc.x, y = rc.y, w = rc.w, h = rc.h;
-        if (ImGui::DragFloat("X", &x, 1.f)) { rc.x = m_SnapToGrid ? Snap(x, m_GridStep) : x; anyChanged = true; }
-        if (ImGui::DragFloat("Y", &y, 1.f)) { rc.y = m_SnapToGrid ? Snap(y, m_GridStep) : y; anyChanged = true; }
-        if (ImGui::DragFloat("W", &w, 1.f, 2.f, 8192.f)) { rc.w = std::max(2.f, m_SnapToGrid ? Snap(w, m_GridStep) : w); anyChanged = true; }
-        if (ImGui::DragFloat("H", &h, 1.f, 2.f, 8192.f)) { rc.h = std::max(2.f, m_SnapToGrid ? Snap(h, m_GridStep) : h); anyChanged = true; }
+        if (ImGui::DragFloat("X", &x, 1.f)) { rc.x = m_SnapToGrid ? Snap(x, m_Canvas.baseGridStep) : x; anyChanged = true; }
+        if (ImGui::DragFloat("Y", &y, 1.f)) { rc.y = m_SnapToGrid ? Snap(y, m_Canvas.baseGridStep) : y; anyChanged = true; }
+        if (ImGui::DragFloat("W", &w, 1.f, 2.f, 8192.f)) { rc.w = std::max(2.f, m_SnapToGrid ? Snap(w, m_Canvas.baseGridStep) : w); anyChanged = true; }
+        if (ImGui::DragFloat("H", &h, 1.f, 2.f, 8192.f)) { rc.h = std::max(2.f, m_SnapToGrid ? Snap(h, m_Canvas.baseGridStep) : h); anyChanged = true; }
         if (anyChanged) {
             e.Transform().rect = rc;
             ClampRect(e.Transform().rect);

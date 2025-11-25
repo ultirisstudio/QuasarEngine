@@ -11,14 +11,19 @@ namespace QuasarEngine
     struct EditorCanvas
     {
         ImVec2 pan{ 0.0f, 0.0f };
-        float  zoom = 1.0f;
+        float zoom = 1.0f;
 
         ImVec2 canvasPos{ 0.0f, 0.0f };
         ImVec2 canvasSize{ 0.0f, 0.0f };
 
-        bool  showGrid = true;
+        bool showGrid = true;
         float baseGridStep = 40.0f;
+		
+	private:
+		bool m_Panning = false;
+		ImVec2 m_PanStart{ 0.0f, 0.0f };
 
+	public:
         void BeginRegion(ImVec2 pos, ImVec2 size)
         {
             canvasPos = pos;
@@ -49,7 +54,9 @@ namespace QuasarEngine
             ImVec2 origin = canvasPos;
 
             float startX = std::fmod(pan.x, step);
-            float startY = std::fmod(pan.y, step);
+			if (startX < 0) startX += step;
+			float startY = std::fmod(pan.y, step);
+			if (startY < 0) startY += step;
 
             for (float x = startX; x < canvasSize.x; x += step)
                 dl->AddLine(origin + ImVec2(x, 0.0f), origin + ImVec2(x, canvasSize.y), minor);
@@ -58,34 +65,30 @@ namespace QuasarEngine
         }
 
         void HandlePan(const ImGuiIO& io, bool hovered)
-        {
-            static bool  panning = false;
-            static ImVec2 panStart{ 0.0f, 0.0f };
+		{
+			if (!hovered)
+			{
+				if (!ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+					m_Panning = false;
+				return;
+			}
 
-            if (!hovered)
-            {
-                if (!ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-                    panning = false;
-                return;
-            }
-
-            if (!panning && ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
-            {
-                panning = true;
-                panStart = io.MousePos;
-            }
-            else if (panning && ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-            {
-                ImVec2 delta = io.MousePos - panStart;
-                pan.x += delta.x;
-                pan.y += delta.y;
-                panStart = io.MousePos;
-            }
-            else if (panning && !ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-            {
-                panning = false;
-            }
-        }
+			if (!m_Panning && ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
+			{
+				m_Panning = true;
+				m_PanStart = io.MousePos;
+			}
+			else if (m_Panning && ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+			{
+				ImVec2 delta = io.MousePos - m_PanStart;
+				pan += delta;
+				m_PanStart = io.MousePos;
+			}
+			else if (m_Panning && !ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+			{
+				m_Panning = false;
+			}
+		}
 
         void HandleZoom(const ImGuiIO& io, bool hovered,
             float minZoom = 0.25f, float maxZoom = 4.0f)

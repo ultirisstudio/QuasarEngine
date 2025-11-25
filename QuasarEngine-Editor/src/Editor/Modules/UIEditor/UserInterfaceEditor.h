@@ -63,8 +63,6 @@ namespace QuasarEngine
         std::string m_OpenedPath;
 
         EditorCanvas m_Canvas;
-        bool m_ShowGrid = true;
-        float m_GridStep = 35.0f;
 		bool m_SnapToGrid = true;
 
         bool m_Dragging = false;

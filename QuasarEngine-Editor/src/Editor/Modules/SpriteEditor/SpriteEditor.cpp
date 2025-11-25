@@ -44,7 +44,7 @@ namespace QuasarEngine
 
         m_Canvas.pan = ImVec2(20, 20);
         m_Canvas.zoom = 1.0f;
-        m_Canvas.baseGridStep = m_GridStep;
+        m_Canvas.baseGridStep = m_Canvas.baseGridStep;
 
         m_Brush.textureId.clear();
         m_Brush.uv = { 0,0,1,1 };
@@ -429,7 +429,7 @@ namespace QuasarEngine
         ImVec2 canvasPos = ImGui::GetCursorScreenPos();
         ImVec2 canvasSize = ImGui::GetContentRegionAvail();
         m_Canvas.BeginRegion(canvasPos, canvasSize);
-        m_Canvas.baseGridStep = m_GridStep;
+        m_Canvas.baseGridStep = m_Canvas.baseGridStep;
 
         dl->AddRectFilled(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(22, 24, 28, 255), 6.0f);
         dl->AddRect(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(90, 90, 100, 180), 6.0f);
@@ -444,7 +444,7 @@ namespace QuasarEngine
 
         m_Canvas.HandlePanAndZoom(ImGui::GetIO(), hovering, 0.4f, 4.0f);
 
-        if (m_ShowGrid)
+        if (m_Canvas.showGrid)
             m_Canvas.DrawGrid(dl);
 
         ImU32 gridCol = IM_COL32(70, 72, 78, 120);
