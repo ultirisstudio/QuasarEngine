@@ -4,8 +4,12 @@
 #include <vector>
 #include <functional>
 #include <optional>
+
 #include <imgui/imgui.h>
+
 #include <TextEditor.h>
+
+#include <Editor/Modules/IEditorModule.h>
 
 namespace QuasarEngine
 {
@@ -15,12 +19,15 @@ namespace QuasarEngine
         TextEditor::PaletteIndex severity;
     };
 
-    class CodeEditor
+    class CodeEditor : public IEditorModule
     {
     public:
-        CodeEditor();
+        CodeEditor(EditorContext& context);
+        ~CodeEditor() override;
 
-        void OnImGuiRender(const char* id = "CodeEditor");
+        void Update(double dt) override;
+        void Render() override;
+        void RenderUI() override;
 
         bool LoadFromFile(const std::string& path);
         bool SaveToFile(const std::string& path);

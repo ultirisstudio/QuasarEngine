@@ -23,6 +23,8 @@
 #include <QuasarEngine/Tools/PerlinNoise.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
     enum class PreviewMode : uint8_t
@@ -91,13 +93,14 @@ namespace QuasarEngine
         std::vector<glm::vec2> curvePoints;
     };
 
-    class HeightMapEditor {
+    class HeightMapEditor : public IEditorModule {
     public:
-        HeightMapEditor();
-        ~HeightMapEditor();
+        HeightMapEditor(EditorContext& context);
+        ~HeightMapEditor() override;
 
-        void OnImGuiRender(const char* windowName = "Height Map Editor");
-        void Update();
+        void Update(double dt) override;
+        void Render() override;
+        void RenderUI() override;
 
         const std::vector<uint8_t>& GetImageData()  const { return m_ImageRGBA8; }
         const std::vector<uint16_t>& GetHeight16()   const { return m_Height16; }

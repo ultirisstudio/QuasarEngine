@@ -83,10 +83,9 @@ namespace QuasarEngine
         return e.path().extension().string();
     }
 
-    ContentBrowser::ContentBrowser(const std::string& projectPath, AssetImporter* importer)
-        : m_BaseDirectory((std::filesystem::path(projectPath) / "Assets").lexically_normal())
+	ContentBrowser::ContentBrowser(EditorContext& context) : IEditorModule(context)
+        , m_BaseDirectory((std::filesystem::path(context.projectPath) / "Assets").lexically_normal())
         , m_CurrentDirectory(m_BaseDirectory)
-        , m_AssetImporter(importer)
     {
         TextureSpecification spec;
 
@@ -127,9 +126,9 @@ namespace QuasarEngine
         m_FileOtherIcon.reset();
     }
 
-    void ContentBrowser::Update()
+    void ContentBrowser::Update(double dt)
     {
-        if (m_TextureViewer) m_TextureViewer->Update();
+        if (m_TextureViewer) m_TextureViewer->Update(dt);
         if (m_WatchEnabled) {
             
         }
@@ -534,13 +533,13 @@ namespace QuasarEngine
         return true;
     }
 
-    void ContentBrowser::OnImGuiRender()
+    void ContentBrowser::RenderUI()
     {
         if (m_TextureViewer) {
-            if (!m_TextureViewer->IsOpen()) m_TextureViewer.reset();
-            else m_TextureViewer->OnImGuiRender();
+            if (!m_TextureViewer->OpenFlag()) m_TextureViewer.reset();
+            else m_TextureViewer->RenderUI();
         }
-        if (m_CodeEditor) m_CodeEditor->OnImGuiRender();
+        if (m_CodeEditor) m_CodeEditor->RenderUI();
 
         ImGui::Begin("Content Browser");
 
@@ -1176,16 +1175,17 @@ namespace QuasarEngine
                             std::snprintf(m_PathBuffer, sizeof(m_PathBuffer), "%s", m_CurrentDirectory.string().c_str());
                         }
                         else if (fileType == AssetType::TEXTURE) {
-                            m_TextureViewer = std::make_shared<TextureViewer>(WeakCanonical(path));
+                            m_TextureViewer = std::make_shared<TextureViewer>(m_Context);
+							m_TextureViewer->SetTexturePath(WeakCanonical(path));
                         }
                         else if (fileType == AssetType::SCRIPT) {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
+                            m_CodeEditor = std::make_shared<CodeEditor>(m_Context);
                             if (ext == ".lua") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
                             else if (ext == ".cpp" || ext == ".h") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
                             m_CodeEditor->LoadFromFile(path.string());
                         }
                         else {
-                            m_CodeEditor = std::make_shared<CodeEditor>();
+                            m_CodeEditor = std::make_shared<CodeEditor>(m_Context);
                             if (ext == ".txt") m_CodeEditor->SetLanguageDefinition(TextEditor::LanguageDefinition::LanguageDefinition());
                             m_CodeEditor->LoadFromFile(path.string());
                         }

@@ -34,16 +34,19 @@
 
 #include <QuasarEngine/UI/UISerialize.h>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
-    class UserInterfaceEditor
+    class UserInterfaceEditor : public IEditorModule
     {
     public:
-        UserInterfaceEditor();
-        ~UserInterfaceEditor() = default;
+        UserInterfaceEditor(EditorContext& context);
+        ~UserInterfaceEditor() override;
 
-        void OnImGuiRender(const char* windowName = "User Interface Editor");
-        void Update() {}
+        void Update(double dt) override;
+		void Render() override;
+        void RenderUI() override;
 
         bool New();
         bool LoadFromFile(const char* path);

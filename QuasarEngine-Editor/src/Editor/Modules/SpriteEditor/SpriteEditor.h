@@ -21,15 +21,19 @@
 #include <QuasarEngine/Resources/Texture2D.h>
 #include <QuasarEngine/Core/UUID.h>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
-    class SpriteEditor
+    class SpriteEditor : public IEditorModule
     {
     public:
-        SpriteEditor();
-        ~SpriteEditor() = default;
+        SpriteEditor(EditorContext& context);
+        ~SpriteEditor() override;
 
-        void OnImGuiRender(const char* windowName = "Sprite Editor");
+        void Update(double dt) override;
+		void Render() override;
+        void RenderUI() override;
 
         void SetGrid(int gridW, int gridH) { m_GridW = std::max(1, gridW); m_GridH = std::max(1, gridH); ResizeLayers(); }
         void SetCellSize(float cellW, float cellH) { m_CellW = std::max(1.f, cellW); m_CellH = std::max(1.f, cellH); }

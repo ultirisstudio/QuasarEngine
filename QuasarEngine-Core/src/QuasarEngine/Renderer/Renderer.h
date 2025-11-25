@@ -43,6 +43,19 @@ namespace QuasarEngine
 			std::array<PointLight, 4> m_PointsBuffer;
 			std::array<DirectionalLight, 4> m_DirectionalsBuffer;
 			int nPts = 0, nDirs = 0;
+
+			std::array<std::shared_ptr<Framebuffer>, 4> m_DirShadowFBO;
+			std::array<glm::mat4, 4> m_DirLightVP;
+			std::shared_ptr<Shader> m_ShadowDir_Static;
+
+			struct {
+				int   mapSize = 2048;
+				float bias = 0.0025f;
+				int   pcfRadius = 1;
+				float orthoRange = 50.f;
+				float nearPlane = 0.1f;
+				float farPlane = 150.f;
+			} m_DirShadow;
 		};
 		SceneData m_SceneData;
 
@@ -56,7 +69,7 @@ namespace QuasarEngine
 		void RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi);
 		void EndScene();
 
-		void CollectLights(Scene& scene);
+		void BuildLight(BaseCamera& camera);
 
 		Scene* GetScene();
 

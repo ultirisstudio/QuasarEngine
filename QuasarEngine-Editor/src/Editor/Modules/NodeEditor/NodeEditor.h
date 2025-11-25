@@ -6,17 +6,21 @@
 
 #include <QuasarEngine/Nodes/NodeGraph.h>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
     class NodeView;
 
-    class NodeEditor
+    class NodeEditor : public IEditorModule
     {
     public:
-        NodeEditor();
-        ~NodeEditor();
+        NodeEditor(EditorContext& context);
+        ~NodeEditor() override;
 
-        void OnImGuiRender();
+        void Update(double dt) override;
+		void Render() override;
+        void RenderUI() override;
 
         void ShowInspector();
 

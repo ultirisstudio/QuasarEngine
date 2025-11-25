@@ -13,16 +13,20 @@
 #include <QuasarEngine/Resources/Texture2D.h>
 #include <QuasarEngine/Scene/Importer/AssetImporter.h>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
-    class ContentBrowser
+	struct EditorContext;
+
+    class ContentBrowser : public IEditorModule
     {
     public:
-        ContentBrowser(const std::string& projectPath, AssetImporter* importer);
-        ~ContentBrowser();
+        ContentBrowser(EditorContext& context);
+        ~ContentBrowser() override;
 
-        void Update();
-        void OnImGuiRender();
+        void Update(double dt) override;
+        void RenderUI() override;
 
     private:
         const std::string GetFileExtension(std::filesystem::directory_entry e);
@@ -58,7 +62,7 @@ namespace QuasarEngine
         std::shared_ptr<Texture2D> m_FileOtherIcon;
 
         std::shared_ptr<TextureViewer> m_TextureViewer;
-        std::shared_ptr<CodeEditor>    m_CodeEditor;
+        std::shared_ptr<CodeEditor> m_CodeEditor;
 
         std::filesystem::path m_TrashDir;
         std::vector<std::filesystem::path> m_PendingDelete;
@@ -73,8 +77,6 @@ namespace QuasarEngine
             ClipMode mode = ClipMode::None;
             std::vector<std::filesystem::path> items;
         } m_Clipboard;
-
-        AssetImporter* m_AssetImporter = nullptr;
 
         bool  m_ListView = false;
         bool  m_ShowHidden = false;

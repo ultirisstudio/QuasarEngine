@@ -204,7 +204,7 @@ namespace QuasarEngine
         return k1.value + (t - k1.time) * dvdt;
     }
 
-    AnimationEditor::AnimationEditor() {
+    AnimationEditor::AnimationEditor(EditorContext& context) : IEditorModule(context) {
         clip_.name = "Default Clip";
         TrackScalar t; t.name = "PositionX"; t.color = ImVec4(0.31f, 0.51f, 1.f, 1.f);
         t.curve.add(0.0f, 0.0f);
@@ -214,11 +214,16 @@ namespace QuasarEngine
         clip_.scalarTracks.push_back(t);
     }
 
+    AnimationEditor::~AnimationEditor()
+    {
+
+    }
+
     void AnimationEditor::Update(double dt) {
         player_.update(dt, clip_);
     }
 
-    void AnimationEditor::OnImGuiRender() {
+    void AnimationEditor::RenderUI() {
         const ImGuiStyle& S = ImGui::GetStyle();
         auto C = [&](ImGuiCol col)->ImU32 { return ImGui::GetColorU32(S.Colors[col]); };
         grid_.bg = C(ImGuiCol_WindowBg);

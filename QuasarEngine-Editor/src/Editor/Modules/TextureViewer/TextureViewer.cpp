@@ -4,8 +4,8 @@
 #include <cstring>
 #include <imgui/imgui.h>
 
-#include <Editor/Importer/TextureImporter.h>
-#include <Editor/Importer/TextureConfigImporter.h>
+#include <QuasarEngine/Scene/Importer/TextureImporter.h>
+#include <QuasarEngine/Scene/Importer/TextureConfigImporter.h>
 
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Asset/AssetManager.h>
@@ -48,12 +48,16 @@ namespace QuasarEngine
 		return "Assets/" + abs.filename().generic_string();
 	}
 
-	TextureViewer::TextureViewer(std::filesystem::path path)
-		: m_TexturePath(std::move(path))
+	TextureViewer::TextureViewer(EditorContext& context) : IEditorModule(context)
 	{
 	}
 
-	void TextureViewer::Update()
+	TextureViewer::~TextureViewer()
+	{
+
+	}
+
+	void TextureViewer::Update(double dt)
 	{
 		if (!m_Texture)
 		{
@@ -81,7 +85,12 @@ namespace QuasarEngine
 		}
 	}
 
-	void TextureViewer::OnImGuiRender()
+	void TextureViewer::Render()
+	{
+
+	}
+
+	void TextureViewer::RenderUI()
 	{
 		std::string name = m_TexturePath.filename().string() + " (Texture Viewer)";
 		ImGui::Begin(name.c_str());
@@ -208,16 +217,22 @@ namespace QuasarEngine
 			}
 
 			if (ImGui::Button("Close"))
-				m_IsOpen = false;
+				m_Open = false;
 		}
 		else
 		{
 			ImGui::Text("Texture not found");
 
 			if (ImGui::Button("Close"))
-				m_IsOpen = false;
+				m_Open = false;
 		}
 
 		ImGui::End();
+	}
+
+	void TextureViewer::SetTexturePath(const std::filesystem::path& path)
+	{
+		m_TexturePath = path;
+		m_Texture = nullptr;
 	}
 }

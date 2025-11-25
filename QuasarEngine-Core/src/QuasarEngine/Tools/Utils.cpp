@@ -229,4 +229,16 @@ namespace QuasarEngine
 
         return decompressedData;
     }
+
+    std::string Utils::toLower(std::string s)
+    {
+        for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return s;
+    }
+
+    bool Utils::Contains(const std::string& hay, const std::string& needle)
+    {
+        if (needle.empty()) return true;
+        return toLower(hay).find(toLower(needle)) != std::string::npos;
+    }
 }

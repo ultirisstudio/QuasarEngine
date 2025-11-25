@@ -26,6 +26,22 @@
 
 #include <QuasarEngine/Scripting/QMM/VM.h>
 
+#include <QuasarEngine/Entity/Components/CameraComponent.h>
+#include <QuasarEngine/Entity/Components/LightComponent.h>
+
+#include <Editor/Modules/ContentBrowser/ContentBrowser.h>
+#include <Editor/Modules/EntityPropertie/EntityPropertie.h>
+#include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
+#include <Editor/Modules/Viewport/EditorViewport.h>
+#include <Editor/Modules/Viewport/Viewport.h>
+#include <Editor/Modules/NodeEditor/NodeEditor.h>
+#include <Editor/Modules/AnimationEditor/AnimationEditor.h>
+#include <Editor/Modules/HeightMapEditor/HeightMapEditor.h>
+#include <Editor/Modules/UIEditor/UserInterfaceEditor.h>
+#include <Editor/Modules/SpriteEditor/SpriteEditor.h>
+
+#include <Editor/EditorCamera.h>
+
 #ifndef QE_PROFILE_APP_TIMERS
 #if !defined(NDEBUG)
 #define QE_PROFILE_APP_TIMERS 1
@@ -120,10 +136,7 @@ namespace QuasarEngine
 		ImGui::PopStyleVar(3);
 	}
 
-	Editor::Editor(const EditorSpecification& spec)
-		: Layer("Editor"),
-		m_Specification(spec),
-		m_EditorCamera(std::make_unique<EditorCamera>(glm::vec3(0.0f, 0.0f, 0.0f)))
+	Editor::Editor(const EditorSpecification& spec) : Layer("Editor"), m_Specification(spec), m_Context{}
 	{
 		Application::Get().MaximizeWindow(false);
 
@@ -150,23 +163,50 @@ namespace QuasarEngine
 
 		Logger::initUtf8Console();
 
-		m_AssetImporter = std::make_unique<AssetImporter>(m_Specification.ProjectPath);
+		m_Context.assetImporter = std::make_unique<AssetImporter>(m_Specification.ProjectPath);
+		m_Context.editorCamera = std::make_unique<EditorCamera>(glm::vec3(0.0f, 0.0f, 5.0f));
+		m_Context.sceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
+		m_Context.sceneManager->createNewScene();
+		m_Context.projectPath = m_Specification.ProjectPath;
 
-		m_EntityPropertie = std::make_unique<EntityPropertie>(m_Specification.ProjectPath);
+		//m_AssetImporter = std::make_unique<AssetImporter>(m_Specification.ProjectPath);
+		//m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
+		//m_SceneManager->createNewScene();
+
+		/*m_EditorModules.push_back(std::make_unique<ContentBrowser>(m_Context));
+		m_EditorModules.push_back(std::make_unique<EntityPropertie>(m_Context));
+		m_EditorModules.push_back(std::make_unique<SceneHierarchy>(m_Context));
+		m_EditorModules.push_back(std::make_unique<EditorViewport>(m_Context));
+		m_EditorModules.push_back(std::make_unique<Viewport>(m_Context));
+		m_EditorModules.push_back(std::make_unique<NodeEditor>(m_Context));
+		m_EditorModules.push_back(std::make_unique<AnimationEditor>(m_Context));
+		m_EditorModules.push_back(std::make_unique<HeightMapEditor>(m_Context));
+		m_EditorModules.push_back(std::make_unique<UserInterfaceEditor>(m_Context));
+		m_EditorModules.push_back(std::make_unique<SpriteEditor>(m_Context));*/
+
+		m_EditorModuleMap["ContentBrowser"] = std::make_unique<ContentBrowser>(m_Context);
+		m_EditorModuleMap["EntityPropertie"] = std::make_unique<EntityPropertie>(m_Context);
+		m_EditorModuleMap["SceneHierarchy"] = std::make_unique<SceneHierarchy>(m_Context);
+		m_EditorModuleMap["EditorViewport"] = std::make_unique<EditorViewport>(m_Context);
+		m_EditorModuleMap["Viewport"] = std::make_unique<Viewport>(m_Context);
+		m_EditorModuleMap["NodeEditor"] = std::make_unique<NodeEditor>(m_Context);
+		m_EditorModuleMap["AnimationEditor"] = std::make_unique<AnimationEditor>(m_Context);
+		m_EditorModuleMap["HeightMapEditor"] = std::make_unique<HeightMapEditor>(m_Context);
+		m_EditorModuleMap["UserInterfaceEditor"] = std::make_unique<UserInterfaceEditor>(m_Context);
+		m_EditorModuleMap["SpriteEditor"] = std::make_unique<SpriteEditor>(m_Context);
+
+		/*m_EntityPropertie = std::make_unique<EntityPropertie>(m_Specification.ProjectPath);
 		m_SceneHierarchy = std::make_unique<SceneHierarchy>();
 		m_ContentBrowser = std::make_unique<ContentBrowser>(m_Specification.ProjectPath, m_AssetImporter.get());
 		m_EditorViewport = std::make_unique<EditorViewport>();
 		m_Viewport = std::make_unique<Viewport>();
-		//m_NodeEditor = std::make_unique<NodeEditor>();
-		//m_AnimationEditorPanel = std::make_unique<AnimationEditorPanel>();
-		//m_HeightMapEditor = std::make_unique<HeightMapEditor>();
-		//m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
-		//m_SpriteEditor = std::make_unique<SpriteEditor>();
+		m_NodeEditor = std::make_unique<NodeEditor>();
+		m_AnimationEditor = std::make_unique<AnimationEditor>();
+		m_HeightMapEditor = std::make_unique<HeightMapEditor>();
+		m_UserInterfaceEditor = std::make_unique<UserInterfaceEditor>();
+		m_SpriteEditor = std::make_unique<SpriteEditor>();*/
 
-		m_SceneManager = std::make_unique<SceneManager>(m_Specification.ProjectPath);
-		m_SceneManager->createNewScene();
-
-		Renderer::Instance().BeginScene(m_SceneManager->GetActiveScene());
+		Renderer::Instance().BeginScene(m_Context.sceneManager->GetActiveScene());
 
 		std::filesystem::path base_path = m_Specification.ProjectPath + "\\Assets";
 		SetupAssets(base_path);
@@ -414,16 +454,21 @@ namespace QuasarEngine
 
 	void Editor::OnDetach()
 	{
-		m_SceneManager.reset();
+		/*m_SceneManager.reset();
 		m_EntityPropertie.reset();
 		m_SceneHierarchy.reset();
 		m_ContentBrowser.reset();
 		m_EditorViewport.reset();
 		m_Viewport.reset();
-		//m_NodeEditor.reset();
-		//m_AnimationEditorPanel.reset();
-		//m_HeightMapEditor.reset();
-		//m_SpriteEditor.reset();
+		m_NodeEditor.reset();
+		m_AnimationEditor.reset();
+		m_HeightMapEditor.reset();
+		m_SpriteEditor.reset();*/
+
+		for (auto& [key, value] : m_EditorModuleMap)
+		{
+			value.reset();
+		}
 
 		PhysicEngine::Instance().Shutdown();
 		AssetManager::Instance().Shutdown();
@@ -436,31 +481,56 @@ namespace QuasarEngine
 	{
 		Input::Update();
 
-		m_ContentBrowser->Update();
-		m_EditorCamera->Update();
+		//m_EditorCamera->Update();
+		m_Context.editorCamera->Update();
+
+		/*m_ContentBrowser->Update(dt);
 		m_SceneManager->Update(dt);
-		m_EditorViewport->Update(*m_EditorCamera);
-		m_Viewport->Update(m_SceneManager->GetActiveScene(), dt);
-		//m_AnimationEditorPanel->Update(dt);
-		//m_HeightMapEditor->Update();
-		//m_UserInterfaceEditor->Update();
+		m_EditorViewport->Update(dt);
+		m_Viewport->Update(dt);
+		m_AnimationEditor->Update(dt);
+		m_HeightMapEditor->Update(dt);
+		m_UserInterfaceEditor->Update(dt);
+		m_EntityPropertie->Update(dt);
+		m_SceneHierarchy->Update(dt);
+		m_NodeEditor->Update(dt);
+		m_SpriteEditor->Update(dt);*/
+
+		for (auto& [key, value] : m_EditorModuleMap)
+		{
+			value->Update(dt);
+		}
 
 		if (Input::IsKeyPressed(Key::LeftControl))
 		{
 			if (Input::IsKeyPressed(Key::S))
 			{
-				m_SceneManager->SaveScene();
+				//m_SceneManager->SaveScene();
+				m_Context.sceneManager->SaveScene();
 			}
 		}
 
 		auto& tracker = MemoryTracker::Instance();
 		tracker.Update(dt);
+
 	}
 
 	void Editor::OnRender()
 	{
-		m_Viewport->Render(m_SceneManager->GetActiveScene());
-		m_EditorViewport->Render(m_SceneManager->GetActiveScene(), *m_EditorCamera);
+		/*m_Viewport->Render();
+		m_EditorViewport->Render();
+		m_EntityPropertie->Render();
+		m_SceneHierarchy->Render();
+		m_ContentBrowser->Render();
+		m_AnimationEditor->Render();
+		m_NodeEditor->Render();
+		m_HeightMapEditor->Render();
+		m_SpriteEditor->Render();*/
+
+		for (auto& [key, value] : m_EditorModuleMap)
+		{
+			value->Render();
+		}
 	}
 
 	static inline ImVec4 ColorU32ToVec4(ImU32 c) {
@@ -727,7 +797,11 @@ namespace QuasarEngine
 		AnchorRect assetA = LastItemAnchor();
 		if (BeginDropdown("AssetMenu", assetA, 4.0f, 200.0f, true))
 		{
-			if (ImGui::MenuItem("Import")) { m_AssetImporter->ImportAsset(); }
+			if (ImGui::MenuItem("Import"))
+			{
+				//m_AssetImporter->ImportAsset();
+				m_Context.assetImporter->ImportAsset();
+			}
 			EndDropdown();
 		}
 
@@ -739,12 +813,22 @@ namespace QuasarEngine
 		{
 			if (ImGui::MenuItem("New Scene"))
 			{
-				m_SceneHierarchy->m_SelectedEntity = Entity::Null(); m_SceneManager->createNewScene();
+				//m_SceneHierarchy->ResetEntity(); m_SceneManager->createNewScene();
+				m_Context.selectedEntity = {};
+				m_Context.sceneManager->createNewScene();
 			}
-			if (ImGui::MenuItem("Save Scene")) { m_SceneManager->SaveScene(); }
+
+			if (ImGui::MenuItem("Save Scene"))
+			{
+				//m_SceneManager->SaveScene();
+				m_Context.sceneManager->SaveScene();
+			}
+
 			if (ImGui::MenuItem("Load Scene"))
 			{
-				m_SceneHierarchy->m_SelectedEntity = Entity::Null(); m_SceneManager->LoadScene();
+				//m_SceneHierarchy->ResetEntity(); m_SceneManager->LoadScene();
+				m_Context.selectedEntity = {};
+				m_Context.sceneManager->LoadScene();
 			}
 			EndDropdown();
 		}
@@ -760,16 +844,24 @@ namespace QuasarEngine
 			{
 				if (ImGui::MenuItem("Start Scene"))
 				{
-					m_SceneManager->SaveScene();
-					m_SceneManager->GetActiveScene().OnRuntimeStart(); playing = true;
+					//m_SceneManager->SaveScene();
+					//m_SceneManager->GetActiveScene().OnRuntimeStart(); playing = true;
+
+					m_Context.sceneManager->SaveScene();
+					m_Context.sceneManager->GetActiveScene().OnRuntimeStart();
+					playing = true;
 				}
 			}
 			else
 			{
 				if (ImGui::MenuItem("Stop Scene"))
 				{
-					m_SceneManager->GetActiveScene().OnRuntimeStop();
-					m_SceneManager->ReloadScene(m_SceneManager->GetSceneObject().GetPath()); playing = false;
+					//m_SceneManager->GetActiveScene().OnRuntimeStop();
+					//m_SceneManager->ReloadScene(m_SceneManager->GetSceneObject().GetPath()); playing = false;
+
+					m_Context.sceneManager->GetActiveScene().OnRuntimeStop();
+					m_Context.sceneManager->ReloadScene(m_Context.sceneManager->GetSceneObject().GetPath());
+					playing = false;
 				}
 			}
 			EndDropdown();
@@ -781,11 +873,48 @@ namespace QuasarEngine
 		AnchorRect createA = LastItemAnchor();
 		if (BeginDropdown("CreateMenu", createA, 4.0f, 220.0f, true))
 		{
-			if (ImGui::MenuItem("GameObject")) { (void)m_SceneManager->GetActiveScene().CreateEntity("GameObject"); }
-			if (ImGui::MenuItem("Cube")) { m_SceneManager->AddCube(); }
-			if (ImGui::MenuItem("Sphere")) { m_SceneManager->AddSphere(); }
-			if (ImGui::MenuItem("UV Sphere")) { m_SceneManager->AddUVSphere(); }
-			if (ImGui::MenuItem("Plane")) { m_SceneManager->AddPlane(); }
+			if (ImGui::MenuItem("GameObject"))
+			{
+				m_Context.sceneManager->GetActiveScene().CreateEntity("GameObject");
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Camera"))
+			{
+				m_Context.sceneManager->GetActiveScene().CreateEntity("Camera").AddComponent<CameraComponent>();
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Point light"))
+			{
+				m_Context.sceneManager->GetActiveScene().CreateEntity("Point light").AddComponent<LightComponent>(LightComponent::LightType::POINT);
+			}
+			if (ImGui::MenuItem("Directionnal light"))
+			{
+				m_Context.sceneManager->GetActiveScene().CreateEntity("Directionnal light").AddComponent<LightComponent>(LightComponent::LightType::DIRECTIONAL);
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Cube"))
+			{
+				m_Context.sceneManager->AddCube();
+			}
+			if (ImGui::MenuItem("Sphere"))
+			{
+				m_Context.sceneManager->AddSphere();
+			}
+			if (ImGui::MenuItem("UV Sphere"))
+			{
+				m_Context.sceneManager->AddUVSphere();
+			}
+			if (ImGui::MenuItem("Plane"))
+			{
+				m_Context.sceneManager->AddPlane();
+			}
+
 			EndDropdown();
 		}
 
@@ -794,7 +923,7 @@ namespace QuasarEngine
 		{
 			std::filesystem::path proj(m_Specification.ProjectPath);
 			std::string projName = proj.filename().string();
-			std::string sceneName = m_SceneManager ? m_SceneManager->GetSceneObject().GetName() : "Untitled";
+			std::string sceneName = m_Context.sceneManager ? m_Context.sceneManager->GetSceneObject().GetName() : "Untitled";
 			ImGui::Text("%s > %s", projName.c_str(), sceneName.c_str());
 		}
 
@@ -901,23 +1030,28 @@ namespace QuasarEngine
 			}
 		}
 
-		m_Viewport->OnImGuiRender(m_SceneManager->GetActiveScene());
-		m_EditorViewport->OnImGuiRender(*m_EditorCamera, *m_SceneManager, *m_SceneHierarchy);
-		m_EntityPropertie->OnImGuiRender(*m_SceneHierarchy);
-		m_SceneHierarchy->OnImGuiRender(m_SceneManager->GetActiveScene());
-		m_ContentBrowser->OnImGuiRender();
-		//m_AnimationEditorPanel->OnImGuiRender();
-		//m_NodeEditor->OnImGuiRender();
-		//m_HeightMapEditor->OnImGuiRender();
-		//m_UserInterfaceEditor->OnImGuiRender();
-		//m_SpriteEditor->OnImGuiRender();
+		/*m_Viewport->RenderUI();
+		m_EditorViewport->RenderUI();
+		m_EntityPropertie->RenderUI();
+		m_SceneHierarchy->RenderUI();
+		m_ContentBrowser->RenderUI();
+		m_AnimationEditor->RenderUI();
+		m_NodeEditor->RenderUI();
+		m_HeightMapEditor->RenderUI();
+		m_SpriteEditor->RenderUI();
 
-		/*try {
-			m_UserInterfaceEditor->OnImGuiRender("UI Editor");
+		//m_UserInterfaceEditor->OnImGuiRender();
+		try {
+			m_UserInterfaceEditor->RenderUI();
 		}
 		catch (const std::system_error& e) {
 			OutputDebugStringA(("std::system_error: " + std::string(e.what()) + "\n").c_str());
 		}*/
+
+		for (auto& [key, value] : m_EditorModuleMap)
+		{
+			value->RenderUI();
+		}
 
 		OptionMenu();
 
@@ -930,9 +1064,14 @@ namespace QuasarEngine
 
 	void Editor::OnEvent(Event& e)
 	{
-		m_EditorCamera->OnEvent(e);
+		//m_EditorCamera->OnEvent(e);
+		m_Context.editorCamera->OnEvent(e);
 
-		m_Viewport->OnEvent(e);
+		//m_Viewport->OnEvent(e);
+		for (auto& [key, value] : m_EditorModuleMap)
+		{
+			value->OnEvent(e);
+		}
 
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<MouseButtonPressedEvent>(std::bind(&Editor::OnMouseButtonPressed, this, std::placeholders::_1));
@@ -940,11 +1079,11 @@ namespace QuasarEngine
 
 	bool Editor::OnMouseButtonPressed(MouseButtonPressedEvent& e)
 	{
-		if (ImGuizmo::IsOver())
-			return false;
+		//if (ImGuizmo::IsOver())
+			//return false;
 
-		if (!m_EditorViewport->IsViewportHovered())
-			return false;
+		//if (!m_EditorModuleMap["EditorViewport"]->HoveredFlag())
+			//return false;
 
 		//if (e.GetMouseButton() == Mouse::Button0)
 		//{

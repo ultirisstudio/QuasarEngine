@@ -10,32 +10,21 @@
 #include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
 
 #include <QuasarEngine/Scene/Scene.h>
+#include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Core/UUID.h>
 #include <QuasarEngine/Scene/SceneManager.h>
 #include <QuasarEngine/Entity/AllComponents.h>
 #include <QuasarEngine/Core/UUID.h>
 #include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Tools/Utils.h>
 
 namespace QuasarEngine
 {
-    static std::string toLower(std::string s)
+	EntityPropertie::EntityPropertie(EditorContext& context) : IEditorModule(context)
     {
-        for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        return s;
-    }
-
-    bool EntityPropertie::textContainsI(const std::string& hay, const std::string& needle)
-    {
-        if (needle.empty()) return true;
-        return toLower(hay).find(toLower(needle)) != std::string::npos;
-    }
-
-    EntityPropertie::EntityPropertie(const std::string& projectPath)
-        : m_ProjectPath(projectPath)
-    {
-        buildPanels(projectPath);
-        buildMenuItems(projectPath);
+        buildPanels(context.projectPath);
+        buildMenuItems(context.projectPath);
     }
 
     EntityPropertie::~EntityPropertie()
@@ -197,7 +186,7 @@ namespace QuasarEngine
                 {
                     if (it.category != cat) continue;
                     if (it.hasComponent(entity)) continue;
-                    if (!textContainsI(it.name + " " + it.keywords, filter)) continue;
+                    if (!Utils::Contains(it.name + " " + it.keywords, filter)) continue;
                     items.push_back(&it);
                 }
                 if (items.empty()) continue;
@@ -220,13 +209,23 @@ namespace QuasarEngine
         }
     }
 
-    void EntityPropertie::OnImGuiRender(SceneHierarchy& sceneHierarchy)
+    void EntityPropertie::Update(double dt)
+    {
+
+    }
+
+    void EntityPropertie::Render()
+    {
+
+    }
+
+    void EntityPropertie::RenderUI()
     {
         ImGui::Begin("Inspector");
 
-        if (sceneHierarchy.m_SelectedEntity.IsValid())
+        if (m_Context.selectedEntity.IsValid())
         {
-            Entity entity = sceneHierarchy.m_SelectedEntity;
+            Entity entity = m_Context.selectedEntity;
             UUID uuid = entity.GetUUID();
 
             ImGui::Text("UUID: %llu", (unsigned long long)uuid);

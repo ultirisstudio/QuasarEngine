@@ -3,6 +3,7 @@
 #include <QuasarEngine/Core/Application.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
+#include <QuasarEngine/Scene/SceneManager.h>
 
 #include <QuasarEngine/UI/UIDebugOverlay.h>
 
@@ -10,7 +11,7 @@
 
 namespace QuasarEngine
 {
-	Viewport::Viewport() : m_ViewportBounds{ {0,0}, {0,0} }, m_ViewportSize({ 0.0f, 0.0f }), m_ViewportPanelSize({ 0.0f, 0.0f }), m_ClearColor({ 0.2f, 0.2f, 0.2f, 1.0f })
+	Viewport::Viewport(EditorContext& context) : IEditorModule(context), m_ViewportBounds{ {0,0}, {0,0} }, m_ViewportSize({ 0.0f, 0.0f }), m_ViewportPanelSize({ 0.0f, 0.0f }), m_ClearColor({ 0.2f, 0.2f, 0.2f, 1.0f })
 	{
 		FramebufferSpecification spec;
 		spec.Width = Application::Get().GetWindow().GetWidth();
@@ -24,10 +25,17 @@ namespace QuasarEngine
 		m_ViewportFrameBuffer->Invalidate();
 	}
 
-	void Viewport::Render(Scene& scene)
+	Viewport::~Viewport()
+	{
+
+	}
+
+	void Viewport::Render()
 	{
 		if (!m_ViewportFrameBuffer)
 			return;
+
+		Scene& scene = m_Context.sceneManager->GetActiveScene();
 
 		if (scene.HasPrimaryCamera())
 		{
@@ -45,7 +53,8 @@ namespace QuasarEngine
 
 			Renderer::Instance().BeginScene(scene);
 
-			Renderer::Instance().CollectLights(scene);
+			//Renderer::Instance().CollectLights(scene);
+			Renderer::Instance().BuildLight(camera);
 
 			m_ViewportFrameBuffer->Bind();
 
@@ -63,10 +72,12 @@ namespace QuasarEngine
 		}
 	}
 
-	void Viewport::ResizeIfNeeded(Scene& scene, const ImVec2& panelSize)
+	void Viewport::ResizeIfNeeded(const ImVec2& panelSize)
 	{
 		const uint32_t w = (uint32_t)std::max(1.0f, panelSize.x);
 		const uint32_t h = (uint32_t)std::max(1.0f, panelSize.y);
+
+		Scene& scene = m_Context.sceneManager->GetActiveScene();
 
 		if ((uint32_t)m_ViewportSize.x != w || (uint32_t)m_ViewportSize.y != h)
 		{
@@ -80,12 +91,12 @@ namespace QuasarEngine
 		}
 	}
 
-	void Viewport::Update(Scene& scene, double dt)
+	void Viewport::Update(double dt)
 	{
-		ResizeIfNeeded(scene, m_ViewportPanelSize);
+		ResizeIfNeeded(m_ViewportPanelSize);
 	}
 
-	void Viewport::OnImGuiRender(Scene& scene)
+	void Viewport::RenderUI()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 		ImGuiWindowFlags vpFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;

@@ -212,12 +212,13 @@ namespace QuasarEngine
 		Renderer::Instance().BeginScene(m_SceneManager->GetActiveScene());
 		//Renderer::Instance().BeginScene(*m_Scene.get());
 
-		Renderer::Instance().CollectLights(m_SceneManager->GetActiveScene());
 		//Renderer::Instance().CollectLights(*m_Scene.get());
 
 		if (m_SceneManager->GetActiveScene().HasPrimaryCamera()) {
 
 			Camera& camera = m_SceneManager->GetActiveScene().GetPrimaryCamera();
+
+			Renderer::Instance().BuildLight(camera);
 
 			Renderer::Instance().RenderSkybox(camera);
 			Renderer::Instance().Render(camera);

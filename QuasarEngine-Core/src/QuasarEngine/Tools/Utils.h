@@ -41,5 +41,9 @@ namespace QuasarEngine
 			size_t commonLength = basePath.length();
 			return sourcePath.substr(commonLength + 1);
 		}
+
+		static bool Contains(const std::string& hay, const std::string& needle);
+
+		static std::string toLower(std::string s);
 	};
 }

@@ -3,21 +3,38 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+#include <QuasarEngine/Scene/SceneManager.h>
+
 #include <QuasarEngine/Core/UUID.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 
+#include <QuasarEngine/Entity/Entity.h>
+#include <QuasarEngine/Scene/Scene.h>
+
 namespace QuasarEngine
 {
-	SceneHierarchy::SceneHierarchy()
+	SceneHierarchy::SceneHierarchy(EditorContext& context) : IEditorModule(context)
 	{
-		m_SelectedEntity = {};
+		
 	}
 
-	void SceneHierarchy::OnImGuiRender(Scene& scene)
+	SceneHierarchy::~SceneHierarchy()
+	{
+		
+	}
+
+	void SceneHierarchy::Update(double dt)
+	{
+
+	}
+
+	void SceneHierarchy::RenderUI()
 	{
 		ImGui::Begin("Scene Hierarchy");
 
 		ImGuiID windowID = ImGui::GetCurrentWindow()->ID;
+
+		Scene& scene = m_Context.sceneManager->GetActiveScene();
 
 		if (ImGui::BeginDragDropTargetCustom(ImGui::GetCurrentWindow()->Rect(), windowID))
 		{
@@ -66,7 +83,7 @@ namespace QuasarEngine
 				if (parentID != UUID::Null())
 					continue;
 
-				OnDrawEntityNode(scene, entity);
+				OnDrawEntityNode(entity);
 			}
 
 			ImGui::EndTable();
@@ -75,13 +92,15 @@ namespace QuasarEngine
 		ImGui::End();
 	}
 
-	void SceneHierarchy::OnDrawEntityNode(Scene& scene, Entity entity)
+	void SceneHierarchy::OnDrawEntityNode(Entity entity)
 	{
+		Scene& scene = m_Context.sceneManager->GetActiveScene();
+
 		ImGui::PushID((int)entity.GetUUID().value());
 		bool deleteEntity = false;
 
 		bool hasChildren = entity.HasComponent<HierarchyComponent>() ? !entity.GetComponent<HierarchyComponent>().m_Childrens.empty() : false;
-		bool isSelected = m_SelectedEntity == entity;
+		bool isSelected = m_Context.selectedEntity == entity;
 
 		ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
 		if (!hasChildren)
@@ -98,8 +117,8 @@ namespace QuasarEngine
 
 		if (ImGui::BeginPopupContextItem()) {
 			if (ImGui::MenuItem("Supprimer")) {
-				if (m_SelectedEntity == entity)
-					m_SelectedEntity = {};
+				if (m_Context.selectedEntity == entity)
+					m_Context.selectedEntity = {};
 				scene.DestroyEntity(entity.GetUUID());
 			}
 			ImGui::EndPopup();
@@ -137,7 +156,7 @@ namespace QuasarEngine
 		}
 
 		if (ImGui::IsItemClicked())
-			m_SelectedEntity = entity;
+			m_Context.selectedEntity = entity;
 
 		ImGui::TableSetColumnIndex(1);
 		std::string uuidStr = entity.GetUUID().ToString();
@@ -161,8 +180,8 @@ namespace QuasarEngine
 		ImGui::SameLine();
 
 		if (ImGui::Button("X", ImVec2(buttonSize, buttonSize))) {
-			if (m_SelectedEntity == entity)
-				m_SelectedEntity = {};
+			if (m_Context.selectedEntity == entity)
+				m_Context.selectedEntity = {};
 			deleteEntity = true;
 		}
 		ImGui::PopStyleVar();
@@ -171,7 +190,7 @@ namespace QuasarEngine
 			for (UUID childID : entity.GetComponent<HierarchyComponent>().m_Childrens) {
 				std::optional<Entity> child = scene.GetEntityByUUID(childID);
 				if (child.has_value())
-					OnDrawEntityNode(scene, child.value());
+					OnDrawEntityNode(child.value());
 			}
 			ImGui::TreePop();
 		}

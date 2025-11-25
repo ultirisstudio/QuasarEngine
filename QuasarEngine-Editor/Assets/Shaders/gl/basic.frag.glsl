@@ -35,6 +35,11 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 
     PointLight pointLights[NR_POINT_LIGHTS];
     DirLight   dirLights[NR_DIR_LIGHTS];
+	
+	mat4 dirLightVP[4];
+	float dirShadowBias;
+	int PCF;
+	float shadowMapSize;
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object  {
@@ -52,17 +57,78 @@ layout(std140, binding = 1) uniform local_uniform_object  {
     int has_ao_texture;
 } object_ubo;
 
-uniform sampler2D  albedo_texture;
-uniform sampler2D  normal_texture;
-uniform sampler2D  roughness_texture;
-uniform sampler2D  metallic_texture;
-uniform sampler2D  ao_texture;
+uniform sampler2D albedo_texture;
+uniform sampler2D normal_texture;
+uniform sampler2D roughness_texture;
+uniform sampler2D metallic_texture;
+uniform sampler2D ao_texture;
 
 uniform samplerCube irradiance_map;
 uniform samplerCube prefilter_map;
-uniform sampler2D   brdf_lut;
+uniform sampler2D brdf_lut;
+
+uniform sampler2D dirShadow0;
+uniform sampler2D dirShadow1;
+uniform sampler2D dirShadow2;
+uniform sampler2D dirShadow3;
 
 const float PI = 3.14159265359;
+
+float ReadDirShadowMap(int index, vec2 uv)
+{
+    if (index == 0) return texture(dirShadow0, uv).r;
+    if (index == 1) return texture(dirShadow1, uv).r;
+    if (index == 2) return texture(dirShadow2, uv).r;
+    if (index == 3) return texture(dirShadow3, uv).r;
+    return 1.0;
+}
+
+float DirShadowVisibility(int idx, vec3 worldPos, vec3 N, vec3 L)
+{
+    vec4 lightSpacePos = global_ubo.dirLightVP[idx] * vec4(worldPos, 1.0);
+    vec3 projCoords    = lightSpacePos.xyz / lightSpacePos.w;
+
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if (projCoords.z > 1.0 ||
+        projCoords.x < 0.0 || projCoords.x > 1.0 ||
+        projCoords.y < 0.0 || projCoords.y > 1.0)
+    {
+        return 1.0;
+    }
+
+    float NdotL = max(dot(N, L), 0.0);
+
+    float biasMin = global_ubo.dirShadowBias * 0.1;
+    float bias    = max(global_ubo.dirShadowBias * (1.0 - NdotL), biasMin);
+
+    float currentDepth = projCoords.z - bias;
+
+    vec2 texelSize = vec2(1.0 / global_ubo.shadowMapSize);
+
+    if (global_ubo.PCF <= 0)
+    {
+        float closestDepth = ReadDirShadowMap(idx, projCoords.xy);
+        return (currentDepth <= closestDepth) ? 1.0 : 0.0;
+    }
+
+    int radius = global_ubo.PCF;
+    float visibility = 0.0;
+    float samples    = 0.0;
+
+    for (int x = -radius; x <= radius; ++x)
+    {
+        for (int y = -radius; y <= radius; ++y)
+        {
+            vec2 offset       = vec2(x, y) * texelSize;
+            float closestDepth = ReadDirShadowMap(idx, projCoords.xy + offset);
+            visibility        += (currentDepth <= closestDepth) ? 1.0 : 0.0;
+            samples           += 1.0;
+        }
+    }
+
+    return visibility / samples;
+}
 
 vec4 getAlbedo()
 {
@@ -221,6 +287,25 @@ vec3 evaluateDirLight(DirLight light, PBRContext ctx)
     return BRDF_PBR(ctx, L, NdotL, radiance);
 }
 
+vec3 evaluateDirLight(DirLight light, PBRContext ctx, vec3 worldPos, int lightIndex)
+{
+    float power = max(light.power, 0.0);
+    vec3  color = max(light.color, vec3(0.0));
+
+    if (power <= 0.0)
+        return vec3(0.0);
+
+    vec3 L = normalize(-light.direction);
+    float NdotL = max(dot(ctx.N, L), 0.0);
+    if (NdotL <= 0.0)
+        return vec3(0.0);
+
+    float visibility = DirShadowVisibility(lightIndex, worldPos, ctx.N, L);
+
+    vec3 radiance = color * power * visibility;
+    return BRDF_PBR(ctx, L, NdotL, radiance);
+}
+
 void main()
 {
     vec4 albedoSample = getAlbedo();
@@ -282,7 +367,7 @@ void main()
     vec3 specularIBL      = prefilteredColor * (F * brdfSample.x + brdfSample.y);
 
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
-
+    
     vec3 result = ambient + Lo;
 
     result = result / (result + vec3(1.0));

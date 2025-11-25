@@ -5,20 +5,23 @@
 #include <vector>
 #include <functional>
 
+#include <Editor/Modules/IEditorModule.h>
+
+#include <QuasarEngine/Entity/Entity.h>
+
 namespace QuasarEngine
 {
-    class Scene;
-    class SceneHierarchy;
-    class Entity;
     class IComponentPanel;
 
-    class EntityPropertie
+    class EntityPropertie : public IEditorModule
     {
     public:
-        explicit EntityPropertie(const std::string& projectPath);
-        ~EntityPropertie();
+        EntityPropertie(EditorContext& context);
+        ~EntityPropertie() override;
 
-        void OnImGuiRender(SceneHierarchy& sceneHierarchy);
+        void Update(double dt) override;
+		void Render() override;
+        void RenderUI() override;
 
     private:
         struct PanelEntry
@@ -41,12 +44,8 @@ namespace QuasarEngine
         void renderPanels(Entity entity);
         void renderAddComponentPopup(Entity entity);
 
-        static bool textContainsI(const std::string& hay, const std::string& needle);
-
         std::vector<PanelEntry> m_Panels;
         std::vector<MenuItem> m_MenuItems;
-
-        std::string m_ProjectPath;
 
         char m_SearchBuffer[128] = { 0 };
     };

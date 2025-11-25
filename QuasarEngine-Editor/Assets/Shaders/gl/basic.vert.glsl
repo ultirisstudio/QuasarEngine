@@ -38,6 +38,11 @@ layout(std140, binding = 0) uniform global_uniform_object  {
 
     PointLight pointLights[NR_POINT_LIGHTS];
     DirLight   dirLights[NR_DIR_LIGHTS];
+	
+	mat4 dirLightVP[4];
+	float dirShadowBias;
+	int PCF;
+	float shadowMapSize;
 } global_ubo;
 
 layout(std140, binding = 1) uniform local_uniform_object  {

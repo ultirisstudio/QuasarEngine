@@ -49,7 +49,7 @@ namespace QuasarEngine
 		}
 	}
 
-	EditorViewport::EditorViewport()
+	EditorViewport::EditorViewport(EditorContext& context) : IEditorModule(context)
 	{
 		FramebufferSpecification spec;
 		spec.Width = Application::Get().GetWindow().GetWidth();
@@ -64,13 +64,22 @@ namespace QuasarEngine
 		m_EditorFrameBuffer->Invalidate();
 	}
 
-	void EditorViewport::Render(Scene& scene, EditorCamera& camera)
+	EditorViewport::~EditorViewport()
+	{
+
+	}
+
+	void EditorViewport::Render()
 	{
 		if (!m_EditorFrameBuffer) return;
 
+		Scene& scene = m_Context.sceneManager->GetActiveScene();
+		EditorCamera& camera = *m_Context.editorCamera;
+
 		Renderer::Instance().BeginScene(scene);
 
-		Renderer::Instance().CollectLights(scene);
+		//Renderer::Instance().CollectLights(scene);
+		Renderer::Instance().BuildLight(camera);
 
 		m_EditorFrameBuffer->Bind();
 		const auto& spec = m_EditorFrameBuffer->GetSpecification();
@@ -90,9 +99,11 @@ namespace QuasarEngine
 		m_EditorFrameBuffer->Unbind();
 	}
 
-	void EditorViewport::Update(EditorCamera& camera)
+	void EditorViewport::Update(double dt)
 	{
-		ResizeIfNeeded(camera, m_ViewportPanelSize);
+		EditorCamera& camera = *m_Context.editorCamera;
+
+		ResizeIfNeeded(m_ViewportPanelSize);
 
 		double now = Renderer::Instance().GetTime();
 		m_FrameTimeMs = (now - m_LastTime) * 1000.0;
@@ -120,8 +131,10 @@ namespace QuasarEngine
 		}
 	}
 
-	void EditorViewport::ResizeIfNeeded(EditorCamera& camera, const ImVec2& panelSize)
+	void EditorViewport::ResizeIfNeeded(const ImVec2& panelSize)
 	{
+		EditorCamera& camera = *m_Context.editorCamera;
+
 		uint32_t w = (uint32_t)std::max(1.0f, panelSize.x);
 		uint32_t h = (uint32_t)std::max(1.0f, panelSize.y);
 
@@ -133,12 +146,14 @@ namespace QuasarEngine
 		}
 	}
 
-	void EditorViewport::DrawTopBar(EditorCamera& camera, SceneManager& sceneManager, const ImVec2& vpMin, const ImVec2& vpSize)
+	void EditorViewport::DrawTopBar(SceneManager& sceneManager, const ImVec2& vpMin, const ImVec2& vpSize)
 	{
 		const float kPad = 8.0f;
 		const float kBtnH = 30.0f;
 		const float kBtnWBig = 84.0f;
 		const float kSpacing = ImGui::GetStyle().ItemSpacing.x;
+
+		EditorCamera& camera = *m_Context.editorCamera;
 
 		ImVec2 leftStart = ImVec2(vpMin.x + kPad, vpMin.y + kPad);
 		ImGui::SetCursorScreenPos(leftStart);
@@ -274,7 +289,7 @@ namespace QuasarEngine
 		dl->AddText(ImVec2(c.x - len * 0.7f - 12, c.y + len * 0.7f - 6), m_ColZ, "Z");
 	}
 
-	void EditorViewport::OnImGuiRender(EditorCamera& camera, SceneManager& sceneManager, SceneHierarchy& sceneHierarchy)
+	void EditorViewport::RenderUI()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 		ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
@@ -313,13 +328,17 @@ namespace QuasarEngine
 		ImGuizmo::SetDrawlist();
 		ImGuizmo::SetRect(vpMin.x, vpMin.y, vpSize.x, vpSize.y);
 
-		DrawTopBar(camera, sceneManager, vpMin, vpSize);
+		Scene& scene = m_Context.sceneManager->GetActiveScene();
+		EditorCamera& camera = *m_Context.editorCamera;
+		SceneManager& sceneManager = *m_Context.sceneManager;
+
+		DrawTopBar(sceneManager, vpMin, vpSize);
 		DrawAxisWidget(vpMin, vpSize);
 		DrawStatusBar(vpMin, vpSize);
 
-		if (sceneHierarchy.m_SelectedEntity.IsValid() && m_GizmoOperation != -1)
+		if (m_Context.selectedEntity.IsValid() && m_GizmoOperation != -1)
 		{
-			auto& tc = sceneHierarchy.m_SelectedEntity.GetComponent<TransformComponent>();
+			auto& tc = m_Context.selectedEntity.GetComponent<TransformComponent>();
 			glm::mat4 transform = tc.GetGlobalTransform();
 
 			float snap[3] = { m_SnapT, m_SnapT, m_SnapT };
@@ -343,8 +362,8 @@ namespace QuasarEngine
 
 			if (ImGuizmo::IsUsing())
 			{
-				UUID parentID = sceneHierarchy.m_SelectedEntity.HasComponent<HierarchyComponent>()
-					? sceneHierarchy.m_SelectedEntity.GetComponent<HierarchyComponent>().m_Parent
+				UUID parentID = m_Context.selectedEntity.HasComponent<HierarchyComponent>()
+					? m_Context.selectedEntity.GetComponent<HierarchyComponent>().m_Parent
 					: UUID::Null();
 
 				glm::mat4 finalTransform = transform;

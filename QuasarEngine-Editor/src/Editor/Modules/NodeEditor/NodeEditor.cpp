@@ -10,7 +10,7 @@
 
 namespace QuasarEngine
 {
-    NodeEditor::NodeEditor()
+	NodeEditor::NodeEditor(EditorContext& context) : IEditorModule(context)
     {
         for (int t = 0; t < static_cast<int>(PortType::COUNT); ++t)
         {
@@ -40,7 +40,17 @@ namespace QuasarEngine
 
     NodeEditor::~NodeEditor() {}
 
-    void NodeEditor::OnImGuiRender()
+    void NodeEditor::Update(double dt)
+    {
+
+    }
+
+    void NodeEditor::Render()
+    {
+
+    }
+
+    void NodeEditor::RenderUI()
     {
         ImGui::Begin("Node Editor", nullptr);
 

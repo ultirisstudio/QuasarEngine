@@ -8,7 +8,6 @@ namespace QuasarEngine
 {
     class Curve {
     public:
-        // Constantes de clamp
         static constexpr float kXMin = 0.0f;
         static constexpr float kXMax = 1.0f;
         static constexpr float kYMin = 0.0f;

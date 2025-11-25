@@ -7,7 +7,7 @@
 
 namespace QuasarEngine
 {
-    CodeEditor::CodeEditor()
+	CodeEditor::CodeEditor(EditorContext& context) : IEditorModule(context)
     {
         editor.SetShowWhitespaces(false);
         editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
@@ -22,6 +22,21 @@ namespace QuasarEngine
         providers.push_back([this](const std::string& w, std::vector<Suggestion>& out) { ProviderSnippets(w, out); });
     }
 
+    CodeEditor::~CodeEditor()
+    {
+
+    }
+
+    void CodeEditor::Update(double dt)
+    {
+
+    }
+
+    void CodeEditor::Render()
+    {
+
+    }
+
     void CodeEditor::SetFont(ImFont* _font, float size)
     {
         font = _font;
@@ -30,7 +45,6 @@ namespace QuasarEngine
             SetZoom(size / font->FontSize);
         }
     }
-
 
     void CodeEditor::SetLanguageDefinition(const TextEditor::LanguageDefinition& lang)
     {
@@ -446,8 +460,10 @@ namespace QuasarEngine
         ImGui::End();
     }
 
-    void CodeEditor::OnImGuiRender(const char* id)
+    void CodeEditor::RenderUI()
     {
+        const char* id = "CodeEditor";
+
         std::string windowTitle = "Code Editor";
         if (id && *id)
             windowTitle += "##" + std::string(id);

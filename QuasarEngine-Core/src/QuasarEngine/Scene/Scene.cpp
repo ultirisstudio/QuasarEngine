@@ -203,6 +203,7 @@ namespace QuasarEngine
         Renderer::Instance().m_SceneData.m_ScriptSystem->Start();
 
         Application::Get().GetWindow().SetInputMode(true, true);
+        Application::Get().GetWindow().SetCursorVisibility(false);
     }
 
     void Scene::OnRuntimeStop()

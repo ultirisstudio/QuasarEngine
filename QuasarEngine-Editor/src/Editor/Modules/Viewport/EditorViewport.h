@@ -7,10 +7,12 @@
 #include <Editor/EditorCamera.h>
 #include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
 
-#include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Renderer/Framebuffer.h>
 #include <QuasarEngine/Renderer/Renderer.h>
 #include <QuasarEngine/Scene/SceneManager.h>
+#include <QuasarEngine/Entity/Entity.h>
+
+#include <Editor/Modules/IEditorModule.h>
 
 #include "imgui/imgui.h"
 #include <ImGuizmo.h>
@@ -18,23 +20,25 @@
 
 namespace QuasarEngine
 {
-	class EditorViewport
+	class EditorViewport : public IEditorModule
 	{
 	public:
-		EditorViewport();
+		EditorViewport(EditorContext& context);
+		~EditorViewport() override;
 
-		void Render(Scene& scene, EditorCamera& camera);
-		void Update(EditorCamera& camera);
-		void OnImGuiRender(EditorCamera& camera, SceneManager& sceneManager, SceneHierarchy& sceneHierarchy);
+		void Update(double dt) override;
+		void Render() override;
+		void RenderUI() override;
 
 		Entity GetHoveredEntity() { return m_HoveredEntity; }
+
 		bool IsViewportFocused() const { return m_ViewportFocused; }
 		bool IsViewportHovered() const { return m_ViewportHovered; }
 
 	private:
-		void ResizeIfNeeded(EditorCamera& camera, const ImVec2& panelSize);
+		void ResizeIfNeeded(const ImVec2& panelSize);
 
-		void DrawTopBar(EditorCamera& camera, SceneManager& sceneManager, const ImVec2& vpMin, const ImVec2& vpSize);
+		void DrawTopBar(SceneManager& sceneManager, const ImVec2& vpMin, const ImVec2& vpSize);
 		void DrawStatusBar(const ImVec2& vpMin, const ImVec2& vpSize);
 		void DrawAxisWidget(const ImVec2& vpMin, const ImVec2& vpSize);
 

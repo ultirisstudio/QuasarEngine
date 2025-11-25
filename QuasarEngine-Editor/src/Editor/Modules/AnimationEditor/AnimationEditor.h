@@ -17,6 +17,8 @@ using nlohmann::json;
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
     enum class Interpolation : uint8_t { Step, Linear, Bezier, Hermite, CatmullRom };
@@ -159,14 +161,14 @@ namespace QuasarEngine
         ImU32 marker = IM_COL32(255, 64, 64, 255);
     };
 
-    class AnimationEditor {
+    class AnimationEditor : public IEditorModule {
     public:
-        AnimationEditor();
-        ~AnimationEditor() = default;
+        AnimationEditor(EditorContext& context);
+        ~AnimationEditor() override;
 
-        void Update(double dt);
+        void Update(double dt) override;
 
-        void OnImGuiRender();
+        void RenderUI() override;
 
         AnimationClip& GetClip();
         const AnimationClip& GetClip() const;

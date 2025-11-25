@@ -5,19 +5,21 @@
 
 #include <QuasarEngine/Resources/Texture2D.h>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
-	class TextureViewer
+	class TextureViewer : public IEditorModule
 	{
 	public:
-		TextureViewer(std::filesystem::path path);
-		~TextureViewer() = default;
+		TextureViewer(EditorContext& context);
+		~TextureViewer() override;
 
-		void Update();
+		void Update(double dt) override;
+		void Render() override;
+		void RenderUI() override;
 
-		bool IsOpen() { return m_IsOpen; }
-
-		void OnImGuiRender();
+		void SetTexturePath(const std::filesystem::path& path);
 
 	private:
 		std::string BuildTextureIdFromPath(const std::filesystem::path& absOrRelPath) const;
@@ -29,7 +31,5 @@ namespace QuasarEngine
 
 		std::shared_ptr<Texture2D> m_Texture;
 		TextureSpecification m_Specification;
-
-		bool m_IsOpen = true;
 	};
 }

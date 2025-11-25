@@ -38,13 +38,27 @@ namespace QuasarEngine
         return id;
     }
 
-    SpriteEditor::SpriteEditor()
+	SpriteEditor::SpriteEditor(EditorContext& context) : IEditorModule(context)
     {
         AddLayer("Ground", 0);
         
         m_Brush.textureId.clear();
         m_Brush.uv = { 0,0,1,1 };
         m_Brush.tint = { 1,1,1,1 };
+    }
+
+    SpriteEditor::~SpriteEditor()
+    {
+
+    }
+
+    void SpriteEditor::Update(double dt)
+    {
+
+    }
+
+    void SpriteEditor::Render()
+    {
     }
 
     int SpriteEditor::AddLayer(const std::string& name, int sortingOrder)
@@ -163,8 +177,10 @@ namespace QuasarEngine
         cell = {};
     }
 
-    void SpriteEditor::OnImGuiRender(const char* windowName)
+    void SpriteEditor::RenderUI()
     {
+        const char* windowName = "Sprite Editor";
+
         ImGui::SetNextWindowSize(ImVec2(1280, 760), ImGuiCond_Once);
         ImGui::Begin(windowName, nullptr, ImGuiWindowFlags_NoCollapse);
 

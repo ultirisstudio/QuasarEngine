@@ -11,20 +11,21 @@
 #include <QuasarEngine/Events/MouseEvent.h>
 #include <QuasarEngine/Events/KeyEvent.h>
 
+#include <Editor/Modules/IEditorModule.h>
+
 namespace QuasarEngine
 {
-	class Viewport
+	class Viewport : public IEditorModule
 	{
 	public:
-		Viewport();
+		Viewport(EditorContext& context);
+		~Viewport() override;
 
-		void Render(Scene& scene);
+		void Update(double dt) override;
+		void Render() override;
+		void RenderUI() override;
 
-		void Update(Scene& scene, double dt);
-
-		void OnImGuiRender(Scene& scene);
-
-		void OnEvent(Event& e);
+		void OnEvent(Event& e) override;
 
 		const glm::vec2& GetViewportSize() const { return m_ViewportSize; }
 		bool IsFocused() const { return m_ViewportFocused; }
@@ -32,7 +33,7 @@ namespace QuasarEngine
 		void SetClearColor(const glm::vec4& color) { m_ClearColor = color; }
 
 	private:
-		void ResizeIfNeeded(Scene& scene, const ImVec2& panelSize);
+		void ResizeIfNeeded(const ImVec2& panelSize);
 
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 		bool OnMouseButtonReleased(MouseButtonReleasedEvent& e);

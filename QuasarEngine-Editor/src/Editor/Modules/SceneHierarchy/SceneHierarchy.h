@@ -1,20 +1,21 @@
 #pragma once
 
+#include <Editor/Modules/IEditorModule.h>
 #include <QuasarEngine/Entity/Entity.h>
-#include <QuasarEngine/Scene/Scene.h>
 
 namespace QuasarEngine
 {
-	class SceneHierarchy
+	class Scene;
+
+	class SceneHierarchy : public IEditorModule
 	{
 	public:
-		SceneHierarchy();
+		SceneHierarchy(EditorContext& context);
+		~SceneHierarchy() override;
 
-		void OnImGuiRender(Scene& scene);
-
-		Entity m_SelectedEntity;
+		void Update(double dt) override;
+		void RenderUI() override;
 	private:
-		//void OnDrawEntityNode(Scene& scene, Entity entity, int count);
-		void OnDrawEntityNode(Scene& scene, Entity entity);
+		void OnDrawEntityNode(Entity entity);
 	};
 }

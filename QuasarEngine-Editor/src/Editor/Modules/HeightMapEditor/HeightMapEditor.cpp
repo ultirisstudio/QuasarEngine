@@ -88,7 +88,7 @@ namespace QuasarEngine
         return glm::clamp(v, -1.0f, 1.0f);
     }
 
-    HeightMapEditor::HeightMapEditor()
+	HeightMapEditor::HeightMapEditor(EditorContext& context) : IEditorModule(context)
     {
         m_Curve.AddPoint({ 0.05f, 200.f });
         m_Curve.AddPoint({ 0.20f, 140.f });
@@ -350,8 +350,10 @@ namespace QuasarEngine
         m_ImageDirty = true;
     }
 
-    void HeightMapEditor::OnImGuiRender(const char* windowName)
+    void HeightMapEditor::RenderUI()
     {
+        const char* windowName = "Height Map Editor";
+
         ImGui::SetNextWindowSize(ImVec2(1100, 680), ImGuiCond_Once);
         ImGui::Begin(windowName, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);
 
@@ -419,9 +421,14 @@ namespace QuasarEngine
         ImGui::End();
     }
 
-    void HeightMapEditor::Update()
+    void HeightMapEditor::Update(double dt)
     {
         
+    }
+
+    void HeightMapEditor::Render()
+    {
+
     }
 
     void HeightMapEditor::DrawCurveEditor(ImDrawList* dl, const ImVec2& origin, const ImVec2& size)

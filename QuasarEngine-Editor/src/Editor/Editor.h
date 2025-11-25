@@ -9,18 +9,7 @@
 #include <QuasarEngine/Scene/SceneManager.h>
 #include <QuasarEngine/Scene/Importer/AssetImporter.h>
 
-#include <Editor/Modules/ContentBrowser/ContentBrowser.h>
-#include <Editor/Modules/EntityPropertie/EntityPropertie.h>
-#include <Editor/Modules/SceneHierarchy/SceneHierarchy.h>
-#include <Editor/Modules/Viewport/EditorViewport.h>
-#include <Editor/Modules/Viewport/Viewport.h>
-#include <Editor/Modules/NodeEditor/NodeEditor.h>
-#include <Editor/Modules/AnimationEditor/AnimationEditor.h>
-#include <Editor/Modules/HeightMapEditor/HeightMapEditor.h>
-#include <Editor/Modules/UIEditor/UserInterfaceEditor.h>
-#include <Editor/Modules/SpriteEditor/SpriteEditor.h>
-
-#include <Editor/EditorCamera.h>
+#include <Editor/Modules/IEditorModule.h>
 
 namespace QuasarEngine
 {
@@ -90,21 +79,20 @@ namespace QuasarEngine
 
 		EditorSpecification m_Specification;
 
-		std::unique_ptr<ContentBrowser> m_ContentBrowser;
+		EditorContext m_Context;
+
+		std::unordered_map<std::string, std::unique_ptr<IEditorModule>> m_EditorModuleMap;
+
+		/*std::unique_ptr<ContentBrowser> m_ContentBrowser;
 		std::unique_ptr<EntityPropertie> m_EntityPropertie;
 		std::unique_ptr<SceneHierarchy> m_SceneHierarchy;
 		std::unique_ptr<EditorViewport> m_EditorViewport;
 		std::unique_ptr<Viewport> m_Viewport;
-		//std::unique_ptr<NodeEditor> m_NodeEditor;
-		//std::unique_ptr<AnimationEditor> m_AnimationEditor;
-		//std::unique_ptr<HeightMapEditor> m_HeightMapEditor;
-		//std::unique_ptr<UserInterfaceEditor> m_UserInterfaceEditor;
-		//std::unique_ptr<SpriteEditor> m_SpriteEditor;
-
-		std::unique_ptr<SceneManager> m_SceneManager;
-		std::unique_ptr<EditorCamera> m_EditorCamera;
-
-		std::unique_ptr<AssetImporter> m_AssetImporter;
+		std::unique_ptr<NodeEditor> m_NodeEditor;
+		std::unique_ptr<AnimationEditor> m_AnimationEditor;
+		std::unique_ptr<HeightMapEditor> m_HeightMapEditor;
+		std::unique_ptr<UserInterfaceEditor> m_UserInterfaceEditor;
+		std::unique_ptr<SpriteEditor> m_SpriteEditor;*/
 
 		bool m_optionMenu = false;
 		int m_optionTab = 0;

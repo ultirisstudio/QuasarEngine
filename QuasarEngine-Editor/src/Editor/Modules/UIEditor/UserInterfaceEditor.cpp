@@ -73,7 +73,25 @@ namespace QuasarEngine
         return base + "_x";
     }
 
-    UserInterfaceEditor::UserInterfaceEditor() { New(); }
+	UserInterfaceEditor::UserInterfaceEditor(EditorContext& context) : IEditorModule(context)
+    {
+        New();
+    }
+
+    UserInterfaceEditor::~UserInterfaceEditor()
+    {
+
+    }
+
+    void UserInterfaceEditor::Update(double dt)
+    {
+
+    }
+
+    void UserInterfaceEditor::Render()
+    {
+
+    }
 
     bool UserInterfaceEditor::New() {
         std::lock_guard<std::mutex> lk(m_Mutex);
@@ -124,7 +142,9 @@ namespace QuasarEngine
         m_DesignH = (h == 0 ? 1u : h);
     }
 
-    void UserInterfaceEditor::OnImGuiRender(const char* windowName) {
+    void UserInterfaceEditor::RenderUI() {
+        const char* windowName = "User Interface Editor";
+
         ImGui::SetNextWindowSize(ImVec2(1280, 760), ImGuiCond_Once);
         ImGui::Begin(windowName, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);
 

@@ -99,6 +99,11 @@ namespace QuasarEngine
 
 			PointLight pointLights[4];
 			DirectionalLight dirLights[4];
+
+			glm::mat4 dirLightVP[4];
+			float dirShadowBias;
+			int PCF;
+			float shadowMapSize;
 		};
 		static_assert(offsetof(GlobalUniforms, pointLights) % 16 == 0, "pointLights offset must be 16-aligned");
 		static_assert(offsetof(GlobalUniforms, dirLights) % 16 == 0, "dirLights offset must be 16-aligned");
@@ -108,17 +113,22 @@ namespace QuasarEngine
 		constexpr Shader::ShaderStageFlags globalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 		desc.globalUniforms = {
-			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(GlobalUniforms, view), 0, 0, globalUniformsFlags},
-			{"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(GlobalUniforms, projection), 0, 0, globalUniformsFlags},
-			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3), offsetof(GlobalUniforms, camera_position), 0, 0, globalUniformsFlags},
+			{"view",			Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),				offsetof(GlobalUniforms, view), 0, 0, globalUniformsFlags},
+			{"projection",		Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),				offsetof(GlobalUniforms, projection), 0, 0, globalUniformsFlags},
+			{"camera_position", Shader::ShaderUniformType::Vec3,	sizeof(glm::vec3),				offsetof(GlobalUniforms, camera_position), 0, 0, globalUniformsFlags},
 			
-			{"usePointLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, usePointLight), 0, 0, globalUniformsFlags},
-			{"useDirLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, useDirLight), 0, 0, globalUniformsFlags},
+			{"usePointLight",	Shader::ShaderUniformType::Int,		sizeof(int),					offsetof(GlobalUniforms, usePointLight), 0, 0, globalUniformsFlags},
+			{"useDirLight",		Shader::ShaderUniformType::Int,		sizeof(int),					offsetof(GlobalUniforms, useDirLight), 0, 0, globalUniformsFlags},
 
-			{"prefilterLevels", Shader::ShaderUniformType::Int, sizeof(int), offsetof(GlobalUniforms, prefilterLevels), 0, 0, globalUniformsFlags},
+			{"prefilterLevels",	Shader::ShaderUniformType::Int,		sizeof(int),					offsetof(GlobalUniforms, prefilterLevels), 0, 0, globalUniformsFlags},
 			
-			{"pointLights", Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4, offsetof(GlobalUniforms, pointLights), 0, 0, globalUniformsFlags},
-			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(GlobalUniforms, dirLights), 0, 0, globalUniformsFlags},
+			{"pointLights",		Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4,			offsetof(GlobalUniforms, pointLights), 0, 0, globalUniformsFlags},
+			{"dirLights",		Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4,	offsetof(GlobalUniforms, dirLights), 0, 0, globalUniformsFlags},
+
+			{"dirLightVP",		Shader::ShaderUniformType::Unknown, sizeof(glm::mat4) * 4,			offsetof(GlobalUniforms, dirLightVP),    0, 0, globalUniformsFlags},
+			{"dirShadowBias",	Shader::ShaderUniformType::Float,   sizeof(float),					offsetof(GlobalUniforms, dirShadowBias),0, 0, globalUniformsFlags},
+			{"PCF",				Shader::ShaderUniformType::Int,     sizeof(int),					offsetof(GlobalUniforms, PCF),          0, 0, globalUniformsFlags},
+			{"shadowMapSize",	Shader::ShaderUniformType::Float,	sizeof(float),					offsetof(GlobalUniforms, shadowMapSize),0, 0, globalUniformsFlags},
 		};
 
 		struct alignas(16) ObjectUniforms {
@@ -171,7 +181,10 @@ namespace QuasarEngine
 			{"irradiance_map",   1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"prefilter_map",    1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 			{"brdf_lut",         1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"emissive_texture", 1, 9, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"dirShadow0",       1, 9,  Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"dirShadow1",       1, 10, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"dirShadow2",       1, 11, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
+			{"dirShadow3",       1, 12, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
 		};
 
 		desc.blendMode = Shader::BlendMode::None;
@@ -539,6 +552,69 @@ namespace QuasarEngine
 		m_SceneData.m_DirectionalsBuffer.fill(DirectionalLight());
 
 		m_SceneData.m_UI = std::make_unique<UISystem>();
+
+		{
+			FramebufferSpecification s{};
+			s.Width = s.Height = m_SceneData.m_DirShadow.mapSize;
+			s.Attachments = { FramebufferTextureSpecification{FramebufferTextureFormat::DEPTH24} };
+			s.Samples = 1;
+			s.DepthAsTexture = true;
+
+			for (int i = 0; i < 4; ++i)
+				m_SceneData.m_DirShadowFBO[i] = Framebuffer::Create(s);
+		}
+
+		{
+			Shader::ShaderDescription sh{};
+
+			std::string v = basePath + "shadow_dir" + extFor(api, Shader::ShaderStageType::Vertex);
+			std::string f = basePath + "shadow_dir" + extFor(api, Shader::ShaderStageType::Fragment);
+
+			sh.modules = {
+				Shader::ShaderModuleInfo{
+					Shader::ShaderStageType::Vertex,
+					v,
+					{
+						{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
+						{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
+						{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""},
+					}
+				},
+				Shader::ShaderModuleInfo{
+					Shader::ShaderStageType::Fragment,
+					f,
+					{}
+				}
+			};
+
+			struct alignas(16) DepthGlobal { glm::mat4 lightVP; };
+			struct alignas(16) DepthObject { glm::mat4 model; };
+
+			constexpr Shader::ShaderStageFlags Stages =
+				Shader::StageToBit(Shader::ShaderStageType::Vertex) |
+				Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+			sh.globalUniforms = {
+				{"lightVP", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(DepthGlobal, lightVP), 0, 0, Stages}
+			};
+
+			sh.objectUniforms = {
+				{"model",  Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(DepthObject, model),   1, 0, Stages}
+			};
+
+			sh.blendMode = Shader::BlendMode::None;
+			sh.cullMode = Shader::CullMode::Back;
+			sh.fillMode = Shader::FillMode::Solid;
+			sh.depthFunc = Shader::DepthFunc::Less;
+			sh.depthTestEnable = true;
+			sh.depthWriteEnable = true;
+			sh.topology = Shader::PrimitiveTopology::TriangleList;
+			sh.enableDynamicViewport = true;
+			sh.enableDynamicScissor = true;
+			sh.enableDynamicLineWidth = false;
+
+			m_SceneData.m_ShadowDir_Static = Shader::Create(sh);
+		}
 	}
 
 	void Renderer::Shutdown()
@@ -583,6 +659,9 @@ namespace QuasarEngine
 		glm::mat4 viewMatrix = camera.getViewMatrix();
 		glm::mat4 projectionMatrix = camera.getProjectionMatrix();
 
+		int pcf = m_SceneData.m_DirShadow.pcfRadius;
+		float size = float(m_SceneData.m_DirShadow.mapSize);
+
 		m_SceneData.m_Shader->Use();
 
 		//int totalEntity = 0;
@@ -599,6 +678,11 @@ namespace QuasarEngine
 
 		m_SceneData.m_Shader->SetUniform("pointLights", m_SceneData.m_PointsBuffer.data(), sizeof(PointLight) * 4);
 		m_SceneData.m_Shader->SetUniform("dirLights", m_SceneData.m_DirectionalsBuffer.data(), sizeof(DirectionalLight) * 4);
+
+		m_SceneData.m_Shader->SetUniform("dirShadowBias", &m_SceneData.m_DirShadow.bias, sizeof(float));
+		m_SceneData.m_Shader->SetUniform("PCF", &pcf, sizeof(int));
+		m_SceneData.m_Shader->SetUniform("shadowMapSize", &size, sizeof(float));
+		m_SceneData.m_Shader->SetUniform("dirLightVP", m_SceneData.m_DirLightVP.data(), sizeof(glm::mat4) * 4);
 
 		if (!m_SceneData.m_Shader->UpdateGlobalState())
 		{
@@ -664,6 +748,14 @@ namespace QuasarEngine
 			m_SceneData.m_Shader->SetTexture("irradiance_map", m_SceneData.m_SkyboxHDR->GetIrradianceMap().get());
 			m_SceneData.m_Shader->SetTexture("prefilter_map", m_SceneData.m_SkyboxHDR->GetPrefilterMap().get());
 			m_SceneData.m_Shader->SetTexture("brdf_lut", m_SceneData.m_SkyboxHDR->GetBrdfLUT().get());
+
+			for (int i = 0; i < m_SceneData.nDirs; ++i) {
+				auto depthTex = m_SceneData.m_DirShadowFBO[i]->GetDepthAttachmentTexture();
+				if (depthTex) {
+					std::string name = "dirShadow" + std::to_string(i);
+					m_SceneData.m_Shader->SetTexture(name, depthTex.get());
+				}
+			}
 
 			if (!m_SceneData.m_Shader->UpdateObject(&material)) continue;
 
@@ -948,48 +1040,93 @@ namespace QuasarEngine
 
 	}
 
-	void Renderer::CollectLights(Scene& scene)
+	void Renderer::BuildLight(BaseCamera& camera)
 	{
-		m_SceneData.nPts = 0;
 		m_SceneData.nDirs = 0;
+		m_SceneData.nPts = 0;
 
-		for (auto e : scene.GetAllEntitiesWith<TransformComponent, LightComponent>())
+		for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<LightComponent, TransformComponent>())
 		{
-			Entity ent{ e, scene.GetRegistry() };
-			const auto& tr = ent.GetComponent<TransformComponent>();
-			const auto& lc = ent.GetComponent<LightComponent>();
+			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
 
-			if (lc.lightType == LightComponent::LightType::DIRECTIONAL)
+			auto& lc = entity.GetComponent<LightComponent>();
+			auto& tr = entity.GetComponent<TransformComponent>();
+
+			if (lc.lightType == LightComponent::LightType::DIRECTIONAL && m_SceneData.nDirs < 4)
 			{
-				if (m_SceneData.nDirs < 4) {
-					DirectionalLight L{};
-					glm::vec3 dir = glm::vec3(0.0f, -1.0f, 0.0f);
-					if (glm::length2(tr.Rotation) > 0.0f) {
-						const glm::vec3 eulDeg = tr.Rotation;
-						const glm::quat q = glm::quat(eulDeg);
-						dir = glm::normalize(q * glm::vec3(0.0f, 0.0f, -1.0f));
-					}
-					L.direction = dir;
-					L.color = lc.directional_light.color;
-					L.power = lc.directional_light.power;
-					m_SceneData.m_DirectionalsBuffer[m_SceneData.nDirs++] = L;
-				}
+				glm::vec3 raysDir = Math::ForwardFromEulerRad(tr.Rotation);
+
+				DirectionalLight dl = lc.directional_light;
+				dl.direction = -raysDir;
+
+				m_SceneData.m_DirectionalsBuffer[m_SceneData.nDirs++] = dl;
 			}
-			else if (lc.lightType == LightComponent::LightType::POINT)
+			else if (lc.lightType == LightComponent::LightType::POINT && m_SceneData.nPts < 4)
 			{
-				if (m_SceneData.nPts < 4) {
-					PointLight L{};
-					L.position = glm::vec3(tr.Position);
-					L.color = lc.point_light.color;
-					L.attenuation = lc.point_light.attenuation;
-					L.power = lc.point_light.power;
-					m_SceneData.m_PointsBuffer[m_SceneData.nPts++] = L;
-				}
+				PointLight pl = lc.point_light;
+				pl.position = tr.Position;
+				m_SceneData.m_PointsBuffer[m_SceneData.nPts++] = pl;
 			}
 		}
 
-		for (int i = m_SceneData.nDirs; i < 4; ++i) m_SceneData.m_DirectionalsBuffer[i] = DirectionalLight{};
-		for (int i = m_SceneData.nPts; i < 4; ++i) m_SceneData.m_PointsBuffer[i] = PointLight{};
+		for (int i = 0; i < m_SceneData.nDirs; ++i)
+		{
+			const DirectionalLight& dl = m_SceneData.m_DirectionalsBuffer[i];
+
+			glm::vec3 dirToLight = glm::normalize(dl.direction);
+			glm::vec3 raysDir = -dirToLight;
+
+			const glm::vec3 up = (glm::abs(glm::dot(raysDir, glm::vec3(0, 1, 0))) > 0.99f)
+				? glm::vec3(0, 0, 1)
+				: glm::vec3(0, 1, 0);
+
+			const glm::vec3 camPos = camera.GetPosition();
+			const float range = m_SceneData.m_DirShadow.orthoRange;
+			const float zNear = m_SceneData.m_DirShadow.nearPlane;
+			const float zFar = m_SceneData.m_DirShadow.farPlane;
+
+			glm::vec3 lightPos = camPos - raysDir * (0.5f * (zNear + zFar));
+
+			glm::mat4 lightV = glm::lookAt(lightPos, lightPos + raysDir, up);
+			glm::mat4 lightP = glm::ortho(-range, range, -range, range, zNear, zFar);
+
+			m_SceneData.m_DirLightVP[i] = lightP * lightV;
+
+			auto& fbo = m_SceneData.m_DirShadowFBO[i];
+			fbo->Bind();
+
+			RenderCommand::Instance().SetViewport(0, 0,
+				m_SceneData.m_DirShadow.mapSize,
+				m_SceneData.m_DirShadow.mapSize);
+			fbo->Clear(ClearFlags::Depth);
+
+			m_SceneData.m_ShadowDir_Static->Use();
+			m_SceneData.m_ShadowDir_Static->SetUniform("lightVP", &m_SceneData.m_DirLightVP[i], sizeof(glm::mat4));
+			m_SceneData.m_ShadowDir_Static->UpdateGlobalState();
+			
+			for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MeshComponent, MeshRendererComponent>())
+			{
+				Entity ent{ e, m_SceneData.m_Scene->GetRegistry() };
+				auto& tr = ent.GetComponent<TransformComponent>();
+				auto& mc = ent.GetComponent<MeshComponent>();
+				auto& mr = ent.GetComponent<MeshRendererComponent>();
+
+				if (!mr.m_Rendered || !mc.HasMesh()) continue;
+				if (mc.GetMesh().HasSkinning())      continue;
+
+				glm::mat4 model = tr.GetGlobalTransform();
+				if (mc.HasLocalNodeTransform())
+					model *= mc.GetLocalNodeTransform();
+
+				m_SceneData.m_ShadowDir_Static->SetUniform("model", &model, sizeof(glm::mat4));
+				if (!m_SceneData.m_ShadowDir_Static->UpdateObject(nullptr)) continue;
+
+				mc.GetMesh().draw();
+			}
+
+			m_SceneData.m_ShadowDir_Static->Unuse();
+			fbo->Unbind();
+		}
 	}
 
 	Scene* Renderer::GetScene()
