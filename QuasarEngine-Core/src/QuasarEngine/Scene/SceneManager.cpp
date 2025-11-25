@@ -60,6 +60,7 @@ namespace QuasarEngine
 						Renderer::Instance().BeginScene(m_SceneObject->GetScene());
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
 						bool result = serializer.Deserialize(m_PendingActionFile);
+						std::cout << "Scene loaded from path: " << m_PendingActionFile << "\n";
 						break;
 					}
 					case PendingAction::ReloadScene:

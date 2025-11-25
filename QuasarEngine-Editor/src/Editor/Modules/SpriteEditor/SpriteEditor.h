@@ -22,6 +22,7 @@
 #include <QuasarEngine/Core/UUID.h>
 
 #include <Editor/Modules/IEditorModule.h>
+#include <Editor/EditorCanvas.h>
 
 namespace QuasarEngine
 {
@@ -69,7 +70,6 @@ namespace QuasarEngine
         void DrawPlacedSpritesOnCanvas(ImDrawList* dl, const Layer& layer);
 
         void DrawPreviewPanel(float width, float height);
-        void DrawGrid(ImDrawList* dl, ImVec2 origin, ImVec2 size, float step) const;
 
         struct Brush {
             std::string textureId;
@@ -106,12 +106,9 @@ namespace QuasarEngine
         std::unordered_map<std::string, ImTextureID> m_TexCache;
         Brush m_Brush;
 
-        ImVec2 m_CanvasPos{ 0,0 };
-        ImVec2 m_CanvasSize{ 0,0 };
-        ImVec2 m_Pan{ 20,20 };
-        float  m_Zoom = 1.0f;
-        bool   m_ShowGrid = true;
+        EditorCanvas m_Canvas;
         float  m_GridStep = 32.f;
+		bool m_ShowGrid = true;
 
         int  m_HoverX = -1, m_HoverY = -1;
         bool m_HoverValid = false;
@@ -123,7 +120,7 @@ namespace QuasarEngine
 
         std::mutex m_Mutex;
 
-        ImVec2 ScreenToCanvas(ImVec2 screen) const { ImVec2 p = screen - m_CanvasPos; return (p - m_Pan) / m_Zoom; }
-        ImVec2 CanvasToScreen(ImVec2 canvas) const { return canvas * m_Zoom + m_Pan + m_CanvasPos; }
+        ImVec2 ScreenToCanvas(ImVec2 screen) const { return m_Canvas.ScreenToCanvas(screen); }
+        ImVec2 CanvasToScreen(ImVec2 canvas) const { return m_Canvas.CanvasToScreen(canvas); }
     };
 }

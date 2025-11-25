@@ -703,24 +703,38 @@ namespace QuasarEngine
         }
     }
 
-    void AnimationEditor::PushUndo() {
-        redoStack_.clear();
-        undoStack_.push_back({ clip_, timeOffset_, timeScale_, valueOffset_, valueScale_, player_.time });
-        if (undoStack_.size() > 64) undoStack_.erase(undoStack_.begin());
+    void AnimationEditor::PushUndo()
+    {
+        Snapshot s{ clip_, timeOffset_, timeScale_, valueOffset_, valueScale_, player_.time };
+        m_History.Push(std::move(s));
     }
 
-    void AnimationEditor::Undo() {
-        if (undoStack_.empty()) return;
-        redoStack_.push_back({ clip_, timeOffset_, timeScale_, valueOffset_, valueScale_, player_.time });
-        auto s = undoStack_.back(); undoStack_.pop_back();
-        clip_ = s.state; timeOffset_ = s.tOffset; timeScale_ = s.tScale; valueOffset_ = s.vOffset; valueScale_ = s.vScale; player_.time = s.playhead;
+    void AnimationEditor::Undo()
+    {
+        Snapshot s;
+        if (!m_History.Undo(s))
+            return;
+
+        clip_ = s.state;
+        timeOffset_ = s.tOffset;
+        timeScale_ = s.tScale;
+        valueOffset_ = s.vOffset;
+        valueScale_ = s.vScale;
+        player_.time = s.playhead;
     }
 
-    void AnimationEditor::Redo() {
-        if (redoStack_.empty()) return;
-        undoStack_.push_back({ clip_, timeOffset_, timeScale_, valueOffset_, valueScale_, player_.time });
-        auto s = redoStack_.back(); redoStack_.pop_back();
-        clip_ = s.state; timeOffset_ = s.tOffset; timeScale_ = s.tScale; valueOffset_ = s.vOffset; valueScale_ = s.vScale; player_.time = s.playhead;
+    void AnimationEditor::Redo()
+    {
+        Snapshot s;
+        if (!m_History.Redo(s))
+            return;
+
+        clip_ = s.state;
+        timeOffset_ = s.tOffset;
+        timeScale_ = s.tScale;
+        valueOffset_ = s.vOffset;
+        valueScale_ = s.vScale;
+        player_.time = s.playhead;
     }
 
     float AnimationEditor::PixelFromTime(float t, float x0) const {

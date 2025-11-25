@@ -35,6 +35,8 @@
 #include <QuasarEngine/UI/UISerialize.h>
 
 #include <Editor/Modules/IEditorModule.h>
+#include <Editor/EditorCanvas.h>
+#include <Editor/UndoStack.h>
 
 namespace QuasarEngine
 {
@@ -57,28 +59,24 @@ namespace QuasarEngine
     private:
         mutable std::mutex m_Mutex;
         std::shared_ptr<UIElement> m_Root;
-        std::weak_ptr<UIElement>   m_Selected;
-        std::string                m_OpenedPath;
+        std::weak_ptr<UIElement> m_Selected;
+        std::string m_OpenedPath;
 
-        ImVec2   m_CanvasPos{ 0,0 };
-        ImVec2   m_CanvasSize{ 0,0 };
-        ImVec2   m_Pan{ 20,20 };
-        float    m_Zoom = 1.0f;
-        bool     m_ShowGrid = true;
-        bool     m_SnapToGrid = true;
-        float    m_GridStep = 35.0f;
+        EditorCanvas m_Canvas;
+        bool m_ShowGrid = true;
+        float m_GridStep = 35.0f;
+		bool m_SnapToGrid = true;
 
-        bool     m_Dragging = false;
-        bool     m_Resizing = false;
-        ImVec2   m_DragOffset{ 0,0 };
-        int      m_ResizeHandle = -1;
+        bool m_Dragging = false;
+        bool m_Resizing = false;
+        ImVec2 m_DragOffset{ 0,0 };
+        int m_ResizeHandle = -1;
         const float m_HandleSize = 8.0f;
 
         uint32_t m_DesignW = 1920;
         uint32_t m_DesignH = 1080;
 
-        std::vector<std::vector<uint8_t>> m_Undo;
-        std::vector<std::vector<uint8_t>> m_Redo;
+        UndoStack<std::vector<uint8_t>> m_UndoStack{ 64 };
 
         std::string m_SelectedIdCache;
 
@@ -91,7 +89,6 @@ namespace QuasarEngine
         void DrawPropertiesPanel(float width, float height);
         void DrawPreviewPanel(float width, float height);
 
-        void DrawGrid(ImDrawList* dl, ImVec2 origin, ImVec2 size, float step) const;
         void DrawElementBox(ImDrawList* dl, UIElement* e, bool selected) const;
         void DrawResizeHandles(ImDrawList* dl, UIElement* e) const;
 
@@ -117,21 +114,19 @@ namespace QuasarEngine
         bool SerializeToBuffer(const std::shared_ptr<UIElement>& root, std::vector<uint8_t>& out) const;
         std::shared_ptr<UIElement> DeserializeFromBuffer(const uint8_t* data, size_t size) const;
 
-        ImVec2 ScreenToCanvas(ImVec2 screen) const;
-        ImVec2 CanvasToScreen(ImVec2 canvas) const;
-        void   ClampRect(Rect& r) const;
+        void ClampRect(Rect& r) const;
 
-        void   FlattenZOrder(const std::shared_ptr<UIElement>& root, std::vector<UIElement*>& out) const;
+        void FlattenZOrder(const std::shared_ptr<UIElement>& root, std::vector<UIElement*>& out) const;
         std::shared_ptr<UIElement> FindById(const std::string& id) const;
         std::shared_ptr<UIElement> ParentOf(const std::shared_ptr<UIElement>& node);
         std::shared_ptr<const UIElement> ParentOf(const std::shared_ptr<const UIElement>& node) const;
 
-        bool   Reparent(const std::shared_ptr<UIElement>& node, const std::shared_ptr<UIElement>& newParent, int insertIndex = -1);
-        bool   ReorderWithinParent(const std::shared_ptr<UIElement>& node, int newIndex);
+        bool Reparent(const std::shared_ptr<UIElement>& node, const std::shared_ptr<UIElement>& newParent, int insertIndex = -1);
+        bool ReorderWithinParent(const std::shared_ptr<UIElement>& node, int newIndex);
 
         static const char* SerTypeToString(UISerType t);
-        static UISerType   StringToSerType(const char* s);
-        static ImU32       ToImColor(const UIColor& c);
+        static UISerType StringToSerType(const char* s);
+        static ImU32 ToImColor(const UIColor& c);
         static std::string MakeUniqueId(const std::string& base, const std::shared_ptr<UIElement>& root);
 
         void DrawCommonProperties(UIElement& e, bool& anyChanged);

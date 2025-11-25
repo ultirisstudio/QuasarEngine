@@ -54,16 +54,19 @@ namespace QuasarEngine
     {
         ImGui::Begin("Node Editor", nullptr);
 
-        m_CanvasPos = ImGui::GetCursorScreenPos();
-        m_CanvasSize = ImGui::GetContentRegionAvail();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImVec2 size = ImGui::GetContentRegionAvail();
 
-        if (m_CanvasSize.x <= 0 || m_CanvasSize.y <= 0)
+        if (size.x <= 0 || size.y <= 0)
         {
-			ImGui::End();
-			return;
-		}
+            ImGui::End();
+            return;
+        }
 
-        ImGui::SetCursorScreenPos(m_CanvasPos + ImVec2(10, 10));
+        m_Canvas.BeginRegion(pos, size);
+        m_Canvas.baseGridStep = 40.0f;
+
+        ImGui::SetCursorScreenPos(m_Canvas.canvasPos +ImVec2(10, 10));
         ImGui::SetItemAllowOverlap();
         bool wantOpenPopup = false;
         if (ImGui::Button("+ Ajouter un noeud", ImVec2(150, 0)))
@@ -75,9 +78,9 @@ namespace QuasarEngine
         if (wantOpenPopup)
             ImGui::OpenPopup("AddNodePopup");
 
-        ImGui::SetCursorScreenPos(m_CanvasPos);
+        ImGui::SetCursorScreenPos(m_Canvas.canvasPos);
 
-        ImGui::InvisibleButton("##NodeCanvas", ImVec2(m_CanvasSize.x * 0.7f, m_CanvasSize.y), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
+        ImGui::InvisibleButton("##NodeCanvas", ImVec2(m_Canvas.canvasSize.x * 0.7f, m_Canvas.canvasSize.y), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
         bool hoveringCanvas = ImGui::IsItemHovered();
         bool activeCanvas = ImGui::IsItemActive();
 
@@ -94,7 +97,7 @@ namespace QuasarEngine
                 if (ImGui::MenuItem(typeName.c_str()))
                 {
                     ImVec2 mouse = ImGui::GetIO().MousePos;
-                    AddNode(typeName, (mouse - m_PanOffset - m_CanvasPos) / m_Zoom);
+                    AddNode(typeName, m_Canvas.ScreenToCanvas(mouse));
                     ImGui::CloseCurrentPopup();
                 }
             }
@@ -103,7 +106,7 @@ namespace QuasarEngine
 
         ImGui::SameLine();
 
-        ImGui::BeginChild("Inspector", ImVec2(0, m_CanvasSize.y), false);
+        ImGui::BeginChild("Inspector", ImVec2(0, m_Canvas.canvasSize.y), false);
         ShowInspector();
         ImGui::EndChild();
 
@@ -228,16 +231,9 @@ namespace QuasarEngine
     {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-        drawList->PushClipRect(m_CanvasPos, m_CanvasPos + m_CanvasSize, true);
-
-        float gridStep = 40.0f * m_Zoom;
-        ImU32 gridColor = IM_COL32(50, 50, 50, 80);
-
-        for (float x = fmodf(m_PanOffset.x, gridStep); x < m_CanvasSize.x; x += gridStep)
-            drawList->AddLine(ImVec2(m_CanvasPos.x + x, m_CanvasPos.y), ImVec2(m_CanvasPos.x + x, m_CanvasPos.y + m_CanvasSize.y), gridColor);
-
-        for (float y = fmodf(m_PanOffset.y, gridStep); y < m_CanvasSize.y; y += gridStep)
-            drawList->AddLine(ImVec2(m_CanvasPos.x, m_CanvasPos.y + y), ImVec2(m_CanvasPos.x + m_CanvasSize.x, m_CanvasPos.y + y), gridColor);
+        drawList->PushClipRect(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, true);
+        m_Canvas.baseGridStep = 40.0f;
+        m_Canvas.DrawGrid(drawList);
 
         if (m_ConnectionDrag.active)
         {
@@ -254,13 +250,13 @@ namespace QuasarEngine
             auto* fromView = GetNodeView(fromNode->GetId());
             auto* toView = GetNodeView(toNode->GetId());
             if (!fromView || !toView) continue;
-            ImVec2 fromPos = fromView->GetPortScreenPos(conn->fromPort, true, m_PanOffset, m_Zoom, m_CanvasPos);
-            ImVec2 toPos = toView->GetPortScreenPos(conn->toPort, false, m_PanOffset, m_Zoom, m_CanvasPos);
+            ImVec2 fromPos = fromView->GetPortScreenPos(conn->fromPort, true, m_Canvas.pan, m_Canvas.zoom, m_Canvas.canvasPos);
+            ImVec2 toPos = toView->GetPortScreenPos(conn->toPort, false, m_Canvas.pan, m_Canvas.zoom, m_Canvas.canvasPos);
             DrawConnectionCurve(fromPos, toPos);
         }
 
         for (auto& [id, nodeView] : m_NodeViews)
-            nodeView->Show(id == m_SelectedNode, m_PanOffset, m_Zoom, m_CanvasPos, this);
+            nodeView->Show(id == m_SelectedNode, m_Canvas.pan, m_Canvas.zoom, m_Canvas.canvasPos, this);
 
         ImDrawList* debugDraw = ImGui::GetWindowDrawList();
         if (m_DraggingNode)
@@ -268,8 +264,8 @@ namespace QuasarEngine
             auto* view = GetNodeView(m_DraggingNode);
             if (view)
             {
-                ImVec2 titlePos = view->GetPosition() * m_Zoom + m_PanOffset + m_CanvasPos;
-                ImVec2 titleSize = ImVec2(view->GetSize().x * m_Zoom, 28.0f * m_Zoom);
+                ImVec2 titlePos = view->GetPosition() * m_Canvas.zoom + m_Canvas.pan + m_Canvas.canvasPos;
+                ImVec2 titleSize = ImVec2(view->GetSize().x * m_Canvas.zoom, 28.0f * m_Canvas.zoom);
                 debugDraw->AddRect(titlePos, titlePos + titleSize, IM_COL32(255, 0, 0, 255), 0, 0, 2.0f);
             }
         }
@@ -302,13 +298,13 @@ namespace QuasarEngine
         {
             for (auto& [id, nodeView] : m_NodeViews)
             {
-                ImVec2 titlePos = nodeView->GetPosition() * m_Zoom + m_PanOffset + m_CanvasPos;
-                ImVec2 titleSize = ImVec2(nodeView->GetSize().x * m_Zoom, 28.0f * m_Zoom);
+                ImVec2 titlePos = nodeView->GetPosition() * m_Canvas.zoom + m_Canvas.pan + m_Canvas.canvasPos;
+                ImVec2 titleSize = ImVec2(nodeView->GetSize().x * m_Canvas.zoom, 28.0f * m_Canvas.zoom);
                 ImRect titleBar(titlePos, titlePos + titleSize);
                 if (ImGui::IsMouseClicked(0) && titleBar.Contains(io.MousePos))
                 {
                     m_DraggingNode = id;
-                    m_DragOffset = (io.MousePos - titlePos) / m_Zoom;
+                    m_DragOffset = (io.MousePos - titlePos) / m_Canvas.zoom;
                     m_SelectedNode = id;
                     break;
                 }
@@ -321,7 +317,7 @@ namespace QuasarEngine
                 auto* view = GetNodeView(m_DraggingNode);
                 if (view)
                 {
-                    ImVec2 newLogicalPos = (io.MousePos - m_PanOffset - m_CanvasPos) / m_Zoom - m_DragOffset;
+                    ImVec2 newLogicalPos = (io.MousePos - m_Canvas.pan - m_Canvas.canvasPos) / m_Canvas.zoom - m_DragOffset;
                     view->SetPosition(newLogicalPos);
                 }
             }
@@ -336,50 +332,7 @@ namespace QuasarEngine
 
         if (hoveringCanvas || activeCanvas)
         {
-            if (!m_DraggingNode && ImGui::IsMouseClicked(2))
-            {
-                panning = true;
-                panStart = io.MousePos;
-            }
-            else if (panning && ImGui::IsMouseDown(2))
-            {
-                ImVec2 delta = io.MousePos - panStart;
-                m_PanOffset += delta;
-                panStart = io.MousePos;
-                io.WantCaptureMouse = true;
-            }
-            else if (panning && !ImGui::IsMouseDown(2))
-            {
-                panning = false;
-            }
-
-            float wheel = io.MouseWheel;
-            if (wheel != 0.0f)
-            {
-                float prevZoom = m_Zoom;
-                m_Zoom = std::clamp(m_Zoom + wheel * 0.1f, 0.25f, 2.5f);
-                ImVec2 mouse = io.MousePos;
-                m_PanOffset = (m_PanOffset - mouse) * (m_Zoom / prevZoom) + mouse;
-            }
-
-            if (!m_DraggingNode && ImGui::IsMouseClicked(0))
-            {
-                bool overNode = false;
-                for (auto& [id, view] : m_NodeViews)
-                {
-                    ImVec2 titlePos = view->GetPosition() * m_Zoom + m_PanOffset + m_CanvasPos;
-                    ImVec2 titleSize = ImVec2(view->GetSize().x * m_Zoom, 28.0f * m_Zoom);
-                    ImRect titleBar(titlePos, titlePos + titleSize);
-                    if (titleBar.Contains(io.MousePos))
-                    {
-                        m_SelectedNode = id;
-                        overNode = true;
-                        break;
-                    }
-                }
-                if (!overNode)
-                    m_SelectedNode = 0;
-            }
+            m_Canvas.HandlePanAndZoom(io, true, 0.25f, 2.5f);
         }
 
         if (m_ConnectionDrag.active && ImGui::IsMouseReleased(0))
@@ -396,8 +349,8 @@ namespace QuasarEngine
                 const auto& inputs = nodeView->GetNode()->GetInputPorts();
                 for (size_t i = 0; i < inputs.size(); ++i)
                 {
-                    ImVec2 pos = nodeView->GetPortScreenPos(inputs[i].name, false, m_PanOffset, m_Zoom, m_CanvasPos);
-                    float portRadius = 7.0f * m_Zoom;
+                    ImVec2 pos = nodeView->GetPortScreenPos(inputs[i].name, false, m_Canvas.pan, m_Canvas.zoom, m_Canvas.canvasPos);
+                    float portRadius = 7.0f * m_Canvas.zoom;
                     ImVec2 delta = mouse - pos;
                     float distSqr = delta.x * delta.x + delta.y * delta.y;
                     if (distSqr < (portRadius + 4.0f) * (portRadius + 4.0f) && IsPortCompatible(id, false, i, inputs[i].type))
@@ -409,8 +362,8 @@ namespace QuasarEngine
                 const auto& outputs = nodeView->GetNode()->GetOutputPorts();
                 for (size_t i = 0; i < outputs.size(); ++i)
                 {
-                    ImVec2 pos = nodeView->GetPortScreenPos(outputs[i].name, true, m_PanOffset, m_Zoom, m_CanvasPos);
-                    float portRadius = 7.0f * m_Zoom;
+                    ImVec2 pos = nodeView->GetPortScreenPos(outputs[i].name, true, m_Canvas.pan, m_Canvas.zoom, m_Canvas.canvasPos);
+                    float portRadius = 7.0f * m_Canvas.zoom;
                     ImVec2 delta = mouse - pos;
                     float distSqr = delta.x * delta.x + delta.y * delta.y;
                     if (distSqr < (portRadius + 4.0f) * (portRadius + 4.0f) && IsPortCompatible(id, true, i, outputs[i].type))

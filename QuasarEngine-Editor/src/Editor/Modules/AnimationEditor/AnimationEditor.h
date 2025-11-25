@@ -18,6 +18,7 @@ using nlohmann::json;
 #include <glm/gtx/quaternion.hpp>
 
 #include <Editor/Modules/IEditorModule.h>
+#include <Editor/UndoStack.h>
 
 namespace QuasarEngine
 {
@@ -207,7 +208,7 @@ namespace QuasarEngine
             float tOffset, tScale, vOffset, vScale;
             float playhead;
         };
-        std::vector<Snapshot> undoStack_, redoStack_;
+        UndoStack<Snapshot> m_History{ 64 };
 
         void DrawToolbar();
         void DrawTimeline();

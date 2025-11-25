@@ -497,6 +497,8 @@ namespace QuasarEngine
 							for (char& ch : ext) ch = (char)std::tolower((unsigned char)ch);
 						}
 
+						std::cout << "Dropped file: " << filePath << " (." << ext << ")\n";
+
 						bool isModelExt =
 							(ext == "obj" || ext == "dae" || ext == "fbx" ||
 								ext == "glb" || ext == "gltf" || ext == "bin");

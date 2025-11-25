@@ -24,6 +24,8 @@
 #include <QuasarEngine/Renderer/Renderer.h>
 
 #include <Editor/Modules/IEditorModule.h>
+#include <Editor/EditorSplitters.h>
+#include <Editor/UndoStack.h>
 
 namespace QuasarEngine
 {
@@ -162,8 +164,7 @@ namespace QuasarEngine
         double m_LastRegenTime = 0.0;
         bool   m_Dragging = false;
 
-        std::vector<EditorState> m_Undo;
-        std::vector<EditorState> m_Redo;
+        UndoStack<EditorState> m_UndoStack{ 64 };
 
         std::thread m_Worker;
         std::mutex  m_StateMutex;

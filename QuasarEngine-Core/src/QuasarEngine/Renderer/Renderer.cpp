@@ -1073,8 +1073,8 @@ namespace QuasarEngine
 		{
 			const DirectionalLight& dl = m_SceneData.m_DirectionalsBuffer[i];
 
-			glm::vec3 dirToLight = glm::normalize(dl.direction);
-			glm::vec3 raysDir = -dirToLight;
+			glm::vec3 lightDir = dl.direction;
+			glm::vec3 raysDir = -lightDir;
 
 			const glm::vec3 up = (glm::abs(glm::dot(raysDir, glm::vec3(0, 1, 0))) > 0.99f)
 				? glm::vec3(0, 0, 1)

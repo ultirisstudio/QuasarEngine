@@ -109,8 +109,7 @@ namespace QuasarEngine
         m_OpenedPath.clear();
         m_Selected.reset();
         m_SelectedIdCache.clear();
-        m_Undo.clear();
-        m_Redo.clear();
+		m_UndoStack.Clear();
         PushUndo("New");
         return true;
     }
@@ -124,7 +123,7 @@ namespace QuasarEngine
         m_OpenedPath = path;
         m_Selected.reset();
         m_SelectedIdCache.clear();
-        m_Undo.clear(); m_Redo.clear();
+        m_UndoStack.Clear();
         PushUndo("Load");
         return true;
     }
@@ -249,8 +248,8 @@ namespace QuasarEngine
 
         ImGui::SameLine(0, 24);
         ImGui::SetNextItemWidth(90);
-        ImGui::SliderFloat("Zoom", &m_Zoom, 0.5f, 3.0f, "%.2f");
-
+        ImGui::SliderFloat("Zoom", &m_Canvas.zoom, 0.5f, 3.0f, "%.2f");
+        
         ImGui::SameLine(0, 24);
         if (ImGui::Button("Dupliquer")) DuplicateSelected();
         ImGui::SameLine();
@@ -487,8 +486,8 @@ namespace QuasarEngine
 
     int UserInterfaceEditor::HitTestHandle(UIElement* e, ImVec2 screen) const {
         const Rect& rr = e->Transform().rect;
-        ImVec2 p0 = CanvasToScreen(ImVec2(rr.x, rr.y));
-        ImVec2 p1 = CanvasToScreen(ImVec2(rr.x + rr.w, rr.y + rr.h));
+        ImVec2 p0 = m_Canvas.CanvasToScreen(ImVec2(rr.x, rr.y));
+        ImVec2 p1 = m_Canvas.CanvasToScreen(ImVec2(rr.x + rr.w, rr.y + rr.h));
         ImVec2 c = (p0 + p1) * 0.5f;
 
         ImVec2 pts[8] = {
@@ -571,19 +570,19 @@ namespace QuasarEngine
     void UserInterfaceEditor::DrawHierarchyPanel(float, float) {
         auto selected = m_Selected.lock();
 
-        if (ImGui::Button("+ Button")) { CreateElement(UISerType::Button, ToGlm(ScreenToCanvas(ImGui::GetMousePos()))); }
+        if (ImGui::Button("+ Button")) { CreateElement(UISerType::Button, ToGlm(m_Canvas.ScreenToCanvas(ImGui::GetMousePos()))); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Text")) { CreateElement(UISerType::Text, ToGlm(ScreenToCanvas(ImGui::GetMousePos()))); }
+        if (ImGui::Button("+ Text")) { CreateElement(UISerType::Text, ToGlm(m_Canvas.ScreenToCanvas(ImGui::GetMousePos()))); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Checkbox")) { CreateElement(UISerType::Checkbox, ToGlm(ScreenToCanvas(ImGui::GetMousePos()))); }
+        if (ImGui::Button("+ Checkbox")) { CreateElement(UISerType::Checkbox, ToGlm(m_Canvas.ScreenToCanvas(ImGui::GetMousePos()))); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Progress")) { CreateElement(UISerType::ProgressBar, ToGlm(ScreenToCanvas(ImGui::GetMousePos()))); }
+        if (ImGui::Button("+ Progress")) { CreateElement(UISerType::ProgressBar, ToGlm(m_Canvas.ScreenToCanvas(ImGui::GetMousePos()))); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Image")) { CreateElement(UISerType::Image, ToGlm(ScreenToCanvas(ImGui::GetMousePos()))); }
+        if (ImGui::Button("+ Image")) { CreateElement(UISerType::Image, ToGlm(m_Canvas.ScreenToCanvas(ImGui::GetMousePos()))); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Slider")) { CreateElement(UISerType::Slider, ToGlm(ScreenToCanvas(ImGui::GetMousePos()))); }
+        if (ImGui::Button("+ Slider")) { CreateElement(UISerType::Slider, ToGlm(m_Canvas.ScreenToCanvas(ImGui::GetMousePos()))); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Input")) { CreateElement(UISerType::InputText, ToGlm(ScreenToCanvas(ImGui::GetMousePos()))); }
+        if (ImGui::Button("+ Input")) { CreateElement(UISerType::InputText, ToGlm(m_Canvas.ScreenToCanvas(ImGui::GetMousePos()))); }
 
         ImGui::Separator();
         if (!m_Root) {
@@ -640,24 +639,26 @@ namespace QuasarEngine
     void UserInterfaceEditor::DrawCanvasPanel(float, float) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
 
-        m_CanvasPos = ImGui::GetCursorScreenPos();
-        m_CanvasSize = ImGui::GetContentRegionAvail();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImVec2 size = ImGui::GetContentRegionAvail();
+        m_Canvas.BeginRegion(pos, size);
+        m_Canvas.baseGridStep = m_GridStep;
 
-        dl->AddRectFilled(m_CanvasPos, m_CanvasPos + m_CanvasSize, IM_COL32(22, 24, 28, 255), 6.0f);
-        dl->AddRect(m_CanvasPos, m_CanvasPos + m_CanvasSize, IM_COL32(90, 90, 100, 180), 6.0f);
+        dl->AddRectFilled(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(22, 24, 28, 255), 6.0f);
+        dl->AddRect(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(90, 90, 100, 180), 6.0f);
 
-        ImVec2 v0 = CanvasToScreen(ImVec2(0, 0));
-        ImVec2 v1 = CanvasToScreen(ImVec2((float)m_DesignW, (float)m_DesignH));
+        ImVec2 v0 = m_Canvas.CanvasToScreen(ImVec2(0, 0));
+        ImVec2 v1 = m_Canvas.CanvasToScreen(ImVec2((float)m_DesignW, (float)m_DesignH));
 
         ImU32 dim = IM_COL32(10, 10, 12, 140);
-        dl->AddRectFilled(m_CanvasPos, ImVec2(v0.x, m_CanvasPos.y + m_CanvasSize.y), dim);
-        dl->AddRectFilled(ImVec2(v1.x, m_CanvasPos.y), m_CanvasPos + m_CanvasSize, dim);
-        dl->AddRectFilled(ImVec2(v0.x, m_CanvasPos.y), ImVec2(v1.x, v0.y), dim);
-        dl->AddRectFilled(ImVec2(v0.x, v1.y), ImVec2(v1.x, m_CanvasPos.y + m_CanvasSize.y), dim);
+        dl->AddRectFilled(m_Canvas.canvasPos, ImVec2(v0.x, m_Canvas.canvasPos.y + m_Canvas.canvasSize.y), dim);
+        dl->AddRectFilled(ImVec2(v1.x, m_Canvas.canvasPos.y), m_Canvas.canvasPos + m_Canvas.canvasSize, dim);
+        dl->AddRectFilled(ImVec2(v0.x, m_Canvas.canvasPos.y), ImVec2(v1.x, v0.y), dim);
+        dl->AddRectFilled(ImVec2(v0.x, v1.y), ImVec2(v1.x, m_Canvas.canvasPos.y + m_Canvas.canvasSize.y), dim);
 
         ImU32 border = IM_COL32(255, 210, 80, 255);
         dl->AddRect(v0, v1, border, 0.f, 0, 2.0f);
-        const float corner = 14.0f * m_Zoom;
+        const float corner = 14.0f * m_Canvas.zoom;
         dl->AddLine(v0, ImVec2(v0.x + corner, v0.y), border, 2.0f);
         dl->AddLine(v0, ImVec2(v0.x, v0.y + corner), border, 2.0f);
         dl->AddLine(ImVec2(v1.x, v0.y), ImVec2(v1.x - corner, v0.y), border, 2.0f);
@@ -673,31 +674,23 @@ namespace QuasarEngine
         dl->AddRectFilled(ImVec2(v0.x + 8, v0.y + 8), ImVec2(v0.x + 12 + ts.x, v0.y + 12 + ts.y), IM_COL32(22, 24, 28, 220), 4.f);
         dl->AddText(ImVec2(v0.x + 10, v0.y + 10), IM_COL32(255, 230, 160, 255), tag);
 
-        ImGui::InvisibleButton("##CanvasIO", m_CanvasSize,
+        ImGui::InvisibleButton("##CanvasIO", m_Canvas.canvasSize,
             ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
         bool hovering = ImGui::IsItemHovered();
         bool active = ImGui::IsItemActive();
 
         if (hovering) {
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
-                ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Middle] = ImGui::GetIO().MousePos;
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-                m_Pan += ImGui::GetIO().MouseDelta;
-
-            float wheel = ImGui::GetIO().MouseWheel;
-            if (wheel != 0.0f) {
-                float prev = m_Zoom;
-                m_Zoom = std::clamp(m_Zoom + wheel * 0.1f, 0.4f, 4.0f);
-                ImVec2 mouse = ImGui::GetIO().MousePos;
-                m_Pan = (m_Pan - mouse) * (m_Zoom / prev) + mouse;
-            }
+            m_Canvas.HandlePanAndZoom(ImGui::GetIO(), true, 0.4f, 4.0f);
         }
 
-        if (m_ShowGrid) DrawGrid(dl, m_CanvasPos, m_CanvasSize, m_GridStep * m_Zoom);
+        m_Canvas.showGrid = m_ShowGrid;
+        m_Canvas.baseGridStep = m_GridStep;
+        if (m_ShowGrid)
+            m_Canvas.DrawGrid(dl);
 
         if (hovering && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ImGui::OpenPopup("QUI_CanvasMenu");
         if (ImGui::BeginPopup("QUI_CanvasMenu")) {
-            ImVec2 mc = ScreenToCanvas(ImGui::GetIO().MousePos);
+            ImVec2 mc = m_Canvas.ScreenToCanvas(ImGui::GetIO().MousePos);
             auto add = [&](const char* name, UISerType t) { if (ImGui::MenuItem(name)) CreateElement(t, ToGlm(mc)); };
             add("Ajouter Button", UISerType::Button);
             add("Ajouter Text", UISerType::Text);
@@ -728,7 +721,7 @@ namespace QuasarEngine
         }
 
         if (hovering && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            ImVec2 mc = ScreenToCanvas(ImGui::GetIO().MousePos);
+            ImVec2 mc = m_Canvas.ScreenToCanvas(ImGui::GetIO().MousePos);
             int handle = -1;
             UIElement* hit = nullptr;
             for (int i = (int)draw.size() - 1; i >= 0; --i) {
@@ -748,8 +741,8 @@ namespace QuasarEngine
         }
 
         if (active) {
-            if (m_Dragging)  ApplyDrag(ScreenToCanvas(ImGui::GetIO().MousePos));
-            if (m_Resizing)  ApplyResize(ScreenToCanvas(ImGui::GetIO().MousePos));
+            if (m_Dragging)  ApplyDrag(m_Canvas.ScreenToCanvas(ImGui::GetIO().MousePos));
+            if (m_Resizing)  ApplyResize(m_Canvas.ScreenToCanvas(ImGui::GetIO().MousePos));
         }
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             if (m_Dragging || m_Resizing) PushUndo("Transform");
@@ -759,18 +752,10 @@ namespace QuasarEngine
         }
     }
 
-    void UserInterfaceEditor::DrawGrid(ImDrawList* dl, ImVec2 origin, ImVec2 size, float step) const {
-        ImU32 minor = IM_COL32(60, 62, 68, 120);
-        for (float x = fmodf(m_Pan.x, step); x < size.x; x += step)
-            dl->AddLine(origin + ImVec2(x, 0), origin + ImVec2(x, size.y), minor);
-        for (float y = fmodf(m_Pan.y, step); y < size.y; y += step)
-            dl->AddLine(origin + ImVec2(0, y), origin + ImVec2(size.x, y), minor);
-    }
-
     void UserInterfaceEditor::DrawElementBox(ImDrawList* dl, UIElement* e, bool selected) const {
         const Rect& r = e->Transform().rect;
-        ImVec2 p0 = CanvasToScreen(ImVec2(r.x, r.y));
-        ImVec2 p1 = CanvasToScreen(ImVec2(r.x + r.w, r.y + r.h));
+        ImVec2 p0 = m_Canvas.CanvasToScreen(ImVec2(r.x, r.y));
+        ImVec2 p1 = m_Canvas.CanvasToScreen(ImVec2(r.x + r.w, r.y + r.h));
 
         const UIColor bg = e->Style().bg;
         const UIColor fg = e->Style().fg;
@@ -789,8 +774,8 @@ namespace QuasarEngine
 
     void UserInterfaceEditor::DrawResizeHandles(ImDrawList* dl, UIElement* e) const {
         const Rect& r = e->Transform().rect;
-        ImVec2 p0 = CanvasToScreen(ImVec2(r.x, r.y));
-        ImVec2 p1 = CanvasToScreen(ImVec2(r.x + r.w, r.y + r.h));
+        ImVec2 p0 = m_Canvas.CanvasToScreen(ImVec2(r.x, r.y));
+        ImVec2 p1 = m_Canvas.CanvasToScreen(ImVec2(r.x + r.w, r.y + r.h));
         ImVec2 c = (p0 + p1) * 0.5f;
 
         ImVec2 pts[8] = {
@@ -1086,14 +1071,6 @@ namespace QuasarEngine
         }
     }
 
-    ImVec2 UserInterfaceEditor::ScreenToCanvas(ImVec2 screen) const {
-        ImVec2 p = screen - m_CanvasPos;
-        return (p - m_Pan) / m_Zoom;
-    }
-    ImVec2 UserInterfaceEditor::CanvasToScreen(ImVec2 canvas) const {
-        ImVec2 p = canvas * m_Zoom + m_Pan + m_CanvasPos;
-        return p;
-    }
     void UserInterfaceEditor::ClampRect(Rect& r) const {
         r.w = std::max(2.f, r.w);
         r.h = std::max(2.f, r.h);
@@ -1125,32 +1102,41 @@ namespace QuasarEngine
 		return {};
     }
 
-    void UserInterfaceEditor::PushUndo(const char*) {
+    void UserInterfaceEditor::PushUndo(const char*)
+    {
         std::vector<uint8_t> buf;
-        if (!SerializeToBuffer(m_Root, buf)) return;
-        m_Undo.push_back(std::move(buf));
-        m_Redo.clear();
+        if (!SerializeToBuffer(m_Root, buf))
+            return;
+        m_UndoStack.Push(std::move(buf));
     }
 
-    void UserInterfaceEditor::DoUndo() {
-        if (m_Undo.size() <= 1) return;
-        auto cur = std::move(m_Undo.back()); m_Undo.pop_back();
-        m_Redo.push_back(std::move(cur));
-        auto& prev = m_Undo.back();
+    void UserInterfaceEditor::DoUndo()
+    {
+        std::vector<uint8_t> prev;
+        if (!m_UndoStack.Undo(prev))
+            return;
+
         auto root = DeserializeFromBuffer(prev.data(), prev.size());
-        if (!root) return;
+        if (!root)
+            return;
+
         m_Root = std::move(root);
-        if (!m_SelectedIdCache.empty()) Select(FindById(m_SelectedIdCache));
+        if (!m_SelectedIdCache.empty())
+            Select(FindById(m_SelectedIdCache));
     }
 
-    void UserInterfaceEditor::DoRedo() {
-        if (m_Redo.empty()) return;
-        auto next = std::move(m_Redo.back()); m_Redo.pop_back();
-        m_Undo.push_back(next);
-        auto& last = m_Undo.back();
-        auto root = DeserializeFromBuffer(last.data(), last.size());
-        if (!root) return;
+    void UserInterfaceEditor::DoRedo()
+    {
+        std::vector<uint8_t> next;
+        if (!m_UndoStack.Redo(next))
+            return;
+
+        auto root = DeserializeFromBuffer(next.data(), next.size());
+        if (!root)
+            return;
+
         m_Root = std::move(root);
-        if (!m_SelectedIdCache.empty()) Select(FindById(m_SelectedIdCache));
+        if (!m_SelectedIdCache.empty())
+            Select(FindById(m_SelectedIdCache));
     }
 }

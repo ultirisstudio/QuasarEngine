@@ -7,6 +7,7 @@
 #include <QuasarEngine/Nodes/NodeGraph.h>
 
 #include <Editor/Modules/IEditorModule.h>
+#include <Editor/EditorCanvas.h>
 
 namespace QuasarEngine
 {
@@ -39,15 +40,11 @@ namespace QuasarEngine
         Node::NodeId m_DraggingNode = 0;
         ImVec2 m_DragOffset{ 0,0 };
 
-        ImVec2 m_CanvasPos;
-        ImVec2 m_CanvasSize;
+        EditorCanvas m_Canvas;
 
         bool m_Connecting = false;
         Node::NodeId m_ConnectFromNode = 0;
         std::string m_ConnectFromPort;
-
-        ImVec2 m_PanOffset{ 0,0 };
-        float m_Zoom = 1.0f;
 
         struct ConnectionDragState {
             bool active = false;

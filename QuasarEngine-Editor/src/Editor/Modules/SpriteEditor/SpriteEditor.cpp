@@ -41,7 +41,11 @@ namespace QuasarEngine
 	SpriteEditor::SpriteEditor(EditorContext& context) : IEditorModule(context)
     {
         AddLayer("Ground", 0);
-        
+
+        m_Canvas.pan = ImVec2(20, 20);
+        m_Canvas.zoom = 1.0f;
+        m_Canvas.baseGridStep = m_GridStep;
+
         m_Brush.textureId.clear();
         m_Brush.uv = { 0,0,1,1 };
         m_Brush.tint = { 1,1,1,1 };
@@ -380,15 +384,6 @@ namespace QuasarEngine
         ImGui::PopStyleVar();
     }
 
-    void SpriteEditor::DrawGrid(ImDrawList* dl, ImVec2 origin, ImVec2 size, float step) const
-    {
-        ImU32 minor = IM_COL32(60, 62, 68, 120);
-        for (float x = fmodf(m_Pan.x, step); x < size.x; x += step)
-            dl->AddLine(origin + ImVec2(x, 0), origin + ImVec2(x, size.y), minor);
-        for (float y = fmodf(m_Pan.y, step); y < size.y; y += step)
-            dl->AddLine(origin + ImVec2(0, y), origin + ImVec2(size.x, y), minor);
-    }
-
     void SpriteEditor::DrawPlacedSpritesOnCanvas(ImDrawList* dl, const Layer& layer)
     {
         if (!layer.visible) return;
@@ -430,39 +425,27 @@ namespace QuasarEngine
     void SpriteEditor::DrawCanvasPanel(float, float)
     {
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        m_CanvasPos = ImGui::GetCursorScreenPos();
-        m_CanvasSize = ImGui::GetContentRegionAvail();
 
-        dl->AddRectFilled(m_CanvasPos, m_CanvasPos + m_CanvasSize, IM_COL32(22, 24, 28, 255), 6.0f);
-        dl->AddRect(m_CanvasPos, m_CanvasPos + m_CanvasSize, IM_COL32(90, 90, 100, 180), 6.0f);
+        ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+        ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+        m_Canvas.BeginRegion(canvasPos, canvasSize);
+        m_Canvas.baseGridStep = m_GridStep;
 
-        ImGui::InvisibleButton("##CanvasIO", m_CanvasSize,
+        dl->AddRectFilled(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(22, 24, 28, 255), 6.0f);
+        dl->AddRect(m_Canvas.canvasPos, m_Canvas.canvasPos + m_Canvas.canvasSize, IM_COL32(90, 90, 100, 180), 6.0f);
+
+        ImGui::InvisibleButton("##CanvasIO", m_Canvas.canvasSize,
             ImGuiButtonFlags_MouseButtonLeft |
             ImGuiButtonFlags_MouseButtonRight |
             ImGuiButtonFlags_MouseButtonMiddle);
 
-        const bool itemHovered = ImGui::IsItemHovered();
-        const bool itemActive = ImGui::IsItemActive();
-        const bool windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        bool hovering = ImGui::IsItemHovered();
+		bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
-        if (itemHovered)
-        {
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
-                ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Middle] = ImGui::GetIO().MousePos;
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-                m_Pan += ImGui::GetIO().MouseDelta;
+        m_Canvas.HandlePanAndZoom(ImGui::GetIO(), hovering, 0.4f, 4.0f);
 
-            float wheel = ImGui::GetIO().MouseWheel;
-            if (wheel != 0.0f)
-            {
-                float prev = m_Zoom;
-                m_Zoom = std::clamp(m_Zoom + wheel * 0.1f, 0.4f, 4.0f);
-                ImVec2 mouse = ImGui::GetIO().MousePos;
-                m_Pan = (m_Pan - mouse) * (m_Zoom / prev) + mouse;
-            }
-        }
-
-        if (m_ShowGrid) DrawGrid(dl, m_CanvasPos, m_CanvasSize, m_GridStep * m_Zoom);
+        if (m_ShowGrid)
+            m_Canvas.DrawGrid(dl);
 
         ImU32 gridCol = IM_COL32(70, 72, 78, 120);
         for (int x = 0; x <= m_GridW; ++x) {
@@ -490,7 +473,7 @@ namespace QuasarEngine
             dl->AddRect(c0, c1, IM_COL32(255, 230, 140, 220), 0.f, 0, 2.0f);
         }
 
-        if (itemHovered && windowFocused)
+        if (hovering && focused)
         {
             if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                 m_PaintingL = true;
@@ -507,7 +490,7 @@ namespace QuasarEngine
             Layer& L = m_Layers[m_SelectedLayer];
             if (m_HoverValid)
             {
-                if (ImGui::GetIO().KeyAlt && itemHovered && windowFocused && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                if (ImGui::GetIO().KeyAlt && hovering && focused && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                     const Cell& c = L.cells[CellIndex(m_HoverX, m_HoverY)];
                     if (!c.textureId.empty()) {
                         m_Brush.textureId = c.textureId;
@@ -532,7 +515,7 @@ namespace QuasarEngine
                     }
                 }
 
-                if (itemHovered && windowFocused && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) {
+                if (hovering && focused && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) {
                     m_SelectedCellX = m_HoverX; m_SelectedCellY = m_HoverY;
                 }
             }

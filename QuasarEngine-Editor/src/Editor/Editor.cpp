@@ -481,20 +481,8 @@ namespace QuasarEngine
 	{
 		Input::Update();
 
-		//m_EditorCamera->Update();
 		m_Context.editorCamera->Update();
-
-		/*m_ContentBrowser->Update(dt);
-		m_SceneManager->Update(dt);
-		m_EditorViewport->Update(dt);
-		m_Viewport->Update(dt);
-		m_AnimationEditor->Update(dt);
-		m_HeightMapEditor->Update(dt);
-		m_UserInterfaceEditor->Update(dt);
-		m_EntityPropertie->Update(dt);
-		m_SceneHierarchy->Update(dt);
-		m_NodeEditor->Update(dt);
-		m_SpriteEditor->Update(dt);*/
+		m_Context.sceneManager->Update(dt);
 
 		for (auto& [key, value] : m_EditorModuleMap)
 		{

@@ -371,20 +371,15 @@ namespace QuasarEngine
 
             DrawCurveEditor(dl, origin, size);
         }
+
         ImGui::EndChild();
 
-        ImGui::SameLine(0, 0);
-        ImGui::InvisibleButton("##splitter_v", ImVec2(8, avail.y));
-        if (ImGui::IsItemActive()) {
-            left_ratio += ImGui::GetIO().MouseDelta.x / avail.x;
-            left_ratio = glm::clamp(left_ratio, 0.25f, 0.80f);
-        }
-        ImGui::SameLine(0, 0);
+        QuasarEngine::SplitHorizontal("##splitter_v", avail.x, left_ratio, 0.20f, 0.80f);
 
-        float right_w = avail.x - left_w - 8.0f;
-        ImGui::BeginChild("##RightPanel", ImVec2(right_w, 0), true, ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::SameLine(0, 0);
+        ImGui::BeginChild("##RightPanel", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollWithMouse);
         {
-            DrawRightPanel(right_w, ImGui::GetContentRegionAvail().y);
+            DrawRightPanel(avail.x - left_w - 8.0f, ImGui::GetContentRegionAvail().y);
         }
         ImGui::EndChild();
 
@@ -587,11 +582,7 @@ namespace QuasarEngine
         }
         ImGui::EndChild();
 
-        ImGui::InvisibleButton("##splitter_h", ImVec2(-1, 8));
-        if (ImGui::IsItemActive()) {
-            preview_ratio += ImGui::GetIO().MouseDelta.y / avail.y;
-            preview_ratio = glm::clamp(preview_ratio, 0.25f, 0.85f);
-        }
+        QuasarEngine::SplitVertical("##splitter_h", avail.y, preview_ratio, 0.25f, 0.85f);
 
         ImGui::BeginChild("##ParamsPanel", ImVec2(-1, -1), true);
         {
@@ -806,43 +797,43 @@ namespace QuasarEngine
             s.params = m_Params;
             s.curvePoints = m_Curve.GetPoints();
         }
-        m_Undo.push_back(std::move(s));
-        m_Redo.clear();
+        m_UndoStack.Push(std::move(s));
     }
 
     void HeightMapEditor::DoUndo()
     {
-        if (m_Undo.empty()) return;
-        EditorState cur;
+        EditorState prev;
+        if (!m_UndoStack.Undo(prev))
+            return;
+
         {
             std::lock_guard<std::mutex> lk(m_StateMutex);
-            cur.params = m_Params;
-            cur.curvePoints = m_Curve.GetPoints();
-
-            EditorState prev = m_Undo.back(); m_Undo.pop_back();
-            m_Redo.push_back(cur);
-
             m_Params = prev.params;
             m_Curve.SetPoints(prev.curvePoints);
         }
-        RequestRegen();
+
+        if (m_AutoGenerate)
+            RequestRegen();
+        else
+            MarkDirty();
     }
 
     void HeightMapEditor::DoRedo()
     {
-        if (m_Redo.empty()) return;
-        EditorState next = m_Redo.back(); m_Redo.pop_back();
-        EditorState cur;
+        EditorState next;
+        if (!m_UndoStack.Redo(next))
+            return;
+
         {
             std::lock_guard<std::mutex> lk(m_StateMutex);
-            cur.params = m_Params;
-            cur.curvePoints = m_Curve.GetPoints();
-
-            m_Undo.push_back(cur);
             m_Params = next.params;
             m_Curve.SetPoints(next.curvePoints);
         }
-        RequestRegen();
+
+        if (m_AutoGenerate)
+            RequestRegen();
+        else
+            MarkDirty();
     }
 
     void HeightMapEditor::ValidateParams()
