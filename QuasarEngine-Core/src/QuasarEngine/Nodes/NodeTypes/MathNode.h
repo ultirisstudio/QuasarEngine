@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QuasarEngine/Nodes/Node.h>
-
+#include <yaml-cpp/yaml.h>
 #include <stdexcept>
 
 namespace QuasarEngine
@@ -12,32 +12,47 @@ namespace QuasarEngine
     {
     public:
         MathNode(NodeId id, std::string typeName, MathOp op = MathOp::Add)
-            : TypedNode(typeName, id), op_(op)
+            : TypedNode(typeName, id)
+            , m_Op(op)
         {
             AddInputPort("A", PortType::Float);
             AddInputPort("B", PortType::Float);
             AddOutputPort("Result", PortType::Float);
         }
 
-        void SetOperation(MathOp op) { op_ = op; }
-        MathOp GetOperation() const { return op_; }
+        MathOp GetOperation() const { return m_Op; }
+        void SetOperation(MathOp op) { m_Op = op; }
 
         virtual void Evaluate() override
         {
-            float a = std::any_cast<float>(GetInputPortValue("A"));
-            float b = std::any_cast<float>(GetInputPortValue("B"));
+            float a = GetInput<float>("A", 0.0f);
+            float b = GetInput<float>("B", 0.0f);
+
             float result = 0.0f;
-            switch (op_)
+            switch (m_Op)
             {
-            case MathOp::Add:   result = a + b; break;
-            case MathOp::Sub:   result = a - b; break;
-            case MathOp::Mul:   result = a * b; break;
-            case MathOp::Div:   result = (b != 0.0f) ? a / b : 0.0f; break;
+            case MathOp::Add: result = a + b; break;
+            case MathOp::Sub: result = a - b; break;
+            case MathOp::Mul: result = a * b; break;
+            case MathOp::Div: result = (b != 0.0f) ? a / b : 0.0f; break;
+            default: break;
             }
-            GetOutputPortValue("Result") = result;
+
+            SetOutput("Result", result);
+        }
+
+        virtual void SerializeProperties(YAML::Node& out) const override
+        {
+            out["mathOp"] = static_cast<int>(m_Op);
+        }
+
+        virtual void DeserializeProperties(const YAML::Node& in) override
+        {
+            if (auto m = in["mathOp"])
+                m_Op = static_cast<MathOp>(m.as<int>());
         }
 
     private:
-        MathOp op_;
+        MathOp m_Op;
     };
 }

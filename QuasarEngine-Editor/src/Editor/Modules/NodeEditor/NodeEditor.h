@@ -58,7 +58,9 @@ namespace QuasarEngine
 
         void ShowGraph();
         void HandleEvents(bool hoveringCanvas, bool activeCanvas);
-        void DrawConnectionCurve(const ImVec2& from, const ImVec2& to, bool selected = false);
+        void DrawConnectionCurve(const ImVec2& from, const ImVec2& to,
+            bool selected = false,
+            NodeConnection* connection = nullptr);
 
         NodeView* GetNodeView(Node::NodeId id);
     };

@@ -41,9 +41,9 @@ namespace QuasarEngine
                 auto fromNode = graph_->GetNode(conn->fromNode.lock()->GetId());
                 auto toNode = graph_->GetNode(conn->toNode.lock()->GetId());
                 if (!fromNode || !toNode) return false;
-                auto fromType = fromNode->GetOutputPortType(conn->fromPort);
-                auto toType = toNode->GetInputPortType(conn->toPort);
-                if (fromType != toType) return false;
+                //auto fromType = fromNode->GetOutputPortType(conn->fromPort);
+                //auto toType = toNode->GetInputPortType(conn->toPort);
+                //if (fromType != toType) return false;
             }
         }
         return true;

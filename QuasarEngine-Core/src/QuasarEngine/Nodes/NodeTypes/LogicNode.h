@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QuasarEngine/Nodes/Node.h>
-
+#include <yaml-cpp/yaml.h>
 #include <stdexcept>
 
 namespace QuasarEngine
@@ -12,41 +12,47 @@ namespace QuasarEngine
     {
     public:
         LogicNode(NodeId id, std::string typeName, LogicOp op = LogicOp::And)
-            : TypedNode(typeName, id), op_(op)
+            : TypedNode(typeName, id)
+            , m_Op(op)
         {
-            if (op == LogicOp::Not)
-            {
-                AddInputPort("A", PortType::Bool);
-            }
-            else
-            {
-                AddInputPort("A", PortType::Bool);
-                AddInputPort("B", PortType::Bool);
-            }
+            AddInputPort("A", PortType::Bool);
+            AddInputPort("B", PortType::Bool);
             AddOutputPort("Result", PortType::Bool);
         }
 
-        void SetOperation(LogicOp op)
-        {
-            op_ = op;
-        }
+        LogicOp GetOperation() const { return m_Op; }
+        void SetOperation(LogicOp op) { m_Op = op; }
 
         virtual void Evaluate() override
         {
+            bool a = GetInput<bool>("A", false);
+            bool b = (m_Op != LogicOp::Not) ? GetInput<bool>("B", false) : false;
+
             bool result = false;
-            bool a = std::any_cast<bool>(GetInputPortValue("A"));
-            bool b = (op_ != LogicOp::Not) ? std::any_cast<bool>(GetInputPortValue("B")) : false;
-            switch (op_)
+            switch (m_Op)
             {
             case LogicOp::And: result = a && b; break;
             case LogicOp::Or:  result = a || b; break;
             case LogicOp::Not: result = !a;     break;
             case LogicOp::Xor: result = a != b; break;
+            default: break;
             }
-            GetOutputPortValue("Result") = result;
+
+            SetOutput("Result", result);
+        }
+
+        virtual void SerializeProperties(YAML::Node& out) const override
+        {
+            out["logicOp"] = static_cast<int>(m_Op);
+        }
+
+        virtual void DeserializeProperties(const YAML::Node& in) override
+        {
+            if (auto m = in["logicOp"])
+                m_Op = static_cast<LogicOp>(m.as<int>());
         }
 
     private:
-        LogicOp op_;
+        LogicOp m_Op;
     };
 }
