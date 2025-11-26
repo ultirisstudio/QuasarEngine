@@ -28,6 +28,8 @@ namespace QuasarEngine
         void AddNode(const std::string& typeName, ImVec2 pos);
         void DeleteNode(Node::NodeId id);
 
+        bool IsInputConnected(Node::NodeId nodeId, const std::string& portName) const;
+
         void StartConnectionDrag(Node::NodeId nodeId, bool output, const std::string& portName, PortType type, ImVec2 screenPos);
         bool IsConnectionDragActive() const { return m_ConnectionDrag.active; }
         bool IsPortCompatible(Node::NodeId nodeId, bool output, size_t portIdx, PortType type) const;

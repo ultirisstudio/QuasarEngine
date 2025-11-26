@@ -8,9 +8,13 @@
 
 #include "QuasarEngine/Nodes/Node.h"
 #include "QuasarEngine/Nodes/NodeTypes/ConstNode.h"
-#include "QuasarEngine/Nodes/NodeTypes/VariableNode.h"
 #include "QuasarEngine/Nodes/NodeTypes/MathNode.h"
 #include "QuasarEngine/Nodes/NodeTypes/LogicNode.h"
+#include <QuasarEngine/Nodes/NodeTypes/VectorComponentsNode.h>
+#include <QuasarEngine/Nodes/NodeTypes/TextureNode.h>
+#include <QuasarEngine/Nodes/NodeTypes/MathUtilityNodes.h>
+#include <QuasarEngine/Nodes/NodeTypes/UtilityNodes.h>
+#include <QuasarEngine/Nodes/NodeTypes/TextureUtilityNodes.h>
 
 namespace QuasarEngine
 {

@@ -64,34 +64,173 @@ namespace QuasarEngine
                 });
         }
 
-        for (int t = 0; t < static_cast<int>(PortType::COUNT); ++t)
-        {
-            PortType type = static_cast<PortType>(t);
-            if (type == PortType::Unknown) continue;
+        NodeRegistry::Instance().Register(
+            "Vec2_Components", "Vec2 (X,Y)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<Vec2ComponentsNode>(id, "Vec2 Components");
+            });
 
-            std::string display = ToString(type);
-            std::string key = "Var_" + display;
-            std::string label = display + " (Var)";
+        NodeRegistry::Instance().Register(
+            "Vec3_Components", "Vec3 (X,Y,Z)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<Vec3ComponentsNode>(id, "Vec3 Components");
+            });
 
-            NodeRegistry::Instance().Register(
-                key, label, "Variables",
-                [type, display](Node::NodeId id)
-                {
-                    auto node = std::make_shared<VariableNode>(id, display, type);
+        NodeRegistry::Instance().Register(
+            "Vec4_Components", "Vec4 (X,Y,Z,W)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<Vec4ComponentsNode>(id, "Vec4 Components");
+            });
 
-                    std::any defaultValue{};
-                    if (type == PortType::Float) defaultValue = 0.0f;
-                    else if (type == PortType::Int) defaultValue = 0;
-                    else if (type == PortType::Bool) defaultValue = false;
-                    else if (type == PortType::String) defaultValue = std::string{};
-                    else if (type == PortType::Vec2) defaultValue = glm::vec2(0.0f);
-                    else if (type == PortType::Vec3) defaultValue = glm::vec3(0.0f);
-                    else if (type == PortType::Vec4) defaultValue = glm::vec4(0.0f);
+        NodeRegistry::Instance().Register(
+            "Texture_Sample", "Texture Sample", "Textures",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<TextureSampleNode>(id, "Texture Sample");
+            });
 
-                    node->SetValue(defaultValue);
-                    return node;
-                });
-        }
+        NodeRegistry::Instance().Register(
+            "Math_ClampFloat", "Clamp (Float)", "Math/Scalar",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<ClampFloatNode>(id, "Clamp Float");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_ClampVec3", "Clamp (Vec3)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<ClampVec3Node>(id, "Clamp Vec3");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_LerpFloat", "Lerp (Float)", "Math/Scalar",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<LerpFloatNode>(id, "Lerp Float");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_LerpVec3", "Lerp (Vec3)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<LerpVec3Node>(id, "Lerp Vec3");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_LengthVec2", "Length (Vec2)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<LengthVec2Node>(id, "Length Vec2");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_LengthVec3", "Length (Vec3)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<LengthVec3Node>(id, "Length Vec3");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_LengthVec4", "Length (Vec4)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<LengthVec4Node>(id, "Length Vec4");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_NormalizeVec2", "Normalize (Vec2)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<NormalizeVec2Node>(id, "Normalize Vec2");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_NormalizeVec3", "Normalize (Vec3)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<NormalizeVec3Node>(id, "Normalize Vec3");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_NormalizeVec4", "Normalize (Vec4)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<NormalizeVec4Node>(id, "Normalize Vec4");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_DotVec2", "Dot (Vec2)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<DotVec2Node>(id, "Dot Vec2");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_DotVec3", "Dot (Vec3)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<DotVec3Node>(id, "Dot Vec3");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_DotVec4", "Dot (Vec4)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<DotVec4Node>(id, "Dot Vec4");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Math_CrossVec3", "Cross (Vec3)", "Math/Vector",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<CrossVec3Node>(id, "Cross Vec3");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Utils_Time", "Time", "Utils",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<TimeNode>(id, "Time");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Utils_RandomFloat", "Random (Float)", "Utils",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<RandomFloatNode>(id, "Random Float");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Utils_CompareFloat", "Compare (Float)", "Utils",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<CompareFloatNode>(id, "Compare Float");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Tex_Coords", "Texture Coords", "Textures/Coords",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<TextureCoordinateNode>(id, "Texture Coords");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Tex_Color", "Color", "Textures/Color",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<ColorNode>(id, "Color");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Tex_ColorMask", "Color Mask", "Textures/Color",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<ColorMaskNode>(id, "Color Mask");
+            });
 
         m_NodeGraph = std::make_shared<NodeGraph>();
     }
@@ -112,40 +251,41 @@ namespace QuasarEngine
     {
         ImGui::Begin("Node Editor", nullptr);
 
-        ImVec2 pos = ImGui::GetCursorScreenPos();
-        ImVec2 size = ImGui::GetContentRegionAvail();
-
-        if (size.x <= 0 || size.y <= 0)
+        ImVec2 fullSize = ImGui::GetContentRegionAvail();
+        if (fullSize.x <= 0 || fullSize.y <= 0)
         {
             ImGui::End();
             return;
         }
 
-        m_Canvas.BeginRegion(pos, size);
+        float canvasWidth = fullSize.x * 0.7f;
+
+        ImGui::BeginChild("NodeCanvasRegion",
+            ImVec2(canvasWidth, 0),
+            false,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+        ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+        m_Canvas.BeginRegion(canvasPos, canvasSize);
         m_Canvas.baseGridStep = 40.0f;
 
-        ImGui::SetCursorScreenPos(m_Canvas.canvasPos +ImVec2(10, 10));
+        ImGui::SetCursorScreenPos(m_Canvas.canvasPos + ImVec2(10, 10));
         ImGui::SetItemAllowOverlap();
         bool wantOpenPopup = false;
         if (ImGui::Button("+ Ajouter un noeud", ImVec2(150, 0)))
-        {
             wantOpenPopup = true;
-            std::cout << "print" << std::endl;
-        }
 
         if (wantOpenPopup)
             ImGui::OpenPopup("AddNodePopup");
 
-        ImGui::SetCursorScreenPos(m_Canvas.canvasPos);
-
-        ImGui::InvisibleButton("##NodeCanvas", ImVec2(m_Canvas.canvasSize.x * 0.7f, m_Canvas.canvasSize.y), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
-        bool hoveringCanvas = ImGui::IsItemHovered();
-        bool activeCanvas = ImGui::IsItemActive();
+        bool hoveringCanvas = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+        bool activeCanvas = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
 
         ShowGraph();
         HandleEvents(hoveringCanvas, activeCanvas);
 
-        if (hoveringCanvas && ImGui::IsMouseClicked(1))
+        if (hoveringCanvas && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
             ImGui::OpenPopup("AddNodePopup");
 
         if (ImGui::BeginPopup("AddNodePopup"))
@@ -160,11 +300,6 @@ namespace QuasarEngine
             auto types = NodeRegistry::Instance().GetTypes();
             std::sort(types.begin(), types.end());
 
-            auto starts_with = [](const std::string& s, const char* prefix)
-                {
-                    return s.rfind(prefix, 0) == 0;
-                };
-
             auto pass_filter = [&](const std::string& s) -> bool
                 {
                     if (filter.empty()) return true;
@@ -173,69 +308,45 @@ namespace QuasarEngine
                     return low.find(filter) != std::string::npos;
                 };
 
-            bool openedConst = false;
-            bool openedMath = false;
-            bool openedLogic = false;
+            std::string currentCategory;
+            bool categoryOpen = true;
 
             for (const auto& typeInfo : types)
             {
                 if (!pass_filter(typeInfo.displayName) && !pass_filter(typeInfo.key))
                     continue;
 
-                if (starts_with(typeInfo.key, "Const_"))
+                if (typeInfo.category != currentCategory)
                 {
-                    if (!openedConst)
-                    {
-                        if (ImGui::TreeNodeEx("Constantes", ImGuiTreeNodeFlags_DefaultOpen))
-                            openedConst = true;
-                        else
-                            openedConst = false;
-                    }
-                    if (!openedConst) continue;
-                }
-                else if (starts_with(typeInfo.key, "Math_"))
-                {
-                    if (!openedMath)
-                    {
-                        if (ImGui::TreeNodeEx("Math", ImGuiTreeNodeFlags_DefaultOpen))
-                            openedMath = true;
-                        else
-                            openedMath = false;
-                    }
-                    if (!openedMath) continue;
-                }
-                else if (starts_with(typeInfo.key, "Logic_"))
-                {
-                    if (!openedLogic)
-                    {
-                        if (ImGui::TreeNodeEx("Logic", ImGuiTreeNodeFlags_DefaultOpen))
-                            openedLogic = true;
-                        else
-                            openedLogic = false;
-                    }
-                    if (!openedLogic) continue;
+                    currentCategory = typeInfo.category;
+
+                    categoryOpen = ImGui::CollapsingHeader(
+                        currentCategory.c_str(),
+                        ImGuiTreeNodeFlags_DefaultOpen
+                    );
                 }
 
-                const std::string& display = typeInfo.displayName;
+                if (!categoryOpen)
+                    continue;
 
-                if (ImGui::MenuItem(display.c_str()))
+                ImGui::Indent(12.0f);
+                if (ImGui::Selectable(typeInfo.displayName.c_str()))
                 {
                     ImVec2 mouse = ImGui::GetIO().MousePos;
                     AddNode(typeInfo.key, m_Canvas.ScreenToCanvas(mouse));
                     ImGui::CloseCurrentPopup();
                 }
+                ImGui::Unindent(12.0f);
             }
-
-            if (openedConst) ImGui::TreePop();
-            if (openedMath)  ImGui::TreePop();
-            if (openedLogic) ImGui::TreePop();
 
             ImGui::EndPopup();
         }
 
+        ImGui::EndChild();
+
         ImGui::SameLine();
 
-        ImGui::BeginChild("Inspector", ImVec2(0, m_Canvas.canvasSize.y), false);
+        ImGui::BeginChild("InspectorRegion", ImVec2(0, 0), true);
         ShowInspector();
         ImGui::EndChild();
 
@@ -269,191 +380,85 @@ namespace QuasarEngine
 
         if (auto* constNode = dynamic_cast<ConstNode*>(node.get()))
         {
-            if (constNode->GetOutputPorts().empty())
+            PortType type = constNode->GetConstType();
+            std::any defAny = constNode->GetDefaultValue();
+
+            if (type == PortType::Float)
             {
-                ImGui::TextDisabled("Aucun port de sortie sur cette constante.");
+                float v = 0.0f;
+                try { v = std::any_cast<float>(defAny); }
+                catch (...) {}
+                ImGui::PushItemWidth(120);
+                if (ImGui::DragFloat("Valeur", &v, 0.1f, -10000.0f, 10000.0f, "%.3f"))
+                    constNode->SetDefaultValue(v);
+                ImGui::PopItemWidth();
             }
-            else
+            else if (type == PortType::Int)
             {
-                PortType type = constNode->GetConstType();
-                std::any valueAny = constNode->GetValue();
-
-                if (type == PortType::Float)
-                {
-                    float v = 0.0f;
-                    try { v = std::any_cast<float>(valueAny); }
-                    catch (...) {}
-                    ImGui::PushItemWidth(120);
-                    if (ImGui::DragFloat("Valeur##const_float", &v, 0.1f, -10000.0f, 10000.0f, "%.3f"))
-                        constNode->SetValue(v);
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Int)
-                {
-                    int v = 0;
-                    try { v = std::any_cast<int>(valueAny); }
-                    catch (...) {}
-                    ImGui::PushItemWidth(120);
-                    if (ImGui::InputInt("Valeur##const_int", &v))
-                        constNode->SetValue(v);
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Bool)
-                {
-                    bool v = false;
-                    try { v = std::any_cast<bool>(valueAny); }
-                    catch (...) {}
-                    if (ImGui::Checkbox("Valeur##const_bool", &v))
-                        constNode->SetValue(v);
-                }
-                else if (type == PortType::String)
-                {
-                    static char bufConst[256] = {};
-                    try
-                    {
-                        auto s = std::any_cast<std::string>(valueAny);
-                        strncpy(bufConst, s.c_str(), sizeof(bufConst));
-                        bufConst[sizeof(bufConst) - 1] = '\0';
-                    }
-                    catch (...) { bufConst[0] = '\0'; }
-
-                    ImGui::PushItemWidth(180);
-                    if (ImGui::InputText("Valeur##const_str", bufConst, sizeof(bufConst)))
-                        constNode->SetValue(std::string(bufConst));
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Vec2)
-                {
-                    glm::vec2 vec(0.0f);
-                    try { vec = std::any_cast<glm::vec2>(valueAny); }
-                    catch (...) {}
-                    float v[2] = { vec.x, vec.y };
-                    ImGui::PushItemWidth(180);
-                    if (ImGui::InputFloat2("Valeur##const_vec2", v))
-                        constNode->SetValue(glm::vec2(v[0], v[1]));
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Vec3)
-                {
-                    glm::vec3 vec(0.0f);
-                    try { vec = std::any_cast<glm::vec3>(valueAny); }
-                    catch (...) {}
-                    float v[3] = { vec.x, vec.y, vec.z };
-                    ImGui::PushItemWidth(210);
-                    if (ImGui::InputFloat3("Valeur##const_vec3", v))
-                        constNode->SetValue(glm::vec3(v[0], v[1], v[2]));
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Vec4)
-                {
-                    glm::vec4 vec(0.0f);
-                    try { vec = std::any_cast<glm::vec4>(valueAny); }
-                    catch (...) {}
-                    float v[4] = { vec.x, vec.y, vec.z, vec.w };
-                    ImGui::PushItemWidth(250);
-                    if (ImGui::InputFloat4("Valeur##const_vec4", v))
-                        constNode->SetValue(glm::vec4(v[0], v[1], v[2], v[3]));
-                    ImGui::PopItemWidth();
-                }
-                else
-                {
-                    ImGui::TextDisabled("Type non editable.");
-                }
+                int v = 0;
+                try { v = std::any_cast<int>(defAny); }
+                catch (...) {}
+                ImGui::PushItemWidth(120);
+                if (ImGui::InputInt("Valeur", &v))
+                    constNode->SetDefaultValue(v);
+                ImGui::PopItemWidth();
             }
-        }
-        else if (auto* varNode = dynamic_cast<VariableNode*>(node.get()))
-        {
-            const auto& outputs = varNode->GetOutputPorts();
-            if (outputs.empty())
+            else if (type == PortType::Bool)
             {
-                ImGui::TextDisabled("Aucun port de sortie sur cette variable.");
+                bool v = false;
+                try { v = std::any_cast<bool>(defAny); }
+                catch (...) {}
+                if (ImGui::Checkbox("Valeur", &v))
+                    constNode->SetDefaultValue(v);
             }
-            else
+            else if (type == PortType::String)
             {
-                PortType type = varNode->GetVarType();
-                std::any valueAny = varNode->GetValue();
+                static char buf[256] = {};
+                try
+                {
+                    auto s = std::any_cast<std::string>(defAny);
+                    strncpy(buf, s.c_str(), sizeof(buf));
+                    buf[sizeof(buf) - 1] = '\0';
+                }
+                catch (...) { buf[0] = '\0'; }
 
-                if (type == PortType::Float)
-                {
-                    float v = 0.0f;
-                    try { v = std::any_cast<float>(valueAny); }
-                    catch (...) {}
-                    ImGui::PushItemWidth(120);
-                    if (ImGui::DragFloat("Valeur##var_float", &v, 0.1f, -10000.0f, 10000.0f, "%.3f"))
-                        varNode->SetValue(v);
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Int)
-                {
-                    int v = 0;
-                    try { v = std::any_cast<int>(valueAny); }
-                    catch (...) {}
-                    ImGui::PushItemWidth(120);
-                    if (ImGui::InputInt("Valeur##var_int", &v))
-                        varNode->SetValue(v);
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Bool)
-                {
-                    bool v = false;
-                    try { v = std::any_cast<bool>(valueAny); }
-                    catch (...) {}
-                    if (ImGui::Checkbox("Valeur##var_bool", &v))
-                        varNode->SetValue(v);
-                }
-                else if (type == PortType::String)
-                {
-                    static char bufVar[256] = {};
-                    try
-                    {
-                        auto s = std::any_cast<std::string>(valueAny);
-                        strncpy(bufVar, s.c_str(), sizeof(bufVar));
-                        bufVar[sizeof(bufVar) - 1] = '\0';
-                    }
-                    catch (...) { bufVar[0] = '\0'; }
-
-                    ImGui::PushItemWidth(180);
-                    if (ImGui::InputText("Valeur##var_str", bufVar, sizeof(bufVar)))
-                        varNode->SetValue(std::string(bufVar));
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Vec2)
-                {
-                    glm::vec2 vec(0.0f);
-                    try { vec = std::any_cast<glm::vec2>(valueAny); }
-                    catch (...) {}
-                    float v[2] = { vec.x, vec.y };
-                    ImGui::PushItemWidth(180);
-                    if (ImGui::InputFloat2("Valeur##var_vec2", v))
-                        varNode->SetValue(glm::vec2(v[0], v[1]));
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Vec3)
-                {
-                    glm::vec3 vec(0.0f);
-                    try { vec = std::any_cast<glm::vec3>(valueAny); }
-                    catch (...) {}
-                    float v[3] = { vec.x, vec.y, vec.z };
-                    ImGui::PushItemWidth(210);
-                    if (ImGui::InputFloat3("Valeur##var_vec3", v))
-                        varNode->SetValue(glm::vec3(v[0], v[1], v[2]));
-                    ImGui::PopItemWidth();
-                }
-                else if (type == PortType::Vec4)
-                {
-                    glm::vec4 vec(0.0f);
-                    try { vec = std::any_cast<glm::vec4>(valueAny); }
-                    catch (...) {}
-                    float v[4] = { vec.x, vec.y, vec.z, vec.w };
-                    ImGui::PushItemWidth(250);
-                    if (ImGui::InputFloat4("Valeur##var_vec4", v))
-                        varNode->SetValue(glm::vec4(v[0], v[1], v[2], v[3]));
-                    ImGui::PopItemWidth();
-                }
-                else
-                {
-                    ImGui::TextDisabled("Type non editable.");
-                }
+                ImGui::PushItemWidth(180);
+                if (ImGui::InputText("Valeur", buf, sizeof(buf)))
+                    constNode->SetDefaultValue(std::string(buf));
+                ImGui::PopItemWidth();
+            }
+            else if (type == PortType::Vec2)
+            {
+                glm::vec2 vec(0.0f);
+                try { vec = std::any_cast<glm::vec2>(defAny); }
+                catch (...) {}
+                float v[2] = { vec.x, vec.y };
+                ImGui::PushItemWidth(210);
+                if (ImGui::InputFloat2("Valeur", v))
+                    constNode->SetDefaultValue(glm::vec2(v[0], v[1]));
+                ImGui::PopItemWidth();
+            }
+            else if (type == PortType::Vec3)
+            {
+                glm::vec3 vec(0.0f);
+                try { vec = std::any_cast<glm::vec3>(defAny); }
+                catch (...) {}
+                float v[3] = { vec.x, vec.y, vec.z };
+                ImGui::PushItemWidth(210);
+                if (ImGui::InputFloat3("Valeur", v))
+                    constNode->SetDefaultValue(glm::vec3(v[0], v[1], v[2]));
+                ImGui::PopItemWidth();
+            }
+            else if (type == PortType::Vec4)
+            {
+                glm::vec4 vec(0.0f);
+                try { vec = std::any_cast<glm::vec4>(defAny); }
+                catch (...) {}
+                float v[4] = { vec.x, vec.y, vec.z, vec.w };
+                ImGui::PushItemWidth(210);
+                if (ImGui::InputFloat4("Valeur", v))
+                    constNode->SetDefaultValue(glm::vec4(v[0], v[1], v[2], v[3]));
+                ImGui::PopItemWidth();
             }
         }
         else if (auto* mathNode = dynamic_cast<MathNode*>(node.get()))
@@ -479,6 +484,107 @@ namespace QuasarEngine
             {
                 logicNode->SetOperation(static_cast<LogicOp>(op));
             }
+        }
+        else if (auto* texNode = dynamic_cast<TextureSampleNode*>(node.get()))
+        {
+            ImGui::TextDisabled("Texture");
+
+            char buf[260] = {};
+            {
+                auto path = texNode->GetRelativePath();
+                strncpy(buf, path.c_str(), sizeof(buf));
+                buf[sizeof(buf) - 1] = '\0';
+            }
+
+            ImGui::PushItemWidth(-1.0f);
+            ImGui::TextDisabled("Chemin (Assets/..)");
+            if (ImGui::InputText("##path", buf, sizeof(buf)))
+            {
+                texNode->SetRelativePath(std::string(buf));
+				std::cout << "Texture path set to: " << buf << std::endl;
+                texNode->SetImGuiTextureId(nullptr);
+            }
+            ImGui::PopItemWidth();
+
+            ImGui::Dummy(ImVec2(0, 6));
+
+            const std::string& relPath = texNode->GetRelativePath();
+            if (!relPath.empty())
+            {
+                if (!AssetManager::Instance().isAssetLoaded(relPath))
+                {
+                    AssetToLoad asset;
+                    asset.path = AssetManager::Instance().ResolvePath(relPath).generic_string();
+                    asset.id = relPath;
+                    asset.type = AssetType::TEXTURE;
+                    asset.spec = TextureSpecification{};
+
+                    std::cout << "Loading texture asset: " << asset.path
+                        << " with id: " << asset.id << std::endl;
+
+                    AssetManager::Instance().loadAsset(asset);
+                }
+
+                if (AssetManager::Instance().isAssetLoaded(relPath))
+                {
+                    std::shared_ptr<Texture2D> tex =
+                        AssetManager::Instance().getAsset<Texture2D>(relPath);
+                    texNode->SetImGuiTextureId((void*)tex->GetHandle());
+                }
+            }
+
+            if (void* texId = texNode->GetImGuiTextureId())
+            {
+                ImVec2 size(96, 96);
+                ImGui::Image((ImTextureID)texId, size);
+            }
+            else
+            {
+                ImGui::TextDisabled("Aucune texture chargee.");
+            }
+        }
+        else if (auto* colorNode = dynamic_cast<ColorNode*>(node.get()))
+        {
+            ImGui::TextDisabled("Couleur constante");
+
+            glm::vec4 col = colorNode->GetColor();
+            float c[4] = { col.r, col.g, col.b, col.a };
+            if (ImGui::ColorEdit4("Color", c))
+            {
+                colorNode->SetColor(glm::vec4(c[0], c[1], c[2], c[3]));
+            }
+        }
+        else if (auto* cmpNode = dynamic_cast<CompareFloatNode*>(node.get()))
+        {
+            ImGui::TextDisabled("Comparaison de floats");
+
+            int op = static_cast<int>(cmpNode->GetOperation());
+            const char* labels[] = {
+                "A < B",
+                "A <= B",
+                "A > B",
+                "A >= B",
+                "A == B",
+                "A != B"
+            };
+            if (ImGui::Combo("Operation", &op, labels, IM_ARRAYSIZE(labels)))
+            {
+                cmpNode->SetOperation(static_cast<CompareOp>(op));
+            }
+        }
+        else if (auto* maskNode = dynamic_cast<ColorMaskNode*>(node.get()))
+        {
+            ImGui::TextDisabled("Color Mask (masquage RGBA)");
+
+            bool useR = maskNode->GetUseR();
+            bool useG = maskNode->GetUseG();
+            bool useB = maskNode->GetUseB();
+            bool useA = maskNode->GetUseA();
+
+            if (ImGui::Checkbox("Use R", &useR)) maskNode->SetUseR(useR);
+            if (ImGui::Checkbox("Use G", &useG)) maskNode->SetUseG(useG);
+            if (ImGui::Checkbox("Use B", &useB)) maskNode->SetUseB(useB);
+            if (ImGui::Checkbox("Use A", &useA)) maskNode->SetUseA(useA);
         }
         else
         {
@@ -725,6 +831,15 @@ namespace QuasarEngine
     {
         m_NodeViews.erase(id);
         m_NodeGraph->RemoveNode(id);
+    }
+
+    bool NodeEditor::IsInputConnected(Node::NodeId nodeId, const std::string& portName) const
+    {
+        if (!m_NodeGraph)
+            return false;
+
+        auto conn = m_NodeGraph->FindConnectionTo(nodeId, portName);
+        return conn != nullptr;
     }
 
     void NodeEditor::StartConnectionDrag(Node::NodeId nodeId, bool output, const std::string& portName, PortType type, ImVec2 screenPos)

@@ -8,6 +8,20 @@ namespace QuasarEngine
 {
     using namespace QuasarEngine;
 
+    static std::string GetTypeKeyForNode(const Node& node)
+    {
+        auto types = NodeRegistry::Instance().GetTypes();
+        const std::string& display = node.GetTypeName();
+
+        for (const auto& info : types)
+        {
+            if (info.displayName == display)
+                return info.key;
+        }
+
+        return display;
+    }
+
     static YAML::Node SerializePortValue(const std::any& value, PortType type)
     {
         YAML::Node n;
@@ -108,7 +122,7 @@ namespace QuasarEngine
         {
             YAML::Node n;
             n["id"] = id;
-            n["type"] = node->GetTypeName();
+            n["type"] = GetTypeKeyForNode(*node);
 
             YAML::Node inPorts;
             for (const auto& p : node->GetInputPorts())

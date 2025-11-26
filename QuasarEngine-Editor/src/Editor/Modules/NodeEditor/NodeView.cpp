@@ -7,7 +7,7 @@
 
 namespace QuasarEngine
 {
-    static const ImVec2 NODE_DEFAULT_SIZE = ImVec2(180, 0);
+    static const ImVec2 NODE_DEFAULT_SIZE = ImVec2(220, 0);
 
     NodeView::NodeView(std::shared_ptr<Node> node, ImVec2 pos)
         : m_Node(node), m_Position(pos), m_Size(NODE_DEFAULT_SIZE) {
@@ -44,85 +44,231 @@ namespace QuasarEngine
     {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
+        auto& inputs = m_Node->GetInputPorts();
+        auto& outputs = m_Node->GetOutputPorts();
+
         float portRadius = 7.0f * zoom;
         float portSpacing = 24.0f * zoom;
+        float titleHeight = 28.0f * zoom;
+        float topOffset = titleHeight + 8.0f * zoom;
+
+        ImVec2 basePos = m_Position * zoom + panOffset + canvasPos;
 
         m_InputPortPositions.clear();
         m_OutputPortPositions.clear();
 
-        const auto& inputs = m_Node->GetInputPorts();
-        const auto& outputs = m_Node->GetOutputPorts();
+        ImGui::PushID(m_Node->GetId());
 
         for (size_t i = 0; i < inputs.size(); ++i)
         {
-            ImVec2 basePos = m_Position * zoom + panOffset + canvasPos;
-            ImVec2 portPos = basePos + ImVec2(0, 36.0f * zoom + portSpacing * i);
-            ImVec2 circleCenter = portPos + ImVec2(portRadius + 2.0f * zoom, portRadius);
+            const auto& port = inputs[i];
 
-            ImU32 color = GetPortColor(inputs[i].type);
-            if (editor && editor->IsConnectionDragActive() && editor->IsPortCompatible(m_Node->GetId(), false, i, inputs[i].type))
-                color = IM_COL32(60, 255, 80, 255);
+            ImVec2 portPos = basePos + ImVec2(4.0f * zoom, topOffset + portSpacing * i);
+            ImVec2 circleCenter = portPos + ImVec2(portRadius, portRadius);
 
-            drawList->AddCircleFilled(circleCenter, portRadius, color);
-            drawList->AddText(portPos + ImVec2(18.0f * zoom, -4.0f * zoom), IM_COL32(200, 200, 220, 255), inputs[i].name.c_str());
             m_InputPortPositions.push_back(circleCenter);
 
-            if (ImGui::IsMouseHoveringRect(circleCenter - ImVec2(portRadius, portRadius), circleCenter + ImVec2(portRadius, portRadius)) &&
-                ImGui::IsMouseClicked(0))
+            ImU32 color = GetPortColor(port.type);
+
+            if (editor && editor->IsConnectionDragActive() &&
+                editor->IsPortCompatible(m_Node->GetId(), false, i, port.type))
             {
-                if (editor) editor->StartConnectionDrag(m_Node->GetId(), false, inputs[i].name, inputs[i].type, circleCenter);
+                color = IM_COL32(60, 255, 80, 255);
+            }
+
+            drawList->AddCircleFilled(circleCenter, portRadius, color);
+
+            ImVec2 textSize = ImGui::CalcTextSize(port.name.c_str());
+            drawList->AddText(
+                portPos - ImVec2(textSize.x + 6.0f * zoom, 2.0f * zoom),
+                IM_COL32(220, 220, 200, 255),
+                port.name.c_str()
+            );
+
+            if (editor)
+            {
+                ImRect hoverRect(
+                    circleCenter - ImVec2(portRadius + 4.0f * zoom, portRadius + 4.0f * zoom),
+                    circleCenter + ImVec2(portRadius + 4.0f * zoom, portRadius + 4.0f * zoom)
+                );
+
+                if (hoverRect.Contains(ImGui::GetIO().MousePos) &&
+                    ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                {
+                    editor->StartConnectionDrag(m_Node->GetId(), false, port.name, port.type, circleCenter);
+                }
+            }
+
+            bool isConnected = editor ? editor->IsInputConnected(m_Node->GetId(), port.name) : false;
+            if (!isConnected)
+            {
+                float widgetOffsetX = 40.0f * zoom;
+                ImVec2 widgetPos = circleCenter + ImVec2(widgetOffsetX, -ImGui::GetTextLineHeight() * 0.5f);
+
+                ImGui::SetCursorScreenPos(widgetPos);
+                ImGui::PushID(static_cast<int>(i));
+
+                std::any& valAny = m_Node->GetInputPortValue(port.name);
+
+                if (port.type == PortType::Float)
+                {
+                    float v = 0.0f;
+                    try { v = std::any_cast<float>(valAny); }
+                    catch (...) {}
+                    ImGui::PushItemWidth(60.0f * zoom);
+                    if (ImGui::DragFloat("##in_float", &v, 0.1f))
+                        valAny = v;
+                    ImGui::PopItemWidth();
+                }
+                else if (port.type == PortType::Int)
+                {
+                    int v = 0;
+                    try { v = std::any_cast<int>(valAny); }
+                    catch (...) {}
+                    ImGui::PushItemWidth(60.0f * zoom);
+                    if (ImGui::DragInt("##in_int", &v, 1.0f))
+                        valAny = v;
+                    ImGui::PopItemWidth();
+                }
+                else if (port.type == PortType::Bool)
+                {
+                    bool v = false;
+                    try { v = std::any_cast<bool>(valAny); }
+                    catch (...) {}
+                    if (ImGui::Checkbox("##in_bool", &v))
+                        valAny = v;
+                }
+                else if (port.type == PortType::String)
+                {
+                    static char buf[128] = {};
+                    try
+                    {
+                        auto s = std::any_cast<std::string>(valAny);
+                        strncpy(buf, s.c_str(), sizeof(buf));
+                        buf[sizeof(buf) - 1] = '\0';
+                    }
+                    catch (...) { buf[0] = '\0'; }
+
+                    ImGui::PushItemWidth(100.0f * zoom);
+                    if (ImGui::InputText("##in_str", buf, sizeof(buf)))
+                        valAny = std::string(buf);
+                    ImGui::PopItemWidth();
+                }
+                else if (port.type == PortType::Vec2)
+                {
+                    glm::vec2 v(0.0f);
+                    try { v = std::any_cast<glm::vec2>(valAny); }
+                    catch (...) {}
+                    float arr[2] = { v.x, v.y };
+                    ImGui::PushItemWidth(120.0f * zoom);
+                    if (ImGui::InputFloat2("##in_vec2", arr))
+                        valAny = glm::vec2(arr[0], arr[1]);
+                    ImGui::PopItemWidth();
+                }
+                else if (port.type == PortType::Vec3)
+                {
+                    glm::vec3 v(0.0f);
+                    try { v = std::any_cast<glm::vec3>(valAny); }
+                    catch (...) {}
+                    float arr[3] = { v.x, v.y, v.z };
+                    ImGui::PushItemWidth(150.0f * zoom);
+                    if (ImGui::InputFloat3("##in_vec3", arr))
+                        valAny = glm::vec3(arr[0], arr[1], arr[2]);
+                    ImGui::PopItemWidth();
+                }
+                else if (port.type == PortType::Vec4)
+                {
+                    glm::vec4 v(0.0f);
+                    try { v = std::any_cast<glm::vec4>(valAny); }
+                    catch (...) {}
+                    float arr[4] = { v.x, v.y, v.z, v.w };
+                    ImGui::PushItemWidth(180.0f * zoom);
+                    if (ImGui::InputFloat4("##in_vec4", arr))
+                        valAny = glm::vec4(arr[0], arr[1], arr[2], arr[3]);
+                    ImGui::PopItemWidth();
+                }
+
+                ImGui::PopID();
             }
         }
+
+        ImGui::PopID();
 
         for (size_t i = 0; i < outputs.size(); ++i)
         {
-            ImVec2 basePos = m_Position * zoom + panOffset + canvasPos;
-            ImVec2 portPos = basePos + ImVec2(m_Size.x * zoom - portRadius * 2.0f - 4.0f * zoom, 36.0f * zoom + portSpacing * i);
+            const auto& port = outputs[i];
+
+            ImVec2 portPos = basePos + ImVec2(m_Size.x * zoom - (portRadius * 2.0f + 4.0f * zoom),
+                topOffset + portSpacing * i);
             ImVec2 circleCenter = portPos + ImVec2(portRadius, portRadius);
 
-            ImU32 color = GetPortColor(outputs[i].type);
-            if (editor && editor->IsConnectionDragActive() && editor->IsPortCompatible(m_Node->GetId(), true, i, outputs[i].type))
-                color = IM_COL32(60, 255, 80, 255);
-
-            drawList->AddCircleFilled(circleCenter, portRadius, color);
-            ImVec2 textSize = ImGui::CalcTextSize(outputs[i].name.c_str());
-            drawList->AddText(portPos - ImVec2(textSize.x + 8.0f * zoom, 4.0f * zoom), IM_COL32(220, 220, 180, 255), outputs[i].name.c_str());
             m_OutputPortPositions.push_back(circleCenter);
 
-            if (ImGui::IsMouseHoveringRect(circleCenter - ImVec2(portRadius, portRadius), circleCenter + ImVec2(portRadius, portRadius)) &&
-                ImGui::IsMouseClicked(0))
+            ImU32 color = GetPortColor(port.type);
+
+            if (editor && editor->IsConnectionDragActive() &&
+                editor->IsPortCompatible(m_Node->GetId(), true, i, port.type))
             {
-                if (editor) editor->StartConnectionDrag(m_Node->GetId(), true, outputs[i].name, outputs[i].type, circleCenter);
+                color = IM_COL32(60, 255, 80, 255);
+            }
+
+            drawList->AddCircleFilled(circleCenter, portRadius, color);
+
+            ImVec2 textSize = ImGui::CalcTextSize(port.name.c_str());
+            drawList->AddText(
+                portPos - ImVec2(textSize.x + 8.0f * zoom, 2.0f * zoom),
+                IM_COL32(220, 220, 180, 255),
+                port.name.c_str()
+            );
+
+            if (editor)
+            {
+                ImRect hoverRect(
+                    circleCenter - ImVec2(portRadius + 4.0f * zoom, portRadius + 4.0f * zoom),
+                    circleCenter + ImVec2(portRadius + 4.0f * zoom, portRadius + 4.0f * zoom)
+                );
+
+                if (hoverRect.Contains(ImGui::GetIO().MousePos) &&
+                    ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                {
+                    editor->StartConnectionDrag(m_Node->GetId(), true, port.name, port.type, circleCenter);
+                }
             }
         }
+
+        size_t rows = std::max(inputs.size(), outputs.size());
+        m_Size.y = (rows > 0 ? topOffset + portSpacing * rows + 8.0f * zoom : titleHeight + 16.0f * zoom) / zoom;
     }
 
     ImVec2 NodeView::GetPortScreenPos(const std::string& portName, bool output, ImVec2 panOffset, float zoom, ImVec2 canvasPos) const
     {
         const auto& ports = output ? m_Node->GetOutputPorts() : m_Node->GetInputPorts();
+
+        float portRadius = 7.0f * zoom;
+        float portSpacing = 24.0f * zoom;
+        float titleHeight = 28.0f * zoom;
+        float topOffset = titleHeight + 8.0f * zoom;
+
+        ImVec2 basePos = m_Position * zoom + panOffset + canvasPos;
+
         for (size_t i = 0; i < ports.size(); ++i)
         {
             if (ports[i].name == portName)
             {
                 if (output)
                 {
-                    ImVec2 basePos = m_Position * zoom + panOffset + canvasPos;
-                    float portRadius = 7.0f * zoom;
-                    float portSpacing = 24.0f * zoom;
-                    ImVec2 portPos = basePos + ImVec2(m_Size.x * zoom - portRadius * 2.0f - 4.0f * zoom, 36.0f * zoom + portSpacing * i);
+                    ImVec2 portPos = basePos + ImVec2(m_Size.x * zoom - (portRadius * 2.0f + 4.0f * zoom),
+                        topOffset + portSpacing * i);
                     return portPos + ImVec2(portRadius, portRadius);
                 }
                 else
                 {
-                    ImVec2 basePos = m_Position * zoom + panOffset + canvasPos;
-                    float portRadius = 7.0f * zoom;
-                    float portSpacing = 24.0f * zoom;
-                    ImVec2 portPos = basePos + ImVec2(0, 36.0f * zoom + portSpacing * i);
-                    return portPos + ImVec2(portRadius + 2.0f * zoom, portRadius);
+                    ImVec2 portPos = basePos + ImVec2(4.0f * zoom, topOffset + portSpacing * i);
+                    return portPos + ImVec2(portRadius, portRadius);
                 }
             }
         }
-        return m_Position * zoom + panOffset + canvasPos;
+        return basePos;
     }
 
     ImVec2 NodeView::GetLogicalTitleBarOffset(ImVec2 mousePos, ImVec2 panOffset, float zoom, ImVec2 canvasPos) const
