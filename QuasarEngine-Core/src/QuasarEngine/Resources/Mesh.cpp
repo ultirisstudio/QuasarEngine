@@ -74,7 +74,8 @@ namespace QuasarEngine
                 { ShaderDataType::Vec3, "inPosition" },
                 { ShaderDataType::Vec3, "inNormal"   },
                 { ShaderDataType::Vec2, "inTexCoord" },
-                { ShaderDataType::Vec3, "inTangent"  }
+                { ShaderDataType::Vec3, "inTangent"  },
+                { ShaderDataType::Vec4, "incolor"    }
                 });
         }
         m_vertexArray->AddVertexBuffer(m_vertexBuffer);

@@ -43,6 +43,11 @@ namespace QuasarEngine
 
         void Clear();
 
+        bool IsCloudPoint() const
+        {
+            return m_drawMode == DrawMode::POINTS;
+        }
+
         const size_t& GetVerticesCount() const { return m_vertices.size(); }
         const size_t& GetIndicesCount() const { return m_indices.size(); }
         const std::vector<float>& GetVertices() const { return m_vertices; }

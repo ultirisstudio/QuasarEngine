@@ -287,7 +287,161 @@ namespace QuasarEngine
             glGenerateTextureMipmap(m_ID);
 
         m_Loaded = true;
+
+        m_CPUDataValid = false;
+        m_CPUData.clear();
+
         return true;
+    }
+
+    void OpenGLTexture2D::EnsureCPUData() const
+    {
+        if (m_CPUDataValid)
+            return;
+
+        if (!m_ID || !m_Loaded ||
+            m_Specification.width == 0 || m_Specification.height == 0)
+        {
+            m_CPUData.clear();
+            m_CPUDataValid = true;
+            return;
+        }
+
+        const uint32_t width = m_Specification.width;
+        const uint32_t height = m_Specification.height;
+
+        const auto glInt = Utils::ToGLFormat(m_Specification.internal_format);
+        const auto glExt = Utils::ToGLFormat(m_Specification.format);
+
+        if (glInt.internal == 0 || glExt.external == 0)
+        {
+            Q_ERROR("OpenGLTexture2D::EnsureCPUData: unsupported texture format mapping");
+            m_CPUData.clear();
+            m_CPUDataValid = true;
+            return;
+        }
+
+        const int channels = (int)(m_Specification.channels > 0
+            ? m_Specification.channels
+            : (uint32_t)glInt.channels);
+
+        const size_t pixelCount = (size_t)width * (size_t)height;
+        const size_t srcElemCount = pixelCount * (size_t)channels;
+
+        m_CPUData.clear();
+        m_CPUData.resize(pixelCount * 4);
+
+        if (glExt.type == GL_UNSIGNED_BYTE)
+        {
+            std::vector<unsigned char> tmp;
+            tmp.resize(srcElemCount);
+
+            glGetTextureImage(
+                m_ID,
+                0,
+                glExt.external,
+                GL_UNSIGNED_BYTE,
+                (GLsizei)tmp.size(),
+                tmp.data()
+            );
+
+            for (size_t i = 0; i < pixelCount; ++i)
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    float v = 1.0f;
+                    if (c < channels)
+                        v = (float)tmp[i * channels + c] / 255.0f;
+                    else if (c == 3)
+                        v = 1.0f;
+                    else
+                        v = 0.0f;
+
+                    m_CPUData[i * 4 + c] = v;
+                }
+            }
+        }
+        else if (glExt.type == GL_FLOAT)
+        {
+            std::vector<float> tmp;
+            tmp.resize(srcElemCount);
+
+            glGetTextureImage(
+                m_ID,
+                0,
+                glExt.external,
+                GL_FLOAT,
+                (GLsizei)(tmp.size() * sizeof(float)),
+                tmp.data()
+            );
+
+            for (size_t i = 0; i < pixelCount; ++i)
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    float v = 1.0f;
+                    if (c < channels)
+                        v = tmp[i * channels + c];
+                    else if (c == 3)
+                        v = 1.0f;
+                    else
+                        v = 0.0f;
+
+                    m_CPUData[i * 4 + c] = v;
+                }
+            }
+        }
+        else
+        {
+            Q_WARNING("OpenGLTexture2D::EnsureCPUData: unsupported glExt.type for sampling, fallback magenta.");
+            m_CPUData.assign(pixelCount * 4, 0.0f);
+            for (size_t i = 0; i < pixelCount; ++i)
+            {
+                m_CPUData[i * 4 + 0] = 1.0f; // R
+                m_CPUData[i * 4 + 1] = 0.0f; // G
+                m_CPUData[i * 4 + 2] = 1.0f; // B
+                m_CPUData[i * 4 + 3] = 1.0f; // A
+            }
+        }
+
+        m_CPUDataValid = true;
+    }
+
+    glm::vec4 OpenGLTexture2D::Sample(const glm::vec2& uv) const
+    {
+        if (!m_Loaded ||
+            m_Specification.width == 0 || m_Specification.height == 0)
+        {
+            return glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
+        }
+
+        EnsureCPUData();
+
+        if (m_CPUData.empty())
+        {
+            return glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
+        }
+
+        const uint32_t width = m_Specification.width;
+        const uint32_t height = m_Specification.height;
+
+        float u = uv.x - std::floor(uv.x);
+        float v = uv.y - std::floor(uv.y);
+
+        int x = (int)std::floor(u * (float)width);
+        int y = (int)std::floor(v * (float)height);
+
+        x = std::clamp(x, 0, (int)width - 1);
+        y = std::clamp(y, 0, (int)height - 1);
+
+        const size_t idx = ((size_t)y * (size_t)width + (size_t)x) * 4;
+
+        return glm::vec4(
+            m_CPUData[idx + 0],
+            m_CPUData[idx + 1],
+            m_CPUData[idx + 2],
+            m_CPUData[idx + 3]
+        );
     }
 
     void OpenGLTexture2D::GenerateMips()

@@ -34,6 +34,8 @@ namespace QuasarEngine
         bool IsConnectionDragActive() const { return m_ConnectionDrag.active; }
         bool IsPortCompatible(Node::NodeId nodeId, bool output, size_t portIdx, PortType type) const;
 
+        void MarkGraphDirty() { m_GraphDirty = true; }
+
     private:
         std::shared_ptr<NodeGraph> m_NodeGraph;
         std::unordered_map<Node::NodeId, std::unique_ptr<NodeView>> m_NodeViews;
@@ -43,6 +45,8 @@ namespace QuasarEngine
         ImVec2 m_DragOffset{ 0,0 };
 
         EditorCanvas m_Canvas;
+
+        bool m_GraphDirty = true;
 
         bool m_Connecting = false;
         Node::NodeId m_ConnectFromNode = 0;

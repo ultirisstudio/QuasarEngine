@@ -1,7 +1,9 @@
 #include "NodeView.h"
 
-#include "NodeEnumUtils.h"
 #include "NodeEditor.h"
+
+#include <QuasarEngine/Nodes/NodeEnumUtils.h>
+#include <QuasarEngine/Nodes/NodeTypes/TextureNode.h>
 
 #include <algorithm>
 
@@ -117,7 +119,10 @@ namespace QuasarEngine
                     catch (...) {}
                     ImGui::PushItemWidth(60.0f * zoom);
                     if (ImGui::DragFloat("##in_float", &v, 0.1f))
+                    {
                         valAny = v;
+                        if (editor) editor->MarkGraphDirty();
+                    }
                     ImGui::PopItemWidth();
                 }
                 else if (port.type == PortType::Int)
@@ -127,7 +132,10 @@ namespace QuasarEngine
                     catch (...) {}
                     ImGui::PushItemWidth(60.0f * zoom);
                     if (ImGui::DragInt("##in_int", &v, 1.0f))
+                    {
                         valAny = v;
+                        if (editor) editor->MarkGraphDirty();
+                    }
                     ImGui::PopItemWidth();
                 }
                 else if (port.type == PortType::Bool)
@@ -136,7 +144,10 @@ namespace QuasarEngine
                     try { v = std::any_cast<bool>(valAny); }
                     catch (...) {}
                     if (ImGui::Checkbox("##in_bool", &v))
+                    {
                         valAny = v;
+                        if (editor) editor->MarkGraphDirty();
+                    }
                 }
                 else if (port.type == PortType::String)
                 {
@@ -151,7 +162,10 @@ namespace QuasarEngine
 
                     ImGui::PushItemWidth(100.0f * zoom);
                     if (ImGui::InputText("##in_str", buf, sizeof(buf)))
+                    {
                         valAny = std::string(buf);
+                        if (editor) editor->MarkGraphDirty();
+                    }
                     ImGui::PopItemWidth();
                 }
                 else if (port.type == PortType::Vec2)
@@ -162,7 +176,10 @@ namespace QuasarEngine
                     float arr[2] = { v.x, v.y };
                     ImGui::PushItemWidth(120.0f * zoom);
                     if (ImGui::InputFloat2("##in_vec2", arr))
+                    {
                         valAny = glm::vec2(arr[0], arr[1]);
+                        if (editor) editor->MarkGraphDirty();
+                    }
                     ImGui::PopItemWidth();
                 }
                 else if (port.type == PortType::Vec3)
@@ -173,7 +190,10 @@ namespace QuasarEngine
                     float arr[3] = { v.x, v.y, v.z };
                     ImGui::PushItemWidth(150.0f * zoom);
                     if (ImGui::InputFloat3("##in_vec3", arr))
+                    {
                         valAny = glm::vec3(arr[0], arr[1], arr[2]);
+                        if (editor) editor->MarkGraphDirty();
+                    }
                     ImGui::PopItemWidth();
                 }
                 else if (port.type == PortType::Vec4)
@@ -184,7 +204,10 @@ namespace QuasarEngine
                     float arr[4] = { v.x, v.y, v.z, v.w };
                     ImGui::PushItemWidth(180.0f * zoom);
                     if (ImGui::InputFloat4("##in_vec4", arr))
+                    {
                         valAny = glm::vec4(arr[0], arr[1], arr[2], arr[3]);
+                        if (editor) editor->MarkGraphDirty();
+                    }
                     ImGui::PopItemWidth();
                 }
 
@@ -198,8 +221,10 @@ namespace QuasarEngine
         {
             const auto& port = outputs[i];
 
-            ImVec2 portPos = basePos + ImVec2(m_Size.x * zoom - (portRadius * 2.0f + 4.0f * zoom),
-                topOffset + portSpacing * i);
+            ImVec2 portPos = basePos + ImVec2(
+                m_Size.x * zoom - (portRadius * 2.0f + 4.0f * zoom),
+                topOffset + portSpacing * i
+            );
             ImVec2 circleCenter = portPos + ImVec2(portRadius, portRadius);
 
             m_OutputPortPositions.push_back(circleCenter);
@@ -216,8 +241,8 @@ namespace QuasarEngine
 
             ImVec2 textSize = ImGui::CalcTextSize(port.name.c_str());
             drawList->AddText(
-                portPos - ImVec2(textSize.x + 8.0f * zoom, 2.0f * zoom),
-                IM_COL32(220, 220, 180, 255),
+                portPos - ImVec2(textSize.x + 6.0f * zoom, 2.0f * zoom),
+                IM_COL32(220, 220, 200, 255),
                 port.name.c_str()
             );
 
@@ -231,13 +256,42 @@ namespace QuasarEngine
                 if (hoverRect.Contains(ImGui::GetIO().MousePos) &&
                     ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                 {
-                    editor->StartConnectionDrag(m_Node->GetId(), true, port.name, port.type, circleCenter);
+                    editor->StartConnectionDrag(
+                        m_Node->GetId(), true, port.name, port.type, circleCenter
+                    );
                 }
             }
         }
 
         size_t rows = std::max(inputs.size(), outputs.size());
-        m_Size.y = (rows > 0 ? topOffset + portSpacing * rows + 8.0f * zoom : titleHeight + 16.0f * zoom) / zoom;
+        float baseHeight = (rows > 0 ? topOffset + portSpacing * rows : titleHeight);
+        float height = baseHeight + 8.0f * zoom;
+
+        if (auto* texNode = dynamic_cast<TextureSampleNode*>(m_Node.get()))
+        {
+            if (void* texId = texNode->GetImGuiTextureId())
+            {
+                const float previewPadding = 6.0f * zoom;
+                const float previewSize = 64.0f * zoom;
+
+                ImVec2 previewMin = basePos + ImVec2(
+                    (m_Size.x * zoom - previewSize) * 0.5f,
+                    baseHeight + previewPadding
+                );
+                ImVec2 previewMax = previewMin + ImVec2(previewSize, previewSize);
+
+                drawList->AddImage((ImTextureID)texId, previewMin, previewMax);
+
+                drawList->AddRect(
+                    previewMin, previewMax,
+                    IM_COL32(255, 255, 255, 40), 3.0f
+                );
+
+                height = (previewMax.y - basePos.y) + previewPadding;
+            }
+        }
+
+        m_Size.y = height / zoom;
     }
 
     ImVec2 NodeView::GetPortScreenPos(const std::string& portName, bool output, ImVec2 panOffset, float zoom, ImVec2 canvasPos) const

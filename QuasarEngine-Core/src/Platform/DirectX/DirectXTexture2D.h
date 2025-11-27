@@ -16,6 +16,8 @@ namespace QuasarEngine
         bool LoadFromMemory(ByteView data) override;
         bool LoadFromData(ByteView data) override;
 
+        glm::vec4 Sample(const glm::vec2& uv) const override;
+
         void Bind(int index = 0) const override;
         void Unbind() const override;
 

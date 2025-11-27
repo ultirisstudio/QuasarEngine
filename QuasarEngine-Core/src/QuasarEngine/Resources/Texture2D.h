@@ -2,6 +2,8 @@
 
 #include "Texture.h"
 
+#include <glm/glm.hpp>
+
 namespace QuasarEngine
 {
 	class Texture2D : public Texture
@@ -19,6 +21,8 @@ namespace QuasarEngine
 
 		virtual void Bind(int index = 0) const override = 0;
 		virtual void Unbind() const override = 0;
+
+		virtual glm::vec4 Sample(const glm::vec2& uv) const = 0;
 
 		static std::shared_ptr<Texture2D> Create(const TextureSpecification& specification);
 	};

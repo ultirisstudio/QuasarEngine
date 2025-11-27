@@ -15,6 +15,7 @@
 #include <QuasarEngine/Nodes/NodeTypes/MathUtilityNodes.h>
 #include <QuasarEngine/Nodes/NodeTypes/UtilityNodes.h>
 #include <QuasarEngine/Nodes/NodeTypes/TextureUtilityNodes.h>
+#include <QuasarEngine/Nodes/NodeTypes/OutputNodes.h>
 
 namespace QuasarEngine
 {

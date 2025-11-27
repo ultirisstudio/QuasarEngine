@@ -28,7 +28,6 @@ namespace QuasarEngine {
 		if (maj < 4 || (maj == 4 && min < 5)) {
 			Q_WARNING("OpenGL < 4.5 detected: ARB_direct_state_access may be required, DSA code paths could fail.");
 		}
-
 	}
 
 	void OpenGLContext::BeginFrame()

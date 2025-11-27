@@ -97,6 +97,11 @@ namespace QuasarEngine
         return Upload(pixels);
     }
 
+    glm::vec4 VulkanTexture2D::Sample(const glm::vec2& uv) const
+    {
+        return glm::vec4();
+    }
+
     bool VulkanTexture2D::Upload(ByteView pixels) {
         const VkDevice device = VulkanContext::Context.device->device;
         const VkQueue  queue = VulkanContext::Context.device->graphicsQueue;

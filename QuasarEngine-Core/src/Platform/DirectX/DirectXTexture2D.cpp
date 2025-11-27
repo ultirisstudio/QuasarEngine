@@ -98,6 +98,11 @@ namespace QuasarEngine
         return true;
     }
 
+    glm::vec4 DirectXTexture2D::Sample(const glm::vec2& uv) const
+    {
+        return glm::vec4();
+    }
+
     void DirectXTexture2D::Bind(int index) const
     {
         auto& dx = DirectXContext::Context;

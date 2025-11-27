@@ -4,6 +4,9 @@
 #include <yaml-cpp/yaml.h>
 #include <glm/glm.hpp>
 
+#include <QuasarEngine/Asset/AssetManager.h>
+#include <QuasarEngine/Resources/Texture2D.h>
+
 namespace QuasarEngine
 {
     class TextureSampleNode : public TypedNode
@@ -33,6 +36,14 @@ namespace QuasarEngine
             catch (...) {}
 
             glm::vec4 color(uv.x, uv.y, 0.0f, 1.0f);
+
+            if (!m_RelativePath.empty() && AssetManager::Instance().isAssetLoaded(m_RelativePath)) {
+                auto tex = AssetManager::Instance().getAsset<Texture2D>(m_RelativePath);
+                if (tex && tex->IsLoaded())
+                {
+                    color = tex->Sample(uv);
+                }
+            }
 
             SetOutput("Color", color);
             SetOutput("R", color.r);

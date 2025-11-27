@@ -1,13 +1,15 @@
 #include "NodeEditor.h"
+
 #include <algorithm>
 #include <iostream>
 
 #include <glm/glm.hpp>
 
 #include "NodeView.h"
-#include "NodeEnumUtils.h"
 
+#include <QuasarEngine/Nodes/NodeEnumUtils.h>
 #include <QuasarEngine/Nodes/NodeRegistry.h>
+#include <QuasarEngine/Nodes/ShaderGraphCompiler.h>
 
 namespace QuasarEngine
 {
@@ -232,6 +234,27 @@ namespace QuasarEngine
                 return std::make_shared<ColorMaskNode>(id, "Color Mask");
             });
 
+        NodeRegistry::Instance().Register(
+            "Output_Float", "Output Float", "Output/Debug",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<FloatOutputNode>(id, "Output Float");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Output_Vec3", "Output Vec3", "Output/Debug",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<Vec3OutputNode>(id, "Output Vec3");
+            });
+
+        NodeRegistry::Instance().Register(
+            "Output_Material", "Material Output", "Output/Material",
+            [](Node::NodeId id)
+            {
+                return std::make_shared<MaterialOutputNode>(id, "Material Output");
+            });
+
         m_NodeGraph = std::make_shared<NodeGraph>();
     }
 
@@ -239,7 +262,11 @@ namespace QuasarEngine
 
     void NodeEditor::Update(double dt)
     {
-
+        if (m_GraphDirty && m_NodeGraph)
+        {
+            m_NodeGraph->Evaluate();
+            m_GraphDirty = false;
+        }
     }
 
     void NodeEditor::Render()
@@ -390,7 +417,10 @@ namespace QuasarEngine
                 catch (...) {}
                 ImGui::PushItemWidth(120);
                 if (ImGui::DragFloat("Valeur", &v, 0.1f, -10000.0f, 10000.0f, "%.3f"))
+                {
                     constNode->SetDefaultValue(v);
+                    MarkGraphDirty();
+                }
                 ImGui::PopItemWidth();
             }
             else if (type == PortType::Int)
@@ -400,7 +430,10 @@ namespace QuasarEngine
                 catch (...) {}
                 ImGui::PushItemWidth(120);
                 if (ImGui::InputInt("Valeur", &v))
+                {
                     constNode->SetDefaultValue(v);
+                    MarkGraphDirty();
+                }
                 ImGui::PopItemWidth();
             }
             else if (type == PortType::Bool)
@@ -409,7 +442,10 @@ namespace QuasarEngine
                 try { v = std::any_cast<bool>(defAny); }
                 catch (...) {}
                 if (ImGui::Checkbox("Valeur", &v))
+                {
                     constNode->SetDefaultValue(v);
+                    MarkGraphDirty();
+                }
             }
             else if (type == PortType::String)
             {
@@ -424,7 +460,10 @@ namespace QuasarEngine
 
                 ImGui::PushItemWidth(180);
                 if (ImGui::InputText("Valeur", buf, sizeof(buf)))
+                {
                     constNode->SetDefaultValue(std::string(buf));
+                    MarkGraphDirty();
+                }
                 ImGui::PopItemWidth();
             }
             else if (type == PortType::Vec2)
@@ -435,7 +474,10 @@ namespace QuasarEngine
                 float v[2] = { vec.x, vec.y };
                 ImGui::PushItemWidth(210);
                 if (ImGui::InputFloat2("Valeur", v))
+                {
                     constNode->SetDefaultValue(glm::vec2(v[0], v[1]));
+                    MarkGraphDirty();
+                }
                 ImGui::PopItemWidth();
             }
             else if (type == PortType::Vec3)
@@ -446,7 +488,10 @@ namespace QuasarEngine
                 float v[3] = { vec.x, vec.y, vec.z };
                 ImGui::PushItemWidth(210);
                 if (ImGui::InputFloat3("Valeur", v))
+                {
                     constNode->SetDefaultValue(glm::vec3(v[0], v[1], v[2]));
+                    MarkGraphDirty();
+                }
                 ImGui::PopItemWidth();
             }
             else if (type == PortType::Vec4)
@@ -457,7 +502,10 @@ namespace QuasarEngine
                 float v[4] = { vec.x, vec.y, vec.z, vec.w };
                 ImGui::PushItemWidth(210);
                 if (ImGui::InputFloat4("Valeur", v))
+                {
                     constNode->SetDefaultValue(glm::vec4(v[0], v[1], v[2], v[3]));
+                    MarkGraphDirty();
+                }
                 ImGui::PopItemWidth();
             }
         }
@@ -530,6 +578,7 @@ namespace QuasarEngine
                     std::shared_ptr<Texture2D> tex =
                         AssetManager::Instance().getAsset<Texture2D>(relPath);
                     texNode->SetImGuiTextureId((void*)tex->GetHandle());
+                    MarkGraphDirty();
                 }
             }
 
@@ -552,6 +601,7 @@ namespace QuasarEngine
             if (ImGui::ColorEdit4("Color", c))
             {
                 colorNode->SetColor(glm::vec4(c[0], c[1], c[2], c[3]));
+                MarkGraphDirty();
             }
         }
         else if (auto* cmpNode = dynamic_cast<CompareFloatNode*>(node.get()))
@@ -581,10 +631,68 @@ namespace QuasarEngine
             bool useB = maskNode->GetUseB();
             bool useA = maskNode->GetUseA();
 
-            if (ImGui::Checkbox("Use R", &useR)) maskNode->SetUseR(useR);
-            if (ImGui::Checkbox("Use G", &useG)) maskNode->SetUseG(useG);
-            if (ImGui::Checkbox("Use B", &useB)) maskNode->SetUseB(useB);
-            if (ImGui::Checkbox("Use A", &useA)) maskNode->SetUseA(useA);
+            if (ImGui::Checkbox("Use R", &useR)) { maskNode->SetUseR(useR); MarkGraphDirty(); }
+            if (ImGui::Checkbox("Use G", &useG)) { maskNode->SetUseG(useG); MarkGraphDirty(); }
+            if (ImGui::Checkbox("Use B", &useB)) { maskNode->SetUseB(useB); MarkGraphDirty(); }
+            if (ImGui::Checkbox("Use A", &useA)) { maskNode->SetUseA(useA); MarkGraphDirty(); }
+        }
+        else if (auto* floatOut = dynamic_cast<FloatOutputNode*>(node.get()))
+        {
+            ImGui::TextDisabled("Nœud de sortie (Float)");
+
+            float v = floatOut->GetInput<float>("Value", 0.0f);
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::Text("Valeur actuelle : %.3f", v);
+        }
+        else if (auto* vec3Out = dynamic_cast<Vec3OutputNode*>(node.get()))
+        {
+            ImGui::TextDisabled("Nœud de sortie (Vec3)");
+
+            glm::vec3 v = vec3Out->GetInput<glm::vec3>("Value", glm::vec3(0.0f));
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::Text("X : %.3f", v.x);
+            ImGui::Text("Y : %.3f", v.y);
+            ImGui::Text("Z : %.3f", v.z);
+        }
+        else if (auto* matOut = dynamic_cast<MaterialOutputNode*>(node.get()))
+        {
+            ImGui::TextDisabled("Material Output (PBR)");
+
+            glm::vec3 baseColor = matOut->GetBaseColor();
+            float metallic = matOut->GetMetallic();
+            float roughness = matOut->GetRoughness();
+            glm::vec3 emissive = matOut->GetEmissive();
+            float opacity = matOut->GetOpacity();
+
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::Text("BaseColor : (%.3f, %.3f, %.3f)",
+                baseColor.r, baseColor.g, baseColor.b);
+            ImGui::Text("Metallic  : %.3f", metallic);
+            ImGui::Text("Roughness : %.3f", roughness);
+            ImGui::Text("Emissive  : (%.3f, %.3f, %.3f)",
+                emissive.r, emissive.g, emissive.b);
+            ImGui::Text("Opacity   : %.3f", opacity);
+
+            ImGui::Separator();
+
+            static std::string g_LastShaderCode;
+            if (ImGui::Button("Générer shader"))
+            {
+				Node::NodeId matOutNodeId = matOut->GetId();
+
+                ShaderGraphCompileOptions option;
+				option.shaderName = "my_material_01";
+
+                auto result = ShaderGraphCompiler::CompileMaterialPBR(
+                    *m_NodeGraph,
+                    matOutNodeId,
+                    option
+                );
+
+                g_LastShaderCode = result.fragmentSource;
+            }
+
+            ImGui::TextUnformatted(g_LastShaderCode.c_str());
         }
         else
         {
@@ -693,8 +801,8 @@ namespace QuasarEngine
                 auto toNode = connection->toNode.lock();
                 if (fromNode && toNode)
                 {
-                    m_NodeGraph->Disconnect(fromNode->GetId(), connection->fromPort,
-                        toNode->GetId(), connection->toPort);
+                    m_NodeGraph->Disconnect(fromNode->GetId(), connection->fromPort, toNode->GetId(), connection->toPort);
+                    MarkGraphDirty();
                 }
                 return;
             }
@@ -806,9 +914,15 @@ namespace QuasarEngine
                 std::string toPort = bestPortName;
 
                 if (m_ConnectionDrag.fromOutput && !bestIsOutput)
+                {
                     m_NodeGraph->Connect(fromNode, fromPort, toNode, toPort);
+                    MarkGraphDirty();
+                }
                 else if (!m_ConnectionDrag.fromOutput && bestIsOutput)
+                {
                     m_NodeGraph->Connect(toNode, toPort, fromNode, fromPort);
+                    MarkGraphDirty();
+                }
             }
 
             m_ConnectionDrag = {};
@@ -824,6 +938,7 @@ namespace QuasarEngine
         {
             m_NodeGraph->AddNode(node);
             m_NodeViews[node->GetId()] = std::make_unique<NodeView>(node, pos);
+            MarkGraphDirty();
         }
     }
 
@@ -831,6 +946,7 @@ namespace QuasarEngine
     {
         m_NodeViews.erase(id);
         m_NodeGraph->RemoveNode(id);
+        MarkGraphDirty();
     }
 
     bool NodeEditor::IsInputConnected(Node::NodeId nodeId, const std::string& portName) const

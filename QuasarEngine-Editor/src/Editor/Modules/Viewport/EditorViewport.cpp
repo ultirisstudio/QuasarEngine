@@ -428,51 +428,6 @@ namespace QuasarEngine
 					ImVec2(m_EditorViewportBounds[1].x, m_EditorViewportBounds[1].y)
 				);
 
-				auto ensureModelReady = [&](const std::string& filePathAbs)
-					{
-						std::error_code ec{};
-						std::filesystem::path abs = std::filesystem::weakly_canonical(filePathAbs, ec);
-						if (ec) abs = std::filesystem::path(filePathAbs);
-
-						std::filesystem::path root = AssetManager::Instance().getAssetPath();
-						std::string id = std::filesystem::relative(filePathAbs, root, ec).generic_string();
-
-						auto isRenderable = [&](const std::shared_ptr<Model>& m) -> bool {
-							if (!m) return false;
-							const auto& li = m->GetLoadedInfo();
-							if (li.meshes.empty()) return false;
-							for (const auto& mi : li.meshes) if (mi.mesh) return true;
-							return false;
-							};
-
-						bool loaded = AssetManager::Instance().isAssetLoaded(id);
-						if (loaded) {
-							auto mdl = AssetManager::Instance().getAsset<Model>(id);
-							if (isRenderable(mdl)) return;
-						}
-
-						ModelImportOptions opts;
-						opts.buildMeshes = true;
-						opts.loadMaterials = true;
-						opts.loadSkinning = true;
-						opts.loadAnimations = true;
-						opts.vertexLayout.reset();
-						opts.triangulate = true;
-						opts.joinIdenticalVertices = false;
-						opts.improveCacheLocality = false;
-						opts.genUVIfMissing = false;
-						opts.generateNormals = false;
-						opts.generateTangents = true;
-						opts.loadTangents = true;
-
-						AssetToLoad a{};
-						a.id = id;
-						a.path = abs.generic_string();
-						a.type = AssetType::MODEL;
-						a.spec = opts;
-						AssetManager::Instance().updateAsset(a);
-					};
-
 				if (ImGui::BeginDragDropTargetCustom(dropRect, ImGui::GetID("EditorViewportDrop")))
 				{
 					const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM");
@@ -501,12 +456,11 @@ namespace QuasarEngine
 
 						bool isModelExt =
 							(ext == "obj" || ext == "dae" || ext == "fbx" ||
-								ext == "glb" || ext == "gltf" || ext == "bin");
+								ext == "glb" || ext == "gltf" || ext == "bin" || ext == "ply");
 
 						if (isModelExt)
 						{
-							ensureModelReady(filePath);
-							sceneManager.AddGameObject(filePath);
+							OpenModelImportDialog(filePath);
 						}
 						else if (ext == "scene")
 						{
@@ -517,9 +471,195 @@ namespace QuasarEngine
 					ImGui::EndDragDropTarget();
 				}
 			}
+
+			DrawModelImportPopup();
 		}
 
 		ImGui::End();
 		ImGui::PopStyleVar();
+	}
+
+	void EditorViewport::OpenModelImportDialog(const std::string& filePath)
+	{
+		namespace fs = std::filesystem;
+
+		std::error_code ec{};
+		fs::path abs = fs::weakly_canonical(filePath, ec);
+		if (ec)
+			abs = fs::path(filePath);
+
+		fs::path root = AssetManager::Instance().getAssetPath();
+		std::string id = fs::relative(abs, root, ec).generic_string();
+		if (ec || id.empty())
+			id = abs.filename().generic_string();
+
+		ModelImportDialogState dlg{};
+		dlg.requestOpen = true;
+		dlg.open = true;
+		dlg.absolutePath = abs.generic_string();
+		dlg.assetId = std::move(id);
+
+		auto& opts = dlg.options;
+		opts.drawMode = DrawMode::POINTS;
+		opts.buildMeshes = true;
+		opts.loadMaterials = true;
+		opts.loadSkinning = true;
+		opts.loadAnimations = true;
+		opts.vertexLayout.reset();
+		opts.triangulate = false;
+		opts.joinIdenticalVertices = false;
+		opts.improveCacheLocality = false;
+		opts.genUVIfMissing = false;
+		opts.generateNormals = false;
+		opts.generateTangents = true;
+		opts.loadTangents = true;
+
+		m_ModelImportDialog = std::move(dlg);
+	}
+
+	void EditorViewport::EnsureModelReady(const ModelImportDialogState& dialog)
+	{
+		using std::shared_ptr;
+
+		const std::string& filePathAbs = dialog.absolutePath;
+		const std::string& id = dialog.assetId;
+		const ModelImportOptions& opts = dialog.options;
+
+		auto isRenderable = [](const shared_ptr<Model>& m) -> bool {
+			if (!m) return false;
+			const auto& li = m->GetLoadedInfo();
+			if (li.meshes.empty()) return false;
+			for (const auto& mi : li.meshes)
+				if (mi.mesh) return true;
+			return false;
+			};
+
+		bool loaded = AssetManager::Instance().isAssetLoaded(id);
+		if (loaded) {
+			auto mdl = AssetManager::Instance().getAsset<Model>(id);
+			if (isRenderable(mdl))
+				return;
+		}
+
+		AssetToLoad a{};
+		a.id = id;
+		a.path = filePathAbs;
+		a.type = AssetType::MODEL;
+		a.spec = opts;
+
+		AssetManager::Instance().updateAsset(a);
+	}
+
+	void EditorViewport::DrawModelImportPopup()
+	{
+		if (!m_ModelImportDialog.open && !m_ModelImportDialog.requestOpen)
+			return;
+
+		const char* popupName = "Importer un modele##ModelImport";
+
+		if (m_ModelImportDialog.requestOpen)
+		{
+			ImGui::OpenPopup(popupName);
+			m_ModelImportDialog.requestOpen = false;
+		}
+
+		bool keepOpen = m_ModelImportDialog.open;
+
+		if (ImGui::BeginPopupModal(popupName, &keepOpen,
+			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+		{
+			auto& dlg = m_ModelImportDialog;
+			auto& opts = dlg.options;
+
+			ImGui::TextUnformatted("Fichier");
+			ImGui::TextWrapped("%s", dlg.absolutePath.c_str());
+			ImGui::Separator();
+
+			ImGui::TextUnformatted("Mode d'affichage");
+			ImGui::SameLine();
+			struct DrawModeItem { const char* label; DrawMode mode; };
+
+			static constexpr std::array<DrawModeItem, 3> kDrawModes{ {
+				{ "Points",    DrawMode::POINTS },
+				{ "Lignes",    DrawMode::LINES },
+				{ "Triangles", DrawMode::TRIANGLES }
+			} };
+
+			int currentIndex = 0;
+			for (int i = 0; i < (int)kDrawModes.size(); ++i)
+				if (kDrawModes[i].mode == opts.drawMode)
+					currentIndex = i;
+
+			const char* preview = kDrawModes[currentIndex].label;
+			if (ImGui::BeginCombo("##DrawModeCombo", preview))
+			{
+				for (int i = 0; i < (int)kDrawModes.size(); ++i)
+				{
+					bool selected = (i == currentIndex);
+					if (ImGui::Selectable(kDrawModes[i].label, selected))
+					{
+						currentIndex = i;
+						opts.drawMode = kDrawModes[i].mode;
+					}
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::CollapsingHeader("Ce qu'on charge", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Checkbox("Meshes", &opts.buildMeshes);
+				ImGui::Checkbox("Materiaux", &opts.loadMaterials);
+				ImGui::Checkbox("Skinning", &opts.loadSkinning);
+				ImGui::Checkbox("Animations", &opts.loadAnimations);
+				ImGui::Checkbox("Tangentes (depuis le fichier)", &opts.loadTangents);
+			}
+
+			if (ImGui::CollapsingHeader("Ce qu'on genere", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Checkbox("Trianguler", &opts.triangulate);
+				ImGui::Checkbox("Fusionner les sommets identiques", &opts.joinIdenticalVertices);
+				ImGui::Checkbox("Ameliorer la locality cache", &opts.improveCacheLocality);
+				ImGui::Checkbox("Generer UV si manquantes", &opts.genUVIfMissing);
+				ImGui::Checkbox("Generer normales", &opts.generateNormals);
+				ImGui::Checkbox("Generer tangentes", &opts.generateTangents);
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::Button("Importer", ImVec2(120.0f, 0.0f)))
+			{
+				if (opts.drawMode == DrawMode::POINTS)
+				{
+					opts.vertexLayout = {
+						{ ShaderDataType::Vec3, "inPosition" },
+						{ ShaderDataType::Vec4, "inColor"    }
+					};
+				}
+
+				EnsureModelReady(dlg);
+
+				if (m_Context.sceneManager)
+					m_Context.sceneManager->AddGameObject(dlg.absolutePath);
+
+				keepOpen = false;
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Annuler", ImVec2(120.0f, 0.0f)))
+			{
+				keepOpen = false;
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
+
+		m_ModelImportDialog.open = keepOpen;
 	}
 }

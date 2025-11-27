@@ -30,6 +30,7 @@ namespace QuasarEngine
 			//std::shared_ptr<Shader> m_PhysicDebugShader;
 			std::shared_ptr<Shader> m_TerrainShader;
 			std::shared_ptr<Shader> m_SkinnedShader;
+			std::shared_ptr<Shader> m_PointCloudShader;
 
 			std::array<glm::mat4, QE_MAX_BONES> m_IdentityBones;
 

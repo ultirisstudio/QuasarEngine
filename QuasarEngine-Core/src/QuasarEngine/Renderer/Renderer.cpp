@@ -76,7 +76,8 @@ namespace QuasarEngine
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
 					{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""},
-					{3, Shader::ShaderIOType::Vec3, "inTangent",  true, ""}
+					{3, Shader::ShaderIOType::Vec3, "inTangent",  true, ""},
+					{4, Shader::ShaderIOType::Vec4, "inColor",    true, ""}
 				}
 			},
 			Shader::ShaderModuleInfo{
@@ -615,6 +616,72 @@ namespace QuasarEngine
 
 			m_SceneData.m_ShadowDir_Static = Shader::Create(sh);
 		}
+
+		{
+			Shader::ShaderDescription pcDesc;
+
+			const std::string pcName = "point_cloud";
+			std::string pcVertPath = basePath + pcName + extFor(api, Shader::ShaderStageType::Vertex);
+			std::string pcFragPath = basePath + pcName + extFor(api, Shader::ShaderStageType::Fragment);
+
+			pcDesc.modules = {
+				Shader::ShaderModuleInfo{
+					Shader::ShaderStageType::Vertex,
+					pcVertPath,
+					{
+						{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
+						{1, Shader::ShaderIOType::Vec4, "inColor",    true, ""},
+					}
+				},
+				Shader::ShaderModuleInfo{
+					Shader::ShaderStageType::Fragment,
+					pcFragPath,
+					{}
+				}
+			};
+
+			struct alignas(16) PointCloudGlobalUniforms
+			{
+				glm::mat4 view;
+				glm::mat4 projection;
+			};
+
+			struct alignas(16) PointCloudObjectUniforms
+			{
+				glm::mat4 model;
+				float pointSize;
+			};
+
+			constexpr Shader::ShaderStageFlags PCStages =
+				Shader::StageToBit(Shader::ShaderStageType::Vertex) |
+				Shader::StageToBit(Shader::ShaderStageType::Fragment);
+
+			pcDesc.globalUniforms = {
+				{"view",       Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(PointCloudGlobalUniforms, view),       0, 0, PCStages},
+				{"projection", Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(PointCloudGlobalUniforms, projection), 0, 0, PCStages},
+			};
+
+			pcDesc.objectUniforms = {
+				{"model",     Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(PointCloudObjectUniforms, model),     1, 0, PCStages},
+				{"pointSize", Shader::ShaderUniformType::Float, sizeof(float),      offsetof(PointCloudObjectUniforms, pointSize), 1, 0, PCStages},
+			};
+
+			pcDesc.samplers = {};
+
+			pcDesc.blendMode = Shader::BlendMode::None;
+			pcDesc.cullMode = Shader::CullMode::None;
+			pcDesc.fillMode = Shader::FillMode::Solid;
+			pcDesc.depthFunc = Shader::DepthFunc::Less;
+			pcDesc.depthTestEnable = true;
+			pcDesc.depthWriteEnable = true;
+
+			pcDesc.topology = Shader::PrimitiveTopology::PointList;
+			pcDesc.enableDynamicViewport = true;
+			pcDesc.enableDynamicScissor = true;
+			pcDesc.enableDynamicLineWidth = false;
+
+			m_SceneData.m_PointCloudShader = Shader::Create(pcDesc);
+		}
 	}
 
 	void Renderer::Shutdown()
@@ -625,6 +692,7 @@ namespace QuasarEngine
 		//m_SceneData.m_PhysicDebugShader.reset();
 		m_SceneData.m_SkinnedShader.reset();
 		m_SceneData.m_TerrainShader.reset();
+		m_SceneData.m_PointCloudShader.reset();
 		m_SceneData.m_UI.reset();
 		m_SceneData.m_ScriptSystem.reset();
 	}
@@ -703,6 +771,7 @@ namespace QuasarEngine
 			if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
 			if (mc.GetMesh().HasSkinning()) continue;
+			if (mc.GetMesh().IsCloudPoint()) continue;
 
 			glm::mat4 model = tr.GetGlobalTransform();
 			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
@@ -792,6 +861,7 @@ namespace QuasarEngine
 			if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
 			if (!mc.GetMesh().HasSkinning()) continue;
+			if (mc.GetMesh().IsCloudPoint()) continue;
 
 			glm::mat4 model = tr.GetGlobalTransform();
 			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
@@ -951,6 +1021,39 @@ namespace QuasarEngine
 		}
 
 		m_SceneData.m_TerrainShader->Unuse();
+
+		m_SceneData.m_PointCloudShader->Use();
+
+		m_SceneData.m_PointCloudShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
+		m_SceneData.m_PointCloudShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
+
+		if (m_SceneData.m_PointCloudShader->UpdateGlobalState())
+		{
+			float pointSize = 10.0f;
+
+			for (auto [e, tr, mc, matc, mr] : group.each())
+			{
+				if (!mr.m_Rendered || !mc.HasMesh()) continue;
+
+				Mesh& mesh = mc.GetMesh();
+				if (!mesh.IsCloudPoint()) continue;
+				if (mesh.HasSkinning())    continue;
+
+				glm::mat4 model = tr.GetGlobalTransform();
+				if (mc.HasLocalNodeTransform())
+					model *= mc.GetLocalNodeTransform();
+
+				m_SceneData.m_PointCloudShader->SetUniform("model", &model, sizeof(glm::mat4));
+				m_SceneData.m_PointCloudShader->SetUniform("pointSize", &pointSize, sizeof(float));
+
+				if (!m_SceneData.m_PointCloudShader->UpdateObject(nullptr))
+					continue;
+
+				mesh.draw();
+			}
+		}
+
+		m_SceneData.m_PointCloudShader->Unuse();
 
 		{
 			Renderer2D::Instance().BeginScene(camera);
@@ -1113,6 +1216,7 @@ namespace QuasarEngine
 
 				if (!mr.m_Rendered || !mc.HasMesh()) continue;
 				if (mc.GetMesh().HasSkinning())      continue;
+				if (mc.GetMesh().IsCloudPoint())     continue;
 
 				glm::mat4 model = tr.GetGlobalTransform();
 				if (mc.HasLocalNodeTransform())

@@ -102,8 +102,10 @@ namespace QuasarEngine
         const bool hasTan = (opt.loadTangents || opt.generateTangents) && mesh->HasTangentsAndBitangents();
         const bool useCustomLayout = opt.vertexLayout.has_value();
 
+        const bool hasColor = mesh->HasVertexColors(0) && mesh->mColors[0] != nullptr;
+
         if (!useCustomLayout) {
-            out.vertices.reserve(static_cast<size_t>(mesh->mNumVertices) * 11);
+            out.vertices.reserve(static_cast<size_t>(mesh->mNumVertices) * 15);
 
             for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
                 const aiVector3D& p = mesh->mVertices[i];
@@ -128,6 +130,12 @@ namespace QuasarEngine
                     t = mesh->mTangents[i];
                 }
                 out.vertices.insert(out.vertices.end(), { t.x, t.y, t.z });
+
+                aiColor4D color(1.0f, 0.0f, 0.0f, 1.0f);
+                if (hasColor) {
+                    color = mesh->mColors[0][i];
+                }
+                out.vertices.insert(out.vertices.end(), { color.r, color.g, color.b, color.a });
             }
         }
         else {
@@ -139,12 +147,18 @@ namespace QuasarEngine
                 const aiVector3D bit = mesh->HasTangentsAndBitangents() ? mesh->mBitangents[i] : aiVector3D(0, 0, 0);
                 const aiVector3D uv0 = (mesh->mTextureCoords[0] ? mesh->mTextureCoords[0][i] : aiVector3D(0, 0, 0));
 
+                aiColor4D color(1.0f, 0.0f, 0.0f, 1.0f);
+                if (hasColor) {
+                    color = mesh->mColors[0][i];
+                }
+
                 for (const auto& el : layout) {
-                    if (el.Name == "inPosition")  AppendAttribute(out.vertices, el.Type, &pos.x, 3);
-                    else if (el.Name == "inNormal")    AppendAttribute(out.vertices, el.Type, hasN ? &nrm.x : nullptr, 3);
-                    else if (el.Name == "inTexCoord")  AppendAttribute(out.vertices, el.Type, hasUV ? &uv0.x : nullptr, 2);
-                    else if (el.Name == "inTangent")   AppendAttribute(out.vertices, el.Type, hasTan ? &tan.x : nullptr, 3);
-                    else if (el.Name == "inBitangent") AppendAttribute(out.vertices, el.Type, hasTan ? &bit.x : nullptr, 3);
+                    if (el.Name == "inPosition") { AppendAttribute(out.vertices, el.Type, &pos.x, 3); }
+                    else if (el.Name == "inNormal") {    AppendAttribute(out.vertices, el.Type, hasN ? &nrm.x : nullptr, 3); }
+                    else if (el.Name == "inTexCoord") {  AppendAttribute(out.vertices, el.Type, hasUV ? &uv0.x : nullptr, 2); }
+                    else if (el.Name == "inTangent") {   AppendAttribute(out.vertices, el.Type, hasTan ? &tan.x : nullptr, 3); }
+                    else if (el.Name == "inBitangent") { AppendAttribute(out.vertices, el.Type, hasTan ? &bit.x : nullptr, 3); }
+                    else if (el.Name == "inColor") { AppendAttribute(out.vertices, el.Type, hasColor ? &color.r : nullptr, 4); }
                     else                                AppendAttribute(out.vertices, el.Type, nullptr, 0, 0.0f);
                 }
             }

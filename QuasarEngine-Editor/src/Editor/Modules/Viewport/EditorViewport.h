@@ -46,6 +46,21 @@ namespace QuasarEngine
 		void OverlayBackground(const ImVec2& min, const ImVec2& max, float rounding = 8.0f, float alpha = 0.35f);
 		void Tooltip(const char* text);
 
+		struct ModelImportDialogState
+		{
+			bool requestOpen = false;
+			bool open = false;
+			std::string absolutePath;
+			std::string assetId;
+			ModelImportOptions options{};
+		};
+
+		void OpenModelImportDialog(const std::string& filePath);
+		void DrawModelImportPopup();
+		void EnsureModelReady(const ModelImportDialogState& dialog);
+
+		ModelImportDialogState m_ModelImportDialog;
+
 	private:
 		std::shared_ptr<Framebuffer> m_EditorFrameBuffer;
 		glm::vec2 m_EditorViewportSize = { 0.0f, 0.0f };
