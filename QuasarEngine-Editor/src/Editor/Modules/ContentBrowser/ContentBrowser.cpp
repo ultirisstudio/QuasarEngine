@@ -659,7 +659,7 @@ namespace QuasarEngine
                         modelId = "Assets/" + path.filename().generic_string();
                     isModel = true;
 
-                    if (!AssetManager::Instance().isAssetLoaded(modelId)) {
+                    /*if (!AssetManager::Instance().isAssetLoaded(modelId)) {
                         static std::unordered_map<std::string, bool> loadingModel;
                         if (!loadingModel[modelId]) {
                             loadingModel[modelId] = true;
@@ -676,7 +676,7 @@ namespace QuasarEngine
                             a.spec = opts;
                             AssetManager::Instance().loadAsset(a);
                         }
-                    }
+                    }*/
                     return;
                 }
                 if (fileType == AssetType::TEXTURE) {

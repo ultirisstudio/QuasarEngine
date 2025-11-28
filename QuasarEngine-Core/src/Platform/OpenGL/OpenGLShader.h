@@ -72,6 +72,7 @@ namespace QuasarEngine
 
         bool SetUniform(const std::string& name, void* data, size_t size) override;
         bool SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
+        bool SetStorageBuffer(const std::string& name, const void* data, size_t size) override;
 
     private:
         void LinkProgram(const std::vector<uint32_t>& shaders);
@@ -105,6 +106,13 @@ namespace QuasarEngine
 
         OpenGLTexture2D* m_DefaultBlueTexture = nullptr;
         OpenGLTextureCubeMap* m_DefaultBlackCubemap = nullptr;
+
+        struct StorageBufferData {
+            std::unique_ptr<OpenGLShaderStorageBuffer> buffer;
+            std::vector<uint8_t>                       cpuData;
+            const ShaderStorageBufferDesc* desc = nullptr;
+        };
+        std::unordered_map<std::string, StorageBufferData> m_StorageBuffers;
 
         ShaderDescription m_Description;
     };

@@ -87,4 +87,21 @@ namespace QuasarEngine
 		void* m_Mapped = nullptr;
 		bool m_IsPersistent = false;
 	};
+
+	class OpenGLShaderStorageBuffer
+	{
+	public:
+		OpenGLShaderStorageBuffer(size_t size, uint32_t binding);
+		~OpenGLShaderStorageBuffer();
+
+		void SetData(const void* data, size_t size);
+		void BindToShader(uint32_t programID, const std::string& blockName);
+
+		uint32_t GetID() const { return m_ID; }
+
+	private:
+		uint32_t m_ID = 0;
+		size_t   m_Size = 0;
+		uint32_t m_Binding = 0;
+	};
 }

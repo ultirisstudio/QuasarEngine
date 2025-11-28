@@ -227,7 +227,7 @@ namespace QuasarEngine
         ImGui::End();
     }
 
-    void SpriteEditor::DrawLeftPanel(float, float)
+    void SpriteEditor::DrawLeftPanel(float width, float height)
     {
         if (ImGui::Button("Ajouter calque")) {
             int so = (int)m_Layers.size();
@@ -422,7 +422,7 @@ namespace QuasarEngine
         }
     }
 
-    void SpriteEditor::DrawCanvasPanel(float, float)
+    void SpriteEditor::DrawCanvasPanel(float width, float height)
     {
         ImDrawList* dl = ImGui::GetWindowDrawList();
 
@@ -522,7 +522,7 @@ namespace QuasarEngine
         }
     }
 
-    void SpriteEditor::DrawRightPanel(float, float)
+    void SpriteEditor::DrawRightPanel(float width, float height)
     {
         ImGui::Text("Pinceau");
         ImGui::Separator();

@@ -107,6 +107,16 @@ namespace QuasarEngine {
 			glDrawElementsBaseVertex(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes, baseVertex);
 	}
 
+	void OpenGLRendererAPI::DrawInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex)
+	{
+		GLenum glMode = Utils::DrawModeToGLenum(drawMode);
+		const void* offsetBytes = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex) * sizeof(uint32_t));
+		if (baseVertex == 0)
+			glDrawArraysInstanced(glMode, firstIndex, static_cast<GLsizei>(count), instanceCount);
+		else
+			glDrawArraysInstancedBaseInstance(glMode, firstIndex, static_cast<GLsizei>(count), instanceCount, baseVertex);
+	}
+
 	void OpenGLRendererAPI::EnableScissor(bool enable)
 	{
 		if (enable)

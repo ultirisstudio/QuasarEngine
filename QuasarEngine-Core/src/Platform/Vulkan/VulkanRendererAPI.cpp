@@ -63,7 +63,7 @@ namespace QuasarEngine
 
 	void VulkanRendererAPI::ClearColor(const glm::vec4& color)
 	{
-		
+
 	}
 
 	void VulkanRendererAPI::Clear()
@@ -73,11 +73,16 @@ namespace QuasarEngine
 
 	void VulkanRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)
 	{
-		
+		vkCmdDraw(VulkanContext::Context.frameCommandBuffers.back()->handle, size, 1, 0, 0);
 	}
 
 	void VulkanRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
 	{
 		vkCmdDrawIndexed(VulkanContext::Context.frameCommandBuffers.back()->handle, count, 1, firstIndex, 0, 0);
+	}
+
+	void VulkanRendererAPI::DrawInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex)
+	{
+		vkCmdDrawIndexed(VulkanContext::Context.frameCommandBuffers.back()->handle, count, instanceCount, firstIndex, 0, 0);
 	}
 }

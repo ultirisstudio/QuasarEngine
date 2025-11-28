@@ -235,6 +235,15 @@ namespace QuasarEngine
         for (const auto& uniform : m_Description.objectUniforms)
             m_ObjectUniformMap[uniform.name] = &uniform;
 
+        for (const auto& sbDesc : m_Description.storageBuffers)
+        {
+            StorageBufferData data{};
+            data.desc = &sbDesc;
+            data.buffer = std::make_unique<OpenGLShaderStorageBuffer>(sbDesc.size, sbDesc.binding);
+
+            m_StorageBuffers.emplace(sbDesc.name, std::move(data));
+        }
+
         std::vector<uint32_t> compiledShaders;
         compiledShaders.reserve(desc.modules.size());
 
@@ -408,6 +417,17 @@ namespace QuasarEngine
             m_ObjectUBO->BindToShader(m_ID, "local_uniform_object");
         }
 
+        for (auto& [name, sb] : m_StorageBuffers)
+        {
+            if (!sb.buffer)
+                continue;
+
+            if (!sb.cpuData.empty())
+                sb.buffer->SetData(sb.cpuData.data(), sb.cpuData.size());
+
+            sb.buffer->BindToShader(m_ID, name.c_str());
+        }
+
         for (const auto& samplerDesc : m_Description.samplers)
         {
             const std::string& sname = samplerDesc.name;
@@ -486,6 +506,20 @@ namespace QuasarEngine
         m_ObjectTextures[name] = texture;
         m_ObjectTextureTypes[name] = type;
 
+        return true;
+    }
+
+    bool OpenGLShader::SetStorageBuffer(const std::string& name, const void* data, size_t size)
+    {
+        auto it = m_StorageBuffers.find(name);
+        if (it == m_StorageBuffers.end()) {
+            Q_WARNING("Storage buffer not found : " + name);
+            return false;
+        }
+
+        StorageBufferData& sb = it->second;
+        sb.cpuData.resize(size);
+        std::memcpy(sb.cpuData.data(), data, size);
         return true;
     }
 }

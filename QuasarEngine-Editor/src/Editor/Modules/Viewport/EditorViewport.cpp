@@ -21,6 +21,91 @@
 
 namespace QuasarEngine
 {
+	namespace
+	{
+		const char* GetPresetLabel(ModelImportPreset preset)
+		{
+			switch (preset)
+			{
+			case ModelImportPreset::Custom:       return "Personnalise";
+			case ModelImportPreset::Full:         return "Complet";
+			case ModelImportPreset::Static:       return "Statique";
+			case ModelImportPreset::QuickPreview: return "Preview rapide";
+			}
+			return "Inconnu";
+		}
+
+		void ApplyPreset(ModelImportOptions& opts, ModelImportPreset preset)
+		{
+			switch (preset)
+			{
+			case ModelImportPreset::Full:
+				opts.buildMeshes = true;
+				opts.loadMaterials = true;
+				opts.loadSkinning = true;
+				opts.loadAnimations = true;
+				opts.loadTangents = true;
+
+				opts.triangulate = true;
+				opts.joinIdenticalVertices = true;
+				opts.improveCacheLocality = true;
+				opts.genUVIfMissing = true;
+				opts.generateNormals = false;
+				opts.generateTangents = true;
+				break;
+
+			case ModelImportPreset::Static:
+				opts.buildMeshes = true;
+				opts.loadMaterials = true;
+				opts.loadSkinning = false;
+				opts.loadAnimations = false;
+				opts.loadTangents = true;
+
+				opts.triangulate = true;
+				opts.joinIdenticalVertices = true;
+				opts.improveCacheLocality = true;
+				opts.genUVIfMissing = true;
+				opts.generateNormals = false;
+				opts.generateTangents = true;
+				break;
+
+			case ModelImportPreset::QuickPreview:
+				opts.buildMeshes = true;
+				opts.loadMaterials = false;
+				opts.loadSkinning = false;
+				opts.loadAnimations = false;
+				opts.loadTangents = false;
+
+				opts.triangulate = false;
+				opts.joinIdenticalVertices = false;
+				opts.improveCacheLocality = false;
+				opts.genUVIfMissing = false;
+				opts.generateNormals = false;
+				opts.generateTangents = false;
+				break;
+
+			case ModelImportPreset::Custom:
+				break;
+			}
+		}
+
+		struct DrawModeItem { const char* label; DrawMode mode; };
+
+		static constexpr std::array<DrawModeItem, 3> kDrawModes{ {
+			{ "Points",    DrawMode::POINTS    },
+			{ "Lignes",    DrawMode::LINES     },
+			{ "Triangles", DrawMode::TRIANGLES }
+		} };
+
+		int GetDrawModeIndex(DrawMode mode)
+		{
+			for (int i = 0; i < (int)kDrawModes.size(); ++i)
+				if (kDrawModes[i].mode == mode)
+					return i;
+			return 0;
+		}
+	}
+
 	bool EditorViewport::ToggleButton(const char* label, bool active, ImVec2 size)
 	{
 		if (active) {
@@ -493,11 +578,22 @@ namespace QuasarEngine
 		if (ec || id.empty())
 			id = abs.filename().generic_string();
 
+		std::string ext;
+		if (size_t dot = id.find_last_of('.'); dot != std::string::npos)
+		{
+			ext = id.substr(dot + 1);
+			for (char& ch : ext)
+				ch = (char)std::tolower((unsigned char)ch);
+		}
+
 		ModelImportDialogState dlg{};
 		dlg.requestOpen = true;
 		dlg.open = true;
 		dlg.absolutePath = abs.generic_string();
 		dlg.assetId = std::move(id);
+		dlg.extension = std::move(ext);
+		dlg.instantiateInScene = true;
+		dlg.preset = ModelImportPreset::Full;
 
 		auto& opts = dlg.options;
 		opts.drawMode = DrawMode::POINTS;
@@ -513,6 +609,8 @@ namespace QuasarEngine
 		opts.generateNormals = false;
 		opts.generateTangents = true;
 		opts.loadTangents = true;
+
+		ApplyPreset(opts, dlg.preset);
 
 		m_ModelImportDialog = std::move(dlg);
 	}
@@ -571,78 +669,185 @@ namespace QuasarEngine
 			auto& dlg = m_ModelImportDialog;
 			auto& opts = dlg.options;
 
-			ImGui::TextUnformatted("Fichier");
-			ImGui::TextWrapped("%s", dlg.absolutePath.c_str());
+			ImGui::TextUnformatted("Importer un modele");
 			ImGui::Separator();
 
-			ImGui::TextUnformatted("Mode d'affichage");
-			ImGui::SameLine();
-			struct DrawModeItem { const char* label; DrawMode mode; };
+			ImGui::TextDisabled("Fichier source");
+			ImGui::TextWrapped("%s", dlg.absolutePath.c_str());
 
-			static constexpr std::array<DrawModeItem, 3> kDrawModes{ {
-				{ "Points",    DrawMode::POINTS },
-				{ "Lignes",    DrawMode::LINES },
-				{ "Triangles", DrawMode::TRIANGLES }
-			} };
+			ImGui::Spacing();
 
-			int currentIndex = 0;
-			for (int i = 0; i < (int)kDrawModes.size(); ++i)
-				if (kDrawModes[i].mode == opts.drawMode)
-					currentIndex = i;
+			static char assetIdBuf[256];
+			if (dlg.assetId.size() >= sizeof(assetIdBuf))
+				dlg.assetId.resize(sizeof(assetIdBuf) - 1);
 
-			const char* preview = kDrawModes[currentIndex].label;
-			if (ImGui::BeginCombo("##DrawModeCombo", preview))
+			std::strncpy(assetIdBuf, dlg.assetId.c_str(), sizeof(assetIdBuf));
+			assetIdBuf[sizeof(assetIdBuf) - 1] = '\0';
+
+			if (ImGui::InputText("ID d'asset", assetIdBuf, sizeof(assetIdBuf)))
+				dlg.assetId = assetIdBuf;
+			Tooltip("Nom interne utilise par l'AssetManager pour referencer le modele.");
+
+			ImGui::Separator();
+
+			const char* presetLabel = GetPresetLabel(dlg.preset);
+			if (ImGui::BeginCombo("Profil d'import", presetLabel))
 			{
-				for (int i = 0; i < (int)kDrawModes.size(); ++i)
+				for (int i = 0; i < 4; ++i)
 				{
-					bool selected = (i == currentIndex);
-					if (ImGui::Selectable(kDrawModes[i].label, selected))
+					ModelImportPreset presetCandidate = (ModelImportPreset)i;
+					bool selected = (presetCandidate == dlg.preset);
+					if (ImGui::Selectable(GetPresetLabel(presetCandidate), selected))
 					{
-						currentIndex = i;
-						opts.drawMode = kDrawModes[i].mode;
+						dlg.preset = presetCandidate;
+						if (dlg.preset != ModelImportPreset::Custom)
+							ApplyPreset(opts, dlg.preset);
 					}
 					if (selected)
 						ImGui::SetItemDefaultFocus();
 				}
 				ImGui::EndCombo();
 			}
+			Tooltip("Choisissez un profil d'import predefini. Toute modification manuelle bascule en 'Personnalise'.");
+
+			ImGui::Spacing();
+
+			int currentDrawModeIdx = GetDrawModeIndex(opts.drawMode);
+			const char* drawModeLabel = kDrawModes[currentDrawModeIdx].label;
+
+			if (ImGui::BeginCombo("Mode d'affichage", drawModeLabel))
+			{
+				for (int i = 0; i < (int)kDrawModes.size(); ++i)
+				{
+					bool selected = (i == currentDrawModeIdx);
+					if (ImGui::Selectable(kDrawModes[i].label, selected))
+					{
+						currentDrawModeIdx = i;
+						opts.drawMode = kDrawModes[i].mode;
+						dlg.preset = ModelImportPreset::Custom;
+					}
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			Tooltip("Mode de rendu utilise par defaut pour les meshes du modele.");
 
 			ImGui::Separator();
 
-			if (ImGui::CollapsingHeader("Ce qu'on charge", ImGuiTreeNodeFlags_DefaultOpen))
+			if (ImGui::BeginTable("ImportOptions", 2, ImGuiTableFlags_SizingStretchSame))
 			{
-				ImGui::Checkbox("Meshes", &opts.buildMeshes);
-				ImGui::Checkbox("Materiaux", &opts.loadMaterials);
-				ImGui::Checkbox("Skinning", &opts.loadSkinning);
-				ImGui::Checkbox("Animations", &opts.loadAnimations);
-				ImGui::Checkbox("Tangentes (depuis le fichier)", &opts.loadTangents);
+				ImGui::TableNextColumn();
+				ImGui::TextDisabled("Ce qu'on charge");
+
+				if (ImGui::Checkbox("Meshes", &opts.buildMeshes))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Importer la geometrie des meshes du modele.");
+
+				if (ImGui::Checkbox("Materiaux", &opts.loadMaterials))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Importer les materiaux (textures, couleurs...) du modele.");
+
+				if (ImGui::Checkbox("Skinning", &opts.loadSkinning))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Importer les informations de skinning (bones, poids...).");
+
+				if (ImGui::Checkbox("Animations", &opts.loadAnimations))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Importer les animations contenues dans le fichier.");
+
+				if (ImGui::Checkbox("Tangentes (depuis le fichier)", &opts.loadTangents))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Utiliser les tangentes fournies par le fichier si disponibles.");
+
+				ImGui::TableNextColumn();
+				ImGui::TextDisabled("Ce qu'on genere");
+
+				if (ImGui::Checkbox("Trianguler", &opts.triangulate))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Forcer tous les polygones a etre triangules.");
+
+				if (ImGui::Checkbox("Fusionner les sommets identiques", &opts.joinIdenticalVertices))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Fusionne les sommets partageant les memes attributs (optimisation).");
+
+				if (ImGui::Checkbox("Ameliorer la locality cache", &opts.improveCacheLocality))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Reordonne les indices pour ameliorer l'utilisation du cache GPU.");
+
+				if (ImGui::Checkbox("Generer UV si manquantes", &opts.genUVIfMissing))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Genere des coordonnees UV si le fichier n'en fournit pas.");
+
+				if (ImGui::Checkbox("Generer normales", &opts.generateNormals))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Recalcule les normales (utile si absentes ou incorrectes).");
+
+				if (ImGui::Checkbox("Generer tangentes", &opts.generateTangents))
+					dlg.preset = ModelImportPreset::Custom;
+				Tooltip("Genere les tangentes (necessaires pour certaines techniques de shading).");
+
+				ImGui::EndTable();
 			}
 
-			if (ImGui::CollapsingHeader("Ce qu'on genere", ImGuiTreeNodeFlags_DefaultOpen))
+			if (opts.generateTangents && !opts.generateNormals && !opts.loadTangents)
 			{
-				ImGui::Checkbox("Trianguler", &opts.triangulate);
-				ImGui::Checkbox("Fusionner les sommets identiques", &opts.joinIdenticalVertices);
-				ImGui::Checkbox("Ameliorer la locality cache", &opts.improveCacheLocality);
-				ImGui::Checkbox("Generer UV si manquantes", &opts.genUVIfMissing);
-				ImGui::Checkbox("Generer normales", &opts.generateNormals);
-				ImGui::Checkbox("Generer tangentes", &opts.generateTangents);
+				ImGui::Spacing();
+				ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.2f, 1.0f),
+					"Attention : generation des tangentes sans normales. "
+					"Les normales seront generees automatiquement.");
 			}
 
 			ImGui::Separator();
+
+			ImGui::TextDisabled("Resume :");
+
+			const char* drawModeStr =
+				(opts.drawMode == DrawMode::POINTS) ? "Points" :
+				(opts.drawMode == DrawMode::LINES) ? "Lignes" :
+				(opts.drawMode == DrawMode::TRIANGLES) ? "Triangles" : "Inconnu";
+
+			ImGui::BulletText("Mode d'affichage : %s", drawModeStr);
+			ImGui::BulletText("Meshes: %s, Materiaux: %s, Skinning: %s, Animations: %s",
+				opts.buildMeshes ? "oui" : "non",
+				opts.loadMaterials ? "oui" : "non",
+				opts.loadSkinning ? "oui" : "non",
+				opts.loadAnimations ? "oui" : "non");
+
+			const char* normalStr =
+				opts.generateNormals ? "generees" :
+				(opts.loadTangents ? "fichier (normales supposees correctes)" : "non gerees");
+
+			const char* tangentStr =
+				opts.generateTangents ? "generees" :
+				(opts.loadTangents ? "depuis fichier" : "aucune");
+
+			ImGui::BulletText("Normales : %s", normalStr);
+			ImGui::BulletText("Tangentes : %s", tangentStr);
+
+			ImGui::Separator();
+
+			ImGui::Checkbox("Instancier dans la scene apres import", &dlg.instantiateInScene);
+			Tooltip("Si coche, un GameObject sera cree dans la scene active avec ce modele.");
+
+			ImGui::Spacing();
 
 			if (ImGui::Button("Importer", ImVec2(120.0f, 0.0f)))
 			{
+				if (opts.generateTangents && !opts.generateNormals && !opts.loadTangents)
+					opts.generateNormals = true;
+
 				if (opts.drawMode == DrawMode::POINTS)
 				{
 					opts.vertexLayout = {
 						{ ShaderDataType::Vec3, "inPosition" },
-						{ ShaderDataType::Vec4, "inColor"    }
+						{ ShaderDataType::Vec4, "inColor" }
 					};
 				}
 
 				EnsureModelReady(dlg);
 
-				if (m_Context.sceneManager)
+				if (dlg.instantiateInScene && m_Context.sceneManager)
 					m_Context.sceneManager->AddGameObject(dlg.absolutePath);
 
 				keepOpen = false;

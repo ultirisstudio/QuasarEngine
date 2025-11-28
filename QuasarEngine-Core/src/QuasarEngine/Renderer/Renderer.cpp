@@ -30,6 +30,7 @@
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
+#include <limits>
 
 namespace QuasarEngine
 {
@@ -644,12 +645,14 @@ namespace QuasarEngine
 			{
 				glm::mat4 view;
 				glm::mat4 projection;
+
+				float pointSize;
+				float vertices[];
 			};
 
 			struct alignas(16) PointCloudObjectUniforms
 			{
 				glm::mat4 model;
-				float pointSize;
 			};
 
 			constexpr Shader::ShaderStageFlags PCStages =
@@ -657,14 +660,24 @@ namespace QuasarEngine
 				Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
 			pcDesc.globalUniforms = {
-				{"view",       Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(PointCloudGlobalUniforms, view),       0, 0, PCStages},
-				{"projection", Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(PointCloudGlobalUniforms, projection), 0, 0, PCStages},
+				{"view",		Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),	offsetof(PointCloudGlobalUniforms, view),       0, 0, PCStages},
+				{"projection",	Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),	offsetof(PointCloudGlobalUniforms, projection),	0, 0, PCStages},
+				{"pointSize",	Shader::ShaderUniformType::Float,	sizeof(float),		offsetof(PointCloudGlobalUniforms, pointSize),  0, 0, PCStages}
 			};
 
 			pcDesc.objectUniforms = {
-				{"model",     Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(PointCloudObjectUniforms, model),     1, 0, PCStages},
-				{"pointSize", Shader::ShaderUniformType::Float, sizeof(float),      offsetof(PointCloudObjectUniforms, pointSize), 1, 0, PCStages},
+				{"model",	Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),	offsetof(PointCloudObjectUniforms, model)}
 			};
+
+			const size_t ssboSize = std::numeric_limits<size_t>::max();
+
+			/*Shader::ShaderStorageBufferDesc verticesSB{};
+			verticesSB.name = "vertices_buffer";
+			verticesSB.size = ssboSize;
+			verticesSB.binding = 2;
+			verticesSB.stages = Shader::StageToBit(Shader::ShaderStageType::Vertex);
+
+			pcDesc.storageBuffers.push_back(verticesSB);*/
 
 			pcDesc.samplers = {};
 
@@ -1024,13 +1037,14 @@ namespace QuasarEngine
 
 		m_SceneData.m_PointCloudShader->Use();
 
+		float pointSize = 5.0f;
+
 		m_SceneData.m_PointCloudShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
 		m_SceneData.m_PointCloudShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
+		m_SceneData.m_PointCloudShader->SetUniform("pointSize", &pointSize, sizeof(float));
 
 		if (m_SceneData.m_PointCloudShader->UpdateGlobalState())
 		{
-			float pointSize = 10.0f;
-
 			for (auto [e, tr, mc, matc, mr] : group.each())
 			{
 				if (!mr.m_Rendered || !mc.HasMesh()) continue;
@@ -1044,7 +1058,8 @@ namespace QuasarEngine
 					model *= mc.GetLocalNodeTransform();
 
 				m_SceneData.m_PointCloudShader->SetUniform("model", &model, sizeof(glm::mat4));
-				m_SceneData.m_PointCloudShader->SetUniform("pointSize", &pointSize, sizeof(float));
+
+				//m_SceneData.m_PointCloudShader->SetStorageBuffer("vertices_buffer", mesh.GetVertices().data(), sizeof(float)* mesh.GetVertices().size());
 
 				if (!m_SceneData.m_PointCloudShader->UpdateObject(nullptr))
 					continue;

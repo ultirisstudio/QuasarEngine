@@ -882,4 +882,9 @@ namespace QuasarEngine
 
         return true;
     }
+
+    bool VulkanShader::SetStorageBuffer(const std::string& name, const void* data, size_t size)
+    {
+        return false;
+    }
 }

@@ -50,6 +50,11 @@ namespace QuasarEngine
 			s_RendererAPI->DrawElements(drawMode, count, firstIndex, baseVertex);
 		}
 
+		void DrawInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex = 0, int32_t baseVertex = 0)
+		{
+			s_RendererAPI->DrawInstanced(drawMode, count, instanceCount, firstIndex, baseVertex);
+		}
+
 		void EnableScissor(bool enable)
 		{
 			s_RendererAPI->EnableScissor(enable);

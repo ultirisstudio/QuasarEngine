@@ -20,6 +20,29 @@
 
 namespace QuasarEngine
 {
+	enum class ModelImportPreset
+	{
+		Custom = 0,
+		Full,
+		Static,
+		QuickPreview 
+	};
+
+	struct ModelImportDialogState
+	{
+		bool open = false;
+		bool requestOpen = false;
+
+		std::string absolutePath;
+		std::string assetId;
+		std::string extension;
+
+		ModelImportOptions options;
+
+		ModelImportPreset preset = ModelImportPreset::Full;
+		bool instantiateInScene = true;
+	};
+
 	class EditorViewport : public IEditorModule
 	{
 	public:
@@ -45,15 +68,6 @@ namespace QuasarEngine
 		bool ToggleButton(const char* label, bool active, ImVec2 size = ImVec2(0, 0));
 		void OverlayBackground(const ImVec2& min, const ImVec2& max, float rounding = 8.0f, float alpha = 0.35f);
 		void Tooltip(const char* text);
-
-		struct ModelImportDialogState
-		{
-			bool requestOpen = false;
-			bool open = false;
-			std::string absolutePath;
-			std::string assetId;
-			ModelImportOptions options{};
-		};
 
 		void OpenModelImportDialog(const std::string& filePath);
 		void DrawModelImportPopup();

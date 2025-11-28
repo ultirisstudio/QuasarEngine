@@ -30,6 +30,7 @@ namespace QuasarEngine
 
 		bool SetUniform(const std::string& name, void* data, size_t size) override;
 		bool SetTexture(const std::string& name, Texture* texture, SamplerType type) override;
+		bool SetStorageBuffer(const std::string& name, const void* data, size_t size) override;
 
 	private:
 		void ApplyPipelineStates();

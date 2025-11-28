@@ -18,8 +18,8 @@ namespace QuasarEngine
     class Mesh : public Asset
     {
     public:
-        Mesh(std::vector<float> vertices,
-            std::vector<unsigned int> indices,
+        Mesh(std::vector<float>& vertices,
+            std::vector<unsigned int>& indices,
             std::optional<BufferLayout> layout = std::nullopt,
             DrawMode drawMode = DrawMode::TRIANGLES,
             std::optional<MaterialSpecification> material = std::nullopt);
@@ -33,8 +33,8 @@ namespace QuasarEngine
 
         std::optional<MaterialSpecification> GetMaterial() const { return m_material; }
 
-        void GenerateMesh(std::vector<float> vertices,
-            std::vector<unsigned int> indices,
+        void GenerateMesh(std::vector<float>& vertices,
+            std::vector<unsigned int>& indices,
             std::optional<BufferLayout> layout = std::nullopt);
 
         glm::vec3 GetBoundingBoxSize() const { return m_boundingBoxSize; }
@@ -48,10 +48,15 @@ namespace QuasarEngine
             return m_drawMode == DrawMode::POINTS;
         }
 
-        const size_t& GetVerticesCount() const { return m_vertices.size(); }
-        const size_t& GetIndicesCount() const { return m_indices.size(); }
-        const std::vector<float>& GetVertices() const { return m_vertices; }
-        const std::vector<unsigned int>& GetIndices() const { return m_indices; }
+        void FreeCPUMemory();
+
+        const size_t& GetVerticesCount() const { return m_vertexCount; }
+        const size_t& GetIndicesCount() const { return m_indexCount; }
+
+        //const size_t& GetVerticesCount() const { return m_vertices.size(); }
+        //const size_t& GetIndicesCount() const { return m_indices.size(); }
+        std::vector<float>& GetVertices() { return m_vertices; }
+        std::vector<unsigned int>& GetIndices() { return m_indices; }
 
         bool HasSkinning() const { return m_hasSkinning; }
 
@@ -74,6 +79,9 @@ namespace QuasarEngine
 
         std::vector<float> m_vertices;
         std::vector<unsigned int> m_indices;
+
+        size_t m_vertexCount = 0;
+        size_t m_indexCount = 0;
 
         glm::vec3 m_boundingBoxSize{ 0 };
         glm::vec3 m_boundingBoxPosition{ 0 };

@@ -31,14 +31,14 @@ namespace QuasarEngine
         m_boundingBoxPosition = glm::vec3(minX, minY, minZ);
     }
 
-    Mesh::Mesh(std::vector<float> vertices,
-        std::vector<unsigned int> indices,
+    Mesh::Mesh(std::vector<float>& vertices,
+        std::vector<unsigned int>& indices,
         std::optional<BufferLayout> layout,
         DrawMode drawMode,
         std::optional<MaterialSpecification> material)
-        : m_drawMode(drawMode), m_vertices(vertices), m_indices(indices), m_material(material)
+        : m_drawMode(drawMode), m_material(std::move(material))
     {
-        GenerateMesh(std::move(vertices), std::move(indices), std::move(layout));
+        GenerateMesh(vertices, indices, std::move(layout));
     }
 
     Mesh::~Mesh()
@@ -53,21 +53,38 @@ namespace QuasarEngine
     void Mesh::draw() const
     {
         if (!m_vertexArray) return;
+
         m_vertexArray->Bind();
-        const uint32_t count = m_indexBuffer ? m_indexBuffer->GetCount() : 0u;
-        if (count == 0)
-            RenderCommand::Instance().DrawArrays(m_drawMode, static_cast<uint32_t>(m_vertices.size() / 11));
+
+        /*if (m_drawMode == DrawMode::POINTS)
+        {
+            RenderCommand::Instance().DrawInstanced(m_drawMode, m_indexCount == 0 ? static_cast<uint32_t>(m_vertexCount) : m_indexCount, 0);
+        }
         else
-            RenderCommand::Instance().DrawElements(m_drawMode, count);
+        {*/
+            if (m_indexCount == 0)
+                RenderCommand::Instance().DrawArrays(m_drawMode, static_cast<uint32_t>(m_vertexCount));
+            else
+                RenderCommand::Instance().DrawElements(m_drawMode, m_indexCount);
+        //}
     }
 
-    void Mesh::GenerateMesh(std::vector<float> vertices,
-        std::vector<unsigned int> indices,
+    void Mesh::GenerateMesh(std::vector<float>& vertices,
+        std::vector<unsigned int>& indices,
         std::optional<BufferLayout> layout)
     {
         m_vertexArray = VertexArray::Create();
 
-        m_vertexBuffer = VertexBuffer::Create(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)));
+        /*if (m_drawMode == DrawMode::POINTS)
+        {
+            std::vector<float> v = { 0.0f, 0.0f, 0.0f };
+			m_vertexBuffer = VertexBuffer::Create(v.data(), static_cast<uint32_t>(v.size() * sizeof(float)));
+        }
+        else
+        {*/
+            m_vertexBuffer = VertexBuffer::Create(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(float)));
+        //}
+
         if (layout.has_value()) m_vertexBuffer->SetLayout(layout.value());
         else {
             m_vertexBuffer->SetLayout({
@@ -80,14 +97,23 @@ namespace QuasarEngine
         }
         m_vertexArray->AddVertexBuffer(m_vertexBuffer);
 
-        m_indexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(unsigned int)));
-        m_vertexArray->SetIndexBuffer(m_indexBuffer);
+        //if (m_drawMode != DrawMode::POINTS)
+        //{
+            m_indexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(unsigned int)));
+            m_vertexArray->SetIndexBuffer(m_indexBuffer);
+        //}
+        
+		m_vertexCount = vertices.size() / m_vertexBuffer->GetLayout().GetStride();
+		m_indexCount = indices.size();
+
+        const uint32_t strideFloats = static_cast<uint32_t>(m_vertexBuffer->GetLayout().GetStride() / sizeof(float));
+        CalculateBoundingBoxSize(vertices, strideFloats ? strideFloats : 8u);
+
+        //std::vector<float>().swap(vertices);
+        //std::vector<unsigned int>().swap(indices);
 
         m_vertices = std::move(vertices);
         m_indices = std::move(indices);
-
-        const uint32_t strideFloats = static_cast<uint32_t>(m_vertexBuffer->GetLayout().GetStride() / sizeof(float));
-        CalculateBoundingBoxSize(m_vertices, strideFloats ? strideFloats : 8u);
 
         m_meshGenerated = true;
     }
@@ -139,5 +165,11 @@ namespace QuasarEngine
         m_vertices.clear();
         m_indices.clear();
         m_meshGenerated = false;
+    }
+
+    void Mesh::FreeCPUMemory()
+    {
+        //std::vector<float>().swap(m_vertices);
+        //std::vector<unsigned int>().swap(m_indices);
     }
 }

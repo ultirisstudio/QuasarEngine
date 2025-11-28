@@ -301,6 +301,11 @@ namespace QuasarEngine
         return true;
     }
 
+    bool DirectXShader::SetStorageBuffer(const std::string& name, const void* data, size_t size)
+    {
+        return false;
+    }
+
     void DirectXShader::ApplyPipelineStates()
     {
         auto& dx = DirectXContext::Context;

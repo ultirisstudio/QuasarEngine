@@ -63,6 +63,8 @@ namespace QuasarEngine
         const ModelNode* GetRoot() const { return m_root.get(); }
         ModelNode* GetRoot() { return m_root.get(); }
 
+        void FreeCPUMeshData();
+
         void ForEachInstance(const std::function<void(const MeshInstance&, const glm::mat4& nodeLocal, const std::string& nodePath)>& fn) const;
 
         const std::unordered_map<std::string, BoneInfo>& GetBoneInfoMap() const { return m_boneInfoMap; }

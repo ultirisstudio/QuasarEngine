@@ -222,8 +222,8 @@ namespace QuasarEngine
             if (!opt || opt->buildMeshes) {
                 if (auto it = m_meshLibrary.find(key); it == m_meshLibrary.end()) {
                     meshAsset = std::make_shared<Mesh>(
-                        geom.vertices,
-                        geom.indices,
+                        std::move(geom.vertices),
+                        std::move(geom.indices),
                         opt ? opt->vertexLayout : std::optional<BufferLayout>{},
                         opt ? opt->drawMode : DrawMode::TRIANGLES,
                         std::nullopt
@@ -438,6 +438,12 @@ namespace QuasarEngine
                 st.push({ ch.get(), cur.path + "/" + ch->name });
             }
         }
+    }
+
+    void Model::FreeCPUMeshData()
+    {
+        for (auto& [key, mesh] : m_meshLibrary)
+            mesh->FreeCPUMemory();
     }
 
     std::shared_ptr<Mesh> Model::FindMeshByInstanceName(const std::string& instanceName) const

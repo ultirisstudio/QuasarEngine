@@ -81,6 +81,13 @@ namespace QuasarEngine
             ShaderStageFlags stages;
         };
 
+        struct ShaderStorageBufferDesc {
+            std::string      name;
+            size_t           size;
+            uint32_t         binding;
+            ShaderStageFlags stages; 
+        };
+
         struct ShaderSamplerDesc {
             std::string      name;
             uint32_t         set;
@@ -121,6 +128,7 @@ namespace QuasarEngine
             std::vector<ShaderUniformDesc>   objectUniforms;
             std::vector<ShaderSamplerDesc>   samplers;
             std::vector<ShaderPushConstantDesc> pushConstants;
+            std::vector<ShaderStorageBufferDesc> storageBuffers;
 
             bool depthWriteEnable = true;
             bool depthTestEnable = true;
@@ -153,6 +161,8 @@ namespace QuasarEngine
 		virtual bool SetUniform(const std::string& name, void* data, size_t size) = 0;
 
         virtual bool SetTexture(const std::string& name, Texture* texture, SamplerType type = SamplerType::Sampler2D) = 0;
+
+        virtual bool SetStorageBuffer(const std::string& name, const void* data, size_t size) = 0;
 
 		virtual void Use() = 0;
 		virtual void Unuse() = 0;
