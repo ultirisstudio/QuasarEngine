@@ -226,7 +226,7 @@ void main()
 
     vec3 N = getNormal();
     vec3 V = normalize(global_ubo.camera_position - inWorldPos);
-    vec3 R = reflect(-V, N); 
+    vec3 R = reflect(-V, N);
 	
     vec3 F0 = mix(vec3(0.04), albedo_color, metallic);
 	

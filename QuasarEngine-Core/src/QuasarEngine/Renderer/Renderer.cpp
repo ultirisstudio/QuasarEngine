@@ -15,22 +15,18 @@
 
 #include <QuasarEngine/Tools/Math.h>
 
-#include <QuasarEngine/UI/UIContainer.h>
-#include <QuasarEngine/UI/UIText.h>
-#include <QuasarEngine/UI/UIButton.h>
-#include <QuasarEngine/UI/UITooltipLayer.h>
 #include <QuasarEngine/UI/UISystem.h>
-#include <QuasarEngine/UI/UITextInput.h>
-#include <QuasarEngine/UI/UICheckbox.h>
-#include <QuasarEngine/UI/UISlider.h>
-#include <QuasarEngine/UI/UIProgressBar.h>
-#include <QuasarEngine/UI/UIMenu.h>
-#include <QuasarEngine/UI/UITabBar.h>
 
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
 #include <QuasarEngine/Physic/PhysicEngine.h>
 #include <limits>
+
+#include <QuasarEngine/Renderer/RenderContext.h>
+#include <QuasarEngine/Renderer/RenderObject.h>
+#include <QuasarEngine/Renderer/PBRStaticTechnique.h>
+#include <QuasarEngine/Renderer/PBRSkinTechnique.h>
+#include <QuasarEngine/Renderer/TerrainTechnique.h>
 
 namespace QuasarEngine
 {
@@ -57,150 +53,10 @@ namespace QuasarEngine
 			}
 			};
 
-		Shader::ShaderDescription desc;
-
 		const auto api = RendererAPI::GetAPI();
 		const std::string basePath = (api == RendererAPI::API::Vulkan)
 			? "Assets/Shaders/vk/spv/"
 			: "Assets/Shaders/gl/";
-
-		const std::string name = "basic";
-
-		std::string vertPath = basePath + name + extFor(api, Shader::ShaderStageType::Vertex);
-		std::string fragPath = basePath + name + extFor(api, Shader::ShaderStageType::Fragment);
-
-		desc.modules = {
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::Vertex,
-				vertPath,
-				{
-					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
-					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
-					{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""},
-					{3, Shader::ShaderIOType::Vec3, "inTangent",  true, ""},
-					{4, Shader::ShaderIOType::Vec4, "inColor",    true, ""}
-				}
-			},
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::Fragment,
-				fragPath,
-				{}
-			}
-		};
-
-		struct alignas(16) GlobalUniforms
-		{
-			glm::mat4 view;
-			glm::mat4 projection;
-			glm::vec3 camera_position;
-
-			int usePointLight;
-			int useDirLight;
-
-			int prefilterLevels;
-
-			PointLight pointLights[4];
-			DirectionalLight dirLights[4];
-
-			glm::mat4 dirLightVP[4];
-			float dirShadowBias;
-			int PCF;
-			float shadowMapSize;
-		};
-		static_assert(offsetof(GlobalUniforms, pointLights) % 16 == 0, "pointLights offset must be 16-aligned");
-		static_assert(offsetof(GlobalUniforms, dirLights) % 16 == 0, "dirLights offset must be 16-aligned");
-
-		static_assert(sizeof(GlobalUniforms) % 16 == 0, "GlobalUniforms must be 16-aligned");
-
-		constexpr Shader::ShaderStageFlags globalUniformsFlags = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
-
-		desc.globalUniforms = {
-			{"view",			Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),				offsetof(GlobalUniforms, view), 0, 0, globalUniformsFlags},
-			{"projection",		Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),				offsetof(GlobalUniforms, projection), 0, 0, globalUniformsFlags},
-			{"camera_position", Shader::ShaderUniformType::Vec3,	sizeof(glm::vec3),				offsetof(GlobalUniforms, camera_position), 0, 0, globalUniformsFlags},
-			
-			{"usePointLight",	Shader::ShaderUniformType::Int,		sizeof(int),					offsetof(GlobalUniforms, usePointLight), 0, 0, globalUniformsFlags},
-			{"useDirLight",		Shader::ShaderUniformType::Int,		sizeof(int),					offsetof(GlobalUniforms, useDirLight), 0, 0, globalUniformsFlags},
-
-			{"prefilterLevels",	Shader::ShaderUniformType::Int,		sizeof(int),					offsetof(GlobalUniforms, prefilterLevels), 0, 0, globalUniformsFlags},
-			
-			{"pointLights",		Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4,			offsetof(GlobalUniforms, pointLights), 0, 0, globalUniformsFlags},
-			{"dirLights",		Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4,	offsetof(GlobalUniforms, dirLights), 0, 0, globalUniformsFlags},
-
-			{"dirLightVP",		Shader::ShaderUniformType::Unknown, sizeof(glm::mat4) * 4,			offsetof(GlobalUniforms, dirLightVP),    0, 0, globalUniformsFlags},
-			{"dirShadowBias",	Shader::ShaderUniformType::Float,   sizeof(float),					offsetof(GlobalUniforms, dirShadowBias),0, 0, globalUniformsFlags},
-			{"PCF",				Shader::ShaderUniformType::Int,     sizeof(int),					offsetof(GlobalUniforms, PCF),          0, 0, globalUniformsFlags},
-			{"shadowMapSize",	Shader::ShaderUniformType::Float,	sizeof(float),					offsetof(GlobalUniforms, shadowMapSize),0, 0, globalUniformsFlags},
-		};
-
-		struct alignas(16) ObjectUniforms {
-			glm::mat4 model;
-
-			glm::vec4 albedo;
-
-			float roughness;
-			float metallic;
-			float ao;
-
-			int has_albedo_texture;
-			int has_normal_texture;
-			int has_roughness_texture;
-			int has_metallic_texture;
-			int has_ao_texture;
-		};
-
-		static_assert(sizeof(ObjectUniforms) % 16 == 0, "ObjectUniforms must be 16-aligned");
-
-
-		static_assert(sizeof(ObjectUniforms) % 16 == 0, "ObjectUniforms must be 16-aligned");
-
-		constexpr Shader::ShaderStageFlags objectUniformsFlags =
-			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
-			Shader::StageToBit(Shader::ShaderStageType::Fragment);
-
-		desc.objectUniforms = {
-			{"model",					Shader::ShaderUniformType::Mat4,	sizeof(glm::mat4),  offsetof(ObjectUniforms, model),					1, 0, objectUniformsFlags},
-
-			{"albedo",					Shader::ShaderUniformType::Vec4,	sizeof(glm::vec4),  offsetof(ObjectUniforms, albedo),					1, 0, objectUniformsFlags},
-
-			{"roughness",				Shader::ShaderUniformType::Float,	sizeof(float),      offsetof(ObjectUniforms, roughness),				1, 0, objectUniformsFlags},
-			{"metallic",				Shader::ShaderUniformType::Float,	sizeof(float),      offsetof(ObjectUniforms, metallic),					1, 0, objectUniformsFlags},
-			{"ao",						Shader::ShaderUniformType::Float,	sizeof(float),      offsetof(ObjectUniforms, ao),						1, 0, objectUniformsFlags},
-
-			{"has_albedo_texture",		Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_albedo_texture),		1, 0, objectUniformsFlags},
-			{"has_normal_texture",		Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_normal_texture),		1, 0, objectUniformsFlags},
-			{"has_roughness_texture",	Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_roughness_texture),	1, 0, objectUniformsFlags},
-			{"has_metallic_texture",	Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_metallic_texture),		1, 0, objectUniformsFlags},
-			{"has_ao_texture",			Shader::ShaderUniformType::Int,		sizeof(int),		offsetof(ObjectUniforms, has_ao_texture),			1, 0, objectUniformsFlags}
-		};
-
-		desc.samplers = {
-			{"albedo_texture",   1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture",   1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture",1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture",       1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"irradiance_map",   1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"prefilter_map",    1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"brdf_lut",         1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"dirShadow0",       1, 9,  Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"dirShadow1",       1, 10, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"dirShadow2",       1, 11, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"dirShadow3",       1, 12, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-		};
-
-		desc.blendMode = Shader::BlendMode::None;
-		desc.cullMode = Shader::CullMode::Back;
-		desc.fillMode = Shader::FillMode::Solid;
-		desc.depthFunc = Shader::DepthFunc::Less;
-		desc.depthTestEnable = true;
-		desc.depthWriteEnable = true;
-		desc.topology = Shader::PrimitiveTopology::TriangleList;
-		desc.enableDynamicViewport = true;
-		desc.enableDynamicScissor = true;
-		desc.enableDynamicLineWidth = false;
-
-		m_SceneData.m_Shader = Shader::Create(desc);
 
 		/*Shader::ShaderDescription phyDebDesc;
 
@@ -277,272 +133,6 @@ namespace QuasarEngine
 
 		m_SceneData.m_PhysicDebugShader = Shader::Create(phyDebDesc);*/
 
-		Shader::ShaderDescription terrainDesc;
-
-		terrainDesc.cullMode = Shader::CullMode::Back;
-
-		const std::string tName = "gpuheight";
-
-		std::string tVertPath = basePath + tName + extFor(api, Shader::ShaderStageType::Vertex);
-		std::string tTcsPath = basePath + tName + extFor(api, Shader::ShaderStageType::TessControl);
-		std::string tTesPath = basePath + tName + extFor(api, Shader::ShaderStageType::TessEval);
-		std::string tFragPath = basePath + tName + extFor(api, Shader::ShaderStageType::Fragment);
-
-		terrainDesc.modules = {
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::Vertex,
-				tVertPath,
-				{
-					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
-					{1, Shader::ShaderIOType::Vec3, "inNormal", true, ""},
-					{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""}
-				}
-			},
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::TessControl,
-				tTcsPath,
-				{}
-			},
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::TessEval,
-				tTesPath,
-				{}
-			},
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::Fragment,
-				tFragPath,
-				{}
-			}
-		};
-
-		struct alignas(16) TerrainGlobalUniforms {
-			glm::mat4 view;
-			glm::mat4 projection;
-			glm::vec3 camera_position;
-
-			int usePointLight;
-			int useDirLight;
-
-			PointLight pointLights[4];
-			DirectionalLight dirLights[4];
-		};
-		static_assert(offsetof(TerrainGlobalUniforms, pointLights) % 16 == 0, "pointLights offset must be 16-aligned");
-		static_assert(offsetof(TerrainGlobalUniforms, dirLights) % 16 == 0, "dirLights offset must be 16-aligned");
-
-		constexpr Shader::ShaderStageFlags TerrainGlobalStages =
-			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
-			Shader::StageToBit(Shader::ShaderStageType::TessControl) |
-			Shader::StageToBit(Shader::ShaderStageType::TessEval) |
-			Shader::StageToBit(Shader::ShaderStageType::Fragment);
-
-		terrainDesc.globalUniforms = {
-			{"view",            Shader::ShaderUniformType::Mat4, sizeof(glm::mat4),                     offsetof(TerrainGlobalUniforms, view),            0, 0, TerrainGlobalStages},
-			{"projection",      Shader::ShaderUniformType::Mat4, sizeof(glm::mat4),                     offsetof(TerrainGlobalUniforms, projection),      0, 0, TerrainGlobalStages},
-			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3),                     offsetof(TerrainGlobalUniforms, camera_position), 0, 0, TerrainGlobalStages},
-
-			{"usePointLight",   Shader::ShaderUniformType::Int,  sizeof(int),                           offsetof(TerrainGlobalUniforms, usePointLight),   0, 0, TerrainGlobalStages},
-			{"useDirLight",     Shader::ShaderUniformType::Int,  sizeof(int),                           offsetof(TerrainGlobalUniforms, useDirLight),     0, 0, TerrainGlobalStages},
-
-			{"pointLights",     Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4,             offsetof(TerrainGlobalUniforms, pointLights),     0, 0, TerrainGlobalStages},
-			{"dirLights",       Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4,       offsetof(TerrainGlobalUniforms, dirLights),       0, 0, TerrainGlobalStages},
-		};
-
-		struct alignas(16) TerrainObjectUniforms {
-			glm::mat4 model;
-
-			glm::vec4 albedo;
-			float roughness;
-			float metallic;
-			float ao;
-
-			int has_albedo_texture;
-			int has_normal_texture;
-			int has_roughness_texture;
-			int has_metallic_texture;
-			int has_ao_texture;
-
-			float heightMult;
-			int   uTextureScale;
-		};
-
-		constexpr Shader::ShaderStageFlags TOFlags =
-			Shader::StageToBit(Shader::ShaderStageType::Vertex) |
-			Shader::StageToBit(Shader::ShaderStageType::TessControl) |
-			Shader::StageToBit(Shader::ShaderStageType::TessEval) |
-			Shader::StageToBit(Shader::ShaderStageType::Fragment);
-
-		terrainDesc.objectUniforms = {
-			{"model",               Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(TerrainObjectUniforms, model),               1, 0, TOFlags},
-
-			{"albedo",              Shader::ShaderUniformType::Vec4,  sizeof(glm::vec4),  offsetof(TerrainObjectUniforms, albedo),              1, 0, TOFlags},
-			{"roughness",           Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, roughness),           1, 0, TOFlags},
-			{"metallic",            Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, metallic),            1, 0, TOFlags},
-			{"ao",                  Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, ao),                  1, 0, TOFlags},
-
-			{"has_albedo_texture",  Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_albedo_texture),  1, 0, TOFlags},
-			{"has_normal_texture",  Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_normal_texture),  1, 0, TOFlags},
-			{"has_roughness_texture",Shader::ShaderUniformType::Int,  sizeof(int),        offsetof(TerrainObjectUniforms, has_roughness_texture),1, 0, TOFlags},
-			{"has_metallic_texture",Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_metallic_texture),1, 0, TOFlags},
-			{"has_ao_texture",      Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, has_ao_texture),      1, 0, TOFlags},
-
-			{"heightMult",          Shader::ShaderUniformType::Float, sizeof(float),      offsetof(TerrainObjectUniforms, heightMult),          1, 0, TOFlags},
-			{"uTextureScale",       Shader::ShaderUniformType::Int,   sizeof(int),        offsetof(TerrainObjectUniforms, uTextureScale),       1, 0, TOFlags},
-		};
-
-		terrainDesc.samplers = {
-			{"heightMap",        1, 1, Shader::StageToBit(Shader::ShaderStageType::TessEval)},
-
-			{"albedo_texture",   1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture",   1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture",1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"metallic_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture",       1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-		};
-
-		terrainDesc.blendMode = Shader::BlendMode::None;
-		terrainDesc.cullMode = Shader::CullMode::Back;
-		terrainDesc.fillMode = Shader::FillMode::Solid;
-		terrainDesc.depthFunc = Shader::DepthFunc::Less;
-		terrainDesc.depthTestEnable = true;
-		terrainDesc.depthWriteEnable = true;
-
-		terrainDesc.topology = Shader::PrimitiveTopology::PatchList;
-
-		terrainDesc.patchControlPoints = 4;
-
-		terrainDesc.enableDynamicViewport = true;
-		terrainDesc.enableDynamicScissor = true;
-
-		m_SceneData.m_TerrainShader = Shader::Create(terrainDesc);
-
-		Shader::ShaderDescription skinnedDesc;
-
-		const std::string sName = "basic_anim";
-
-		std::string sVertPath = basePath + sName + extFor(api, Shader::ShaderStageType::Vertex);
-		std::string sFragPath = basePath + sName + extFor(api, Shader::ShaderStageType::Fragment);
-
-		skinnedDesc.modules = {
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::Vertex,
-				sVertPath,
-				{
-					{0, Shader::ShaderIOType::Vec3,  "inPosition", true, ""},
-					{1, Shader::ShaderIOType::Vec3,  "inNormal",   true, ""},
-					{2, Shader::ShaderIOType::Vec2,  "inTexCoord", true, ""},
-					{3, Shader::ShaderIOType::IVec4, "inBoneIds",  true, ""},
-					{4, Shader::ShaderIOType::Vec4,  "inWeights",  true, ""},
-				}
-			},
-			Shader::ShaderModuleInfo{
-				Shader::ShaderStageType::Fragment,
-				sFragPath,
-				{}
-			}
-		};
-
-		struct alignas(16) SkinnedGlobalUniforms {
-			glm::mat4 view;
-			glm::mat4 projection;
-			glm::vec3 camera_position;
-
-			int usePointLight;
-			int useDirLight;
-
-			int prefilterLevels;
-
-			PointLight pointLights[4];
-			DirectionalLight dirLights[4];
-		};
-
-		constexpr Shader::ShaderStageFlags SkinnedGlobalStages = Shader::StageToBit(Shader::ShaderStageType::Vertex) | Shader::StageToBit(Shader::ShaderStageType::Fragment);
-
-		skinnedDesc.globalUniforms = {
-			{"view", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, view), 0, 0, SkinnedGlobalStages},
-			{"projection", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedGlobalUniforms, projection), 0, 0, SkinnedGlobalStages},
-			{"camera_position", Shader::ShaderUniformType::Vec3, sizeof(glm::vec3), offsetof(SkinnedGlobalUniforms, camera_position), 0, 0, SkinnedGlobalStages},
-
-			{"usePointLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, usePointLight), 0, 0, SkinnedGlobalStages},
-			{"useDirLight", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, useDirLight), 0, 0, SkinnedGlobalStages},
-
-			{"prefilterLevels", Shader::ShaderUniformType::Int, sizeof(int), offsetof(SkinnedGlobalUniforms, prefilterLevels), 0, 0, SkinnedGlobalStages},
-
-			{"pointLights", Shader::ShaderUniformType::Unknown, sizeof(PointLight) * 4, offsetof(SkinnedGlobalUniforms, pointLights), 0, 0, SkinnedGlobalStages},
-			{"dirLights", Shader::ShaderUniformType::Unknown, sizeof(DirectionalLight) * 4, offsetof(SkinnedGlobalUniforms, dirLights), 0, 0, SkinnedGlobalStages}
-		};
-
-		struct alignas(16) SkinnedObjectUniforms {
-			glm::mat4 model;
-
-			glm::vec4 albedo;
-			float roughness;
-			float metallic;
-			float ao;
-
-			int has_albedo_texture;
-			int has_normal_texture;
-			int has_roughness_texture;
-			int has_metallic_texture;
-			int has_ao_texture;
-
-			glm::mat4 finalBonesMatrices[QE_MAX_BONES];
-		};
-
-		skinnedDesc.objectUniforms = {
-			{"model",			Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkinnedObjectUniforms, model), 1, 0, SkinnedGlobalStages},
-
-			{"albedo",	Shader::ShaderUniformType::Vec4, sizeof(glm::vec4), offsetof(SkinnedObjectUniforms, albedo), 1, 0, SkinnedGlobalStages},
-			{"roughness",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, roughness), 1, 0, SkinnedGlobalStages},
-			{"metallic",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, metallic), 1, 0, SkinnedGlobalStages},
-			{"ao",	Shader::ShaderUniformType::Float,	sizeof(float), offsetof(SkinnedObjectUniforms, ao), 1, 0, SkinnedGlobalStages},
-
-			{"has_albedo_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_albedo_texture), 1, 0, SkinnedGlobalStages},
-			{"has_normal_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_normal_texture), 1, 0, SkinnedGlobalStages},
-			{"has_roughness_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_roughness_texture), 1, 0, SkinnedGlobalStages},
-			{"has_metallic_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_metallic_texture), 1, 0, SkinnedGlobalStages},
-			{"has_ao_texture",	Shader::ShaderUniformType::Int,	sizeof(int), offsetof(SkinnedObjectUniforms, has_ao_texture), 1, 0, SkinnedGlobalStages},
-
-			{"finalBonesMatrices",  Shader::ShaderUniformType::Unknown,sizeof(glm::mat4) * QE_MAX_BONES, offsetof(SkinnedObjectUniforms, finalBonesMatrices),  1, 0, SkinnedGlobalStages},
-		};
-
-		skinnedDesc.samplers = {
-			{"albedo_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"normal_texture", 1, 2, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"roughness_texture", 1, 3, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"metallic_texture", 1, 4, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"ao_texture", 1, 5, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-
-			{"irradiance_map", 1, 6, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"prefilter_map", 1, 7, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-			{"brdf_lut", 1, 8, Shader::StageToBit(Shader::ShaderStageType::Fragment)},
-		};
-
-		skinnedDesc.blendMode = Shader::BlendMode::None;
-		skinnedDesc.cullMode = Shader::CullMode::Back;
-		skinnedDesc.fillMode = Shader::FillMode::Solid;
-		skinnedDesc.depthFunc = Shader::DepthFunc::Less;
-		skinnedDesc.depthTestEnable = true;
-		skinnedDesc.depthWriteEnable = true;
-		skinnedDesc.topology = Shader::PrimitiveTopology::TriangleList;
-		skinnedDesc.enableDynamicViewport = true;
-		skinnedDesc.enableDynamicScissor = true;
-
-		m_SceneData.m_SkinnedShader = Shader::Create(skinnedDesc);
-
-		for (int i = 0; i < QE_MAX_BONES; ++i)
-			m_SceneData.m_IdentityBones[i] = glm::mat4(1.0f);
-
-		/*m_SceneData.m_Skybox = BasicSkybox::CreateBasicSkybox();
-
-		m_SceneData.m_Skybox->LoadCubemap({
-			"Assets/Textures/Skybox/right.jpg",   // +X
-			"Assets/Textures/Skybox/left.jpg",    // -X
-			"Assets/Textures/Skybox/top.jpg",     // +Y
-			"Assets/Textures/Skybox/bottom.jpg",  // -Y
-			"Assets/Textures/Skybox/front.jpg",   // +Z
-			"Assets/Textures/Skybox/back.jpg"     // -Z
-		});*/
-
 		SkyboxHDR::Settings skyboxSettings;
 		skyboxSettings.hdrPath = "Assets/HDR/kloofendal_48d_partly_cloudy_puresky_4k.hdr";
 		m_SceneData.m_SkyboxHDR = std::make_shared<SkyboxHDR>(skyboxSettings);
@@ -555,70 +145,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_UI = std::make_unique<UISystem>();
 
-		{
-			FramebufferSpecification s{};
-			s.Width = s.Height = m_SceneData.m_DirShadow.mapSize;
-			s.Attachments = { FramebufferTextureSpecification{FramebufferTextureFormat::DEPTH24} };
-			s.Samples = 1;
-			s.DepthAsTexture = true;
-
-			for (int i = 0; i < 4; ++i)
-				m_SceneData.m_DirShadowFBO[i] = Framebuffer::Create(s);
-		}
-
-		{
-			Shader::ShaderDescription sh{};
-
-			std::string v = basePath + "shadow_dir" + extFor(api, Shader::ShaderStageType::Vertex);
-			std::string f = basePath + "shadow_dir" + extFor(api, Shader::ShaderStageType::Fragment);
-
-			sh.modules = {
-				Shader::ShaderModuleInfo{
-					Shader::ShaderStageType::Vertex,
-					v,
-					{
-						{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
-						{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
-						{2, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""},
-					}
-				},
-				Shader::ShaderModuleInfo{
-					Shader::ShaderStageType::Fragment,
-					f,
-					{}
-				}
-			};
-
-			struct alignas(16) DepthGlobal { glm::mat4 lightVP; };
-			struct alignas(16) DepthObject { glm::mat4 model; };
-
-			constexpr Shader::ShaderStageFlags Stages =
-				Shader::StageToBit(Shader::ShaderStageType::Vertex) |
-				Shader::StageToBit(Shader::ShaderStageType::Fragment);
-
-			sh.globalUniforms = {
-				{"lightVP", Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(DepthGlobal, lightVP), 0, 0, Stages}
-			};
-
-			sh.objectUniforms = {
-				{"model",  Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(DepthObject, model),   1, 0, Stages}
-			};
-
-			sh.blendMode = Shader::BlendMode::None;
-			sh.cullMode = Shader::CullMode::Back;
-			sh.fillMode = Shader::FillMode::Solid;
-			sh.depthFunc = Shader::DepthFunc::Less;
-			sh.depthTestEnable = true;
-			sh.depthWriteEnable = true;
-			sh.topology = Shader::PrimitiveTopology::TriangleList;
-			sh.enableDynamicViewport = true;
-			sh.enableDynamicScissor = true;
-			sh.enableDynamicLineWidth = false;
-
-			m_SceneData.m_ShadowDir_Static = Shader::Create(sh);
-		}
-
-		{
+		/* {
 			Shader::ShaderDescription pcDesc;
 
 			const std::string pcName = "point_cloud";
@@ -671,13 +198,13 @@ namespace QuasarEngine
 
 			const size_t ssboSize = std::numeric_limits<size_t>::max();
 
-			/*Shader::ShaderStorageBufferDesc verticesSB{};
-			verticesSB.name = "vertices_buffer";
-			verticesSB.size = ssboSize;
-			verticesSB.binding = 2;
-			verticesSB.stages = Shader::StageToBit(Shader::ShaderStageType::Vertex);
+			//Shader::ShaderStorageBufferDesc verticesSB{};
+			//verticesSB.name = "vertices_buffer";
+			//verticesSB.size = ssboSize;
+			//verticesSB.binding = 2;
+			//verticesSB.stages = Shader::StageToBit(Shader::ShaderStageType::Vertex);
 
-			pcDesc.storageBuffers.push_back(verticesSB);*/
+			//pcDesc.storageBuffers.push_back(verticesSB);
 
 			pcDesc.samplers = {};
 
@@ -694,18 +221,14 @@ namespace QuasarEngine
 			pcDesc.enableDynamicLineWidth = false;
 
 			m_SceneData.m_PointCloudShader = Shader::Create(pcDesc);
-		}
+		}*/
 	}
 
 	void Renderer::Shutdown()
 	{
-		//m_SceneData.m_Skybox.reset();
 		m_SceneData.m_SkyboxHDR.reset();
-		m_SceneData.m_Shader.reset();
 		//m_SceneData.m_PhysicDebugShader.reset();
-		m_SceneData.m_SkinnedShader.reset();
-		m_SceneData.m_TerrainShader.reset();
-		m_SceneData.m_PointCloudShader.reset();
+		//m_SceneData.m_PointCloudShader.reset();
 		m_SceneData.m_UI.reset();
 		m_SceneData.m_ScriptSystem.reset();
 	}
@@ -716,326 +239,130 @@ namespace QuasarEngine
 	}
 
 	void Renderer::Render(BaseCamera& camera)
-	{		
-		auto FindAnimatorForEntity = [&](Entity e) -> AnimationComponent*
-			{
-				if (e.HasComponent<AnimationComponent>())
-					return &e.GetComponent<AnimationComponent>();
+	{
+		RenderContext ctx;
+		ctx.view = camera.getViewMatrix();
+		ctx.projection = camera.getProjectionMatrix();
+		ctx.cameraPosition = camera.GetPosition();
 
-				if (e.HasComponent<HierarchyComponent>()) {
-					const auto& h = e.GetComponent<HierarchyComponent>();
-					if (h.m_Parent != UUID::Null()) {
-						if (auto parentOpt = m_SceneData.m_Scene->GetEntityByUUID(h.m_Parent)) {
-							if (parentOpt->HasComponent<AnimationComponent>())
-								return &parentOpt->GetComponent<AnimationComponent>();
-						}
-					}
-				}
-				return nullptr;
-			};
+		ctx.numPointLights = m_SceneData.nPts;
+		ctx.numDirLights = m_SceneData.nDirs;
+		ctx.pointLights = m_SceneData.m_PointsBuffer.data();
+		ctx.dirLights = m_SceneData.m_DirectionalsBuffer.data();
 
-		const glm::mat4 VP = camera.getProjectionMatrix() * camera.getViewMatrix();
-		Math::Frustum frustum = Math::CalculateFrustum(VP);
-
-		glm::mat4 viewMatrix = camera.getViewMatrix();
-		glm::mat4 projectionMatrix = camera.getProjectionMatrix();
-
-		int pcf = m_SceneData.m_DirShadow.pcfRadius;
-		float size = float(m_SceneData.m_DirShadow.mapSize);
-
-		m_SceneData.m_Shader->Use();
-
-		//int totalEntity = 0;
-		//int entityDraw = 0;
-
-		m_SceneData.m_Shader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
-		m_SceneData.m_Shader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
-		m_SceneData.m_Shader->SetUniform("camera_position", &camera.GetPosition(), sizeof(glm::vec3));
-
-		m_SceneData.m_Shader->SetUniform("prefilterLevels", &m_SceneData.m_SkyboxHDR->GetSettings().prefilterMipLevels, sizeof(int));
-
-		m_SceneData.m_Shader->SetUniform("usePointLight", &m_SceneData.nPts, sizeof(int));
-		m_SceneData.m_Shader->SetUniform("useDirLight", &m_SceneData.nDirs, sizeof(int));
-
-		m_SceneData.m_Shader->SetUniform("pointLights", m_SceneData.m_PointsBuffer.data(), sizeof(PointLight) * 4);
-		m_SceneData.m_Shader->SetUniform("dirLights", m_SceneData.m_DirectionalsBuffer.data(), sizeof(DirectionalLight) * 4);
-
-		m_SceneData.m_Shader->SetUniform("dirShadowBias", &m_SceneData.m_DirShadow.bias, sizeof(float));
-		m_SceneData.m_Shader->SetUniform("PCF", &pcf, sizeof(int));
-		m_SceneData.m_Shader->SetUniform("shadowMapSize", &size, sizeof(float));
-		m_SceneData.m_Shader->SetUniform("dirLightVP", m_SceneData.m_DirLightVP.data(), sizeof(glm::mat4) * 4);
-
-		if (!m_SceneData.m_Shader->UpdateGlobalState())
-		{
-			return;
-		}
+		ctx.scene = m_SceneData.m_Scene;
+		ctx.skybox = m_SceneData.m_SkyboxHDR.get();
 
 		auto& registry = m_SceneData.m_Scene->GetRegistry()->GetRegistry();
+		auto group = registry.group<TransformComponent, MeshComponent,
+			MaterialComponent, MeshRendererComponent>();
 
-		auto group = registry.group<
-			TransformComponent,
-			MeshComponent,
-			MaterialComponent,
-			MeshRendererComponent
-		>();
-
-		for (auto [e, tr, mc, matc, mr] : group.each())
-		{
-			if (!mr.m_Rendered || !mc.HasMesh()) continue;
-
-			if (mc.GetMesh().HasSkinning()) continue;
-			if (mc.GetMesh().IsCloudPoint()) continue;
-
-			glm::mat4 model = tr.GetGlobalTransform();
-			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
-
-			//totalEntity++;
-
-			if (!mc.GetMesh().IsVisible(frustum, model)) {
-				//continue;
-			}
-
-			//entityDraw++;
-
-			Material& material = matc.GetMaterial();
-
-			m_SceneData.m_Shader->SetUniform("model", &model, sizeof(glm::mat4));
-
-			m_SceneData.m_Shader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
-			float rough = material.GetRoughness();
-			float metal = material.GetMetallic();
-			float ao = material.GetAO();
-			m_SceneData.m_Shader->SetUniform("roughness", &rough, sizeof(float));
-			m_SceneData.m_Shader->SetUniform("metallic", &metal, sizeof(float));
-			m_SceneData.m_Shader->SetUniform("ao", &ao, sizeof(float));
-
-			int hasA = material.HasTexture(TextureType::Albedo) ? 1 : 0;
-			int hasN = material.HasTexture(TextureType::Normal) ? 1 : 0;
-			int hasR = material.HasTexture(TextureType::Roughness) ? 1 : 0;
-			int hasM = material.HasTexture(TextureType::Metallic) ? 1 : 0;
-			int hasO = material.HasTexture(TextureType::AO) ? 1 : 0;
-
-			m_SceneData.m_Shader->SetUniform("has_albedo_texture", &hasA, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_normal_texture", &hasN, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_roughness_texture", &hasR, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_metallic_texture", &hasM, sizeof(int));
-			m_SceneData.m_Shader->SetUniform("has_ao_texture", &hasO, sizeof(int));
-
-			m_SceneData.m_Shader->SetTexture("albedo_texture", material.GetTexture(TextureType::Albedo));
-			m_SceneData.m_Shader->SetTexture("normal_texture", material.GetTexture(TextureType::Normal));
-			m_SceneData.m_Shader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness));
-			m_SceneData.m_Shader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic));
-			m_SceneData.m_Shader->SetTexture("ao_texture", material.GetTexture(TextureType::AO));
-
-			m_SceneData.m_Shader->SetTexture("irradiance_map", m_SceneData.m_SkyboxHDR->GetIrradianceMap().get());
-			m_SceneData.m_Shader->SetTexture("prefilter_map", m_SceneData.m_SkyboxHDR->GetPrefilterMap().get());
-			m_SceneData.m_Shader->SetTexture("brdf_lut", m_SceneData.m_SkyboxHDR->GetBrdfLUT().get());
-
-			for (int i = 0; i < m_SceneData.nDirs; ++i) {
-				auto depthTex = m_SceneData.m_DirShadowFBO[i]->GetDepthAttachmentTexture();
-				if (depthTex) {
-					std::string name = "dirShadow" + std::to_string(i);
-					m_SceneData.m_Shader->SetTexture(name, depthTex.get());
-				}
-			}
-
-			if (!m_SceneData.m_Shader->UpdateObject(&material)) continue;
-
-			mc.GetMesh().draw();
-
-			m_SceneData.m_Shader->Reset();
-		}
-
-		m_SceneData.m_Shader->Unuse();
-
-		//std::cout << entityDraw << "/" << totalEntity << std::endl;
-
-		m_SceneData.m_SkinnedShader->Use();
-
-		m_SceneData.m_SkinnedShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
-		m_SceneData.m_SkinnedShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
-		m_SceneData.m_SkinnedShader->SetUniform("camera_position", &camera.GetPosition(), sizeof(glm::vec3));
-
-		m_SceneData.m_SkinnedShader->SetUniform("usePointLight", &m_SceneData.nPts, sizeof(int));
-		m_SceneData.m_SkinnedShader->SetUniform("useDirLight", &m_SceneData.nDirs, sizeof(int));
-
-		m_SceneData.m_SkinnedShader->SetUniform("prefilterLevels", &m_SceneData.m_SkyboxHDR->GetSettings().prefilterMipLevels, sizeof(int));
-
-		m_SceneData.m_SkinnedShader->SetUniform("pointLights", m_SceneData.m_PointsBuffer.data(), sizeof(PointLight) * 4);
-		m_SceneData.m_SkinnedShader->SetUniform("dirLights", m_SceneData.m_DirectionalsBuffer.data(), sizeof(DirectionalLight) * 4);
-
-		if (!m_SceneData.m_SkinnedShader->UpdateGlobalState())
-		{
-			return;
-		}
+		std::vector<RenderObject> staticMeshes;
+		std::vector<RenderObject> skinnedMeshes;
+		std::vector<RenderObject> pointClouds;
+		std::vector<RenderObject> terrains;
 
 		for (auto [e, tr, mc, matc, mr] : group.each())
 		{
 			if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
-			if (!mc.GetMesh().HasSkinning()) continue;
-			if (mc.GetMesh().IsCloudPoint()) continue;
+			RenderObject obj;
+			obj.entity = Entity{ e, m_SceneData.m_Scene->GetRegistry() };
+			obj.mesh = &mc.GetMesh();
+			obj.material = &matc.GetMaterial();
 
 			glm::mat4 model = tr.GetGlobalTransform();
 			if (mc.HasLocalNodeTransform()) model *= mc.GetLocalNodeTransform();
+			obj.model = model;
 
-			if (!mc.GetMesh().IsVisible(frustum, model)) {
-				//continue;
-			}
+			if (mc.GetMesh().HasSkinning())
+				obj.flags = obj.flags | RenderFlags::Skinned;
+			if (mc.GetMesh().IsCloudPoint())
+				obj.flags = obj.flags | RenderFlags::PointCloud;
 
-			m_SceneData.m_SkinnedShader->SetUniform("model", &model, sizeof(glm::mat4));
-
-			Material& material = matc.GetMaterial();
-
-			m_SceneData.m_SkinnedShader->SetUniform("albedo", &material.GetAlbedo(), sizeof(glm::vec4));
-			float rough = material.GetRoughness();
-			float metal = material.GetMetallic();
-			float ao = material.GetAO();
-			m_SceneData.m_SkinnedShader->SetUniform("roughness", &rough, sizeof(float));
-			m_SceneData.m_SkinnedShader->SetUniform("metallic", &metal, sizeof(float));
-			m_SceneData.m_SkinnedShader->SetUniform("ao", &ao, sizeof(float));
-
-			int hasA = material.HasTexture(TextureType::Albedo) ? 1 : 0;
-			int hasN = material.HasTexture(TextureType::Normal) ? 1 : 0;
-			int hasR = material.HasTexture(TextureType::Roughness) ? 1 : 0;
-			int hasM = material.HasTexture(TextureType::Metallic) ? 1 : 0;
-			int hasO = material.HasTexture(TextureType::AO) ? 1 : 0;
-
-			m_SceneData.m_SkinnedShader->SetUniform("has_albedo_texture", &hasA, sizeof(int));
-			m_SceneData.m_SkinnedShader->SetUniform("has_normal_texture", &hasN, sizeof(int));
-			m_SceneData.m_SkinnedShader->SetUniform("has_roughness_texture", &hasR, sizeof(int));
-			m_SceneData.m_SkinnedShader->SetUniform("has_metallic_texture", &hasM, sizeof(int));
-			m_SceneData.m_SkinnedShader->SetUniform("has_ao_texture", &hasO, sizeof(int));
-
-			m_SceneData.m_SkinnedShader->SetTexture("albedo_texture", material.GetTexture(TextureType::Albedo));
-			m_SceneData.m_SkinnedShader->SetTexture("normal_texture", material.GetTexture(TextureType::Normal));
-			m_SceneData.m_SkinnedShader->SetTexture("roughness_texture", material.GetTexture(TextureType::Roughness));
-			m_SceneData.m_SkinnedShader->SetTexture("metallic_texture", material.GetTexture(TextureType::Metallic));
-			m_SceneData.m_SkinnedShader->SetTexture("ao_texture", material.GetTexture(TextureType::AO));
-
-			m_SceneData.m_SkinnedShader->SetTexture("irradiance_map", m_SceneData.m_SkyboxHDR->GetIrradianceMap().get());
-			m_SceneData.m_SkinnedShader->SetTexture("prefilter_map", m_SceneData.m_SkyboxHDR->GetPrefilterMap().get());
-			m_SceneData.m_SkinnedShader->SetTexture("brdf_lut", m_SceneData.m_SkyboxHDR->GetBrdfLUT().get());
-
-			Entity entity{ e, m_SceneData.m_Scene->GetRegistry() };
-			const AnimationComponent* anim = FindAnimatorForEntity(entity);
-			if (anim && !anim->GetFinalBoneMatrices().empty()) {
-				std::vector<glm::mat4> mats = anim->GetFinalBoneMatrices();
-				const size_t n = std::min(mats.size(), (size_t)QE_MAX_BONES);
-				if (n == (size_t)QE_MAX_BONES) {
-					m_SceneData.m_SkinnedShader->SetUniform("finalBonesMatrices", mats.data(), sizeof(glm::mat4) * QE_MAX_BONES);
-				}
-				else {
-					std::array<glm::mat4, QE_MAX_BONES> tmp = m_SceneData.m_IdentityBones;
-					std::memcpy(tmp.data(), mats.data(), sizeof(glm::mat4) * n);
-					m_SceneData.m_SkinnedShader->SetUniform("finalBonesMatrices", tmp.data(), sizeof(glm::mat4) * QE_MAX_BONES);
-				}
-			}
-			else {
-				m_SceneData.m_SkinnedShader->SetUniform("finalBonesMatrices",
-					m_SceneData.m_IdentityBones.data(),
-					sizeof(glm::mat4) * QE_MAX_BONES);
-			}
-
-			if (!m_SceneData.m_SkinnedShader->UpdateObject(&material)) continue;
-
-			mc.GetMesh().draw();
-
-			m_SceneData.m_SkinnedShader->Reset();
+			if (HasFlag(obj.flags, RenderFlags::PointCloud))
+				pointClouds.push_back(obj);
+			else if (HasFlag(obj.flags, RenderFlags::Skinned))
+				skinnedMeshes.push_back(obj);
+			else
+				staticMeshes.push_back(obj);
 		}
 
-		m_SceneData.m_SkinnedShader->Unuse();
-
-		m_SceneData.m_TerrainShader->Use();
-
-		m_SceneData.m_TerrainShader->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
-		m_SceneData.m_TerrainShader->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
-
-		m_SceneData.m_TerrainShader->SetUniform("camera_position", &camera.GetPosition(), sizeof(glm::vec3));
-		m_SceneData.m_TerrainShader->SetUniform("usePointLight", &m_SceneData.nPts, sizeof(int));
-		m_SceneData.m_TerrainShader->SetUniform("useDirLight", &m_SceneData.nDirs, sizeof(int));
-		m_SceneData.m_TerrainShader->SetUniform("pointLights", m_SceneData.m_PointsBuffer.data(), sizeof(PointLight) * 4);
-		m_SceneData.m_TerrainShader->SetUniform("dirLights", m_SceneData.m_DirectionalsBuffer.data(), sizeof(DirectionalLight) * 4);
-
-		if (!m_SceneData.m_TerrainShader->UpdateGlobalState()) {
-			m_SceneData.m_TerrainShader->Unuse();
-			return;
-		}
-
-		for (auto [e, tr, tc, matc, mr] : registry.group<
-			TransformComponent,
-			TerrainComponent,
-			MaterialComponent,
-			MeshRendererComponent
-		>().each())
+		for (auto [e, tr, tec, matc, mr] :
+			registry.group<TransformComponent, TerrainComponent,
+			MaterialComponent, MeshRendererComponent>().each())
 		{
-			if (!mr.m_Rendered) continue;
-
-			auto mesh = tc.GetMesh();
-			if (!mesh || !mesh->IsMeshGenerated()) continue;
-
-			glm::mat4 transform = tr.GetGlobalTransform();
-
-			m_SceneData.m_TerrainShader->SetUniform("model", &transform, sizeof(glm::mat4));
-			m_SceneData.m_TerrainShader->SetUniform("heightMult", &tc.heightMult, sizeof(float));
-			m_SceneData.m_TerrainShader->SetUniform("uTextureScale", &tc.textureScale, sizeof(int));
-
-			Material& mat = matc.GetMaterial();
-
-			m_SceneData.m_TerrainShader->SetUniform("albedo", &mat.GetAlbedo(), sizeof(glm::vec4));
-			float rough = mat.GetRoughness();
-			float metal = mat.GetMetallic();
-			float ao = mat.GetAO();
-			m_SceneData.m_TerrainShader->SetUniform("roughness", &rough, sizeof(float));
-			m_SceneData.m_TerrainShader->SetUniform("metallic", &metal, sizeof(float));
-			m_SceneData.m_TerrainShader->SetUniform("ao", &ao, sizeof(float));
-
-			int hasA = mat.HasTexture(TextureType::Albedo) ? 1 : 0;
-			int hasN = mat.HasTexture(TextureType::Normal) ? 1 : 0;
-			int hasR = mat.HasTexture(TextureType::Roughness) ? 1 : 0;
-			int hasM = mat.HasTexture(TextureType::Metallic) ? 1 : 0;
-			int hasO = mat.HasTexture(TextureType::AO) ? 1 : 0;
-
-			m_SceneData.m_TerrainShader->SetUniform("has_albedo_texture", &hasA, sizeof(int));
-			m_SceneData.m_TerrainShader->SetUniform("has_normal_texture", &hasN, sizeof(int));
-			m_SceneData.m_TerrainShader->SetUniform("has_roughness_texture", &hasR, sizeof(int));
-			m_SceneData.m_TerrainShader->SetUniform("has_metallic_texture", &hasM, sizeof(int));
-			m_SceneData.m_TerrainShader->SetUniform("has_ao_texture", &hasO, sizeof(int));
-
-			if (AssetManager::Instance().isAssetLoaded(tc.GetHeightMapId()))
-			{
-				m_SceneData.m_TerrainShader->SetTexture(
-					"heightMap",
-					AssetManager::Instance().getAsset<Texture2D>(tc.GetHeightMapId()).get()
-				);
-			}
-			else {
-				AssetToLoad tcAsset{};
-				tcAsset.id = tc.GetHeightMapId();
-				tcAsset.path = tc.GetHeightMapPath();
-				tcAsset.type = AssetType::TEXTURE;
-
-				AssetManager::Instance().loadAsset(tcAsset);
-			}
-
-			m_SceneData.m_TerrainShader->SetTexture("albedo_texture", mat.GetTexture(TextureType::Albedo));
-			m_SceneData.m_TerrainShader->SetTexture("normal_texture", mat.GetTexture(TextureType::Normal));
-			m_SceneData.m_TerrainShader->SetTexture("roughness_texture", mat.GetTexture(TextureType::Roughness));
-			m_SceneData.m_TerrainShader->SetTexture("metallic_texture", mat.GetTexture(TextureType::Metallic));
-			m_SceneData.m_TerrainShader->SetTexture("ao_texture", mat.GetTexture(TextureType::AO));
-
-			if (!m_SceneData.m_TerrainShader->UpdateObject(&mat)) {
+			if (!mr.m_Rendered || !tec.IsGenerated())
 				continue;
+
+			if (tec.UseQuadtree() && !tec.HasQuadtree())
+				tec.BuildQuadtree();
+
+			glm::mat4 model = tr.GetGlobalTransform();
+
+			if (tec.UseQuadtree() && tec.HasQuadtree())
+			{
+				auto* qt = tec.GetQuadtree();
+				std::vector<const TerrainQuadtree::Node*> visibleNodes;
+				qt->CollectVisible(ctx.projection * ctx.view, ctx.cameraPosition, visibleNodes);
+
+				for (const auto* node : visibleNodes)
+				{
+					if (!node->mesh)
+						continue;
+
+					RenderObject obj;
+					obj.entity = Entity{ e, m_SceneData.m_Scene->GetRegistry() };
+					obj.mesh = node->mesh.get();
+					obj.material = &matc.GetMaterial();
+					obj.model = model;
+					obj.flags = obj.flags | RenderFlags::Terrain;
+
+					terrains.push_back(obj);
+				}
 			}
-
-			mesh->draw();
-
-			m_SceneData.m_TerrainShader->Reset();
+			else
+			{
+				RenderObject obj;
+				obj.entity = Entity{ e, m_SceneData.m_Scene->GetRegistry() };
+				obj.mesh = tec.GetMesh().get();
+				obj.material = &matc.GetMaterial();
+				obj.model = model;
+				obj.flags = obj.flags | RenderFlags::Terrain;
+				terrains.push_back(obj);
+			}
 		}
 
-		m_SceneData.m_TerrainShader->Unuse();
+		PBRStaticTechnique staticTech(m_SceneData.m_SkyboxHDR.get());
+		PBRSkinTechnique skinnedTech(m_SceneData.m_SkyboxHDR.get());
+		TerrainTechnique terrainTech(m_SceneData.m_SkyboxHDR.get());
+		//PointCloudTechnique pcTech(m_SceneData.m_SkyboxHDR.get());
 
-		m_SceneData.m_PointCloudShader->Use();
+		staticTech.Begin(ctx);
+		for (auto& obj : staticMeshes)
+		{
+			staticTech.Submit(ctx, obj);
+		}
+		staticTech.End();
+
+		skinnedTech.Begin(ctx);
+		for (auto& obj : skinnedMeshes)
+		{
+			skinnedTech.Submit(ctx, obj);
+		}
+		skinnedTech.End();
+
+		terrainTech.Begin(ctx);
+		for (auto& obj : terrains)
+			terrainTech.Submit(ctx, obj);
+		terrainTech.End();
+
+		/*pcTech.Begin(ctx);
+		for (auto& obj : pointClouds)
+			pcTech.Submit(ctx, obj);
+		pcTech.End();*/
+
+		/*m_SceneData.m_PointCloudShader->Use();
 
 		float pointSize = 5.0f;
 
@@ -1068,7 +395,7 @@ namespace QuasarEngine
 			}
 		}
 
-		m_SceneData.m_PointCloudShader->Unuse();
+		m_SceneData.m_PointCloudShader->Unuse();*/
 
 		{
 			Renderer2D::Instance().BeginScene(camera);
@@ -1123,24 +450,6 @@ namespace QuasarEngine
 
 	void Renderer::RenderSkybox(BaseCamera& camera)
 	{
-		/*m_SceneData.m_Skybox->Bind();
-
-		glm::mat4 viewMatrix = camera.getViewMatrix();
-		glm::mat4 projectionMatrix = camera.getProjectionMatrix();
-
-		m_SceneData.m_Skybox->GetShader()->SetUniform("view", &viewMatrix, sizeof(glm::mat4));
-		m_SceneData.m_Skybox->GetShader()->SetUniform("projection", &projectionMatrix, sizeof(glm::mat4));
-
-		m_SceneData.m_Skybox->GetShader()->UpdateGlobalState();
-
-		m_SceneData.m_Skybox->GetShader()->SetTexture("skybox", m_SceneData.m_Skybox->GetMaterial()->GetTexture(TextureType::Albedo), Shader::SamplerType::SamplerCube);
-
-		m_SceneData.m_Skybox->GetShader()->UpdateObject(m_SceneData.m_Skybox->GetMaterial());
-
-		m_SceneData.m_Skybox->Draw();
-
-		m_SceneData.m_Skybox->Unbind();*/
-
 		const glm::mat4 V = camera.getViewMatrix();
 		const glm::mat4 P = camera.getProjectionMatrix();
 
@@ -1186,71 +495,6 @@ namespace QuasarEngine
 				m_SceneData.m_PointsBuffer[m_SceneData.nPts++] = pl;
 			}
 		}
-
-		for (int i = 0; i < m_SceneData.nDirs; ++i)
-		{
-			const DirectionalLight& dl = m_SceneData.m_DirectionalsBuffer[i];
-
-			glm::vec3 lightDir = dl.direction;
-			glm::vec3 raysDir = -lightDir;
-
-			const glm::vec3 up = (glm::abs(glm::dot(raysDir, glm::vec3(0, 1, 0))) > 0.99f)
-				? glm::vec3(0, 0, 1)
-				: glm::vec3(0, 1, 0);
-
-			const glm::vec3 camPos = camera.GetPosition();
-			const float range = m_SceneData.m_DirShadow.orthoRange;
-			const float zNear = m_SceneData.m_DirShadow.nearPlane;
-			const float zFar = m_SceneData.m_DirShadow.farPlane;
-
-			glm::vec3 lightPos = camPos - raysDir * (0.5f * (zNear + zFar));
-
-			glm::mat4 lightV = glm::lookAt(lightPos, lightPos + raysDir, up);
-			glm::mat4 lightP = glm::ortho(-range, range, -range, range, zNear, zFar);
-
-			m_SceneData.m_DirLightVP[i] = lightP * lightV;
-
-			auto& fbo = m_SceneData.m_DirShadowFBO[i];
-			fbo->Bind();
-
-			RenderCommand::Instance().SetViewport(0, 0,
-				m_SceneData.m_DirShadow.mapSize,
-				m_SceneData.m_DirShadow.mapSize);
-			fbo->Clear(ClearFlags::Depth);
-
-			m_SceneData.m_ShadowDir_Static->Use();
-			m_SceneData.m_ShadowDir_Static->SetUniform("lightVP", &m_SceneData.m_DirLightVP[i], sizeof(glm::mat4));
-			m_SceneData.m_ShadowDir_Static->UpdateGlobalState();
-			
-			for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, MeshComponent, MeshRendererComponent>())
-			{
-				Entity ent{ e, m_SceneData.m_Scene->GetRegistry() };
-				auto& tr = ent.GetComponent<TransformComponent>();
-				auto& mc = ent.GetComponent<MeshComponent>();
-				auto& mr = ent.GetComponent<MeshRendererComponent>();
-
-				if (!mr.m_Rendered || !mc.HasMesh()) continue;
-				if (mc.GetMesh().HasSkinning())      continue;
-				if (mc.GetMesh().IsCloudPoint())     continue;
-
-				glm::mat4 model = tr.GetGlobalTransform();
-				if (mc.HasLocalNodeTransform())
-					model *= mc.GetLocalNodeTransform();
-
-				m_SceneData.m_ShadowDir_Static->SetUniform("model", &model, sizeof(glm::mat4));
-				if (!m_SceneData.m_ShadowDir_Static->UpdateObject(nullptr)) continue;
-
-				mc.GetMesh().draw();
-			}
-
-			m_SceneData.m_ShadowDir_Static->Unuse();
-			fbo->Unbind();
-		}
-	}
-
-	Scene* Renderer::GetScene()
-	{
-		return m_SceneData.m_Scene;
 	}
 
 	double Renderer::GetTime()

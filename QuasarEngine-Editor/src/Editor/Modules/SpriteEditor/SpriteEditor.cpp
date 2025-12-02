@@ -81,7 +81,7 @@ namespace QuasarEngine
     {
         if (index < 0 || index >= (int)m_Layers.size()) return;
 
-        Scene* scn = Renderer::Instance().GetScene();
+        Scene* scn = Renderer::Instance().m_SceneData.m_Scene;
         if (scn)
         {
             for (auto& c : m_Layers[index].cells)
@@ -484,7 +484,7 @@ namespace QuasarEngine
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))  m_PaintingL = false;
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) m_ErasingR = false;
 
-        Scene* scn = Renderer::Instance().GetScene();
+        Scene* scn = Renderer::Instance().m_SceneData.m_Scene;
         if (scn && m_SelectedLayer >= 0 && m_SelectedLayer < (int)m_Layers.size())
         {
             Layer& L = m_Layers[m_SelectedLayer];
@@ -630,12 +630,12 @@ namespace QuasarEngine
                 }
 
                 if (ImGui::Button("Appliquer pinceau a cette case")) {
-                    Scene* scn = Renderer::Instance().GetScene();
+                    Scene* scn = Renderer::Instance().m_SceneData.m_Scene;
                     if (scn) PaintAt(*scn, L, m_SelectedCellX, m_SelectedCellY, m_Brush);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Gommer cette case")) {
-                    Scene* scn = Renderer::Instance().GetScene();
+                    Scene* scn = Renderer::Instance().m_SceneData.m_Scene;
                     if (scn) EraseAt(*scn, L, m_SelectedCellX, m_SelectedCellY);
                 }
             }
@@ -643,7 +643,7 @@ namespace QuasarEngine
             {
                 ImGui::TextDisabled("Case vide.");
                 if (ImGui::Button("Peindre (pinceau)")) {
-                    Scene* scn = Renderer::Instance().GetScene();
+                    Scene* scn = Renderer::Instance().m_SceneData.m_Scene;
                     if (scn && !m_Brush.textureId.empty())
                         PaintAt(*scn, L, m_SelectedCellX, m_SelectedCellY, m_Brush);
                 }

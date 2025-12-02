@@ -11,19 +11,19 @@ namespace QuasarEngine
 		MaterialSpecification specification;
 		m_Material = Material::CreateMaterial(specification);
 
-		Renderer::Instance().m_SceneData.m_Shader->AcquireResources(m_Material.get());
+		//Renderer::Instance().m_SceneData.m_Shader->AcquireResources(m_Material.get());
 	}
 
 	MaterialComponent::MaterialComponent(const MaterialSpecification& specification)
 	{
 		m_Material = Material::CreateMaterial(specification);
 
-		Renderer::Instance().m_SceneData.m_Shader->AcquireResources(m_Material.get());
+		//Renderer::Instance().m_SceneData.m_Shader->AcquireResources(m_Material.get());
 	}
 
 	MaterialComponent::~MaterialComponent()
 	{
-		Renderer::Instance().m_SceneData.m_Shader->ReleaseResources(m_Material.get());
+		//Renderer::Instance().m_SceneData.m_Shader->ReleaseResources(m_Material.get());
 
 		m_Material.reset();
 	}
