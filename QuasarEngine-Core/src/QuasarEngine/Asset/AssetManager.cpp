@@ -408,36 +408,41 @@ namespace QuasarEngine
 			}
 		}
 
-		JobSystem::Instance().Submit([this, asset]() {
-			if (asset.type != AssetType::TEXTURE)
-				return;
-
-			if (isAssetLoaded(asset.id))
-				return;
-
-			TextureSpecification spec;
-			if (std::holds_alternative<TextureSpecification>(asset.spec))
-				spec = std::get<TextureSpecification>(asset.spec);
-
-			auto texture = Texture2D::Create(spec);
-
-			if (asset.data)
+		JobSystem::Instance().Submit(
+			JobPriority::HIGH,
+			JobPoolType::IO,
+			[this, asset]()
 			{
-				texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
-			}
-			else
-			{
-				texture->LoadFromPath(asset.path);
-			}
+				if (asset.type != AssetType::TEXTURE)
+					return;
 
-			{
-				std::lock_guard<std::mutex> lock(m_AssetMutex);
-				m_LoadedAssets[asset.id] = std::move(texture);
+				if (isAssetLoaded(asset.id))
+					return;
+
+				TextureSpecification spec;
+				if (std::holds_alternative<TextureSpecification>(asset.spec))
+					spec = std::get<TextureSpecification>(asset.spec);
+
+				auto texture = Texture2D::Create(spec);
+
+				if (asset.data)
+				{
+					texture->LoadFromMemory({ static_cast<unsigned char*>(asset.data), asset.size });
+				}
+				else
+				{
+					texture->LoadFromPath(asset.path);
+				}
+
+				{
+					std::lock_guard<std::mutex> lock(m_AssetMutex);
+					m_LoadedAssets[asset.id] = std::move(texture);
+				}
+
+				std::cout << "[JOB] Chargement texture : id=" << asset.id
+					<< " path=" << asset.path << std::endl;
 			}
-
-			std::cout << "[JOB] Chargement texture : id=" << asset.id << " path=" << asset.path << std::endl;
-
-			}, JobPriority::HIGH, JobPoolType::IO, {}, "LoadTextureAsync");
+		);
 	}
 
 	AssetType AssetManager::getTypeFromExtention(const std::string& str)
