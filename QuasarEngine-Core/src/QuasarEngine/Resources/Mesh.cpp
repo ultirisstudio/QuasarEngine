@@ -56,12 +56,15 @@ namespace QuasarEngine
 
         m_vertexArray->Bind();
 
-        /*if (m_drawMode == DrawMode::POINTS)
-        {
-            RenderCommand::Instance().DrawInstanced(m_drawMode, m_indexCount == 0 ? static_cast<uint32_t>(m_vertexCount) : m_indexCount, 0);
-        }
-        else
-        {*/
+/*if (m_drawMode == DrawMode::POINTS)
+{
+if (m_indexCount == 0)
+RenderCommand::Instance().DrawArraysInstanced(m_drawMode, static_cast<uint32_t>(m_vertexCount), 1);
+else
+RenderCommand::Instance().DrawElementsInstanced(m_drawMode, m_indexCount, 1);
+}
+else
+{*/
             if (m_indexCount == 0)
                 RenderCommand::Instance().DrawArrays(m_drawMode, static_cast<uint32_t>(m_vertexCount));
             else
