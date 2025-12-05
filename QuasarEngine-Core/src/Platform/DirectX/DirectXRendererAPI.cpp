@@ -61,31 +61,31 @@ namespace QuasarEngine {
             dx.deviceContext->ClearRenderTargetView(dx.renderTargetView.Get(), g_ClearColor);
     }
 
-void DirectXRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)
-{
-auto& dx = DirectXContext::Context;
-dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
-dx.deviceContext->Draw(size, 0);
-}
+    void DirectXRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)
+    {
+        auto& dx = DirectXContext::Context;
+        dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
+        dx.deviceContext->Draw(size, 0);
+    }
 
-void DirectXRendererAPI::DrawArraysInstanced(DrawMode drawMode, uint32_t size, uint32_t instanceCount)
-{
-auto& dx = DirectXContext::Context;
-dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
-dx.deviceContext->DrawInstanced(size, instanceCount, 0, 0);
-}
+    void DirectXRendererAPI::DrawArraysInstanced(DrawMode drawMode, uint32_t size, uint32_t instanceCount)
+    {
+        auto& dx = DirectXContext::Context;
+        dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
+        dx.deviceContext->DrawInstanced(size, instanceCount, 0, 0);
+    }
 
-void DirectXRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
-{
-auto& dx = DirectXContext::Context;
-dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
-dx.deviceContext->DrawIndexed(count, firstIndex, baseVertex);
-}
+    void DirectXRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
+    {
+        auto& dx = DirectXContext::Context;
+        dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
+        dx.deviceContext->DrawIndexed(count, firstIndex, baseVertex);
+    }
 
-void DirectXRendererAPI::DrawElementsInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex)
-{
-auto& dx = DirectXContext::Context;
-dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
-dx.deviceContext->DrawIndexedInstanced(count, instanceCount, firstIndex, baseVertex, 0);
-}
+    void DirectXRendererAPI::DrawElementsInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex)
+    {
+        auto& dx = DirectXContext::Context;
+        dx.deviceContext->IASetPrimitiveTopology(ToDXTopology(drawMode));
+        dx.deviceContext->DrawIndexedInstanced(count, instanceCount, firstIndex, baseVertex, 0);
+    }
 }

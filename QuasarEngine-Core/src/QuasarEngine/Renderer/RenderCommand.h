@@ -40,25 +40,25 @@ namespace QuasarEngine
 			s_RendererAPI->SetSeamlessCubemap(enable);
 		}
 
-void DrawArrays(DrawMode drawMode, uint32_t size)
-{
-s_RendererAPI->DrawArrays(drawMode, size);
-}
+		void DrawArrays(DrawMode drawMode, uint32_t size)
+		{
+			s_RendererAPI->DrawArrays(drawMode, size);
+		}
 
-void DrawArraysInstanced(DrawMode drawMode, uint32_t size, uint32_t instanceCount)
-{
-s_RendererAPI->DrawArraysInstanced(drawMode, size, instanceCount);
-}
+		void DrawArraysInstanced(DrawMode drawMode, uint32_t size, uint32_t instanceCount)
+		{
+			s_RendererAPI->DrawArraysInstanced(drawMode, size, instanceCount);
+		}
 
-void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex = 0, int32_t baseVertex = 0)
-{
-s_RendererAPI->DrawElements(drawMode, count, firstIndex, baseVertex);
-}
+		void DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex = 0, int32_t baseVertex = 0)
+		{
+			s_RendererAPI->DrawElements(drawMode, count, firstIndex, baseVertex);
+		}
 
-void DrawElementsInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex = 0, int32_t baseVertex = 0)
-{
-s_RendererAPI->DrawElementsInstanced(drawMode, count, instanceCount, firstIndex, baseVertex);
-}
+		void DrawElementsInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex = 0, int32_t baseVertex = 0)
+		{
+			s_RendererAPI->DrawElementsInstanced(drawMode, count, instanceCount, firstIndex, baseVertex);
+		}
 
 		void EnableScissor(bool enable)
 		{
