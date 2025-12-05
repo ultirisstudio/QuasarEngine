@@ -91,31 +91,36 @@ namespace QuasarEngine {
 			glDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	}
 
-	void OpenGLRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)
-	{
-		glDrawArrays(Utils::DrawModeToGLenum(drawMode), 0, static_cast<GLsizei>(size));
-	}
+void OpenGLRendererAPI::DrawArrays(DrawMode drawMode, uint32_t size)
+{
+glDrawArrays(Utils::DrawModeToGLenum(drawMode), 0, static_cast<GLsizei>(size));
+}
 
-	void OpenGLRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
-	{
-		GLenum glMode = Utils::DrawModeToGLenum(drawMode);
-		const void* offsetBytes = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex) * sizeof(uint32_t));
+void OpenGLRendererAPI::DrawArraysInstanced(DrawMode drawMode, uint32_t size, uint32_t instanceCount)
+{
+glDrawArraysInstanced(Utils::DrawModeToGLenum(drawMode), 0, static_cast<GLsizei>(size), static_cast<GLsizei>(instanceCount));
+}
+
+void OpenGLRendererAPI::DrawElements(DrawMode drawMode, uint32_t count, uint32_t firstIndex, int32_t baseVertex)
+{
+GLenum glMode = Utils::DrawModeToGLenum(drawMode);
+const void* offsetBytes = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex) * sizeof(uint32_t));
 
 		if (baseVertex == 0)
 			glDrawElements(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes);
-		else
-			glDrawElementsBaseVertex(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes, baseVertex);
-	}
+else
+glDrawElementsBaseVertex(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes, baseVertex);
+}
 
-	void OpenGLRendererAPI::DrawInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex)
-	{
-		GLenum glMode = Utils::DrawModeToGLenum(drawMode);
-		const void* offsetBytes = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex) * sizeof(uint32_t));
-		if (baseVertex == 0)
-			glDrawArraysInstanced(glMode, firstIndex, static_cast<GLsizei>(count), instanceCount);
-		else
-			glDrawArraysInstancedBaseInstance(glMode, firstIndex, static_cast<GLsizei>(count), instanceCount, baseVertex);
-	}
+void OpenGLRendererAPI::DrawElementsInstanced(DrawMode drawMode, uint32_t count, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex)
+{
+GLenum glMode = Utils::DrawModeToGLenum(drawMode);
+const void* offsetBytes = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex) * sizeof(uint32_t));
+if (baseVertex == 0)
+                        glDrawElementsInstanced(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes, static_cast<GLsizei>(instanceCount));
+                else
+                        glDrawElementsInstancedBaseVertex(glMode, static_cast<GLsizei>(count), GL_UNSIGNED_INT, offsetBytes, static_cast<GLsizei>(instanceCount), baseVertex);
+        }
 
 	void OpenGLRendererAPI::EnableScissor(bool enable)
 	{
