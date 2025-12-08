@@ -35,8 +35,10 @@ namespace QuasarEngine
         struct Node
         {
             glm::ivec2 origin;
-            int size;
-            int depth;
+
+            glm::ivec2 size;
+
+            int depth = 0;
 
             glm::vec3 bboxMin;
             glm::vec3 bboxMax;
@@ -80,7 +82,7 @@ namespace QuasarEngine
             const glm::vec3& cameraPos) const;
 
         std::unique_ptr<Node> BuildNode(const glm::ivec2& origin,
-            int size,
+            const glm::ivec2& size,
             int depth);
 
         void CollectVisibleRecursive(const Node* node,
@@ -88,17 +90,17 @@ namespace QuasarEngine
             const glm::vec3& cameraPos,
             std::vector<const Node*>& outNodes) const;
 
-        float      SampleHeight01(int gx, int gz) const;
-        glm::vec3  ComputeNormal(int gx, int gz) const;
+        float SampleHeight01(int gx, int gz) const;
+        glm::vec3 ComputeNormal(int gx, int gz) const;
 
-        std::shared_ptr<Mesh> BuildLeafMesh(const glm::ivec2& origin,
-            int size,
+        std::shared_ptr<Mesh> BuildNodeMesh(const glm::ivec2& origin,
+            const glm::ivec2& size,
             glm::vec3& outBMin,
             glm::vec3& outBMax) const;
 
     private:
-        int   m_gridW = 0;
-        int   m_gridH = 0;
+        int m_gridW = 0;
+        int m_gridH = 0;
         float m_worldSizeX = 1.0f;
         float m_worldSizeZ = 1.0f;
         float m_heightScale = 1.0f;
@@ -106,7 +108,7 @@ namespace QuasarEngine
         float m_cellSizeX = 1.0f;
         float m_cellSizeZ = 1.0f;
 
-        HeightSampler      m_sampler;
+        HeightSampler m_sampler;
         TerrainLODSettings m_lod;
 
         std::unique_ptr<Node> m_root;

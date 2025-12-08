@@ -182,7 +182,7 @@ namespace QuasarEngine
         const int N = 1000;
 
         {
-            ScopeTimer timer("JobSystem 1000 incréments");
+            ScopeTimer timer("JobSystem 1000 increments");
 
             std::vector<std::future<void>> futures;
             futures.reserve(N);
@@ -214,76 +214,43 @@ namespace QuasarEngine
     {
         std::cout << "==== TestDependencies ====\n";
 
-        JobSystem jobSystem;
+        QuasarEngine::JobSystem jobSystem;
 
         std::vector<int> values;
-        values.reserve(3);
+        values.reserve(4);
 
-        auto futA = jobSystem.Submit(
-            JobPriority::NORMAL,
-            JobPoolType::GENERAL,
-            [&values]()
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                values.push_back(1);
-            }
-        );
-
-        auto futB = jobSystem.Submit(
-            JobPriority::NORMAL,
-            JobPoolType::GENERAL,
-            [&values]()
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                values.push_back(2);
-            }
-        );
-
-        auto jobA = std::make_shared<Job>();
-        jobA->name = "JobA";
-        jobA->priority = JobPriority::NORMAL;
-        jobA->pool = JobPoolType::GENERAL;
-        jobA->func = [&values]() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            values.push_back(10);
-            };
-
-        auto jobB = std::make_shared<Job>();
-        jobB->name = "JobB";
-        jobB->priority = JobPriority::NORMAL;
-        jobB->pool = JobPoolType::GENERAL;
-        jobB->func = [&values]() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            values.push_back(20);
-            };
-
-        auto futA2 = jobSystem.Submit(
-            JobPriority::NORMAL,
-            JobPoolType::GENERAL,
-            std::vector<Job::Ptr>{},
+        auto [futA, jobA] = jobSystem.SubmitWithHandle(
+            QuasarEngine::JobPriority::NORMAL,
+            QuasarEngine::JobPoolType::GENERAL,
+            {},
             "JobA",
-            [func = jobA->func]() { func(); }
+            [&values]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                values.push_back(10);
+            }
         );
 
-        auto futB2 = jobSystem.Submit(
-            JobPriority::NORMAL,
-            JobPoolType::GENERAL,
-            std::vector<Job::Ptr>{},
+        auto [futB, jobB] = jobSystem.SubmitWithHandle(
+            QuasarEngine::JobPriority::NORMAL,
+            QuasarEngine::JobPoolType::GENERAL,
+            {},
             "JobB",
-            [func = jobB->func]() { func(); }
+            [&values]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                values.push_back(20);
+            }
         );
 
-        std::vector<Job::Ptr> deps;
+        std::vector<QuasarEngine::Job::Ptr> deps;
         deps.push_back(jobA);
         deps.push_back(jobB);
 
-        auto futC = jobSystem.Submit(
-            JobPriority::HIGH,
-            JobPoolType::GENERAL,
+        auto [futC, jobC] = jobSystem.SubmitWithHandle(
+            QuasarEngine::JobPriority::HIGH,
+            QuasarEngine::JobPoolType::GENERAL,
             deps,
             "JobC",
-            [&values]() -> int
-            {
+            [&values]() -> int {
                 int sum = 0;
                 for (int v : values)
                     sum += v;
@@ -293,12 +260,10 @@ namespace QuasarEngine
 
         futA.get();
         futB.get();
-        futA2.get();
-        futB2.get();
         int resultC = futC.get();
 
         std::cout << "values.size() = " << values.size() << "\n";
-        std::cout << "Somme calculée dans C = " << resultC << "\n";
+        std::cout << "Somme calculee dans C = " << resultC << "\n";
 
         assert(resultC >= 30);
 
@@ -315,7 +280,7 @@ namespace QuasarEngine
 
         long long seqSum = 0;
         {
-            ScopeTimer timer("Somme séquentielle");
+            ScopeTimer timer("Somme sequentielle");
             seqSum = std::accumulate(data.begin(), data.end(), 0LL);
         }
 
@@ -323,7 +288,7 @@ namespace QuasarEngine
 
         long long parallelSum = 0;
         {
-            ScopeTimer timer("Somme parallèle (JobSystem)");
+            ScopeTimer timer("Somme parallele (JobSystem)");
 
             const std::size_t grain = 100'000;
             const std::size_t chunkCount = (N + grain - 1) / grain;
@@ -360,8 +325,8 @@ namespace QuasarEngine
             }
         }
 
-        std::cout << "Somme séquentielle : " << seqSum << "\n";
-        std::cout << "Somme parallèle    : " << parallelSum << "\n";
+        std::cout << "Somme sequentielle : " << seqSum << "\n";
+        std::cout << "Somme parallele    : " << parallelSum << "\n";
 
         assert(seqSum == parallelSum);
         std::cout << "TestStress OK\n\n";
@@ -380,7 +345,7 @@ namespace QuasarEngine
         futures.reserve(N);
 
         {
-            ScopeTimer timer("ThreadPool 1000 incréments");
+            ScopeTimer timer("ThreadPool 1000 increments");
 
             for (int i = 0; i < N; ++i)
             {

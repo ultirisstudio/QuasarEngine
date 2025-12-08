@@ -4,8 +4,12 @@
 #include <stb_image.h>
 #include <glm/glm.hpp>
 
+#include <algorithm>
+#include <thread>
+
 #include <QuasarEngine/Tools/Math.h>
 #include <QuasarEngine/Core/Logger.h>
+#include <QuasarEngine/Thread/JobSystem.h>
 
 namespace QuasarEngine
 {
@@ -47,8 +51,8 @@ namespace QuasarEngine
         auto readPix = [&](int px, int py) -> float
             {
                 const unsigned char* p = &m_HeightPixels[(py * m_ImgW + px) * m_ImgC];
-                if (m_ImgC == 1)        return p[0] / 255.0f;
-                if (m_ImgC >= 3)        return (p[0] + p[1] + p[2]) / (3.0f * 255.0f);
+                if (m_ImgC == 1) return p[0] / 255.0f;
+                if (m_ImgC >= 3) return (p[0] + p[1] + p[2]) / (3.0f * 255.0f);
                 return 0.0f;
             };
 
@@ -62,75 +66,37 @@ namespace QuasarEngine
         return Math::lerp(hx0, hx1, ty);
     }
 
-    void TerrainComponent::BuildQuadtree()
+    bool TerrainComponent::LoadHeightmapIfNeeded()
     {
-        m_Quadtree.reset();
-
-        if (m_ImgW <= 1 || m_ImgH <= 1 || m_HeightPixels.empty())
-            return;
-
-        if (m_LODSettings.maxDepth < 0) m_LODSettings.maxDepth = 0;
-        if (m_LODSettings.leafNodeSize < 2) m_LODSettings.leafNodeSize = 2;
-        if (m_LODSettings.lodDistances.size() < size_t(m_LODSettings.maxDepth + 1))
-            m_LODSettings.lodDistances.resize(m_LODSettings.maxDepth + 1, 1000.0f);
-
-        m_HeightScale = std::max(0.0f, heightMult);
-
-        TerrainQuadtree::HeightSampler sampler =
-            [this](int gx, int gz) -> float
-            {
-                const float u = float(gx) / float(std::max(1, m_ImgW - 1));
-                const float v = float(gz) / float(std::max(1, m_ImgH - 1));
-                return sampleHeightBilinear(u, v);
-            };
-
-        m_Quadtree = std::make_unique<TerrainQuadtree>(
-            m_ImgW,
-            m_ImgH,
-            m_TerrainSizeX,
-            m_TerrainSizeZ,
-            m_HeightScale,
-            sampler,
-            m_LODSettings
-        );
-
-        m_Quadtree->Build();
-    }
-
-    void TerrainComponent::GenerateTerrain()
-    {
-        m_Generated = false;
-        m_Mesh.reset();
-        m_Quadtree.reset();
-
         if (m_HeightMapPath.empty())
         {
             Q_ERROR("TerrainComponent: HeightMap path is empty.");
-            return;
+            return false;
         }
 
-        if (m_HeightPixels.empty())
+        if (!m_HeightPixels.empty() && m_ImgW > 0 && m_ImgH > 0 && m_ImgC > 0)
+            return true;
+
+        int w = 0, h = 0, c = 0;
+        stbi_uc* data = stbi_load(m_HeightMapPath.c_str(), &w, &h, &c, 0);
+        if (!data)
         {
-            int w = 0, h = 0, c = 0;
-            stbi_uc* data = stbi_load(m_HeightMapPath.c_str(), &w, &h, &c, 0);
-            if (!data)
-            {
-                Q_ERROR("TerrainComponent: failed to load heightmap " + m_HeightMapPath);
-                return;
-            }
-
-            m_ImgW = w;
-            m_ImgH = h;
-            m_ImgC = c;
-
-            m_HeightPixels.assign(data, data + (m_ImgW * m_ImgH * m_ImgC));
-            stbi_image_free(data);
-        }
-        else
-        {
-            
+            Q_ERROR("TerrainComponent: failed to load heightmap " + m_HeightMapPath);
+            return false;
         }
 
+        m_ImgW = w;
+        m_ImgH = h;
+        m_ImgC = c;
+
+        m_HeightPixels.assign(data, data + (m_ImgW * m_ImgH * m_ImgC));
+        stbi_image_free(data);
+
+        return true;
+    }
+
+    void TerrainComponent::BuildMeshCPUParallel()
+    {
         rez = std::max(1, rez);
 
         const int vxCountX = rez + 1;
@@ -141,40 +107,69 @@ namespace QuasarEngine
         const float halfX = 0.5f * sizeX;
         const float halfZ = 0.5f * sizeZ;
 
-        std::vector<float>        vertices;
+        const std::size_t vertexCount = static_cast<std::size_t>(vxCountX) * static_cast<std::size_t>(vxCountZ);
+
+        std::vector<float> vertices(vertexCount * 8u);
         std::vector<unsigned int> indices;
-        vertices.reserve(size_t(vxCountX) * size_t(vxCountZ) * 8);
-        indices.reserve(size_t(rez) * size_t(rez) * 4);
+        indices.reserve(static_cast<std::size_t>(rez) * static_cast<std::size_t>(rez) * 4u);
 
-        for (int iz = 0; iz < vxCountZ; ++iz)
+        auto& jobSystem = JobSystem::Instance();
+
+        const unsigned hwThreads = std::max(1u, std::thread::hardware_concurrency());
+        const int rowsPerTask = std::max(1, vxCountZ / static_cast<int>(hwThreads));
+
+        std::vector<std::future<void>> tasks;
+        tasks.reserve(hwThreads);
+
+        const int rezLocal = rez;
+
+        for (int z0 = 0; z0 < vxCountZ; z0 += rowsPerTask)
         {
-            for (int ix = 0; ix < vxCountX; ++ix)
-            {
-                float u = float(ix) / float(rez);
-                float v = float(iz) / float(rez);
+            int z1 = std::min(vxCountZ, z0 + rowsPerTask);
 
-                float x = -halfX + u * sizeX;
-                float z = -halfZ + v * sizeZ;
+            auto task = jobSystem.Submit(
+                JobPriority::NORMAL,
+                JobPoolType::GENERAL,
+                {},
+                "Terrain_BuildVertices",
+                [this, z0, z1, vxCountX, rezLocal, halfX, halfZ, sizeX, sizeZ, &vertices]()
+                {
+                    glm::vec3 normal(0.0f, 1.0f, 0.0f);
 
-                float y = 0.0f;
+                    for (int iz = z0; iz < z1; ++iz)
+                    {
+                        for (int ix = 0; ix < vxCountX; ++ix)
+                        {
+                            const float u = float(ix) / float(rez);
+                            const float v = float(iz) / float(rez);
 
-                glm::vec3 n(0.0f, 1.0f, 0.0f);
+                            const float x = -halfX + u * sizeX;
+                            const float z = -halfZ + v * sizeZ;
 
-                float uu = u;
-                float vv = v;
+                            const float y = 0.0f;
 
-                vertices.push_back(x);
-                vertices.push_back(y);
-                vertices.push_back(z);
+                            std::size_t index = static_cast<std::size_t>(iz * vxCountX + ix) * 8u;
 
-                vertices.push_back(n.x);
-                vertices.push_back(n.y);
-                vertices.push_back(n.z);
+                            vertices[index + 0] = x;
+                            vertices[index + 1] = y;
+                            vertices[index + 2] = z;
 
-                vertices.push_back(uu);
-                vertices.push_back(vv);
-            }
+                            vertices[index + 3] = normal.x;
+                            vertices[index + 4] = normal.y;
+                            vertices[index + 5] = normal.z;
+
+                            vertices[index + 6] = u * float(textureScale);
+                            vertices[index + 7] = v * float(textureScale);
+                        }
+                    }
+                }
+            );
+
+            tasks.push_back(std::move(task));
         }
+
+        for (auto& f : tasks)
+            f.get();
 
         auto idx = [&](int ix, int iz) { return unsigned(iz * vxCountX + ix); };
 
@@ -206,10 +201,61 @@ namespace QuasarEngine
             layout,
             DrawMode::PATCHES
         );
+    }
 
-        m_Generated = true;
+    void TerrainComponent::BuildQuadtree()
+    {
+        m_Quadtree.reset();
 
-        if (m_UseQuadtree)
+        if (m_ImgW <= 1 || m_ImgH <= 1 || m_HeightPixels.empty())
+            return;
+
+        if (m_LODSettings.maxDepth < 0)      m_LODSettings.maxDepth = 0;
+        if (m_LODSettings.leafNodeSize < 2)  m_LODSettings.leafNodeSize = 2;
+        if (m_LODSettings.lodDistances.size() < std::size_t(m_LODSettings.maxDepth + 1))
+            m_LODSettings.lodDistances.resize(m_LODSettings.maxDepth + 1, 1000.0f);
+
+        m_HeightScale = std::max(0.0f, heightMult);
+
+        const int gridRes = std::max(1, rez);
+        const int gridW = gridRes + 1;
+        const int gridH = gridRes + 1;
+
+        TerrainQuadtree::HeightSampler sampler =
+            [this, gridW, gridH](int gx, int gz) -> float
+            {
+                const float u = float(gx) / float(std::max(1, gridW - 1));
+                const float v = float(gz) / float(std::max(1, gridH - 1));
+                return sampleHeightBilinear(u, v);
+            };
+
+        m_Quadtree = std::make_unique<TerrainQuadtree>(
+            gridW,
+            gridH,
+            m_TerrainSizeX,
+            m_TerrainSizeZ,
+            m_HeightScale,
+            sampler,
+            m_LODSettings
+        );
+
+        m_Quadtree->Build();
+    }
+
+    void TerrainComponent::GenerateTerrain()
+    {
+        m_Generated = false;
+        m_Mesh.reset();
+        m_Quadtree.reset();
+
+        if (!LoadHeightmapIfNeeded())
+            return;
+
+        BuildMeshCPUParallel();
+
+        m_Generated = (m_Mesh != nullptr);
+
+        if (m_UseQuadtree && m_Generated && HasHeightMap())
             BuildQuadtree();
     }
 }

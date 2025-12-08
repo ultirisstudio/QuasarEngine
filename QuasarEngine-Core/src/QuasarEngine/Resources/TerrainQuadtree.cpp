@@ -34,7 +34,8 @@ namespace QuasarEngine
     {
         const int maxQuadsX = m_gridW - 1;
         const int maxQuadsZ = m_gridH - 1;
-        const int rootSize = std::min(maxQuadsX, maxQuadsZ);
+
+        glm::ivec2 rootSize(maxQuadsX, maxQuadsZ);
 
         m_root = BuildNode(glm::ivec2(0, 0), rootSize, 0);
     }
@@ -68,68 +69,14 @@ namespace QuasarEngine
         return n;
     }
 
-    std::unique_ptr<TerrainQuadtree::Node>
-        TerrainQuadtree::BuildNode(const glm::ivec2& origin, int size, int depth)
-    {
-        auto node = std::make_unique<Node>();
-        node->origin = origin;
-        node->size = size;
-        node->depth = depth;
-
-        const bool isLeaf = (depth >= m_lod.maxDepth) || (size <= m_lod.leafNodeSize);
-
-        if (isLeaf)
-        {
-            glm::vec3 bmin, bmax;
-            node->mesh = BuildLeafMesh(origin, size, bmin, bmax);
-            node->bboxMin = bmin;
-            node->bboxMax = bmax;
-            return node;
-        }
-
-        const int half = size / 2;
-        if (half <= 0)
-        {
-            glm::vec3 bmin, bmax;
-            node->mesh = BuildLeafMesh(origin, size, bmin, bmax);
-            node->bboxMin = bmin;
-            node->bboxMax = bmax;
-            return node;
-        }
-
-        glm::vec3 childBMin(std::numeric_limits<float>::max());
-        glm::vec3 childBMax(-std::numeric_limits<float>::max());
-
-        glm::ivec2 childOrigins[4] = {
-            origin,
-            origin + glm::ivec2(half,      0),
-            origin + glm::ivec2(0,     half),
-            origin + glm::ivec2(half,  half)
-        };
-
-        for (int i = 0; i < 4; ++i)
-        {
-            node->children[i] = BuildNode(childOrigins[i], half, depth + 1);
-            if (!node->children[i]) continue;
-
-            childBMin = glm::min(childBMin, node->children[i]->bboxMin);
-            childBMax = glm::max(childBMax, node->children[i]->bboxMax);
-        }
-
-        node->bboxMin = childBMin;
-        node->bboxMax = childBMax;
-
-        return node;
-    }
-
-    std::shared_ptr<Mesh> TerrainQuadtree::BuildLeafMesh(
+    std::shared_ptr<Mesh> TerrainQuadtree::BuildNodeMesh(
         const glm::ivec2& origin,
-        int size,
+        const glm::ivec2& size,
         glm::vec3& outBMin,
         glm::vec3& outBMax) const
     {
-        const int vertCountX = size + 1;
-        const int vertCountZ = size + 1;
+        const int vertCountX = size.x + 1;
+        const int vertCountZ = size.y + 1;
 
         std::vector<float>        vertices;
         std::vector<unsigned int> indices;
@@ -185,9 +132,9 @@ namespace QuasarEngine
             }
         }
 
-        for (int lz = 0; lz < size; ++lz)
+        for (int lz = 0; lz < size.y; ++lz)
         {
-            for (int lx = 0; lx < size; ++lx)
+            for (int lx = 0; lx < size.x; ++lx)
             {
                 const unsigned int i0 = idxLocal(lx, lz);
                 const unsigned int i1 = idxLocal(lx + 1, lz);
@@ -216,6 +163,74 @@ namespace QuasarEngine
         );
 
         return mesh;
+    }
+
+
+
+    std::unique_ptr<TerrainQuadtree::Node>
+        TerrainQuadtree::BuildNode(const glm::ivec2& origin,
+            const glm::ivec2& size,
+            int depth)
+    {
+        if (size.x <= 0 || size.y <= 0)
+            return nullptr;
+
+        auto node = std::make_unique<Node>();
+        node->origin = origin;
+        node->size = size;
+        node->depth = depth;
+
+        glm::vec3 bmin, bmax;
+        node->mesh = BuildNodeMesh(origin, size, bmin, bmax);
+        node->bboxMin = bmin;
+        node->bboxMax = bmax;
+
+        const bool canSubdivide =
+            (depth < m_lod.maxDepth) &&
+            (size.x > m_lod.leafNodeSize || size.y > m_lod.leafNodeSize);
+
+        if (!canSubdivide)
+            return node;
+
+        const int halfX0 = size.x / 2;
+        const int halfZ0 = size.y / 2;
+
+        const int halfX1 = size.x - halfX0;
+        const int halfZ1 = size.y - halfZ0;
+
+        if (halfX0 <= 0 || halfZ0 <= 0 || halfX1 <= 0 || halfZ1 <= 0)
+            return node;
+
+        glm::ivec2 childOrigins[4] = {
+            origin,
+            origin + glm::ivec2(halfX0,      0),
+            origin + glm::ivec2(0,        halfZ0),
+            origin + glm::ivec2(halfX0,  halfZ0)
+        };
+
+        glm::ivec2 childSizes[4] = {
+            glm::ivec2(halfX0, halfZ0),
+            glm::ivec2(halfX1, halfZ0),
+            glm::ivec2(halfX0, halfZ1),
+            glm::ivec2(halfX1, halfZ1)
+        };
+
+        glm::vec3 childBMin = node->bboxMin;
+        glm::vec3 childBMax = node->bboxMax;
+
+        for (int i = 0; i < 4; ++i)
+        {
+            node->children[i] = BuildNode(childOrigins[i], childSizes[i], depth + 1);
+            if (!node->children[i]) continue;
+
+            childBMin = glm::min(childBMin, node->children[i]->bboxMin);
+            childBMax = glm::max(childBMax, node->children[i]->bboxMax);
+        }
+
+        node->bboxMin = childBMin;
+        node->bboxMax = childBMax;
+
+        return node;
     }
 
     TerrainQuadtree::Frustum
@@ -291,7 +306,9 @@ namespace QuasarEngine
         const glm::vec3& cameraPos) const
     {
         if (node.depth >= m_lod.maxDepth) return false;
-        if (node.size <= m_lod.leafNodeSize) return false;
+
+        const int maxSize = std::max(node.size.x, node.size.y);
+        if (maxSize <= m_lod.leafNodeSize) return false;
 
         const glm::vec3 center = 0.5f * (node.bboxMin + node.bboxMax);
         const float dist = glm::distance(center, cameraPos);
@@ -328,9 +345,12 @@ namespace QuasarEngine
         if (!BoxInFrustum(frustum, node->bboxMin, node->bboxMax))
             return;
 
-        if (node->IsLeaf() || !ShouldSubdivide(*node, cameraPos))
+        const bool subdivide = ShouldSubdivide(*node, cameraPos);
+
+        if (!subdivide || node->IsLeaf())
         {
-            outNodes.push_back(node);
+            if (node->mesh)
+                outNodes.push_back(node);
             return;
         }
 

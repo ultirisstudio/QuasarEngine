@@ -21,23 +21,25 @@ namespace QuasarEngine
         float m_HeightScale = 16.0f;
 
         std::unique_ptr<TerrainQuadtree> m_Quadtree;
-        TerrainLODSettings               m_LODSettings;
-        bool                             m_UseQuadtree = true;
+        TerrainLODSettings m_LODSettings;
+        bool m_UseQuadtree = true;
 
         std::string m_HeightMapId;
         std::string m_HeightMapPath;
 
-        bool                     m_Generated = false;
-        std::shared_ptr<Mesh>    m_Mesh;
+        bool m_Generated = false;
+        std::shared_ptr<Mesh> m_Mesh;
 
         float sampleHeightBilinear(float u, float v) const;
+        bool LoadHeightmapIfNeeded();
+        void BuildMeshCPUParallel();
 
     public:
         TerrainComponent();
 
-        bool  m_PolygonMode = false;
-        int   rez = 10;
-        int   textureScale = 1;
+        bool m_PolygonMode = false;
+        int rez = 10;
+        int textureScale = 1;
         float heightMult = 16.0f;
 
         const std::string& GetHeightMapId()   const { return m_HeightMapId; }
@@ -66,7 +68,7 @@ namespace QuasarEngine
 
         float GetTerrainSizeX() const { return m_TerrainSizeX; }
         float GetTerrainSizeZ() const { return m_TerrainSizeZ; }
-        void  SetTerrainSize(float x, float z)
+        void SetTerrainSize(float x, float z)
         {
             m_TerrainSizeX = std::max(1.0f, x);
             m_TerrainSizeZ = std::max(1.0f, z);
@@ -75,7 +77,7 @@ namespace QuasarEngine
         }
 
         float GetHeightScale() const { return m_HeightScale; }
-        void  SetHeightScale(float h)
+        void SetHeightScale(float h)
         {
             m_HeightScale = std::max(0.0f, h);
             heightMult = m_HeightScale;

@@ -78,6 +78,17 @@ namespace QuasarEngine
                 std::forward<Args>(args)...);
         }
 
+        template<typename Func, typename... Args>
+        auto SubmitWithHandle(JobPriority      priority,
+            JobPoolType      pool,
+            std::vector<Job::Ptr> dependencies,
+            std::string      name,
+            Func&& f,
+            Args&&...        args)
+            -> std::pair<
+            std::future<std::invoke_result_t<std::decay_t<Func>, std::decay_t<Args>...>>,
+            Job::Ptr>;
+
         void WaitAll();
 
     private:
@@ -294,5 +305,59 @@ namespace QuasarEngine
         }
 
         return future;
+    }
+
+    template<typename Func, typename... Args>
+    auto JobSystem::SubmitWithHandle(JobPriority      priority,
+        JobPoolType      pool,
+        std::vector<Job::Ptr> dependencies,
+        std::string      name,
+        Func&& f,
+        Args&&...        args)
+        -> std::pair<
+        std::future<std::invoke_result_t<std::decay_t<Func>, std::decay_t<Args>...>>,
+        Job::Ptr>
+    {
+        using FunctionType = std::decay_t<Func>;
+        using ReturnType = std::invoke_result_t<FunctionType, std::decay_t<Args>...>;
+
+        auto task = std::make_shared<std::packaged_task<ReturnType()>>(
+            std::bind(std::forward<Func>(f), std::forward<Args>(args)...)
+        );
+
+        std::future<ReturnType> future = task->get_future();
+
+        auto job = std::make_shared<Job>();
+        job->name = std::move(name);
+        job->priority = priority;
+        job->pool = pool;
+        job->func = [task]() { (*task)(); };
+
+        job->dependencies.clear();
+        job->dependencies.reserve(dependencies.size());
+        for (auto& dep : dependencies)
+            job->dependencies.emplace_back(dep);
+
+        {
+            std::lock_guard<std::mutex> lock(m_jobsMutex);
+
+            m_allJobs.insert(job);
+            m_activeJobs.insert(job);
+
+            if (job->DependenciesFinished())
+            {
+                auto it = m_pools.find(pool);
+                if (it == m_pools.end())
+                    throw std::runtime_error("JobSystem::SubmitWithHandle : pool inconnu");
+
+                it->second->Enqueue(job);
+            }
+            else
+            {
+                m_pendingJobs.insert(job);
+            }
+        }
+
+        return { std::move(future), job };
     }
 }
