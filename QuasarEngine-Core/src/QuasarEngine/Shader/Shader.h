@@ -45,17 +45,18 @@ namespace QuasarEngine
         };
 
         struct ShaderIO {
-            uint32_t     location;
+            uint32_t location;
             ShaderIOType type;
-            std::string  name;
-            bool         isInput;
-            std::string  semantic;
+            std::string name;
+            bool isInput;
+            std::string semantic;
         };
 
         struct ShaderModuleInfo {
-            ShaderStageType        stage;
-            std::string            path;
-            std::vector<ShaderIO>  inputs;
+            ShaderStageType stage;
+            std::string path;
+            std::string source;
+            std::vector<ShaderIO> inputs;
         };
 
         enum class ShaderUniformType {

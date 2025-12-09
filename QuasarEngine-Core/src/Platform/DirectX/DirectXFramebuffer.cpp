@@ -335,6 +335,76 @@ namespace QuasarEngine
         dx.deviceContext->ClearRenderTargetView(m_Color[attachmentIndex].rtv.Get(), color);
     }
 
+    void DirectXFramebuffer::ClearColor(float r, float g, float b, float a)
+    {
+        m_LastClearColor[0] = r;
+        m_LastClearColor[1] = g;
+        m_LastClearColor[2] = b;
+        m_LastClearColor[3] = a;
+
+        auto& dx = DirectXContext::Context;
+        float color[4] = { r, g, b, a };
+
+        for (auto& c : m_Color)
+        {
+            if (c.rtv)
+                dx.deviceContext->ClearRenderTargetView(c.rtv.Get(), color);
+        }
+    }
+
+    void DirectXFramebuffer::ClearDepth(float d)
+    {
+        m_LastClearDepth = d;
+
+        if (!m_Depth.dsv)
+            return;
+
+        auto& dx = DirectXContext::Context;
+        dx.deviceContext->ClearDepthStencilView(
+            m_Depth.dsv.Get(),
+            D3D11_CLEAR_DEPTH,
+            d,
+            m_LastClearStencil
+        );
+    }
+
+    void DirectXFramebuffer::Clear(ClearFlags flags)
+    {
+        const uint8_t f = static_cast<uint8_t>(flags);
+
+        if (f & static_cast<uint8_t>(ClearFlags::Color))
+        {
+            auto& dx = DirectXContext::Context;
+            for (auto& c : m_Color)
+            {
+                if (!c.rtv)
+                    continue;
+                dx.deviceContext->ClearRenderTargetView(c.rtv.Get(), m_LastClearColor);
+            }
+        }
+
+        const bool wantDepth = (f & static_cast<uint8_t>(ClearFlags::Depth)) != 0;
+        const bool wantStencil = (f & static_cast<uint8_t>(ClearFlags::Stencil)) != 0;
+
+        if (wantDepth || wantStencil)
+        {
+            if (!m_Depth.dsv)
+                return;
+
+            UINT dxFlags = 0;
+            if (wantDepth)   dxFlags |= D3D11_CLEAR_DEPTH;
+            if (wantStencil) dxFlags |= D3D11_CLEAR_STENCIL;
+
+            auto& dx = DirectXContext::Context;
+            dx.deviceContext->ClearDepthStencilView(
+                m_Depth.dsv.Get(),
+                dxFlags,
+                m_LastClearDepth,
+                m_LastClearStencil
+            );
+        }
+    }
+
     void DirectXFramebuffer::BindColorAttachment(uint32_t index) const
     {
         if (index >= m_Color.size()) return;

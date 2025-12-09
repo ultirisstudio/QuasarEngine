@@ -24,9 +24,9 @@ namespace QuasarEngine
         int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
 
         void ClearAttachment(uint32_t attachmentIndex, float r, float g, float b, float a) override;
-        void ClearColor(float r, float g, float b, float a) override {}
-        void ClearDepth(float d = 1.0f) override {}
-        void Clear(ClearFlags flags = ClearFlags::All) override {}
+        void ClearColor(float r, float g, float b, float a) override;
+        void ClearDepth(float d = 1.0f) override;
+        void Clear(ClearFlags flags = ClearFlags::All) override;
 
         void Resize(uint32_t width, uint32_t height) override;
         void Invalidate() override;
@@ -45,33 +45,37 @@ namespace QuasarEngine
     private:
         struct ColorAttachmentDX
         {
-            Microsoft::WRL::ComPtr<ID3D11Texture2D>            texture;
-            Microsoft::WRL::ComPtr<ID3D11RenderTargetView>     rtv;
-            Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>   srv;
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+            Microsoft::WRL::ComPtr<ID3D11RenderTargetView> rtv;
+            Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
 
-            Microsoft::WRL::ComPtr<ID3D11Texture2D>            resolveTexture;
-            Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>   resolveSRV;
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> resolveTexture;
+            Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> resolveSRV;
         };
 
         struct DepthAttachmentDX
         {
-            Microsoft::WRL::ComPtr<ID3D11Texture2D>          texture;
-            Microsoft::WRL::ComPtr<ID3D11DepthStencilView>   dsv;
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+            Microsoft::WRL::ComPtr<ID3D11DepthStencilView> dsv;
         };
 
     private:
         DXGI_FORMAT ToDXColorFormat(FramebufferTextureFormat fmt) const;
-        bool        IsDepthFormat(FramebufferTextureFormat fmt) const;
+        bool IsDepthFormat(FramebufferTextureFormat fmt) const;
 
-        void        ReleaseResources();
+        void ReleaseResources();
 
     private:
         FramebufferSpecification m_Spec;
         std::vector<FramebufferTextureSpecification> m_ColorSpecs;
-        FramebufferTextureSpecification               m_DepthSpec;
+        FramebufferTextureSpecification m_DepthSpec;
 
         std::vector<ColorAttachmentDX> m_Color;
-        DepthAttachmentDX              m_Depth;
+        DepthAttachmentDX m_Depth;
+
+        float   m_LastClearColor[4] = { 0.f, 0.f, 0.f, 0.f };
+        float   m_LastClearDepth = 1.0f;
+        uint8_t m_LastClearStencil = 0;
 
         mutable D3D11_VIEWPORT m_Viewport{};
     };

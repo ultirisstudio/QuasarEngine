@@ -303,7 +303,23 @@ namespace QuasarEngine
 
     bool DirectXShader::SetStorageBuffer(const std::string& name, const void* data, size_t size)
     {
-        return false;
+        if (!data || size == 0)
+            return false;
+
+        auto& info = m_StorageBuffers[name];
+
+        if (!info.buffer)
+        {
+            info.binding = m_NextStorageBinding++;
+            info.buffer = std::make_unique<DirectXUniformBuffer>(size, info.binding);
+        }
+        else if (size > info.buffer->GetSize())
+        {
+            info.buffer = std::make_unique<DirectXUniformBuffer>(size, info.binding);
+        }
+
+        info.buffer->SetData(data, size);
+        return true;
     }
 
     void DirectXShader::ApplyPipelineStates()

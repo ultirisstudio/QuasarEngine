@@ -51,6 +51,15 @@ namespace QuasarEngine
 		std::vector<uint8_t> m_GlobalUniformData;
 		std::vector<uint8_t> m_ObjectUniformData;
 
+		struct StorageBufferInfo
+		{
+			std::unique_ptr<DirectXUniformBuffer> buffer;
+			uint32_t binding = 0;
+		};
+
+		std::unordered_map<std::string, StorageBufferInfo> m_StorageBuffers;
+		uint32_t m_NextStorageBinding = 2;
+
 		std::unordered_map<std::string, DirectXTexture2D*> m_ObjectTextures;
 		std::unordered_map<std::string, Shader::SamplerType> m_ObjectTextureTypes;
 

@@ -108,9 +108,66 @@ namespace QuasarEngine
 
     DirectXTextureCubeMap::~DirectXTextureCubeMap() { sCube.erase(this); }
 
-    bool DirectXTextureCubeMap::LoadFromPath(const std::string&) { return false; }
-    bool DirectXTextureCubeMap::LoadFromMemory(ByteView) { return false; }
-    bool DirectXTextureCubeMap::LoadFromData(ByteView) { return false; }
+    bool DirectXTextureCubeMap::LoadFromPath(const std::string& path)
+    {
+        bool ok = true;
+        ok = ok && LoadFaceFromPath(Face::PositiveX, path);
+        ok = ok && LoadFaceFromPath(Face::NegativeX, path);
+        ok = ok && LoadFaceFromPath(Face::PositiveY, path);
+        ok = ok && LoadFaceFromPath(Face::NegativeY, path);
+        ok = ok && LoadFaceFromPath(Face::PositiveZ, path);
+        ok = ok && LoadFaceFromPath(Face::NegativeZ, path);
+        return ok;
+    }
+
+    bool DirectXTextureCubeMap::LoadFromMemory(ByteView bytes)
+    {
+        int w, h, c;
+        const int desired = 4;
+
+        stbi_uc* pixels = stbi_load_from_memory(
+            reinterpret_cast<const stbi_uc*>(bytes.data),
+            static_cast<int>(bytes.size),
+            &w, &h, &c,
+            desired);
+
+        if (!pixels)
+            return false;
+
+        ByteView faceData{ pixels, static_cast<size_t>(w * h * desired) };
+
+        bool ok = true;
+        ok = ok && LoadFaceFromData(Face::PositiveX, faceData, w, h, desired);
+        ok = ok && LoadFaceFromData(Face::NegativeX, faceData, w, h, desired);
+        ok = ok && LoadFaceFromData(Face::PositiveY, faceData, w, h, desired);
+        ok = ok && LoadFaceFromData(Face::NegativeY, faceData, w, h, desired);
+        ok = ok && LoadFaceFromData(Face::PositiveZ, faceData, w, h, desired);
+        ok = ok && LoadFaceFromData(Face::NegativeZ, faceData, w, h, desired);
+
+        stbi_image_free(pixels);
+        return ok;
+    }
+
+    bool DirectXTextureCubeMap::LoadFromData(ByteView data)
+    {
+        const uint32_t w = m_Specification.width;
+        const uint32_t h = m_Specification.height;
+        const uint32_t channels = 4;
+
+        if (w == 0 || h == 0)
+            return false;
+        if (data.size < static_cast<size_t>(w * h * channels))
+            return false;
+
+        bool ok = true;
+        ok = ok && LoadFaceFromData(Face::PositiveX, data, w, h, channels);
+        ok = ok && LoadFaceFromData(Face::NegativeX, data, w, h, channels);
+        ok = ok && LoadFaceFromData(Face::PositiveY, data, w, h, channels);
+        ok = ok && LoadFaceFromData(Face::NegativeY, data, w, h, channels);
+        ok = ok && LoadFaceFromData(Face::PositiveZ, data, w, h, channels);
+        ok = ok && LoadFaceFromData(Face::NegativeZ, data, w, h, channels);
+        return ok;
+    }
 
     bool DirectXTextureCubeMap::LoadFaceFromPath(Face face, const std::string& path)
     {
@@ -193,5 +250,35 @@ namespace QuasarEngine
         dx.deviceContext->PSSetSamplers(index, 1, &s);
     }
 
-    void DirectXTextureCubeMap::Unbind() const {}
+    TextureHandle DirectXTextureCubeMap::GetHandle() const noexcept
+    {
+        auto it = sCube.find(this);
+        if (it == sCube.end() || !it->second.srv)
+            return static_cast<TextureHandle>(0);
+
+        return reinterpret_cast<TextureHandle>(it->second.srv.Get());
+    }
+
+    bool DirectXTextureCubeMap::IsLoaded() const noexcept
+    {
+        auto it = sCube.find(this);
+        return it != sCube.end() && it->second.loaded;
+    }
+
+    void DirectXTextureCubeMap::GenerateMips()
+    {
+        auto& dx = DirectXContext::Context;
+        auto it = sCube.find(this);
+        if (it == sCube.end() || !it->second.srv)
+            return;
+
+        dx.deviceContext->GenerateMips(it->second.srv.Get());
+    }
+
+    void DirectXTextureCubeMap::Unbind() const
+    {
+        auto& dx = DirectXContext::Context;
+        ID3D11ShaderResourceView* nullSRV = nullptr;
+        dx.deviceContext->PSSetShaderResources(0, 1, &nullSRV);
+    }
 }

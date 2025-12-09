@@ -9,8 +9,8 @@ namespace QuasarEngine
         explicit DirectXTexture2D(const TextureSpecification& specification);
         ~DirectXTexture2D() override;
 
-        TextureHandle GetHandle() const noexcept override { return static_cast<TextureHandle>(0); }
-        bool IsLoaded() const noexcept override { return false; }
+        TextureHandle GetHandle() const noexcept override;
+        bool IsLoaded() const noexcept override;
 
         bool LoadFromPath(const std::string& path) override;
         bool LoadFromMemory(ByteView data) override;
@@ -21,6 +21,6 @@ namespace QuasarEngine
         void Bind(int index = 0) const override;
         void Unbind() const override;
 
-        void GenerateMips() override {}
+        void GenerateMips() override;
     };
 }
