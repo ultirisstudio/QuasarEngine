@@ -63,8 +63,8 @@ namespace QuasarEngine
         std::vector<Particle> m_Particles;
         std::size_t m_MaxParticles = 128;
 
-        std::shared_ptr<Mesh>      m_QuadMesh;
-        std::shared_ptr<Shader>    m_Shader;
+        std::shared_ptr<Mesh> m_QuadMesh;
+        std::shared_ptr<Shader> m_Shader;
         std::shared_ptr<Texture2D> m_Texture;
     };
 }

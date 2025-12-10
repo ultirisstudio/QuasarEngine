@@ -156,7 +156,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_UI = std::make_unique<UISystem>();
 
-		struct UISharedState {
+		/*struct UISharedState {
 			int quality = 1;
 		};
 		auto state = std::make_shared<UISharedState>();
@@ -396,7 +396,7 @@ namespace QuasarEngine
 
 		tooltip->Show("Astuce: Tab pour naviguer, Espace/Entree pour activer.", 28.f, 80.f);
 
-		m_SceneData.m_UI->SetRoot(root);
+		m_SceneData.m_UI->SetRoot(root);*/
 
 		/* {
 			Shader::ShaderDescription pcDesc;
@@ -476,7 +476,7 @@ namespace QuasarEngine
 			m_SceneData.m_PointCloudShader = Shader::Create(pcDesc);
 		}*/
 
-		m_SceneData.m_SmokeEmitter = std::make_unique<SmokeEmitterScript>();
+		//m_SceneData.m_SmokeEmitter = std::make_unique<SmokeEmitterScript>();
 	}
 
 	void Renderer::Shutdown()
@@ -486,7 +486,7 @@ namespace QuasarEngine
 		//m_SceneData.m_PointCloudShader.reset();
 		m_SceneData.m_UI.reset();
 		m_SceneData.m_ScriptSystem.reset();
-		m_SceneData.m_SmokeEmitter.reset();
+		//m_SceneData.m_SmokeEmitter.reset();
 	}
 
 	void Renderer::BeginScene(Scene& scene)
@@ -613,13 +613,18 @@ namespace QuasarEngine
 			terrainTech.Submit(ctx, obj);
 		terrainTech.End();
 
-		static double s_LastTime = glfwGetTime();
-		double currentTime = glfwGetTime();
-		float dt = static_cast<float>(currentTime - s_LastTime);
-		s_LastTime = currentTime;
+		for (auto [e, tr, pc] : m_SceneData.m_Scene->GetRegistry()->GetRegistry().group<TransformComponent, ParticleComponent>().each())
+		{
+			pc.Render(ctx);
+		}
 
-		m_SceneData.m_SmokeEmitter->OnUpdate(dt);
-		m_SceneData.m_SmokeEmitter->OnRender(ctx);
+		//static double s_LastTime = glfwGetTime();
+		//double currentTime = glfwGetTime();
+		//float dt = static_cast<float>(currentTime - s_LastTime);
+		//s_LastTime = currentTime;
+
+		//m_SceneData.m_SmokeEmitter->OnUpdate(dt);
+		//m_SceneData.m_SmokeEmitter->OnRender(ctx);
 
 		/*pcTech.Begin(ctx);
 		for (auto& obj : pointClouds)

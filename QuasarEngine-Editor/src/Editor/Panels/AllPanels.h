@@ -22,3 +22,5 @@
 #include <Editor/Panels/Components/Animation/AnimationComponentPanel.h>
 
 #include <Editor/Panels/Components/2D/SpriteComponentPanel.h>
+
+#include <Editor/Panels/Components/Particles/ParticleComponentPanel.h>

@@ -53,6 +53,7 @@ namespace QuasarEngine
         m_Panels.push_back({ std::make_unique<ScriptComponentPanel>(projectPath), "Script" });
 		m_Panels.push_back({ std::make_unique<AnimationComponentPanel>(), "Animation" });
 		m_Panels.push_back({ std::make_unique<SpriteComponentPanel>(), "Sprite" });
+		m_Panels.push_back({ std::make_unique<ParticleComponentPanel>(), "Particle" });
     }
 
     void EntityPropertie::buildMenuItems(const std::string& projectPath)
@@ -152,6 +153,10 @@ namespace QuasarEngine
         add("Sprite Component", "2D", "Rendering",
             [](Entity& e) { return e.HasComponent<SpriteComponent>(); },
             [](Entity& e) { e.AddComponent<SpriteComponent>(); });
+
+        add("Particle Component", "Particle", "Rendering",
+            [](Entity& e) { return e.HasComponent<ParticleComponent>(); },
+            [](Entity& e) { e.AddComponent<ParticleComponent>(); });
     }
 
     void EntityPropertie::renderPanels(Entity entity)

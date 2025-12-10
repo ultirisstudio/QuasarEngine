@@ -25,3 +25,5 @@
 #include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
 
 #include <QuasarEngine/Entity/Components/2D/SpriteComponent.h>
+
+#include <QuasarEngine/Entity/Components/Particles/ParticleComponent.h>

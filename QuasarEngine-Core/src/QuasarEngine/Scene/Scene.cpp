@@ -14,6 +14,7 @@
 
 #include "QuasarEngine/Entity/Components/Physics/RigidBodyComponent.h"
 #include <QuasarEngine/Entity/Components/Animation/AnimationComponent.h>
+#include <QuasarEngine/Entity/Components/Particles/ParticleComponent.h>
 
 namespace QuasarEngine
 {
@@ -171,6 +172,12 @@ namespace QuasarEngine
         {
             auto& anim = view.get<AnimationComponent>(entity);
             anim.Update(deltaTime);
+        }
+
+        for (auto [e, tr, pc] : m_Registry->GetRegistry().group<TransformComponent, ParticleComponent>().each())
+        {
+            glm::vec3 emitterPos = tr.GetGlobalTransform() * glm::vec4(pc.m_EmitterOffset, 1.0f);
+            pc.Update(deltaTime, emitterPos);
         }
 
         if (m_OnRuntime)
