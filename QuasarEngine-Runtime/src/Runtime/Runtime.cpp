@@ -90,6 +90,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
 				vertPath,
+				"",
 				{
 					{0, Shader::ShaderIOType::Vec2, "aPos", true, ""},
 					{1, Shader::ShaderIOType::Vec2, "aTexCoords", true, ""}
@@ -98,6 +99,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Fragment,
 				fragPath,
+				"",
 				{
 					{0, Shader::ShaderIOType::Vec4, "FragColor", false, ""}
 				}

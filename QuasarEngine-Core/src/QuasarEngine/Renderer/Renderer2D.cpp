@@ -47,6 +47,7 @@ namespace QuasarEngine
             Shader::ShaderModuleInfo{
                 Shader::ShaderStageType::Vertex,
                 basePath + name + extFor(api, Shader::ShaderStageType::Vertex),
+                "",
                 {
                     {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
                     {1, Shader::ShaderIOType::Vec4, "inColor",    true, ""},
@@ -58,6 +59,7 @@ namespace QuasarEngine
             Shader::ShaderModuleInfo{
                 Shader::ShaderStageType::Fragment,
                 basePath + name + extFor(api, Shader::ShaderStageType::Fragment),
+                "",
                 {}
             }
         };

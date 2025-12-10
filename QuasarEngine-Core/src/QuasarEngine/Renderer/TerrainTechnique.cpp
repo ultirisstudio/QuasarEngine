@@ -51,6 +51,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
 				tVertPath,
+				"",
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal", true, ""},
@@ -60,6 +61,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::TessControl,
 				tTcsPath,
+				"",
 				{}
 			},
 			Shader::ShaderModuleInfo{

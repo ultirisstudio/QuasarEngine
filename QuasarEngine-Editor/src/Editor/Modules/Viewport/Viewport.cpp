@@ -65,7 +65,7 @@ namespace QuasarEngine
 
 			Renderer::Instance().RenderSkybox(camera);
 			Renderer::Instance().Render(camera);
-			//Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
+			Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
 			Renderer::Instance().EndScene();
 
 			m_ViewportFrameBuffer->Unbind();

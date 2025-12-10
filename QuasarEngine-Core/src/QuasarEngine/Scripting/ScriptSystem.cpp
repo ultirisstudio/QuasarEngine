@@ -16,6 +16,7 @@
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
 
 #include <QuasarEngine/Renderer/Renderer.h>
+#include <QuasarEngine/Scene/Scene.h>
 #include <QuasarEngine/Entity/Entity.h>
 
 #include <QuasarEngine/Core/Input.h>
@@ -71,26 +72,16 @@ namespace QuasarEngine
     }
 
     ScriptSystem::ScriptSystem() {
-        m_Registry = std::make_unique<entt::registry>();
-
         m_Lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::os);
     }
 
     ScriptSystem::~ScriptSystem()
     {
-		auto view = m_Registry->view<ScriptComponent>();
-        for (auto entity : view) {
-			auto& scriptComponent = view.get<ScriptComponent>(entity);
-            if (scriptComponent.initialized) {
-				UnregisterEntityScript(scriptComponent);
-			}
-		}
-
-		m_Registry.reset();
+		
     }
 
     sol::object ScriptSystem::LuaGetComponent(Entity& entity, const std::string& componentName, sol::state_view lua) {
-        if (!entity) {
+        if (!entity.IsValid()) {
             std::cerr << "[Lua Error] Invalid Entity reference in getComponent\n";
             return sol::nil;
         }
@@ -100,7 +91,7 @@ namespace QuasarEngine
     }
 
     bool ScriptSystem::LuaHasComponent(Entity& entity, const std::string& componentName) {
-        if (!entity) {
+        if (!entity.IsValid()) {
             std::cerr << "[Lua Error] Invalid Entity reference in hasComponent\n";
             return false;
         }
@@ -109,7 +100,7 @@ namespace QuasarEngine
     }
 
     sol::object ScriptSystem::LuaAddComponent(Entity& entity, const std::string& componentName, sol::variadic_args args, sol::state_view lua) {
-        if (!entity) {
+        if (!entity.IsValid()) {
             std::cerr << "[Lua Error] Invalid Entity reference in addComponent\n";
             return sol::nil;
         }
@@ -181,10 +172,6 @@ namespace QuasarEngine
     {
         entt::entity entity = scriptComponent.entt_entity;
 
-        if (!m_Registry->all_of<ScriptComponent>(entity)) {
-            m_Registry->emplace<ScriptComponent>(entity, scriptComponent);
-        }
-
         sol::environment env(m_Lua, sol::create, m_Lua.globals());
 
         sol::table publicTable = m_Lua.create_table();
@@ -247,42 +234,38 @@ namespace QuasarEngine
 
     void ScriptSystem::UnregisterEntityScript(ScriptComponent& scriptComponent)
     {
-        auto view = m_Registry->view<ScriptComponent>();
-        for (auto entity : view) {
-            if (view.get<ScriptComponent>(entity).entt_entity == scriptComponent.entt_entity) {
-                m_Registry->remove<ScriptComponent>(entity);
-                break;
-            }
-        }
-
         scriptComponent.initialized = false;
         scriptComponent.startFunc = sol::nil;
         scriptComponent.updateFunc = sol::nil;
         scriptComponent.stopFunc = sol::nil;
         scriptComponent.environment = sol::nil;
+
     }
 
     void ScriptSystem::Update(double dt) {
-        auto view = m_Registry->view<ScriptComponent>();
-        
+        auto reg = Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
+        auto view = reg->GetRegistry().view<ScriptComponent>();
+
         for (auto e : view) {
-            Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
-            auto& script = entity.GetComponent<ScriptComponent>();
-            
+            Entity entity{ e, reg };
+            auto& script = view.get<ScriptComponent>(e);
+
             if (script.updateFunc.valid()) {
                 try {
                     script.updateFunc(dt);
                 }
-                catch (const sol::error& e) {
-                    std::cerr << "[Lua Runtime Error] " << e.what() << std::endl;
+                catch (const sol::error& err) {
+                    std::cerr << "[Lua Runtime Error] " << err.what() << std::endl;
                 }
             }
         }
     }
 
+
     void ScriptSystem::Start()
     {
-        auto view = m_Registry->view<ScriptComponent>();
+        auto reg = Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
+        auto view = reg->GetRegistry().view<ScriptComponent>();
 
         for (auto e : view) {
             Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
@@ -296,7 +279,8 @@ namespace QuasarEngine
 
     void ScriptSystem::Stop()
     {
-        auto view = m_Registry->view<ScriptComponent>();
+        auto reg = Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
+        auto view = reg->GetRegistry().view<ScriptComponent>();
 
         for (auto e : view) {
             Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
@@ -630,7 +614,8 @@ namespace QuasarEngine
     {
         lua_state.new_usertype<Entity>("Entity",
             "name", &Entity::GetName,
-            "id", & Entity::GetUUID
+            "id", & Entity::GetUUID,
+            "isValid", &Entity::IsValid
         );
 
         lua_state["Entity"]["getComponent"] = [this, &lua_state](Entity& entity, const std::string& componentName) -> sol::object {

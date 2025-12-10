@@ -19,6 +19,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
 				"Assets/Shaders/gl/basic_skybox.vert.glsl",
+				"",
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
@@ -28,6 +29,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Fragment,
 				"Assets/Shaders/gl/basic_skybox.frag.glsl",
+				"",
 				{
 					{0, Shader::ShaderIOType::Vec3, "inTexCoord", true, ""}
 				}

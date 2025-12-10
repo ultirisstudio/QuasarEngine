@@ -126,6 +126,7 @@ namespace QuasarEngine {
             Shader::ShaderModuleInfo{
                 Shader::ShaderStageType::Vertex,
                 vertPath,
+                "",
                 {
                     {0, Shader::ShaderIOType::Vec2, "inPosition", true, ""},
                     {1, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""},
@@ -135,6 +136,7 @@ namespace QuasarEngine {
             Shader::ShaderModuleInfo{
                 Shader::ShaderStageType::Fragment,
                 fragPath,
+                "",
                 {}
             }
         };

@@ -47,10 +47,8 @@ namespace QuasarEngine
         void BindPhysicsToLua(sol::state& lua_state);
         void BindUIToLua(sol::state& lua_state);
 
-        std::unique_ptr<entt::registry> m_Registry;
-
         sol::state m_Lua;
-
+        
         UISystem* m_UISystem = nullptr;
     };
 }

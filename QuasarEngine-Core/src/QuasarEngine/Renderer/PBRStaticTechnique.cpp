@@ -44,6 +44,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Vertex,
 				vertPath,
+				"",
 				{
 					{0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
 					{1, Shader::ShaderIOType::Vec3, "inNormal",   true, ""},
@@ -55,6 +56,7 @@ namespace QuasarEngine
 			Shader::ShaderModuleInfo{
 				Shader::ShaderStageType::Fragment,
 				fragPath,
+				"",
 				{}
 			}
 		};

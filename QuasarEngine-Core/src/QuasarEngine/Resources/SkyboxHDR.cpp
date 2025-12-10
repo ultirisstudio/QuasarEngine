@@ -130,8 +130,8 @@ namespace QuasarEngine
             const std::string v = basePath + "cubemap" + ExtFor(api, Shader::ShaderStageType::Vertex);
             const std::string f = basePath + "equirectangular_to_cubemap" + ExtFor(api, Shader::ShaderStageType::Fragment);
             d.modules = {
-                { Shader::ShaderStageType::Vertex,   v, { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} } },
-                { Shader::ShaderStageType::Fragment, f, {} }
+                { Shader::ShaderStageType::Vertex,   v, "", { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} }},
+                { Shader::ShaderStageType::Fragment, f, "", {}}
             };
             d.globalUniforms = {
                 {"view",       Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkyboxGlobals, view),       0, 0, GP},
@@ -156,8 +156,8 @@ namespace QuasarEngine
             const std::string v = basePath + "cubemap" + ExtFor(api, Shader::ShaderStageType::Vertex);
             const std::string f = basePath + "irradiance_convolution" + ExtFor(api, Shader::ShaderStageType::Fragment);
             d.modules = {
-                { Shader::ShaderStageType::Vertex,   v, { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} } },
-                { Shader::ShaderStageType::Fragment, f, {} }
+                { Shader::ShaderStageType::Vertex,   v, "", { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} }},
+                { Shader::ShaderStageType::Fragment, f, "", {} }
             };
             d.globalUniforms = {
                 {"view",       Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkyboxGlobals, view),       0, 0, GP},
@@ -181,8 +181,8 @@ namespace QuasarEngine
             const std::string v = basePath + "cubemap" + ExtFor(api, Shader::ShaderStageType::Vertex);
             const std::string f = basePath + "prefilter" + ExtFor(api, Shader::ShaderStageType::Fragment);
             d.modules = {
-                { Shader::ShaderStageType::Vertex,   v, { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} } },
-                { Shader::ShaderStageType::Fragment, f, {} }
+                { Shader::ShaderStageType::Vertex,   v, "", { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} } },
+                { Shader::ShaderStageType::Fragment, f, "", {} }
             };
             d.globalUniforms = {
                 {"view",       Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkyboxGlobals, view),       0, 0, GP},
@@ -209,8 +209,8 @@ namespace QuasarEngine
             const std::string v = basePath + "background" + ExtFor(api, Shader::ShaderStageType::Vertex);
             const std::string f = basePath + "background" + ExtFor(api, Shader::ShaderStageType::Fragment);
             d.modules = {
-                { Shader::ShaderStageType::Vertex,   v, { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} } },
-                { Shader::ShaderStageType::Fragment, f, {} }
+                { Shader::ShaderStageType::Vertex,   v, "", { {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""} } },
+                { Shader::ShaderStageType::Fragment, f, "", {} }
             };
             d.globalUniforms = {
                 {"view",       Shader::ShaderUniformType::Mat4, sizeof(glm::mat4), offsetof(SkyboxGlobals, view),       0, 0, GP},
@@ -235,10 +235,10 @@ namespace QuasarEngine
             const std::string v = basePath + "brdf" + ExtFor(api, Shader::ShaderStageType::Vertex);
             const std::string f = basePath + "brdf" + ExtFor(api, Shader::ShaderStageType::Fragment);
             d.modules = {
-                { Shader::ShaderStageType::Vertex,   v, {
+                { Shader::ShaderStageType::Vertex,   v, "", {
                     {0, Shader::ShaderIOType::Vec3, "inPosition", true, ""},
                     {1, Shader::ShaderIOType::Vec2, "inTexCoord", true, ""} } },
-                { Shader::ShaderStageType::Fragment, f, {} }
+                { Shader::ShaderStageType::Fragment, f, "", {} }
             };
             d.blendMode = Shader::BlendMode::None;
             d.cullMode = Shader::CullMode::None;

@@ -87,39 +87,53 @@ namespace QuasarEngine
         auto& dx = DirectXContext::Context;
         auto& S = sTex2D[this];
 
-        const int comp = 4;
-        const int w = (int)m_Specification.width;
-        const int h = (int)m_Specification.height;
-        if (w == 0 || h == 0) return false;
+        const UINT comp = 4;
+        const UINT w = static_cast<UINT>(m_Specification.width);
+        const UINT h = static_cast<UINT>(m_Specification.height);
+
+        if (w == 0 || h == 0 || data.data == nullptr)
+            return false;
 
         D3D11_TEXTURE2D_DESC td{};
-        td.Width = w; td.Height = h;
-        td.MipLevels = 1; td.ArraySize = 1;
+        td.Width = w;
+        td.Height = h;
+        td.MipLevels = 1;
+        td.ArraySize = 1;
         td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         td.SampleDesc.Count = 1;
+        td.SampleDesc.Quality = 0;
         td.Usage = D3D11_USAGE_DEFAULT;
         td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        td.CPUAccessFlags = 0;
+        td.MiscFlags = 0;
 
         D3D11_SUBRESOURCE_DATA srd{};
         srd.pSysMem = data.data;
         srd.SysMemPitch = w * comp;
 
         HRESULT hr = dx.device->CreateTexture2D(&td, &srd, S.tex.GetAddressOf());
-        if (FAILED(hr)) return false;
+        if (FAILED(hr))
+            return false;
 
         D3D11_SHADER_RESOURCE_VIEW_DESC sv{};
         sv.Format = td.Format;
         sv.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        sv.Texture2D.MipLevels = 1;
+        sv.Texture2D.MostDetailedMip = 0;
+        sv.Texture2D.MipLevels = td.MipLevels;
 
-        HRESULT hr = dx.device->CreateShaderResourceView(S.tex.Get(), &sv, S.srv.GetAddressOf());
-        if (FAILED(hr)) return false;
+        hr = dx.device->CreateShaderResourceView(S.tex.Get(), &sv, S.srv.GetAddressOf());
+        if (FAILED(hr))
+            return false;
 
         EnsureSampler(S);
-        S.w = w; S.h = h; S.ch = comp; S.loaded = true;
+
+        S.w = w;
+        S.h = h;
+        S.ch = comp;
+        S.loaded = true;
 
         const size_t expectedSize = static_cast<size_t>(w) * static_cast<size_t>(h) * static_cast<size_t>(comp);
-        const size_t copySize = std::min(expectedSize, data.size);
+        const size_t copySize = std::min(expectedSize, static_cast<size_t>(data.size));
 
         S.cpuData.resize(copySize);
         if (copySize > 0)

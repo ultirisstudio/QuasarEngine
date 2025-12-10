@@ -11,6 +11,8 @@
 #include <QuasarEngine/Resources/Lights/PointLight.h>
 #include <QuasarEngine/Resources/Lights/DirectionalLight.h>
 
+#include <QuasarEngine/Resources/Particles/SmokeEmitter.h>
+
 #include <QuasarEngine/UI/UISystem.h>
 
 #include <QuasarEngine/Core/Singleton.h>
@@ -33,6 +35,8 @@ namespace QuasarEngine
 			std::unique_ptr<ScriptSystem> m_ScriptSystem;
 
 			std::unique_ptr<UISystem> m_UI;
+
+			std::unique_ptr<SmokeEmitterScript> m_SmokeEmitter;
 
 			std::array<PointLight, 4> m_PointsBuffer;
 			std::array<DirectionalLight, 4> m_DirectionalsBuffer;

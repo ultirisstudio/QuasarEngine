@@ -133,7 +133,9 @@ namespace QuasarEngine
         m_EntityMap.erase(uuid);
 
         if (entity.IsValid())
+        {
             m_Registry->DestroyEntity(entity);
+        }
     }
 
     std::optional<Entity> Scene::GetEntityByUUID(UUID uuid) const

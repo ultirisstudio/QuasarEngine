@@ -4,7 +4,6 @@
 #include "VulkanContext.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
-#include "VulkanShader.h" // TODO: Remove
 
 namespace QuasarEngine
 {
