@@ -10,7 +10,7 @@
 #if !defined(NDEBUG)
 #define QE_PROFILE_APP_TIMERS 1
 #else
-#define QE_PROFILE_APP_TIMERS 0
+#define QE_PROFILE_APP_TIMERS 1
 #endif
 #endif
 

@@ -35,9 +35,6 @@
 
 #include <QuasarEngine/Renderer/RenderContext.h>
 #include <QuasarEngine/Renderer/RenderObject.h>
-#include <QuasarEngine/Renderer/PBRStaticTechnique.h>
-#include <QuasarEngine/Renderer/PBRSkinTechnique.h>
-#include <QuasarEngine/Renderer/TerrainTechnique.h>
 
 namespace QuasarEngine
 {
@@ -147,6 +144,11 @@ namespace QuasarEngine
 		SkyboxHDR::Settings skyboxSettings;
 		skyboxSettings.hdrPath = "Assets/HDR/kloofendal_48d_partly_cloudy_puresky_4k.hdr";
 		m_SceneData.m_SkyboxHDR = std::make_shared<SkyboxHDR>(skyboxSettings);
+
+		m_SceneData.m_StaticTech = std::make_unique<PBRStaticTechnique>(m_SceneData.m_SkyboxHDR.get());
+		m_SceneData.m_SkinnedTech = std::make_unique<PBRSkinTechnique>(m_SceneData.m_SkyboxHDR.get());
+		m_SceneData.m_TerrainTech = std::make_unique<TerrainTechnique>(m_SceneData.m_SkyboxHDR.get());
+		//m_PcTech = std::make_unique<PointCloudTechnique>(m_SceneData.m_SkyboxHDR.get());
 
 		m_SceneData.m_ScriptSystem = std::make_unique<ScriptSystem>();
 		m_SceneData.m_ScriptSystem->Initialize();
@@ -589,42 +591,38 @@ namespace QuasarEngine
 			}
 		}
 
-		PBRStaticTechnique staticTech(m_SceneData.m_SkyboxHDR.get());
-		PBRSkinTechnique skinnedTech(m_SceneData.m_SkyboxHDR.get());
-		TerrainTechnique terrainTech(m_SceneData.m_SkyboxHDR.get());
-		//PointCloudTechnique pcTech(m_SceneData.m_SkyboxHDR.get());
-
-		staticTech.Begin(ctx);
-		for (auto& obj : staticMeshes)
+		if (!staticMeshes.empty())
 		{
-			staticTech.Submit(ctx, obj);
+			m_SceneData.m_StaticTech->Begin(ctx);
+			for (auto& obj : staticMeshes)
+			{
+				m_SceneData.m_StaticTech->Submit(ctx, obj);
+			}
+			m_SceneData.m_StaticTech->End();
 		}
-		staticTech.End();
 
-		skinnedTech.Begin(ctx);
-		for (auto& obj : skinnedMeshes)
+		if (!skinnedMeshes.empty())
 		{
-			skinnedTech.Submit(ctx, obj);
+			m_SceneData.m_SkinnedTech->Begin(ctx);
+			for (auto& obj : skinnedMeshes)
+			{
+				m_SceneData.m_SkinnedTech->Submit(ctx, obj);
+			}
+			m_SceneData.m_SkinnedTech->End();
 		}
-		skinnedTech.End();
 
-		terrainTech.Begin(ctx);
-		for (auto& obj : terrains)
-			terrainTech.Submit(ctx, obj);
-		terrainTech.End();
+		if (!terrains.empty())
+		{
+			m_SceneData.m_TerrainTech->Begin(ctx);
+			for (auto& obj : terrains)
+				m_SceneData.m_TerrainTech->Submit(ctx, obj);
+			m_SceneData.m_TerrainTech->End();
+		}
 
 		for (auto [e, tr, pc] : m_SceneData.m_Scene->GetRegistry()->GetRegistry().group<TransformComponent, ParticleComponent>().each())
 		{
 			pc.Render(ctx);
 		}
-
-		//static double s_LastTime = glfwGetTime();
-		//double currentTime = glfwGetTime();
-		//float dt = static_cast<float>(currentTime - s_LastTime);
-		//s_LastTime = currentTime;
-
-		//m_SceneData.m_SmokeEmitter->OnUpdate(dt);
-		//m_SceneData.m_SmokeEmitter->OnRender(ctx);
 
 		/*pcTech.Begin(ctx);
 		for (auto& obj : pointClouds)
@@ -666,7 +664,7 @@ namespace QuasarEngine
 
 		m_SceneData.m_PointCloudShader->Unuse();*/
 
-		{
+		/* {
 			Renderer2D::Instance().BeginScene(camera);
 
 			for (auto e : m_SceneData.m_Scene->GetAllEntitiesWith<TransformComponent, SpriteComponent>())
@@ -688,7 +686,7 @@ namespace QuasarEngine
 			}
 
 			Renderer2D::Instance().EndScene();
-		}
+		}*/
 	}
 
 	void Renderer::RenderDebug(BaseCamera& camera)
@@ -727,7 +725,7 @@ namespace QuasarEngine
 
 	void Renderer::RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi)
 	{
-		UIFBInfo fb{ fbW, fbH, dpi };
+		UIFBInfo fb{fbW, fbH, dpi};
 		m_SceneData.m_UI->Render(camera, fb);
 	}
 

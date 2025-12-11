@@ -11,11 +11,13 @@
 #include <QuasarEngine/Resources/Lights/PointLight.h>
 #include <QuasarEngine/Resources/Lights/DirectionalLight.h>
 
-#include <QuasarEngine/Resources/Particles/SmokeEmitter.h>
-
 #include <QuasarEngine/UI/UISystem.h>
 
 #include <QuasarEngine/Core/Singleton.h>
+
+#include <QuasarEngine/Renderer/PBRStaticTechnique.h>
+#include <QuasarEngine/Renderer/PBRSkinTechnique.h>
+#include <QuasarEngine/Renderer/TerrainTechnique.h>
 
 namespace QuasarEngine
 {
@@ -34,9 +36,12 @@ namespace QuasarEngine
 
 			std::unique_ptr<ScriptSystem> m_ScriptSystem;
 
-			std::unique_ptr<UISystem> m_UI;
+			std::unique_ptr<PBRStaticTechnique> m_StaticTech;
+			std::unique_ptr<PBRSkinTechnique> m_SkinnedTech;
+			std::unique_ptr<TerrainTechnique> m_TerrainTech;
+			//PointCloudTechnique> m_PcTech;
 
-			//std::unique_ptr<SmokeEmitterScript> m_SmokeEmitter;
+			std::unique_ptr<UISystem> m_UI;
 
 			std::array<PointLight, 4> m_PointsBuffer;
 			std::array<DirectionalLight, 4> m_DirectionalsBuffer;
