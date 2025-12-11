@@ -1,10 +1,13 @@
 #include "qepch.h"
 #include "ParticleSystem.h"
 
+#include <algorithm>
+
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/constants.hpp>
 
 #include <QuasarEngine/Renderer/RendererAPI.h>
-#include <QuasarEngine/Asset/AssetManager.h>
+#include <QuasarEngine/Renderer/RenderCommand.h>
 
 namespace QuasarEngine
 {
@@ -16,34 +19,38 @@ namespace QuasarEngine
             {
                 switch (s)
                 {
-                case Shader::ShaderStageType::Vertex:      return ".vert.spv";
-                case Shader::ShaderStageType::Fragment:    return ".frag.spv";
-                default:                                   return "";
+                case Shader::ShaderStageType::Vertex:   return ".vert.spv";
+                case Shader::ShaderStageType::Fragment: return ".frag.spv";
+                default:                                return "";
                 }
             }
             else
             {
                 switch (s)
                 {
-                case Shader::ShaderStageType::Vertex:      return ".vert.glsl";
-                case Shader::ShaderStageType::Fragment:    return ".frag.glsl";
-                default:                                   return "";
+                case Shader::ShaderStageType::Vertex:   return ".vert.glsl";
+                case Shader::ShaderStageType::Fragment: return ".frag.glsl";
+                default:                                return "";
                 }
             }
         }
     }
 
-    ParticleSystem::ParticleSystem(const std::string& texturePath, std::size_t maxParticles)
+    ParticleSystem::ParticleSystem(const std::string& texturePath,
+        std::size_t maxParticles)
         : m_MaxParticles(maxParticles)
     {
-        TextureSpecification tspec;
+        m_Particles.resize(m_MaxParticles);
+        m_AliveIndices.reserve(m_MaxParticles);
+        m_AliveDistances.reserve(m_MaxParticles);
+        m_GPUBuffer.reserve(m_MaxParticles);
+
+        TextureSpecification tspec{};
         tspec.alpha = true;
-        tspec.channels = 4;
-
+        tspec.flip = true;
         m_Texture = Texture2D::Create(tspec);
-        m_Texture->LoadFromPath(texturePath);
-
-        m_Particles.reserve(m_MaxParticles);
+        if (m_Texture && !texturePath.empty())
+            m_Texture->LoadFromPath(texturePath);
 
         InitMesh();
 
@@ -53,6 +60,20 @@ namespace QuasarEngine
             : "Assets/Shaders/gl/";
 
         InitShader(basePath);
+    }
+
+    void ParticleSystem::SetTexture(const std::string& texturePath)
+    {
+        if (!m_Texture)
+        {
+            TextureSpecification tspec{};
+            tspec.alpha = true;
+            tspec.flip = true;
+            m_Texture = Texture2D::Create(tspec);
+        }
+
+        if (m_Texture && !texturePath.empty())
+            m_Texture->LoadFromPath(texturePath);
     }
 
     void ParticleSystem::InitMesh()
@@ -77,13 +98,23 @@ namespace QuasarEngine
             { ShaderDataType::Vec2, "inTexCoord" }
         };
 
-        m_QuadMesh = std::make_shared<Mesh>(
-            vertices,
-            indices,
-            layout,
-            DrawMode::TRIANGLES,
-            std::nullopt
+        m_VertexArray = VertexArray::Create();
+        m_VertexBuffer = VertexBuffer::Create(
+            vertices.data(),
+            static_cast<uint32_t>(vertices.size() * sizeof(float))
         );
+        m_VertexBuffer->SetLayout(layout);
+        m_VertexArray->AddVertexBuffer(m_VertexBuffer);
+
+        m_IndexBuffer = IndexBuffer::Create(
+            indices.data(),
+            static_cast<uint32_t>(indices.size() * sizeof(unsigned int))
+        );
+        m_VertexArray->SetIndexBuffer(m_IndexBuffer);
+
+        m_DrawMode = DrawMode::TRIANGLES;
+        m_VertexCount = vertices.size() / 5;
+        m_IndexCount = indices.size();
     }
 
     void ParticleSystem::InitShader(const std::string& basePath)
@@ -91,7 +122,7 @@ namespace QuasarEngine
         Shader::ShaderDescription desc;
 
         const auto api = RendererAPI::GetAPI();
-        const std::string name = "particle";
+        const std::string name = "particle_advanced";
 
         std::string vertPath = basePath + name + ExtFor(api, Shader::ShaderStageType::Vertex);
         std::string fragPath = basePath + name + ExtFor(api, Shader::ShaderStageType::Fragment);
@@ -119,6 +150,7 @@ namespace QuasarEngine
             glm::mat4 view;
             glm::mat4 projection;
             glm::vec3 camera_position;
+            float     time;
         };
 
         constexpr Shader::ShaderStageFlags globalStages =
@@ -128,15 +160,16 @@ namespace QuasarEngine
         desc.globalUniforms = {
             { "view",            Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(GlobalUniforms, view),            0, 0, globalStages },
             { "projection",      Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(GlobalUniforms, projection),      0, 0, globalStages },
-            { "camera_position", Shader::ShaderUniformType::Vec3,  sizeof(glm::vec3),  offsetof(GlobalUniforms, camera_position), 0, 0, globalStages }
+            { "camera_position", Shader::ShaderUniformType::Vec3,  sizeof(glm::vec3),  offsetof(GlobalUniforms, camera_position), 0, 0, globalStages },
+            { "time",            Shader::ShaderUniformType::Float, sizeof(float),      offsetof(GlobalUniforms, time),            0, 0, globalStages }
         };
 
         struct alignas(16) ObjectUniforms
         {
-            glm::mat4 model;
-            glm::vec4 color;
-            float life;
-            float maxLife;
+            float sizeOverLifeExponent;
+            float alphaOverLifeExponent;
+            float softFade;
+            float padding;
         };
 
         constexpr Shader::ShaderStageFlags objectStages =
@@ -144,11 +177,17 @@ namespace QuasarEngine
             Shader::StageToBit(Shader::ShaderStageType::Fragment);
 
         desc.objectUniforms = {
-            { "model",   Shader::ShaderUniformType::Mat4,  sizeof(glm::mat4),  offsetof(ObjectUniforms, model),   1, 0, objectStages },
-            { "color",   Shader::ShaderUniformType::Vec4,  sizeof(glm::vec4),  offsetof(ObjectUniforms, color),   1, 0, objectStages },
-            { "life",    Shader::ShaderUniformType::Float, sizeof(float),      offsetof(ObjectUniforms, life),    1, 0, objectStages },
-            { "maxLife", Shader::ShaderUniformType::Float, sizeof(float),      offsetof(ObjectUniforms, maxLife), 1, 0, objectStages }
+            { "sizeOverLifeExponent",  Shader::ShaderUniformType::Float, sizeof(float), offsetof(ObjectUniforms, sizeOverLifeExponent),  0, 0, objectStages },
+            { "alphaOverLifeExponent", Shader::ShaderUniformType::Float, sizeof(float), offsetof(ObjectUniforms, alphaOverLifeExponent), 0, 0, objectStages },
+            { "softFade",              Shader::ShaderUniformType::Float, sizeof(float), offsetof(ObjectUniforms, softFade),              0, 0, objectStages }
         };
+
+        Shader::ShaderStorageBufferDesc sb{};
+        sb.name = "ParticlesBuffer";
+        sb.size = sizeof(GPUParticle) * m_MaxParticles;
+        sb.binding = 2;
+        sb.stages = Shader::StageToBit(Shader::ShaderStageType::Vertex);
+        desc.storageBuffers.push_back(sb);
 
         desc.samplers = {
             { "particle_texture", 1, 1, Shader::StageToBit(Shader::ShaderStageType::Fragment) }
@@ -169,99 +208,78 @@ namespace QuasarEngine
         m_Shader = Shader::Create(desc);
     }
 
-    void ParticleSystem::Emit(const glm::vec3& position,
-        const glm::vec3& velocity,
-        float life,
-        float startSize,
-        float endSize,
-        const glm::vec4& colorStart,
-        const glm::vec4& colorEnd,
-        float rotation)
+    void ParticleSystem::Emit(const Particle& spawnData)
     {
-        Particle* slot = nullptr;
+        Particle* target = nullptr;
+
         for (auto& p : m_Particles)
         {
-            if (p.life <= 0.0f)
+            if (p.age >= p.lifetime)
             {
-                slot = &p;
+                target = &p;
                 break;
             }
         }
 
-        if (!slot)
+        if (!target)
         {
-            if (m_Particles.size() >= m_MaxParticles)
-                return;
-
-            m_Particles.emplace_back();
-            slot = &m_Particles.back();
+            target = &m_Particles[0];
         }
 
-        slot->position = position;
-        slot->velocity = velocity;
-        slot->maxLife = life;
-        slot->life = life;
-        slot->startSize = startSize;
-        slot->endSize = endSize;
-        slot->size = startSize;
-        slot->colorStart = colorStart;
-        slot->colorEnd = colorEnd;
-        slot->rotation = rotation;
+        *target = spawnData;
     }
 
     void ParticleSystem::Update(float dt)
     {
-        for (auto& p : m_Particles)
+        if (dt <= 0.0f)
+            return;
+
+        m_Time += dt;
+
+        m_AliveIndices.clear();
+        m_AliveDistances.clear();
+
+        for (std::size_t i = 0; i < m_Particles.size(); ++i)
         {
-            if (p.life <= 0.0f)
+            Particle& p = m_Particles[i];
+
+            p.age += dt;
+            if (p.age >= p.lifetime)
                 continue;
 
-            p.life -= dt;
-            if (p.life <= 0.0f)
-                continue;
+            p.velocity += m_Settings.gravity * dt;
+            p.velocity += m_Settings.wind * dt;
+
+            if (m_Settings.linearDrag > 0.0f)
+            {
+                float damping = 1.0f / (1.0f + m_Settings.linearDrag * dt);
+                p.velocity *= damping;
+            }
+
+            if (m_Settings.turbulenceStrength > 0.0f)
+            {
+                float t = m_Time * m_Settings.turbulenceFrequency + p.random * 37.21f;
+                float sx = std::sin(t) * std::cos(t * 0.7f);
+                float sy = std::sin(t * 1.3f);
+                float sz = std::cos(t * 0.5f);
+
+                glm::vec3 turb = glm::vec3(sx, sy, sz) * m_Settings.turbulenceStrength;
+                p.velocity += turb * dt * m_Settings.turbulenceScale;
+            }
 
             p.position += p.velocity * dt;
+            p.rotation += p.angularVelocity * dt;
 
-            float t = 1.0f - glm::clamp(p.life / p.maxLife, 0.0f, 1.0f);
-            p.size = glm::mix(p.startSize, p.endSize, t);
+            m_AliveIndices.push_back(i);
         }
-    }
-
-    glm::mat4 ParticleSystem::BuildBillboard(const glm::mat4& view,
-        const glm::vec3& position,
-        float size,
-        float rotation)
-    {
-        glm::vec3 right(
-            view[0][0],
-            view[1][0],
-            view[2][0]
-        );
-        glm::vec3 up(
-            view[0][1],
-            view[1][1],
-            view[2][1]
-        );
-        glm::vec3 forward = glm::normalize(glm::cross(right, up));
-
-        float c = std::cos(rotation);
-        float s = std::sin(rotation);
-
-        glm::vec3 rRot = right * c + up * s;
-        glm::vec3 uRot = -right * s + up * c;
-
-        glm::mat4 model(1.0f);
-        model[0] = glm::vec4(rRot * size, 0.0f);
-        model[1] = glm::vec4(uRot * size, 0.0f);
-        model[2] = glm::vec4(forward * size, 0.0f);
-        model[3] = glm::vec4(position, 1.0f);
-
-        return model;
     }
 
     void ParticleSystem::Render(RenderContext& ctx)
     {
-        if (!m_Shader || !m_QuadMesh)
+        if (!m_Shader || !m_VertexArray)
+            return;
+
+        if (m_AliveIndices.empty())
             return;
 
         m_Shader->Use();
@@ -269,33 +287,79 @@ namespace QuasarEngine
         m_Shader->SetUniform("view", &ctx.view, sizeof(glm::mat4));
         m_Shader->SetUniform("projection", &ctx.projection, sizeof(glm::mat4));
         m_Shader->SetUniform("camera_position", &ctx.cameraPosition, sizeof(glm::vec3));
-
-        if (m_Texture.get())
-        {
-            m_Shader->SetTexture("particle_texture", m_Texture.get());
-        }
-
+        m_Shader->SetUniform("time", &m_Time, sizeof(float));
         m_Shader->UpdateGlobalState();
 
-        for (auto& p : m_Particles)
+        float sizeExp = m_Settings.sizeOverLifeExponent;
+        float alphaExp = m_Settings.alphaOverLifeExponent;
+        float softFade = 1.0f;
+
+        m_Shader->SetUniform("sizeOverLifeExponent", &sizeExp, sizeof(float));
+        m_Shader->SetUniform("alphaOverLifeExponent", &alphaExp, sizeof(float));
+        m_Shader->SetUniform("softFade", &softFade, sizeof(float));
+
+        if (m_Texture)
+            m_Shader->SetTexture("particle_texture", m_Texture.get());
+
+        m_AliveDistances.resize(m_AliveIndices.size());
+        for (std::size_t idx = 0; idx < m_AliveIndices.size(); ++idx)
         {
-            if (p.life <= 0.0f)
+            const Particle& p = m_Particles[m_AliveIndices[idx]];
+            m_AliveDistances[idx] = glm::length2(p.position - ctx.cameraPosition);
+        }
+
+        std::vector<std::size_t> sorted = m_AliveIndices;
+        std::sort(sorted.begin(), sorted.end(),
+            [&](std::size_t a, std::size_t b)
+            {
+                return glm::length2(m_Particles[a].position - ctx.cameraPosition) > glm::length2(m_Particles[b].position - ctx.cameraPosition);
+            });
+
+        m_GPUBuffer.clear();
+        m_GPUBuffer.reserve(sorted.size());
+
+        for (std::size_t idx : sorted)
+        {
+            const Particle& p = m_Particles[idx];
+
+            if (p.age >= p.lifetime)
                 continue;
 
-            glm::mat4 model = BuildBillboard(ctx.view, p.position, p.size, p.rotation);
+            GPUParticle gp{};
+            gp.position = p.position;
+            gp.size = p.size;
 
-            float t = 1.0f - glm::clamp(p.life / p.maxLife, 0.0f, 1.0f);
-            glm::vec4 color = glm::mix(p.colorStart, p.colorEnd, t);
+            gp.colorStart = p.colorStart;
+            gp.colorEnd = p.colorEnd;
 
-            m_Shader->SetUniform("model", &model, sizeof(glm::mat4));
-            m_Shader->SetUniform("color", &color, sizeof(glm::vec4));
-            m_Shader->SetUniform("life", &p.life, sizeof(float));
-            m_Shader->SetUniform("maxLife", &p.maxLife, sizeof(float));
+            gp.age = p.age;
+            gp.lifetime = p.lifetime;
+            gp.rotation = p.rotation;
+            gp.random = p.random;
 
-            m_Shader->UpdateObject(nullptr);
-
-            m_QuadMesh->draw();
+            m_GPUBuffer.push_back(gp);
         }
+
+        if (m_GPUBuffer.empty())
+        {
+            m_Shader->Unuse();
+            return;
+        }
+
+        m_Shader->SetStorageBuffer(
+            "ParticlesBuffer",
+            m_GPUBuffer.data(),
+            m_GPUBuffer.size() * sizeof(GPUParticle)
+        );
+
+        m_Shader->UpdateObject(nullptr);
+
+        m_VertexArray->Bind();
+        RenderCommand::Instance().DrawElementsInstanced(
+            m_DrawMode,
+            static_cast<uint32_t>(m_IndexCount),
+            static_cast<uint32_t>(m_GPUBuffer.size())
+        );
 
         m_Shader->Unuse();
     }

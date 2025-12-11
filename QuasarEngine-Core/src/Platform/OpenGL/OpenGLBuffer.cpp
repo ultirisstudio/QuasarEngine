@@ -259,19 +259,20 @@ namespace QuasarEngine
 	}
 
 	OpenGLShaderStorageBuffer::OpenGLShaderStorageBuffer(size_t size, uint32_t binding)
-		: m_Size(size), m_Binding(binding)
+		: m_Size(0)
+		, m_Binding(binding)
+		, m_ID(0)
 	{
-		m_ID = 0;
-		if (m_Size > 0) {
-			glCreateBuffers(1, &m_ID);
-			glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_Binding, m_ID);
+		if (size > 0)
+		{
+			Reserve(size);
 		}
 	}
 
 	OpenGLShaderStorageBuffer::~OpenGLShaderStorageBuffer()
 	{
-		if (m_ID) {
+		if (m_ID)
+		{
 			glDeleteBuffers(1, &m_ID);
 			m_ID = 0;
 		}
@@ -279,26 +280,17 @@ namespace QuasarEngine
 
 	void OpenGLShaderStorageBuffer::SetData(const void* data, size_t size)
 	{
-		if (m_ID == 0 || !data || size == 0)
+		if (!data || size == 0)
 			return;
 
-		if (size > m_Size) {
-			throw std::runtime_error(
-				"Shader storage buffer size exceeded: requested " +
-				std::to_string(size) + " > " + std::to_string(m_Size)
-			);
+		if (m_ID == 0 || size > m_Size)
+		{
+			Reserve(size);
 		}
 
-		if (size != m_Size) {
-			Q_WARNING("SSBO size mismatch: expected " + std::to_string(m_Size) +
-				" got " + std::to_string(size));
-		}
-
-		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
 		glNamedBufferSubData(m_ID, 0, size, data);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_Binding, m_ID);
 
-		m_Size = size;
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_Binding, m_ID);
 	}
 
 	void OpenGLShaderStorageBuffer::BindToShader(uint32_t programID, const std::string& blockName)
@@ -309,12 +301,33 @@ namespace QuasarEngine
 		GLuint index = glGetProgramResourceIndex(
 			programID, GL_SHADER_STORAGE_BLOCK, blockName.c_str()
 		);
-		if (index == GL_INVALID_INDEX) {
+		if (index == GL_INVALID_INDEX)
+		{
 			Q_ERROR("Shader storage block '" + blockName + "' not found in shader.");
 			return;
 		}
 
 		glShaderStorageBlockBinding(programID, index, m_Binding);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_Binding, m_ID);
+	}
+
+	void OpenGLShaderStorageBuffer::Reserve(size_t size)
+	{
+		if (size == 0)
+			return;
+
+		if (size <= m_Size && m_ID != 0)
+			return;
+
+		if (m_ID == 0)
+		{
+			glCreateBuffers(1, &m_ID);
+		}
+
+		m_Size = size;
+
+		glNamedBufferData(m_ID, m_Size, nullptr, GL_DYNAMIC_DRAW);
+
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_Binding, m_ID);
 	}
 }

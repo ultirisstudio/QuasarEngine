@@ -97,6 +97,8 @@ namespace QuasarEngine
 		void SetData(const void* data, size_t size);
 		void BindToShader(uint32_t programID, const std::string& blockName);
 
+		void Reserve(size_t size);
+
 		uint32_t GetID() const { return m_ID; }
 
 	private:

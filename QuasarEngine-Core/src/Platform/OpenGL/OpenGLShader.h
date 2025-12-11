@@ -109,7 +109,7 @@ namespace QuasarEngine
 
         struct StorageBufferData {
             std::unique_ptr<OpenGLShaderStorageBuffer> buffer;
-            std::vector<uint8_t>                       cpuData;
+            std::vector<uint8_t> cpuData;
             const ShaderStorageBufferDesc* desc = nullptr;
         };
         std::unordered_map<std::string, StorageBufferData> m_StorageBuffers;

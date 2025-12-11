@@ -1,29 +1,20 @@
 #version 450 core
 
-layout(location = 0) in vec2 inTexCoord;
+layout(location = 0) in vec2 vTexCoord;
+layout(location = 1) in vec4 vColor;
+layout(location = 2) in float vLife;
+layout(location = 3) in float vMaxLife;
+
 layout(location = 0) out vec4 outColor;
 
-layout(std140, binding = 1) uniform local_uniform_object {
-    mat4 model;
-    vec4 color;
-    float life;
-    float maxLife;
-} object_ubo;
-
-uniform sampler2D particle_texture;
+layout(binding = 1) uniform sampler2D particle_texture;
 
 void main()
 {
-    vec4 tex = texture(particle_texture, inTexCoord);
+    vec4 texColor = texture(particle_texture, vTexCoord);
 
-    float life01 = clamp(object_ubo.life / max(object_ubo.maxLife, 0.0001), 0.0, 1.0);
-    float fade = life01;
-
-    float alpha = tex.a * object_ubo.color.a * fade;
-
-    if (alpha < 0.01)
+    if (texColor.a <= 0.001)
         discard;
 
-    vec3 rgb = tex.rgb * object_ubo.color.rgb;
-    outColor = vec4(rgb, alpha);
+    outColor = texColor * vColor;
 }

@@ -176,8 +176,9 @@ namespace QuasarEngine
 
         for (auto [e, tr, pc] : m_Registry->GetRegistry().group<TransformComponent, ParticleComponent>().each())
         {
-            glm::vec3 emitterPos = tr.GetGlobalTransform() * glm::vec4(pc.m_EmitterOffset, 1.0f);
-            pc.Update(deltaTime, emitterPos);
+            //glm::vec3 emitterPos = tr.GetGlobalTransform() * glm::vec4(pc.m_EmitterOffset, 1.0f);
+            //pc.Update(deltaTime, emitterPos);
+            pc.Update(deltaTime);
         }
 
         if (m_OnRuntime)
