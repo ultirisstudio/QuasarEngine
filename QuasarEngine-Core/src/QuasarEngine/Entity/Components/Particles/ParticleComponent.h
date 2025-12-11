@@ -27,7 +27,9 @@ namespace QuasarEngine
         void Render(RenderContext& ctx);
 
         bool m_Enabled = true;
-        int  m_MaxParticles = 512;
+        bool m_Emitting = true;
+
+        int m_MaxParticles = 512;
 
         float m_SpawnRate = 30.0f;
         bool m_BurstMode = false;

@@ -168,7 +168,7 @@ namespace QuasarEngine
         glm::vec3 worldEmitterPos = owner.GetComponent<TransformComponent>().Position;
         worldEmitterPos += m_EmitterOffset;
 
-        if (m_SpawnRate > 0.0f)
+        if (m_Emitting && m_SpawnRate > 0.0f)
         {
             float interval = 1.0f / m_SpawnRate;
             m_SpawnTimer += dt;
@@ -181,9 +181,9 @@ namespace QuasarEngine
                 for (int i = 0; i < count; ++i)
                     EmitOne(worldEmitterPos);
 
-                if (!m_Loop && m_BurstMode)
+                if (m_BurstMode && !m_Loop)
                 {
-                    m_Enabled = false;
+                    m_Emitting = false;
                     break;
                 }
             }
