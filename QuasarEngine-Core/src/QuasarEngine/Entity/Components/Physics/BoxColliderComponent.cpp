@@ -31,6 +31,12 @@ namespace QuasarEngine
         m_UseEntityScale = other.m_UseEntityScale;
         m_Size = other.m_Size;
 
+        m_IsTrigger = other.m_IsTrigger;
+        m_LocalPosition = other.m_LocalPosition;
+        m_LocalRotation = other.m_LocalRotation;
+        m_FrictionCombine = other.m_FrictionCombine;
+        m_RestitutionCombine = other.m_RestitutionCombine;
+
         friction = other.friction;
         bounciness = other.bounciness;
         mass = other.mass;
@@ -52,6 +58,12 @@ namespace QuasarEngine
         m_UseEntityScale = other.m_UseEntityScale;
         m_Size = other.m_Size;
 
+        m_IsTrigger = other.m_IsTrigger;
+        m_LocalPosition = other.m_LocalPosition;
+        m_LocalRotation = other.m_LocalRotation;
+        m_FrictionCombine = other.m_FrictionCombine;
+        m_RestitutionCombine = other.m_RestitutionCombine;
+
         friction = other.friction;
         bounciness = other.bounciness;
         mass = other.mass;
@@ -64,6 +76,12 @@ namespace QuasarEngine
     {
         m_UseEntityScale = other.m_UseEntityScale;
         m_Size = other.m_Size;
+
+        m_IsTrigger = other.m_IsTrigger;
+        m_LocalPosition = other.m_LocalPosition;
+        m_LocalRotation = other.m_LocalRotation;
+        m_FrictionCombine = other.m_FrictionCombine;
+        m_RestitutionCombine = other.m_RestitutionCombine;
 
         friction = other.friction;
         bounciness = other.bounciness;
@@ -84,6 +102,12 @@ namespace QuasarEngine
 
         m_UseEntityScale = other.m_UseEntityScale;
         m_Size = other.m_Size;
+
+        m_IsTrigger = other.m_IsTrigger;
+        m_LocalPosition = other.m_LocalPosition;
+        m_LocalRotation = other.m_LocalRotation;
+        m_FrictionCombine = other.m_FrictionCombine;
+        m_RestitutionCombine = other.m_RestitutionCombine;
 
         friction = other.friction;
         bounciness = other.bounciness;
@@ -146,7 +170,8 @@ namespace QuasarEngine
             m_OwnsMaterial = true;
         }
 
-        const glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
+        glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
+        full = glm::max(glm::abs(full), glm::vec3(0.0001f));
         const physx::PxVec3 he = ToPx(full * 1.0f);
 
         m_Shape = sdk->createShape(physx::PxBoxGeometry(he), *m_Material, true);
@@ -219,7 +244,8 @@ namespace QuasarEngine
         Entity entity{ entt_entity, registry };
         if (!m_Shape) { AttachOrRebuild(); return; }
 
-        const glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
+        glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
+        full = glm::max(glm::abs(full), glm::vec3(0.0001f));
         const physx::PxBoxGeometry geom(ToPx(full * 1.0f));
 
         if (auto* scene = PhysicEngine::Instance().GetScene())
@@ -245,12 +271,31 @@ namespace QuasarEngine
         physx::PxRigidDynamic* dyn = rb.GetDynamic();
         if (!dyn || !m_Shape) return;
 
-        const glm::vec3 full = m_UseEntityScale ? entity.GetComponent<TransformComponent>().Scale : m_Size;
-        const float volume = std::max(0.000001f, full.x * full.y * full.z);
-        const float densityLocal = std::max(0.000001f, mass / volume);
+        const float targetMass = std::max(0.0001f, mass);
 
-        physx::PxRigidBodyExt::updateMassAndInertia(*dyn, densityLocal);
-        dyn->setMass(mass);
+        if (auto* scene = PhysicEngine::Instance().GetScene())
+        {
+            PxWriteLockGuard lock(scene);
+
+            physx::PxRigidBodyExt::updateMassAndInertia(*dyn, 1.0f);
+            const float baseMass = dyn->getMass();
+            if (baseMass > 1e-6f)
+            {
+                const float s = targetMass / baseMass;
+                dyn->setMass(targetMass);
+                dyn->setMassSpaceInertiaTensor(dyn->getMassSpaceInertiaTensor() * s);
+            }
+            return;
+        }
+
+        physx::PxRigidBodyExt::updateMassAndInertia(*dyn, 1.0f);
+        const float baseMass = dyn->getMass();
+        if (baseMass > 1e-6f)
+        {
+            const float s = targetMass / baseMass;
+            dyn->setMass(targetMass);
+            dyn->setMassSpaceInertiaTensor(dyn->getMassSpaceInertiaTensor() * s);
+        }
     }
 
     void BoxColliderComponent::OnActorAboutToBeReleased(physx::PxRigidActor& actor)

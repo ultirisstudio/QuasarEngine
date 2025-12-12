@@ -208,6 +208,10 @@ namespace QuasarEngine
     {
         m_OnRuntime = true;
 
+        Renderer::Instance().BeginScene(*this);
+
+        RebuildEntityCaches();
+
         UpdatePrimaryCameraCache();
 
         Renderer::Instance().m_SceneData.m_ScriptSystem->Start();
@@ -221,6 +225,9 @@ namespace QuasarEngine
         m_OnRuntime = false;
 
         Renderer::Instance().m_SceneData.m_ScriptSystem->Stop();
+
+        Application::Get().GetWindow().SetInputMode(false, false);
+        Application::Get().GetWindow().SetCursorVisibility(true);
     }
 
     void Scene::ClearEntities()
@@ -233,6 +240,26 @@ namespace QuasarEngine
 
         ProcessEntityDestructions();
         m_PrimaryCameraUUID = UUID::Null();
+    }
+
+    void Scene::RebuildEntityCaches()
+    {
+        m_EntityMap.clear();
+        m_NameMap.clear();
+
+        auto& reg = m_Registry->GetRegistry();
+        auto view = reg.view<IDComponent, TagComponent>();
+
+        for (auto e : view)
+        {
+            auto& id = view.get<IDComponent>(e);
+            auto& tag = view.get<TagComponent>(e);
+
+            m_EntityMap[id.ID] = e;
+            RegisterEntityName(tag.Tag, e);
+        }
+
+        UpdatePrimaryCameraCache();
     }
 
     std::optional<Entity> Scene::GetPrimaryCameraEntity() const

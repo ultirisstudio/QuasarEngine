@@ -20,6 +20,84 @@ namespace QuasarEngine
         if (m_Material) { m_Material->release(); m_Material = nullptr; }
     }
 
+    CapsuleColliderComponent::CapsuleColliderComponent(CapsuleColliderComponent&& other) noexcept
+        : PrimitiveColliderComponent(std::move(other))
+    {
+        m_Shape = other.m_Shape;       other.m_Shape = nullptr;
+        m_Material = other.m_Material; other.m_Material = nullptr;
+
+        m_UseEntityScale = other.m_UseEntityScale;
+        m_Radius = other.m_Radius;
+        m_Height = other.m_Height;
+        m_Axis = other.m_Axis;
+
+        m_IsTrigger = other.m_IsTrigger;
+        m_LocalPosition = other.m_LocalPosition;
+        m_LocalRotation = other.m_LocalRotation;
+
+        m_FrictionCombine = other.m_FrictionCombine;
+        m_RestitutionCombine = other.m_RestitutionCombine;
+
+        friction = other.friction;
+        bounciness = other.bounciness;
+        mass = other.mass;
+    }
+
+    CapsuleColliderComponent& CapsuleColliderComponent::operator=(CapsuleColliderComponent&& other) noexcept
+    {
+        if (this == &other) return *this;
+
+        if (m_Shape)
+        {
+            Entity entity{ entt_entity, registry };
+            if (entity.IsValid() && entity.HasComponent<RigidBodyComponent>())
+            {
+                if (auto* actor = entity.GetComponent<RigidBodyComponent>().GetActor())
+                {
+                    if (auto* scene = PhysicEngine::Instance().GetScene())
+                    {
+                        PxWriteLockGuard lock(scene);
+                        actor->detachShape(*m_Shape);
+                    }
+                    else
+                    {
+                        actor->detachShape(*m_Shape);
+                    }
+                }
+            }
+
+            m_Shape->release();
+            m_Shape = nullptr;
+        }
+
+        if (m_Material)
+        {
+            m_Material->release();
+            m_Material = nullptr;
+        }
+
+        m_Shape = other.m_Shape; other.m_Shape = nullptr;
+        m_Material = other.m_Material; other.m_Material = nullptr;
+
+        m_UseEntityScale = other.m_UseEntityScale;
+        m_Radius = other.m_Radius;
+        m_Height = other.m_Height;
+        m_Axis = other.m_Axis;
+
+        m_IsTrigger = other.m_IsTrigger;
+        m_LocalPosition = other.m_LocalPosition;
+        m_LocalRotation = other.m_LocalRotation;
+
+        m_FrictionCombine = other.m_FrictionCombine;
+        m_RestitutionCombine = other.m_RestitutionCombine;
+
+        friction = other.friction;
+        bounciness = other.bounciness;
+        mass = other.mass;
+
+        return *this;
+    }
+
     void CapsuleColliderComponent::Init()
     {
         auto& phys = PhysicEngine::Instance();
@@ -150,26 +228,31 @@ namespace QuasarEngine
         PxRigidDynamic* dyn = rb.GetDynamic();
         if (!dyn || !m_Shape) return;
 
-        float scaleRadius = 1.f, scaleHeight = 1.f;
-        if (m_UseEntityScale)
+        const float targetMass = std::max(0.0001f, mass);
+
+        if (auto* scene = PhysicEngine::Instance().GetScene())
         {
-            const auto& s = entity.GetComponent<TransformComponent>().Scale;
-            switch (m_Axis)
+            PxWriteLockGuard lock(scene);
+
+            PxRigidBodyExt::updateMassAndInertia(*dyn, 1.0f);
+            const float baseMass = dyn->getMass();
+            if (baseMass > 1e-6f)
             {
-            case Axis::X: scaleHeight = std::abs(s.x); scaleRadius = Max3(1e-4f, std::abs(s.y), std::abs(s.z)); break;
-            case Axis::Y: scaleHeight = std::abs(s.y); scaleRadius = Max3(1e-4f, std::abs(s.x), std::abs(s.z)); break;
-            case Axis::Z: scaleHeight = std::abs(s.z); scaleRadius = Max3(1e-4f, std::abs(s.x), std::abs(s.y)); break;
+                const float s = targetMass / baseMass;
+                dyn->setMass(targetMass);
+                dyn->setMassSpaceInertiaTensor(dyn->getMassSpaceInertiaTensor() * s);
             }
+            return;
         }
 
-        const float r = std::max(0.0001f, m_Radius * scaleRadius);
-        const float hh = std::max(0.0001f, 0.5f * m_Height * scaleHeight);
-        const float cylinderHeight = 2.0f * hh;
-        const float volume = (3.14159265358979323846f * r * r * cylinderHeight) + (4.0f / 3.0f) * 3.14159265358979323846f * r * r * r;
-        const float densityVal = std::max(0.000001f, mass / volume);
-
-        PxRigidBodyExt::updateMassAndInertia(*dyn, densityVal);
-        dyn->setMass(mass);
+        PxRigidBodyExt::updateMassAndInertia(*dyn, 1.0f);
+        const float baseMass = dyn->getMass();
+        if (baseMass > 1e-6f)
+        {
+            const float s = targetMass / baseMass;
+            dyn->setMass(targetMass);
+            dyn->setMassSpaceInertiaTensor(dyn->getMassSpaceInertiaTensor() * s);
+        }
     }
 
     void CapsuleColliderComponent::SetQueryFilter(uint32_t layer, uint32_t mask)

@@ -15,6 +15,27 @@
 
 namespace QuasarEngine
 {
+    namespace
+    {
+        static void NotifyCollidersActorAboutToBeReleased(Entity& entity, physx::PxRigidActor& actor)
+        {
+            if (entity.HasComponent<BoxColliderComponent>())
+                entity.GetComponent<BoxColliderComponent>().OnActorAboutToBeReleased(actor);
+
+            if (entity.HasComponent<CapsuleColliderComponent>())
+                entity.GetComponent<CapsuleColliderComponent>().OnActorAboutToBeReleased(actor);
+        }
+
+        static void ReattachPrimitiveColliders(Entity& entity)
+        {
+            if (entity.HasComponent<BoxColliderComponent>())
+                entity.GetComponent<BoxColliderComponent>().UpdateColliderSize();
+
+            if (entity.HasComponent<CapsuleColliderComponent>())
+                entity.GetComponent<CapsuleColliderComponent>().UpdateColliderSize();
+        }
+    }
+
     RigidBodyComponent::RigidBodyComponent() {}
 
     RigidBodyComponent::~RigidBodyComponent()
@@ -129,6 +150,10 @@ namespace QuasarEngine
         if (physx::PxScene* sc = m_Actor->getScene()) {
             PxWriteLockGuard _lock(sc);
             sc->removeActor(*m_Actor);
+
+            Entity entity{ entt_entity, registry };
+            if (entity.IsValid())
+                NotifyCollidersActorAboutToBeReleased(entity, *m_Actor);
         }
 
         PhysicEngine::Instance().UnregisterActor(m_Actor);
@@ -153,10 +178,14 @@ namespace QuasarEngine
         physx::PxScene* scene = phys.GetScene();
         if (!sdk || !scene) return;
 
+        Entity entity{ entt_entity, registry };
+
         if (m_Actor) {
             if (physx::PxScene* sc = m_Actor->getScene()) {
                 sc->lockWrite();
                 sc->removeActor(*m_Actor);
+                if (entity.IsValid())
+                    NotifyCollidersActorAboutToBeReleased(entity, *m_Actor);
                 sc->unlockWrite();
             }
             phys.UnregisterActor(m_Actor);
@@ -166,7 +195,6 @@ namespace QuasarEngine
             m_Dynamic = nullptr;
         }
 
-        Entity entity{ entt_entity, registry };
         auto& tc = entity.GetComponent<TransformComponent>();
         const physx::PxTransform pose(ToPx(tc.Position), ToPx(glm::quat(tc.Rotation)));
 
@@ -199,6 +227,9 @@ namespace QuasarEngine
         UpdateDamping();
         UpdateLinearAxisFactor();
         UpdateAngularAxisFactor();
+
+        if (entity.IsValid())
+            ReattachPrimitiveColliders(entity);
     }
 
     void RigidBodyComponent::Init()

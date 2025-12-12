@@ -162,22 +162,25 @@ namespace QuasarEngine
     void PhysicEngine::Step(double dt, double fixedTimestep, uint32_t maxSubsteps)
     {
         if (!m_Scene) return;
-        m_Accumulator += dt;
+
+        if (dt < 0.0) dt = 0.0;
+
+        m_Accumulator += static_cast<float>(dt);
+
+        const float maxAccum = static_cast<float>(fixedTimestep * maxSubsteps);
+        if (m_Accumulator > maxAccum)
+            m_Accumulator = maxAccum;
+
         uint32_t substeps = 0;
         while (m_Accumulator >= fixedTimestep && substeps < maxSubsteps)
         {
-            m_Scene->simulate(fixedTimestep);
+            m_Scene->simulate(static_cast<float>(fixedTimestep));
             m_Scene->fetchResults(true);
-            m_Accumulator -= fixedTimestep;
+            m_Accumulator -= static_cast<float>(fixedTimestep);
             ++substeps;
         }
-        if (substeps == 0 && dt > 0.f)
-        {
-            m_Scene->simulate(dt);
-            m_Scene->fetchResults(true);
-        }
 
-        std::vector<float> vertices;
+        /*std::vector<float> vertices;
         vertices.reserve(m_DebugVertexCount ? m_DebugVertexCount * 6 : 4096);
         const physx::PxRenderBuffer& rb = m_Scene->getRenderBuffer();
         for (physx::PxU32 i = 0; i < rb.getNbLines(); ++i)
@@ -197,7 +200,7 @@ namespace QuasarEngine
             vertices.push_back(l.pos1.x); vertices.push_back(l.pos1.y); vertices.push_back(l.pos1.z);
             vertices.push_back(r1); vertices.push_back(g1); vertices.push_back(b1);
         }
-        BuildOrUpdateDebugBuffer(vertices);
+        BuildOrUpdateDebugBuffer(vertices);*/
     }
 
     physx::PxMaterial* PhysicEngine::GetCCTMaterial()

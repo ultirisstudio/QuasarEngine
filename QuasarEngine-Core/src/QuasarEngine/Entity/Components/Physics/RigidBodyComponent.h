@@ -54,11 +54,11 @@ namespace QuasarEngine
 
         void SetKinematicTarget(const glm::vec3& targetPos, const glm::quat& targetRot);
 
-        physx::PxRigidActor* GetActor()   const noexcept { return m_Actor; }
+        physx::PxRigidActor* GetActor() const noexcept { return m_Actor; }
         physx::PxRigidDynamic* GetDynamic() const noexcept { return m_Dynamic; }
 
-        bool IsStatic()    const noexcept { return m_Actor && (m_Dynamic == nullptr); }
-        bool IsDynamic()   const noexcept { return m_Dynamic && !m_Dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
+        bool IsStatic() const noexcept { return m_Actor && (m_Dynamic == nullptr); }
+        bool IsDynamic() const noexcept { return m_Dynamic && !m_Dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
         bool IsKinematic() const noexcept { return m_Dynamic && m_Dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC); }
 
     private:
