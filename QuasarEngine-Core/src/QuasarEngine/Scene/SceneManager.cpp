@@ -52,6 +52,7 @@ namespace QuasarEngine
 					{
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
 						bool result = serializer.Deserialize(m_PendingActionFile);
+						m_SceneObject->GetScene().RebuildEntityCaches();
 						break;
 					}
 					case PendingAction::LoadSceneWithPath:
@@ -60,18 +61,20 @@ namespace QuasarEngine
 						Renderer::Instance().BeginScene(m_SceneObject->GetScene());
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
 						bool result = serializer.Deserialize(m_PendingActionFile);
-						std::cout << "Scene loaded from path: " << m_PendingActionFile << "\n";
+						m_SceneObject->GetScene().RebuildEntityCaches();
 						break;
 					}
 					case PendingAction::ReloadScene:
 					{
 						SceneSerializer serializer(*m_SceneObject, m_AssetPath);
 						bool result = serializer.Deserialize(m_PendingActionFile);
+						m_SceneObject->GetScene().RebuildEntityCaches();
 						break;
 					}
 					case PendingAction::CreateNewScene:
 					{
 						m_SceneObject->CreateScene();
+						m_SceneObject->GetScene().RebuildEntityCaches();
 						break;
 					}
 					default: break;

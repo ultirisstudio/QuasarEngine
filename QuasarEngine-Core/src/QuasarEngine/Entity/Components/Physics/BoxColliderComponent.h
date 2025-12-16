@@ -42,7 +42,7 @@ namespace QuasarEngine
         void OnActorAboutToBeReleased(physx::PxRigidActor& actor);
 
         bool m_UseEntityScale = true;
-        glm::vec3  m_Size = { 1.f, 1.f, 1.f };
+        glm::vec3 m_Size = { 1.f, 1.f, 1.f };
 
         physx::PxShape* GetShape() const noexcept { return m_Shape; }
         physx::PxMaterial* GetMaterial() const noexcept { return m_Material; }

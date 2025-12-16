@@ -19,8 +19,8 @@ namespace QuasarEngine
 
         CapsuleColliderComponent(const CapsuleColliderComponent&) = delete;
         CapsuleColliderComponent& operator=(const CapsuleColliderComponent&) = delete;
-        CapsuleColliderComponent(CapsuleColliderComponent&&) = default;
-        CapsuleColliderComponent& operator=(CapsuleColliderComponent&&) = default;
+        CapsuleColliderComponent(CapsuleColliderComponent&& other) noexcept;
+        CapsuleColliderComponent & operator=(CapsuleColliderComponent && other) noexcept;
 
         void Init() override;
         void UpdateColliderMaterial() override;
@@ -45,7 +45,7 @@ namespace QuasarEngine
         float m_Height = 1.0f;
         Axis  m_Axis = Axis::Y;
 
-        physx::PxShape* GetShape()    const noexcept { return m_Shape; }
+        physx::PxShape* GetShape() const noexcept { return m_Shape; }
         physx::PxMaterial* GetMaterial() const noexcept { return m_Material; }
 
     private:

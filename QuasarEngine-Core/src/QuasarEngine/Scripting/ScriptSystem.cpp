@@ -242,37 +242,45 @@ namespace QuasarEngine
 
     }
 
-    void ScriptSystem::Update(double dt) {
+    void ScriptSystem::Update(double dt)
+    {
         auto reg = Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
         auto view = reg->GetRegistry().view<ScriptComponent>();
 
-        for (auto e : view) {
-            Entity entity{ e, reg };
-            auto& script = view.get<ScriptComponent>(e);
+        for (auto e : view)
+        {
+            auto& sc = view.get<ScriptComponent>(e);
+            sc.entt_entity = e;
 
-            if (script.updateFunc.valid()) {
-                try {
-                    script.updateFunc(dt);
-                }
-                catch (const sol::error& err) {
-                    std::cerr << "[Lua Runtime Error] " << err.what() << std::endl;
-                }
+            if (!sc.initialized && !sc.scriptPath.empty())
+                RegisterEntityScript(sc);
+
+            if (sc.updateFunc.valid())
+            {
+                try { sc.updateFunc(dt); }
+                catch (const sol::error& err) { std::cerr << "[Lua Runtime Error] " << err.what() << std::endl; }
             }
         }
     }
-
 
     void ScriptSystem::Start()
     {
         auto reg = Renderer::Instance().m_SceneData.m_Scene->GetRegistry();
         auto view = reg->GetRegistry().view<ScriptComponent>();
 
-        for (auto e : view) {
-            Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
-            auto& script = entity.GetComponent<ScriptComponent>();
+        for (auto e : view)
+        {
+            auto& sc = view.get<ScriptComponent>(e);
 
-            if (script.startFunc.valid()) {
-                script.startFunc();
+            sc.entt_entity = e;
+
+            if (!sc.initialized && !sc.scriptPath.empty())
+                RegisterEntityScript(sc);
+
+            if (sc.startFunc.valid())
+            {
+                try { sc.startFunc(); }
+                catch (const sol::error& err) { std::cerr << "[Lua Runtime Error] " << err.what() << std::endl; }
             }
         }
     }

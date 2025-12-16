@@ -43,6 +43,8 @@ namespace QuasarEngine
 
         void ClearEntities();
 
+        void RebuildEntityCaches();
+
         Registry* GetRegistry() { return m_Registry.get(); }
 
         bool IsEmpty() const { return m_EntityMap.empty(); }
