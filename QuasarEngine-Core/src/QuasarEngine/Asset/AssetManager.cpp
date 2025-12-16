@@ -56,33 +56,24 @@ namespace QuasarEngine
 
 		m_AssetRegistry = std::make_unique<AssetRegistry>();
 
-		m_ValidExtention = {
-			".obj",
-			".fbx",
-			".dae",
-			".glb",
-			".gltf",
-			".png",
-			".jpg",
-			".jpeg",
-			".qasset",
-			".lua",
-			".scene",
-			".ply"
-		};
+		auto& RegisterExtention = [&](const std::string& extention, AssetType type) {
+			m_ValidExtention.push_back(extention);
+			m_ExtentionAssetTypes[extention] = type;
+			};
 
-		m_ExtentionAssetTypes[m_ValidExtention.at(0)] = AssetType::MODEL;
-		m_ExtentionAssetTypes[m_ValidExtention.at(1)] = AssetType::MODEL;
-		m_ExtentionAssetTypes[m_ValidExtention.at(2)] = AssetType::MODEL;
-		m_ExtentionAssetTypes[m_ValidExtention.at(3)] = AssetType::MODEL;
-		m_ExtentionAssetTypes[m_ValidExtention.at(4)] = AssetType::MODEL;
-		m_ExtentionAssetTypes[m_ValidExtention.at(5)] = AssetType::TEXTURE;
-		m_ExtentionAssetTypes[m_ValidExtention.at(6)] = AssetType::TEXTURE;
-		m_ExtentionAssetTypes[m_ValidExtention.at(7)] = AssetType::TEXTURE;
-		m_ExtentionAssetTypes[m_ValidExtention.at(8)] = AssetType::QASSET;
-		m_ExtentionAssetTypes[m_ValidExtention.at(9)] = AssetType::SCRIPT;
-		m_ExtentionAssetTypes[m_ValidExtention.at(10)] = AssetType::SCENE;
-		m_ExtentionAssetTypes[m_ValidExtention.at(11)] = AssetType::MODEL;
+		RegisterExtention(".obj",		AssetType::MODEL);
+		RegisterExtention(".fbx",		AssetType::MODEL);
+		RegisterExtention(".dae",		AssetType::MODEL);
+		RegisterExtention(".glb",		AssetType::MODEL);
+		RegisterExtention(".ply",		AssetType::MODEL);
+		RegisterExtention(".gltf",		AssetType::MODEL);
+		RegisterExtention(".png",		AssetType::TEXTURE);
+		RegisterExtention(".jpg",		AssetType::TEXTURE);
+		RegisterExtention(".jpeg",		AssetType::TEXTURE);
+		RegisterExtention(".qasset",		AssetType::QASSET);
+		RegisterExtention(".lua",		AssetType::SCRIPT);
+		RegisterExtention(".scene",		AssetType::SCENE);
+		RegisterExtention(".qparticle",	AssetType::PARTICLE);
 	}
 
 	void AssetManager::Shutdown()

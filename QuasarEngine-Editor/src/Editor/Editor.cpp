@@ -39,6 +39,7 @@
 #include <Editor/Modules/HeightMapEditor/HeightMapEditor.h>
 #include <Editor/Modules/UIEditor/UserInterfaceEditor.h>
 #include <Editor/Modules/SpriteEditor/SpriteEditor.h>
+#include <Editor/Modules/Particles/ParticleEffectEditor.h>
 
 #include <Editor/EditorCamera.h>
 
@@ -194,6 +195,7 @@ namespace QuasarEngine
 		m_EditorModuleMap["HeightMapEditor"] = std::make_unique<HeightMapEditor>(m_Context);
 		m_EditorModuleMap["UserInterfaceEditor"] = std::make_unique<UserInterfaceEditor>(m_Context);
 		m_EditorModuleMap["SpriteEditor"] = std::make_unique<SpriteEditor>(m_Context);
+		//m_EditorModuleMap["ParticleEditor"] = std::make_unique<ParticleEffectEditor>(m_Context);
 
 		/*m_EntityPropertie = std::make_unique<EntityPropertie>(m_Specification.ProjectPath);
 		m_SceneHierarchy = std::make_unique<SceneHierarchy>();
