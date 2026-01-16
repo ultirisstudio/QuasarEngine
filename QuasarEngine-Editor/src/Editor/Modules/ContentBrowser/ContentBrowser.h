@@ -22,8 +22,8 @@ namespace QuasarEngine
         void RenderUI() override;
 
     private:
-        std::unique_ptr<ContentBrowserModel>   m_Model;
+        std::unique_ptr<ContentBrowserModel> m_Model;
         std::unique_ptr<ContentBrowserActions> m_Actions;
-        std::unique_ptr<ContentBrowserView>    m_View;
+        std::unique_ptr<ContentBrowserView> m_View;
     };
 }

@@ -24,6 +24,8 @@ namespace QuasarEngine
 		float m_minFov;
 		float m_maxFov;
 		float m_fov;
+		float m_nearZ;
+		float m_farZ;
 
 		CameraType m_cameraType = CameraType::PERSPECTIVE;
 
@@ -51,6 +53,12 @@ namespace QuasarEngine
 
 		float GetFov() const;
 		void SetFov(float fov);
+
+		float GetNearZ() const;
+		void SetNearZ(float nearZ);
+
+		float GetFarZ() const;
+		void SetFarZ(float farZ);
 
 		void OnResize(float width, float height);
 	};

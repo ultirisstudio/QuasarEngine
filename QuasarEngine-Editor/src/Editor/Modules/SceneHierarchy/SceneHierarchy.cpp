@@ -13,6 +13,39 @@
 
 namespace QuasarEngine
 {
+	static void DrawHierarchyGuides(ImDrawList* dl, ImVec2 rowScreenPos, float frameHeight, int depth)
+	{
+		if (!dl || depth <= 0) return;
+
+		const ImGuiStyle& s = ImGui::GetStyle();
+		const float indent = s.IndentSpacing;
+
+		// IMPORTANT: inclure le padding de table pour éviter les "trous"
+		const float padY = s.CellPadding.y;
+
+		const float y0 = rowScreenPos.y - padY;
+		const float y1 = rowScreenPos.y + frameHeight + padY;
+		const float midY = (y0 + y1) * 0.5f;
+
+		const ImU32 col = IM_COL32(175, 120, 255, 160);
+
+		// rowScreenPos.x est déjà indenté à ce depth
+		const float baseX = rowScreenPos.x - depth * indent;
+
+		// Verticales (tous les niveaux)
+		for (int i = 0; i < depth; i++)
+		{
+			float x = baseX + i * indent + indent * 0.35f;
+			dl->AddLine(ImVec2(x, y0), ImVec2(x, y1), col, 1.0f);
+		}
+
+		// Connecteur horizontal vers le node courant
+		float xCur = baseX + (depth - 1) * indent + indent * 0.35f;
+		float xEnd = xCur + indent * 0.55f; // au lieu d'un "10" constant
+		dl->AddLine(ImVec2(xCur, midY), ImVec2(xEnd, midY), col, 1.0f);
+		dl->AddCircleFilled(ImVec2(xEnd, midY), 2.0f, col);
+	}
+
 	SceneHierarchy::SceneHierarchy(EditorContext& context) : IEditorModule(context)
 	{
 		
@@ -83,7 +116,7 @@ namespace QuasarEngine
 				if (parentID != UUID::Null())
 					continue;
 
-				OnDrawEntityNode(entity);
+				OnDrawEntityNode(entity, 0);
 			}
 
 			ImGui::EndTable();
@@ -92,7 +125,7 @@ namespace QuasarEngine
 		ImGui::End();
 	}
 
-	void SceneHierarchy::OnDrawEntityNode(Entity entity)
+	void SceneHierarchy::OnDrawEntityNode(Entity entity, int depth)
 	{
 		Scene& scene = m_Context.sceneManager->GetActiveScene();
 
@@ -113,7 +146,13 @@ namespace QuasarEngine
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
 
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 rowScreenPos = ImGui::GetCursorScreenPos();
+		float rowH = ImGui::GetFrameHeight();
+
 		bool open = ImGui::TreeNodeEx((void*)(intptr_t)entity.GetUUID().value(), treeFlags, "%s", entity.GetName().c_str());
+
+		DrawHierarchyGuides(dl, rowScreenPos, rowH, depth);
 
 		if (ImGui::BeginPopupContextItem()) {
 			if (ImGui::MenuItem("Supprimer")) {
@@ -190,7 +229,7 @@ namespace QuasarEngine
 			for (UUID childID : entity.GetComponent<HierarchyComponent>().m_Childrens) {
 				std::optional<Entity> child = scene.GetEntityByUUID(childID);
 				if (child.has_value())
-					OnDrawEntityNode(child.value());
+					OnDrawEntityNode(child.value(), depth + 1);
 			}
 			ImGui::TreePop();
 		}

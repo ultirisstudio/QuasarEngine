@@ -17,6 +17,7 @@
 #include "imgui/imgui.h"
 #include <ImGuizmo.h>
 #include <glm/glm.hpp>
+#include <type_traits>
 
 namespace QuasarEngine
 {
@@ -75,11 +76,69 @@ namespace QuasarEngine
 
 		ModelImportDialogState m_ModelImportDialog;
 
+		template<typename ComponentT>
+		void DrawComponentIcons(entt::registry& reg, const glm::mat4& viewProj, ImVec2 vpMin, ImVec2 vpSize, ImDrawList* dl, ImTextureID iconTex)
+		{
+			auto view = reg.view<TransformComponent, TagComponent, ComponentT>();
+			for (auto ent : view)
+			{
+				auto& tr = view.get<TransformComponent>(ent);
+				auto& tag = view.get<TagComponent>(ent);
+
+				auto e = (entt::entity)ent;
+
+				ImVec2 screen;
+				if (!WorldToScreen(tr.Position, viewProj, vpMin, vpSize, screen))
+					continue;
+
+				float iconSize = 40.0f;
+
+				DrawIconBillboard(dl, screen, iconSize, iconTex);
+
+				ImVec2 half(iconSize * 0.5f, iconSize * 0.5f);
+				ImVec2 p0(screen.x - half.x, screen.y - half.y);
+				ImVec2 p1(screen.x + half.x, screen.y + half.y);
+
+				Entity entity{ e, Renderer::Instance().m_SceneData.m_Scene->GetRegistry() };
+
+				bool hovered = ImGui::IsMouseHoveringRect(p0, p1);
+				if (hovered)
+				{
+					dl->AddRect(p0, p1, IM_COL32(255, 255, 255, 180), 3.0f);
+					if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					{
+						m_Context.selectedEntity = entity;
+					}
+				}
+
+				if constexpr (std::is_same_v<ComponentT, CameraComponent>)
+				{
+					float aspect = vpSize.x > 1.0f ? (vpSize.x / vpSize.y) : 1.0f;
+
+					auto& cam = entity.GetComponent<CameraComponent>();
+
+					glm::mat4 camWorld = tr.GetGlobalTransform();
+
+					float fov = cam.GetCamera().GetFov();
+					float nearZ = cam.GetCamera().GetNearZ();
+					float farZ = cam.GetCamera().GetFarZ();
+
+					ImU32 colLine = IM_COL32(120, 200, 255, 180);
+					ImU32 colFill = IM_COL32(120, 200, 255, 35);
+
+					DrawFrustum(dl, viewProj, vpMin, vpSize, camWorld, fov, nearZ, farZ, aspect, colLine, colFill);
+				}
+			}
+		}
+
 	private:
 		std::shared_ptr<Framebuffer> m_EditorFrameBuffer;
 		glm::vec2 m_EditorViewportSize = { 0.0f, 0.0f };
 		glm::vec2 m_EditorViewportBounds[2];
-		ImVec2    m_ViewportPanelSize = { 0, 0 };
+		ImVec2 m_ViewportPanelSize = { 0, 0 };
+
+		std::shared_ptr<Texture2D> m_CameraIconTex;
+		std::shared_ptr<Texture2D> m_LightIconTex;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;

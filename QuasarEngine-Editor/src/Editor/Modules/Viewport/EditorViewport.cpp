@@ -14,6 +14,8 @@
 #include <QuasarEngine/Resources/Model.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Entity/Components/HierarchyComponent.h>
+#include <QuasarEngine/Entity/Components/CameraComponent.h>
+#include <QuasarEngine/Entity/Components/LightComponent.h>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -92,9 +94,9 @@ namespace QuasarEngine
 		struct DrawModeItem { const char* label; DrawMode mode; };
 
 		static constexpr std::array<DrawModeItem, 3> kDrawModes{ {
+			{ "Triangles", DrawMode::TRIANGLES },
 			{ "Points",    DrawMode::POINTS    },
-			{ "Lignes",    DrawMode::LINES     },
-			{ "Triangles", DrawMode::TRIANGLES }
+			{ "Lignes",    DrawMode::LINES     }
 		} };
 
 		int GetDrawModeIndex(DrawMode mode)
@@ -103,6 +105,93 @@ namespace QuasarEngine
 				if (kDrawModes[i].mode == mode)
 					return i;
 			return 0;
+		}
+
+		static bool WorldToScreen(const glm::vec3& world, const glm::mat4& viewProj, const ImVec2& vpPos, const ImVec2& vpSize, ImVec2& out)
+		{
+			glm::vec4 clip = viewProj * glm::vec4(world, 1.0f);
+			if (clip.w <= 0.0001f) return false;
+
+			glm::vec3 ndc = glm::vec3(clip) / clip.w;
+
+			if (ndc.x < -1.2f || ndc.x > 1.2f || ndc.y < -1.2f || ndc.y > 1.2f) return false;
+
+			out.x = vpPos.x + (ndc.x * 0.5f + 0.5f) * vpSize.x;
+			out.y = vpPos.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * vpSize.y;
+			return true;
+		}
+
+		static void DrawIconBillboard(ImDrawList* dl, ImVec2 center, float size, ImTextureID tex, ImU32 tint = IM_COL32_WHITE)
+		{
+			ImVec2 half(size * 0.5f, size * 0.5f);
+			ImVec2 p0(center.x - half.x, center.y - half.y);
+			ImVec2 p1(center.x + half.x, center.y + half.y);
+
+			dl->AddImage(tex, p0, p1, ImVec2(0, 0), ImVec2(1, 1), tint);
+
+			//dl->AddRect(p0, p1, IM_COL32(0, 0, 0, 120), 3.0f);
+		}
+
+		static bool Project(ImVec2& out, const glm::vec3& wpos,
+			const glm::mat4& viewProj,
+			const ImVec2& vpMin, const ImVec2& vpSize)
+		{
+			return WorldToScreen(wpos, viewProj, vpMin, vpSize, out);
+		}
+
+		static void DrawFrustum(ImDrawList* dl, const glm::mat4& editorViewProj, const ImVec2& vpMin, const ImVec2& vpSize, const glm::mat4& camWorld, float fovYDegrees, float nearZ, float farZ, float aspect, ImU32 colLine, ImU32 colFill = 0)
+		{
+			glm::vec3 pos = glm::vec3(camWorld[3]);
+			glm::vec3 right = glm::normalize(glm::vec3(camWorld[0]));
+			glm::vec3 up = glm::normalize(glm::vec3(camWorld[1]));
+			glm::vec3 fwd = -glm::normalize(glm::vec3(camWorld[2]));
+
+			float fovY = glm::radians(fovYDegrees);
+			float tanHalf = tanf(fovY * 0.5f);
+
+			float nh = 2.0f * nearZ * tanHalf;
+			float nw = nh * aspect;
+			float fh = 2.0f * farZ * tanHalf;
+			float fw = fh * aspect;
+
+			glm::vec3 nc = pos + fwd * nearZ;
+			glm::vec3 fc = pos + fwd * farZ;
+
+			glm::vec3 ntl = nc + up * (nh * 0.5f) - right * (nw * 0.5f);
+			glm::vec3 ntr = nc + up * (nh * 0.5f) + right * (nw * 0.5f);
+			glm::vec3 nbl = nc - up * (nh * 0.5f) - right * (nw * 0.5f);
+			glm::vec3 nbr = nc - up * (nh * 0.5f) + right * (nw * 0.5f);
+
+			glm::vec3 ftl = fc + up * (fh * 0.5f) - right * (fw * 0.5f);
+			glm::vec3 ftr = fc + up * (fh * 0.5f) + right * (fw * 0.5f);
+			glm::vec3 fbl = fc - up * (fh * 0.5f) - right * (fw * 0.5f);
+			glm::vec3 fbr = fc - up * (fh * 0.5f) + right * (fw * 0.5f);
+
+			auto drawEdge = [&](const glm::vec3& a, const glm::vec3& b)
+				{
+					ImVec2 pa, pb;
+					if (Project(pa, a, editorViewProj, vpMin, vpSize) &&
+						Project(pb, b, editorViewProj, vpMin, vpSize))
+					{
+						dl->AddLine(pa, pb, colLine, 1.0f);
+					}
+				};
+
+			drawEdge(ntl, ntr); drawEdge(ntr, nbr); drawEdge(nbr, nbl); drawEdge(nbl, ntl);
+			drawEdge(ftl, ftr); drawEdge(ftr, fbr); drawEdge(fbr, fbl); drawEdge(fbl, ftl);
+			drawEdge(ntl, ftl); drawEdge(ntr, ftr); drawEdge(nbl, fbl); drawEdge(nbr, fbr);
+
+			if (colFill != 0)
+			{
+				ImVec2 p0, p1, p2, p3;
+				if (Project(p0, ftl, editorViewProj, vpMin, vpSize) &&
+					Project(p1, ftr, editorViewProj, vpMin, vpSize) &&
+					Project(p2, fbr, editorViewProj, vpMin, vpSize) &&
+					Project(p3, fbl, editorViewProj, vpMin, vpSize))
+				{
+					dl->AddConvexPolyFilled(&p0, 4, colFill);
+				}
+			}
 		}
 	}
 
@@ -147,6 +236,15 @@ namespace QuasarEngine
 
 		m_EditorFrameBuffer = Framebuffer::Create(spec);
 		m_EditorFrameBuffer->Invalidate();
+
+		TextureSpecification texSpec;
+		texSpec.alpha = true;
+
+		m_CameraIconTex = Texture2D::Create(texSpec);
+		m_CameraIconTex->LoadFromPath("Assets/Textures/camera.png");
+
+		m_LightIconTex = Texture2D::Create(texSpec);
+		m_LightIconTex->LoadFromPath("Assets/Textures/light.png");
 	}
 
 	EditorViewport::~EditorViewport()
@@ -417,6 +515,16 @@ namespace QuasarEngine
 		EditorCamera& camera = *m_Context.editorCamera;
 		SceneManager& sceneManager = *m_Context.sceneManager;
 
+		const glm::mat4 viewProj = camera.getProjectionMatrix() * camera.getViewMatrix();
+
+		ImGuiViewport* vp = ImGui::GetMainViewport();
+
+		ImDrawList* dl = ImGui::GetForegroundDrawList(vp);
+
+		auto& registry = Renderer::Instance().m_SceneData.m_Scene->GetRegistry()->GetRegistry();
+		DrawComponentIcons<CameraComponent>(registry, viewProj, vpMin, vpSize, dl, (ImTextureID)m_CameraIconTex->GetHandle());
+		DrawComponentIcons<LightComponent>(registry, viewProj, vpMin, vpSize, dl, (ImTextureID)m_LightIconTex->GetHandle());
+
 		DrawTopBar(sceneManager, vpMin, vpSize);
 		DrawAxisWidget(vpMin, vpSize);
 		DrawStatusBar(vpMin, vpSize);
@@ -437,19 +545,11 @@ namespace QuasarEngine
 
 			bool useSnap = m_SnapEnabled || ImGui::GetIO().KeyCtrl;
 
-			ImGuizmo::Manipulate(glm::value_ptr(view),
-				glm::value_ptr(proj),
-				(ImGuizmo::OPERATION)m_GizmoOperation,
-				m_GizmoMode,
-				glm::value_ptr(transform),
-				nullptr,
-				useSnap ? snap : nullptr);
+			ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), (ImGuizmo::OPERATION)m_GizmoOperation, m_GizmoMode, glm::value_ptr(transform), nullptr, useSnap ? snap : nullptr);
 
 			if (ImGuizmo::IsUsing())
 			{
-				UUID parentID = m_Context.selectedEntity.HasComponent<HierarchyComponent>()
-					? m_Context.selectedEntity.GetComponent<HierarchyComponent>().m_Parent
-					: UUID::Null();
+				UUID parentID = m_Context.selectedEntity.HasComponent<HierarchyComponent>() ? m_Context.selectedEntity.GetComponent<HierarchyComponent>().m_Parent : UUID::Null();
 
 				glm::mat4 finalTransform = transform;
 				while (parentID != UUID::Null())
@@ -459,9 +559,7 @@ namespace QuasarEngine
 					{
 						glm::mat4 parentLocal = parent->GetComponent<TransformComponent>().GetLocalTransform();
 						finalTransform = finalTransform * glm::inverse(parentLocal);
-						parentID = parent->HasComponent<HierarchyComponent>()
-							? parent->GetComponent<HierarchyComponent>().m_Parent
-							: UUID::Null();
+						parentID = parent->HasComponent<HierarchyComponent>() ? parent->GetComponent<HierarchyComponent>().m_Parent : UUID::Null();
 					}
 					else break;
 				}
@@ -596,7 +694,7 @@ namespace QuasarEngine
 		dlg.preset = ModelImportPreset::Full;
 
 		auto& opts = dlg.options;
-		opts.drawMode = DrawMode::POINTS;
+		opts.drawMode = DrawMode::TRIANGLES;
 		opts.buildMeshes = true;
 		opts.loadMaterials = true;
 		opts.loadSkinning = true;

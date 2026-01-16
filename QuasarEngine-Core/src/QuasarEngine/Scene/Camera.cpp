@@ -4,7 +4,7 @@
 
 namespace QuasarEngine
 {
-	Camera::Camera() : m_projectionMatrix(1.0f), m_fov(60.0f), m_minFov(15.0f), m_maxFov(95.0f), m_ViewportSize(1.0f, 1.0f), m_TransformComponent(nullptr), m_cameraType(CameraType::PERSPECTIVE)
+	Camera::Camera() : m_projectionMatrix(1.0f), m_fov(60.0f), m_minFov(15.0f), m_maxFov(95.0f), m_nearZ(0.1f), m_farZ(100.0f), m_ViewportSize(1.0f, 1.0f), m_TransformComponent(nullptr), m_cameraType(CameraType::PERSPECTIVE)
 	{
 
 	}
@@ -64,14 +64,14 @@ namespace QuasarEngine
 		{
 		case CameraType::PERSPECTIVE:
 		{
-			m_projectionMatrix = glm::perspectiveRH_ZO(glm::radians(GetFov()), aspect, 0.1f, 1000.0f);
+			m_projectionMatrix = glm::perspectiveRH_ZO(glm::radians(GetFov()), aspect, m_nearZ, m_farZ);
 			break;
 		}
 		case CameraType::ORTHOGRAPHIC:
 		{
 			const float halfHeight = 0.5f;
 			const float halfWidth = halfHeight * aspect;
-			m_projectionMatrix = glm::orthoRH_ZO(-halfWidth, +halfWidth, -halfHeight, +halfHeight, 0.1f, 100.0f);
+			m_projectionMatrix = glm::orthoRH_ZO(-halfWidth, +halfWidth, -halfHeight, +halfHeight, m_nearZ, m_farZ);
 			break;
 		}
 		default:
@@ -90,6 +90,26 @@ namespace QuasarEngine
 		m_fov = glm::clamp(fov, m_minFov, m_maxFov);
 
 		updateProjectionMatrix();
+	}
+
+	float Camera::GetNearZ() const
+	{
+		return m_nearZ;
+	}
+
+	void Camera::SetNearZ(float nearZ)
+	{
+		m_nearZ = nearZ;
+	}
+
+	float Camera::GetFarZ() const
+	{
+		return m_farZ;
+	}
+
+	void Camera::SetFarZ(float farZ)
+	{
+		m_farZ = farZ;
 	}
 
 	void Camera::OnResize(float width, float height)

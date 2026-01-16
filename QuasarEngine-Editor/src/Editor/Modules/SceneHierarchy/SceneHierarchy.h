@@ -16,6 +16,6 @@ namespace QuasarEngine
 		void Update(double dt) override;
 		void RenderUI() override;
 	private:
-		void OnDrawEntityNode(Entity entity);
+		void OnDrawEntityNode(Entity entity, int depth = 0);
 	};
 }
