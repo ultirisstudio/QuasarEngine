@@ -111,22 +111,25 @@ namespace QuasarEngine
 					}
 				}
 
-				if constexpr (std::is_same_v<ComponentT, CameraComponent>)
+				if (m_Context.selectedEntity == entity || hovered)
 				{
-					float aspect = vpSize.x > 1.0f ? (vpSize.x / vpSize.y) : 1.0f;
+					if constexpr (std::is_same_v<ComponentT, CameraComponent>)
+					{
+						float aspect = vpSize.x > 1.0f ? (vpSize.x / vpSize.y) : 1.0f;
 
-					auto& cam = entity.GetComponent<CameraComponent>();
+						auto& cam = entity.GetComponent<CameraComponent>();
 
-					glm::mat4 camWorld = tr.GetGlobalTransform();
+						glm::mat4 camWorld = tr.GetGlobalTransform();
 
-					float fov = cam.GetCamera().GetFov();
-					float nearZ = cam.GetCamera().GetNearZ();
-					float farZ = cam.GetCamera().GetFarZ();
+						float fov = cam.GetCamera().GetFov();
+						float nearZ = cam.GetCamera().GetNearZ();
+						float farZ = cam.GetCamera().GetFarZ();
 
-					ImU32 colLine = IM_COL32(120, 200, 255, 180);
-					ImU32 colFill = IM_COL32(120, 200, 255, 35);
+						ImU32 colLine = IM_COL32(120, 200, 255, 180);
+						ImU32 colFill = IM_COL32(120, 200, 255, 35);
 
-					DrawFrustum(dl, viewProj, vpMin, vpSize, camWorld, fov, nearZ, farZ, aspect, colLine, colFill);
+						DrawFrustum(dl, viewProj, vpMin, vpSize, camWorld, fov, nearZ, farZ, aspect, colLine, colFill);
+					}
 				}
 			}
 		}

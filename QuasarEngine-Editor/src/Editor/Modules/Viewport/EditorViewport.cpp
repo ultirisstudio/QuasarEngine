@@ -132,15 +132,60 @@ namespace QuasarEngine
 			//dl->AddRect(p0, p1, IM_COL32(0, 0, 0, 120), 3.0f);
 		}
 
-		static bool Project(ImVec2& out, const glm::vec3& wpos,
-			const glm::mat4& viewProj,
-			const ImVec2& vpMin, const ImVec2& vpSize)
+		static bool Project(ImVec2& out, const glm::vec3& wpos, const glm::mat4& viewProj, const ImVec2& vpMin, const ImVec2& vpSize)
 		{
 			return WorldToScreen(wpos, viewProj, vpMin, vpSize, out);
 		}
 
+		static inline ImVec2 ClipToScreen(const glm::vec4& clip, const ImVec2& vpMin, const ImVec2& vpSize)
+		{
+			glm::vec3 ndc = glm::vec3(clip) / clip.w;
+			float sx = vpMin.x + (ndc.x * 0.5f + 0.5f) * vpSize.x;
+			float sy = vpMin.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * vpSize.y;
+			return ImVec2(sx, sy);
+		}
+
+		static bool ClipLineHomogeneous(glm::vec4& a, glm::vec4& b, bool openGL)
+		{
+			auto clipAgainstPlane = [&](const glm::vec4& plane) -> bool
+				{
+					float da = glm::dot(a, plane);
+					float db = glm::dot(b, plane);
+
+					if (da < 0.0f && db < 0.0f) return false;
+					if (da < 0.0f || db < 0.0f)
+					{
+						float t = da / (da - db);
+						glm::vec4 p = a + t * (b - a);
+						if (da < 0.0f) a = p; else b = p;
+					}
+					return true;
+				};
+
+			if (!clipAgainstPlane(glm::vec4(1, 0, 0, 1))) return false;
+			if (!clipAgainstPlane(glm::vec4(-1, 0, 0, 1))) return false;
+			
+			if (!clipAgainstPlane(glm::vec4(0, 1, 0, 1))) return false;
+			if (!clipAgainstPlane(glm::vec4(0, -1, 0, 1))) return false;
+
+			if (openGL)
+			{
+				if (!clipAgainstPlane(glm::vec4(0, 0, 1, 1))) return false;
+				if (!clipAgainstPlane(glm::vec4(0, 0, -1, 1))) return false;
+			}
+			else
+			{
+				if (!clipAgainstPlane(glm::vec4(0, 0, 1, 0))) return false;
+				if (!clipAgainstPlane(glm::vec4(0, 0, -1, 1))) return false;
+			}
+
+			return true;
+		}
+
 		static void DrawFrustum(ImDrawList* dl, const glm::mat4& editorViewProj, const ImVec2& vpMin, const ImVec2& vpSize, const glm::mat4& camWorld, float fovYDegrees, float nearZ, float farZ, float aspect, ImU32 colLine, ImU32 colFill = 0)
 		{
+			if (!dl) return;
+
 			glm::vec3 pos = glm::vec3(camWorld[3]);
 			glm::vec3 right = glm::normalize(glm::vec3(camWorld[0]));
 			glm::vec3 up = glm::normalize(glm::vec3(camWorld[1]));
@@ -167,14 +212,22 @@ namespace QuasarEngine
 			glm::vec3 fbl = fc - up * (fh * 0.5f) - right * (fw * 0.5f);
 			glm::vec3 fbr = fc - up * (fh * 0.5f) + right * (fw * 0.5f);
 
-			auto drawEdge = [&](const glm::vec3& a, const glm::vec3& b)
+			bool openGL = RendererAPI::GetAPI() == RendererAPI::API::OpenGL;
+
+			auto drawEdge = [&](const glm::vec3& aW, const glm::vec3& bW)
 				{
-					ImVec2 pa, pb;
-					if (Project(pa, a, editorViewProj, vpMin, vpSize) &&
-						Project(pb, b, editorViewProj, vpMin, vpSize))
-					{
-						dl->AddLine(pa, pb, colLine, 1.0f);
-					}
+					glm::vec4 a = editorViewProj * glm::vec4(aW, 1.0f);
+					glm::vec4 b = editorViewProj * glm::vec4(bW, 1.0f);
+
+					if (!ClipLineHomogeneous(a, b, openGL))
+						return;
+
+					if (fabsf(a.w) < 1e-6f || fabsf(b.w) < 1e-6f)
+						return;
+
+					ImVec2 sa = ClipToScreen(a, vpMin, vpSize);
+					ImVec2 sb = ClipToScreen(b, vpMin, vpSize);
+					dl->AddLine(sa, sb, colLine, 1.0f);
 				};
 
 			drawEdge(ntl, ntr); drawEdge(ntr, nbr); drawEdge(nbr, nbl); drawEdge(nbl, ntl);
@@ -183,13 +236,36 @@ namespace QuasarEngine
 
 			if (colFill != 0)
 			{
-				ImVec2 p0, p1, p2, p3;
-				if (Project(p0, ftl, editorViewProj, vpMin, vpSize) &&
-					Project(p1, ftr, editorViewProj, vpMin, vpSize) &&
-					Project(p2, fbr, editorViewProj, vpMin, vpSize) &&
-					Project(p3, fbl, editorViewProj, vpMin, vpSize))
+				glm::vec4 c0 = editorViewProj * glm::vec4(ftl, 1.0f);
+				glm::vec4 c1 = editorViewProj * glm::vec4(ftr, 1.0f);
+				glm::vec4 c2 = editorViewProj * glm::vec4(fbr, 1.0f);
+				glm::vec4 c3 = editorViewProj * glm::vec4(fbl, 1.0f);
+
+				auto inside = [&](const glm::vec4& p) -> bool
+					{
+						if (p.w <= 1e-6f) return false;
+						if (fabsf(p.x) > p.w) return false;
+						if (fabsf(p.y) > p.w) return false;
+						if (openGL)
+						{
+							if (p.z < -p.w || p.z > p.w) return false;
+						}
+						else
+						{
+							if (p.z < 0.0f || p.z > p.w) return false;
+						}
+						return true;
+					};
+
+				if (inside(c0) && inside(c1) && inside(c2) && inside(c3))
 				{
-					dl->AddConvexPolyFilled(&p0, 4, colFill);
+					ImVec2 p0 = ClipToScreen(c0, vpMin, vpSize);
+					ImVec2 p1 = ClipToScreen(c1, vpMin, vpSize);
+					ImVec2 p2 = ClipToScreen(c2, vpMin, vpSize);
+					ImVec2 p3 = ClipToScreen(c3, vpMin, vpSize);
+
+					ImVec2 poly[4] = { p0, p1, p2, p3 };
+					dl->AddConvexPolyFilled(poly, 4, colFill);
 				}
 			}
 		}
