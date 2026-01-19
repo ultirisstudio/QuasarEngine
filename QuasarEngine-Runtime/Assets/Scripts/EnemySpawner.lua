@@ -8,15 +8,68 @@ public = {
 }
 
 local timer = 0.0
+local enemies = {}
 local alive = 0
-local playerTc
 
 local function random_on_circle(r)
     local a = math.random() * 6.283185307179586
     return r * math.cos(a), r * math.sin(a)
 end
 
+local function prune_enemies()
+    for i = #enemies, 1, -1 do
+        local e = enemies[i]
+        if (not e) or (not e:isValid()) then
+            table.remove(enemies, i)
+        end
+    end
+    alive = #enemies
+end
+
+local VERTS_CUBE = {
+    -- +Z
+    -1,-1, 1,  0,0,1,  0,0, 0,0,0, 0,0,0,1,
+     1,-1, 1,  0,0,1,  1,0, 0,0,0, 0,0,0,1,
+     1, 1, 1,  0,0,1,  1,1, 0,0,0, 0,0,0,1,
+    -1, 1, 1,  0,0,1,  0,1, 0,0,0, 0,0,0,1,
+    -- -Z
+     1,-1,-1,  0,0,-1, 1,0, 0,0,0, 0,0,0,1,
+    -1,-1,-1,  0,0,-1, 0,0, 0,0,0, 0,0,0,1,
+    -1, 1,-1,  0,0,-1, 0,1, 0,0,0, 0,0,0,1,
+     1, 1,-1,  0,0,-1, 1,1, 0,0,0, 0,0,0,1,
+    -- +X
+     1,-1, 1,  1,0,0,  1,0, 0,0,0, 0,0,0,1,
+     1,-1,-1,  1,0,0,  0,0, 0,0,0, 0,0,0,1,
+     1, 1,-1,  1,0,0,  0,1, 0,0,0, 0,0,0,1,
+     1, 1, 1,  1,0,0,  1,1, 0,0,0, 0,0,0,1,
+    -- -X
+    -1,-1,-1, -1,0,0,  0,0, 0,0,0, 0,0,0,1,
+    -1,-1, 1, -1,0,0,  1,0, 0,0,0, 0,0,0,1,
+    -1, 1, 1, -1,0,0,  1,1, 0,0,0, 0,0,0,1,
+    -1, 1,-1, -1,0,0,  0,1, 0,0,0, 0,0,0,1,
+    -- +Y
+    -1, 1, 1,  0,1,0,  0,1, 0,0,0, 0,0,0,1,
+     1, 1, 1,  0,1,0,  1,1, 0,0,0, 0,0,0,1,
+     1, 1,-1,  0,1,0,  1,0, 0,0,0, 0,0,0,1,
+    -1, 1,-1,  0,1,0,  0,0, 0,0,0, 0,0,0,1,
+    -- -Y
+    -1,-1,-1,  0,-1,0, 0,0, 0,0,0, 0,0,0,1,
+     1,-1,-1,  0,-1,0, 1,0, 0,0,0, 0,0,0,1,
+     1,-1, 1,  0,-1,0, 1,1, 0,0,0, 0,0,0,1,
+    -1,-1, 1,  0,-1,0, 0,1, 0,0,0, 0,0,0,1
+}
+
+local IDX_CUBE = {
+    0,1,2,  0,2,3,
+    4,5,6,  4,6,7,
+    8,9,10,  8,10,11,
+    12,13,14,  12,14,15,
+    16,17,18,  16,18,19,
+    20,21,22,  20,22,23,
+}
+
 local function spawn_one()
+    prune_enemies()
     if alive >= public.maxAlive then return end
 
     local spawnerTc = entity:getComponent("TransformComponent")
@@ -49,62 +102,20 @@ local function spawn_one()
     tag:Add(TagMask.Enemy | TagMask.Dynamic)
 
     attachScript(e, public.enemyScriptPath)
-	
-	local child_name = string.format("%s_%s", name, "body")
+
+    local child_name = string.format("%s_%s", name, "body")
     local child_e = createEntity(child_name)
-	
-	local cmrc = child_e:addComponent("MeshRendererComponent")
-	
-	local verts_cube = {
-		-- +Z
-		-1,-1, 1,  0,0,1,  0,0,
-		 1,-1, 1,  0,0,1,  1,0,
-		 1, 1, 1,  0,0,1,  1,1,
-		-1, 1, 1,  0,0,1,  0,1,
-		-- -Z
-		 1,-1,-1,  0,0,-1, 1,0,
-		-1,-1,-1,  0,0,-1, 0,0,
-		-1, 1,-1,  0,0,-1, 0,1,
-		 1, 1,-1,  0,0,-1, 1,1,
-		-- +X
-		 1,-1, 1,  1,0,0,  1,0,
-		 1,-1,-1,  1,0,0,  0,0,
-		 1, 1,-1,  1,0,0,  0,1,
-		 1, 1, 1,  1,0,0,  1,1,
-		-- -X
-		-1,-1,-1, -1,0,0,  0,0,
-		-1,-1, 1, -1,0,0,  1,0,
-		-1, 1, 1, -1,0,0,  1,1,
-		-1, 1,-1, -1,0,0,  0,1,
-		-- +Y
-		-1, 1, 1,  0,1,0,  0,1,
-		 1, 1, 1,  0,1,0,  1,1,
-		 1, 1,-1,  0,1,0,  1,0,
-		-1, 1,-1,  0,1,0,  0,0,
-		-- -Y
-		-1,-1,-1,  0,-1,0, 0,0,
-		 1,-1,-1,  0,-1,0, 1,0,
-		 1,-1, 1,  0,-1,0, 1,1,
-		-1,-1, 1,  0,-1,0, 0,1,
-	}
 
-	local idx_cube = {
-		0,1,2,  0,2,3,
-		4,5,6,  4,6,7,
-		8,9,10,  8,10,11,
-		12,13,14,  12,14,15,
-		16,17,18,  16,18,19,
-		20,21,22,  20,22,23,
-	}
-	
-	local cmc = child_e:addComponent("MeshComponent", child_name)
-	cmc:generateMesh(verts_cube, idx_cube)
-	
-	local cmatc = child_e:addComponent("MaterialComponent")
-	
-	setParent(child_e, e)
+    child_e:addComponent("MeshRendererComponent")
 
-    alive = alive + 1
+    local cmc = child_e:addComponent("MeshComponent", child_name)
+    cmc:generateMesh(VERTS_CUBE, IDX_CUBE)
+
+    child_e:addComponent("MaterialComponent")
+    setParent(child_e, e)
+
+    enemies[#enemies + 1] = e
+    alive = #enemies
 end
 
 function start()
@@ -112,6 +123,8 @@ function start()
 end
 
 function update(dt)
+    prune_enemies()
+
     timer = timer + dt
     if timer < public.startDelaySec then return end
     timer = timer - public.startDelaySec
@@ -124,5 +137,3 @@ function update(dt)
 end
 
 function stop() end
-
-

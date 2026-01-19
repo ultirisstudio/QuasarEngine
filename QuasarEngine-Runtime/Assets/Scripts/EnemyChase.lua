@@ -1,15 +1,18 @@
 public = {
-    moveSpeed = 12.0,
+    moveSpeed = 6.0,
     turnLerp  = 10.0,
     gravity   = true,
-    stopDistance = 5.0,
-	
-	headingSign = -1.0,
-    headingOffsetDeg = 0.0
+    stopDistance = 5.0
 }
 
 local selfTc, selfRb
 local player, playerTc
+
+local function wrap_delta_deg(d)
+    while d > 180.0 do d = d - 360.0 end
+    while d < -180.0 do d = d + 360.0 end
+    return d
+end
 
 function start()
     selfTc = entity:getComponent("TransformComponent")
@@ -19,7 +22,7 @@ function start()
         selfRb = entity:addComponent("RigidBodyComponent")
         selfRb.enableGravity = public.gravity
         selfRb:set_body_type("DYNAMIC")
-        selfRb:set_linear_damping(0.2)
+        selfRb:set_linear_damping(1.0)
         selfRb:set_angular_damping(1.0)
     end
 
@@ -35,32 +38,28 @@ end
 function update(dt)
     if not playerTc or not selfTc then return end
 
-    local dx = playerTc.position.x - selfTc.position.x
-    local dz = playerTc.position.z - selfTc.position.z
-    local len = math.sqrt(dx*dx + dz*dz)
-    if len < 1e-6 then return end
+    local to = vec3(playerTc.position.x - selfTc.position.x, 0.0, playerTc.position.z - selfTc.position.z)
+    local len = math.sqrt(to.x*to.x + to.z*to.z)
+    if len < 1e-3 then return end
+    to.x, to.z = to.x/len, to.z/len
 
-    local toX, toZ = dx/len, dz/len
-
-    -- Hystérésis pour éviter l’oscillation au seuil
-    local stop = public.stopDistance or 5.0
-    local start = stop + 0.5
-
-    if len > start then
-        local accel = public.moveSpeed
-        physics.add_force(entity, vec3(toX * accel, 0.0, toZ * accel), "force")
-        -- Option : tu peux réveiller explicitement si jamais
-        -- local v = physics.get_linear_velocity(entity)
-        -- if v.x*v.x + v.z*v.z < 1e-4 then physics.add_force(entity, vec3(toX*accel, 0.0, toZ*accel), "impulse") end
+    if len <= public.stopDistance then
+        local v = physics.get_linear_velocity(entity)
+        physics.set_linear_velocity(entity, vec3(0.0, v.y, 0.0))
+        return
     end
 
-    local desiredYawDeg = math.deg(atan2(toX, -toZ))
-    local yawOutDeg = (public.headingSign or -1.0) * desiredYawDeg + (public.headingOffsetDeg or 0.0)
-    if physics.set_rotation then
-        physics.set_rotation(entity, vec3(0.0, math.rad(yawOutDeg), 0.0))
-    end
+    local v = physics.get_linear_velocity(entity)
+    local vx, vz = to.x * public.moveSpeed, to.z * public.moveSpeed
+    physics.set_linear_velocity(entity, vec3(vx, v.y, vz))
+
+    local desiredYaw = math.deg(atan2(to.x, -to.z))
+    local curYaw = math.deg(selfTc.rotation.y)
+    local delta = wrap_delta_deg(desiredYaw - curYaw)
+    local t = math.min(1.0, public.turnLerp * dt)
+    local newYaw = curYaw + delta * t
+
+    physics.set_rotation(entity, vec3(0.0, math.rad(newYaw), 0.0))
 end
 
 function stop() end
-
-

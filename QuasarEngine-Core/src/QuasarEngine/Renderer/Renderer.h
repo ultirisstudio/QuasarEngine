@@ -41,7 +41,7 @@ namespace QuasarEngine
 			std::unique_ptr<TerrainTechnique> m_TerrainTech;
 			//PointCloudTechnique> m_PcTech;
 
-			std::unique_ptr<UISystem> m_UI;
+			//std::unique_ptr<UISystem> m_UI;
 
 			std::array<PointLight, 4> m_PointsBuffer;
 			std::array<DirectionalLight, 4> m_DirectionalsBuffer;

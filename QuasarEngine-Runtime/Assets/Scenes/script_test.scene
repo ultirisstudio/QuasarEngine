@@ -25,14 +25,13 @@ Entities:
             []
           MaskHex: 0x0000000000000000
       - TransformComponent:
-          Position: [0, 6, 0]
+          Position: [0, 0, 0]
           Rotation: [-0.471238881, -0.0558505356, 0]
           Scale: [1, 1, 1]
       - LightComponent:
-          lightType: Point
+          lightType: Directional
           color: [1, 1, 1]
-          attenuation: 1
-          power: 23.1830006
+          power: 10
   - Entity: PlayerCamera
     ID: 11951825199843277956
     ParentID: 0
@@ -117,6 +116,23 @@ Entities:
           Position: [0, 0, 0]
           Rotation: [0, -0.00698131695, 0]
           Scale: [1, 1, 1]
+      - RigidBodyComponent:
+          enableGravity: true
+          bodyType: DYNAMIC
+          linearAxisFactor_X: true
+          linearAxisFactor_Y: true
+          linearAxisFactor_Z: true
+          angularAxisFactor_X: true
+          angularAxisFactor_Y: true
+          angularAxisFactor_Z: true
+          linearDamping: 0.00999999978
+          angularDamping: 0.0500000007
+      - BoxColliderComponent:
+          mass: 1
+          friction: 0.5
+          bounciness: 0.200000003
+          useEntityScale: true
+          size: [1, 1, 1]
       - ScriptComponent:
           scriptPath: Assets/Scripts/FpsPlayer.lua
   - Entity: cube
@@ -135,7 +151,7 @@ Entities:
       - MaterialComponent:
           albedo: [0.600000024, 0.600000024, 0.600000024, 1]
           metallic: 0
-          roughness: 1
+          roughness: 0
           ao: 1
       - MeshRendererComponent:
           Rendered: true
@@ -188,8 +204,9 @@ Entities:
       - MaterialComponent:
           albedo: [0.600000024, 0.600000024, 0.600000024, 1]
           metallic: 0
-          roughness: 1
+          roughness: 0
           ao: 1
+          albedoMap: Assets/Textures/OTskLEus.jpg
       - MeshRendererComponent:
           Rendered: true
       - MeshComponent:

@@ -156,7 +156,7 @@ namespace QuasarEngine
 		m_SceneData.m_PointsBuffer.fill(PointLight());
 		m_SceneData.m_DirectionalsBuffer.fill(DirectionalLight());
 
-		m_SceneData.m_UI = std::make_unique<UISystem>();
+		//m_SceneData.m_UI = std::make_unique<UISystem>();
 
 		/*struct UISharedState {
 			int quality = 1;
@@ -486,7 +486,7 @@ namespace QuasarEngine
 		m_SceneData.m_SkyboxHDR.reset();
 		//m_SceneData.m_PhysicDebugShader.reset();
 		//m_SceneData.m_PointCloudShader.reset();
-		m_SceneData.m_UI.reset();
+		//m_SceneData.m_UI.reset();
 		m_SceneData.m_ScriptSystem.reset();
 		//m_SceneData.m_SmokeEmitter.reset();
 	}
@@ -726,7 +726,7 @@ namespace QuasarEngine
 	void Renderer::RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi)
 	{
 		UIFBInfo fb{fbW, fbH, dpi};
-		m_SceneData.m_UI->Render(camera, fb);
+		//m_SceneData.m_UI->Render(camera, fb);
 	}
 
 	void Renderer::EndScene()

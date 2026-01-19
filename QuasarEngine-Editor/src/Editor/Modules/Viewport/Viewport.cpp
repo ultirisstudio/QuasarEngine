@@ -65,7 +65,7 @@ namespace QuasarEngine
 
 			Renderer::Instance().RenderSkybox(camera);
 			Renderer::Instance().Render(camera);
-			Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
+			//Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
 			Renderer::Instance().EndScene();
 
 			m_ViewportFrameBuffer->Unbind();
@@ -162,7 +162,7 @@ namespace QuasarEngine
 		ev.down = true;
 		ev.button = e.GetMouseButton();
 
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		//Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
 	}
 
@@ -183,7 +183,7 @@ namespace QuasarEngine
 		ev.up = true;
 		ev.button = e.GetMouseButton();
 
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		//Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
 	}
 
@@ -203,28 +203,28 @@ namespace QuasarEngine
 		ev.y = uiPos.y;
 		ev.move = true;
 
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
+		//Renderer::Instance().m_SceneData.m_UI->Input().FeedPointer(ev);
 		return false;
 	}
 
 	bool Viewport::OnKeyPressed(KeyPressedEvent& e)
 	{
 		UIKeyEvent kev{}; kev.key = (int)e.GetKeyCode(); kev.down = true;
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedKey(kev);
+		//Renderer::Instance().m_SceneData.m_UI->Input().FeedKey(kev);
 		return false;
 	}
 
 	bool Viewport::OnKeyReleased(KeyReleasedEvent& e)
 	{
 		UIKeyEvent kev{}; kev.key = (int)e.GetKeyCode(); kev.down = false;
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedKey(kev);
+		//Renderer::Instance().m_SceneData.m_UI->Input().FeedKey(kev);
 		return false;
 	}
 
 	bool Viewport::OnKeyTyped(KeyTypedEvent& e)
 	{
 		UICharEvent cev{}; cev.codepoint = (uint32_t)e.GetKeyCode();
-		Renderer::Instance().m_SceneData.m_UI->Input().FeedChar(cev);
+		//Renderer::Instance().m_SceneData.m_UI->Input().FeedChar(cev);
 		return false;
 	}
 

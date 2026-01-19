@@ -158,7 +158,7 @@ namespace QuasarEngine
         g_hasComponentFuncs["AnimationComponent"] = MakeHas<AnimationComponent>();
         g_addComponentFuncs["AnimationComponent"] = MakeAddOptionalArg<AnimationComponent, std::string>();
 
-		m_UISystem = Renderer::Instance().m_SceneData.m_UI.get();
+		//m_UISystem = Renderer::Instance().m_SceneData.m_UI.get();
 
         BindInputToLua(m_Lua);
         BindMathToLua(m_Lua);
@@ -181,7 +181,7 @@ namespace QuasarEngine
         env["entity"] = entityObject;
         env["self"] = entityObject;
 
-        env.set_function("vec3", [](float x, float y, float z) {
+        env.set_function("make_vec3", [](float x, float y, float z) {
             return glm::vec3(x, y, z);
             });
 
