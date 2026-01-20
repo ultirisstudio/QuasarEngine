@@ -589,9 +589,10 @@ namespace QuasarEngine
 
 		const glm::mat4 viewProj = camera.getProjectionMatrix() * camera.getViewMatrix();
 
-		ImGuiViewport* vp = ImGui::GetMainViewport();
+		//ImGuiViewport* vp = ImGui::GetMainViewport();
+		//ImDrawList* dl = ImGui::GetForegroundDrawList(vp);
 
-		ImDrawList* dl = ImGui::GetForegroundDrawList(vp);
+		ImDrawList* dl = ImGui::GetWindowDrawList();
 
 		auto& registry = Renderer::Instance().m_SceneData.m_Scene->GetRegistry()->GetRegistry();
 		DrawComponentIcons<CameraComponent>(registry, viewProj, vpMin, vpSize, dl, (ImTextureID)m_CameraIconTex->GetHandle());

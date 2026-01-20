@@ -80,7 +80,11 @@ namespace QuasarEngine
 			}
 
 			ImGui::Text("FOV: "); ImGui::SameLine();
-			if (ImGui::DragFloat("##FOV", &cc.FovDeg, 0.1f, 0.0f, 180.0f, "%.1f"));
+			float fov = cc.FovDeg;
+			if (ImGui::DragFloat("##FOV", &fov, 0.1f, 0.0f, 180.0f, "%.1f"))
+			{
+				cc.SetFov(fov);
+			}
 
 			if (ImGui::BeginPopupContextItem())
 			{
