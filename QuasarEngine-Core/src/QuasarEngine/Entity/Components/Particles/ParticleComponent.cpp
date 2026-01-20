@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtx/norm.hpp>
 
 #include <QuasarEngine/Renderer/RenderContext.h>
 

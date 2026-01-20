@@ -281,14 +281,6 @@ namespace QuasarEngine
         return std::nullopt;
     }
 
-    Camera& Scene::GetPrimaryCamera()
-    {
-        auto entOpt = GetPrimaryCameraEntity();
-        if (!entOpt)
-            throw std::runtime_error("No primary camera found in scene.");
-        return entOpt.value().GetComponent<CameraComponent>().GetCamera();
-    }
-
     bool Scene::HasPrimaryCamera() const
     {
         return GetPrimaryCameraEntity().has_value();

@@ -53,13 +53,13 @@ namespace QuasarEngine
 		void Shutdown();
 
 		void BeginScene(Scene& scene);
-		void Render(BaseCamera& camera);
-		void RenderDebug(BaseCamera& camera);
-		void RenderSkybox(BaseCamera& camera);
+		void Render(const glm::mat4& viewMat, const glm::mat4& projMat, const glm::vec3& cam_pos);
+		void RenderDebug(const glm::mat4& viewMat, const glm::mat4& projMat);
+		void RenderSkybox(const glm::mat4& viewMat, const glm::mat4& projMat);
 		void RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi);
 		void EndScene();
 
-		void BuildLight(BaseCamera& camera);
+		void BuildLight();
 
 		double GetTime();
 	};

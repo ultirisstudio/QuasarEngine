@@ -96,11 +96,7 @@ namespace QuasarEngine
 
         add("Camera Component", "Camera", "camera perspective orthographic",
             [](Entity& e) { return e.HasComponent<CameraComponent>(); },
-            [](Entity& e) {
-                auto& c = e.AddComponent<CameraComponent>();
-                if (e.HasComponent<TransformComponent>())
-                    c.GetCamera().Init(&e.GetComponent<TransformComponent>());
-            });
+            [](Entity& e) { e.AddComponent<CameraComponent>(); });
 
         add("Directional Light", "Lighting", "light directional sun shadow",
             [](Entity& e) { return e.HasComponent<LightComponent>(); },

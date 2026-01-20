@@ -337,21 +337,17 @@ namespace QuasarEngine
 
 		Renderer::Instance().BeginScene(scene);
 
-		//Renderer::Instance().CollectLights(scene);
-		Renderer::Instance().BuildLight(camera);
+		Renderer::Instance().BuildLight();
 
 		m_EditorFrameBuffer->Bind();
 		const auto& spec = m_EditorFrameBuffer->GetSpecification();
 		RenderCommand::Instance().SetViewport(0, 0, spec.Width, spec.Height);
 
-		//RenderCommand::Instance().ClearColor(glm::vec4(0.8f, 0.2f, 0.2f, 1.0f));
-		//RenderCommand::Instance().Clear();
-
 		m_EditorFrameBuffer->ClearColor(0.1f, 0.8f, 0.1f, 1.0f);
 		m_EditorFrameBuffer->ClearDepth(1.0f);
 
-		Renderer::Instance().RenderSkybox(camera);
-		Renderer::Instance().Render(camera);
+		Renderer::Instance().RenderSkybox(camera.getViewMatrix(), camera.getProjectionMatrix());
+		Renderer::Instance().Render(camera.getViewMatrix(), camera.getProjectionMatrix(), camera.GetPosition());
 		//if (m_ShowGrid) Renderer::Instance().RenderDebug(camera);
 		Renderer::Instance().EndScene();
 

@@ -121,9 +121,9 @@ namespace QuasarEngine
 
 						glm::mat4 camWorld = tr.GetGlobalTransform();
 
-						float fov = cam.GetCamera().GetFov();
-						float nearZ = cam.GetCamera().GetNearZ();
-						float farZ = cam.GetCamera().GetFarZ();
+						float fov = cam.FovDeg;
+						float nearZ = cam.NearZ;
+						float farZ = cam.FarZ;
 
 						ImU32 colLine = IM_COL32(120, 200, 255, 180);
 						ImU32 colFill = IM_COL32(120, 200, 255, 35);

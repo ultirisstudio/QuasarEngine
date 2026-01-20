@@ -4,6 +4,7 @@
 #include <QuasarEngine/Renderer/RenderCommand.h>
 #include <QuasarEngine/Renderer/RendererAPI.h>
 #include <QuasarEngine/Scene/SceneManager.h>
+#include <QuasarEngine/Entity/Components/CameraComponent.h>
 
 #include <QuasarEngine/UI/UIDebugOverlay.h>
 
@@ -39,7 +40,9 @@ namespace QuasarEngine
 
 		if (scene.HasPrimaryCamera())
 		{
-			Camera& camera = scene.GetPrimaryCamera();
+			Entity entity = scene.GetPrimaryCameraEntity().value();
+			CameraComponent& cc = entity.GetComponent<CameraComponent>();
+			TransformComponent& tc = entity.GetComponent<TransformComponent>();
 			const auto& spec = m_ViewportFrameBuffer->GetSpecification();
 			const int fbW = (int)spec.Width;
 			const int fbH = (int)spec.Height;
@@ -53,8 +56,7 @@ namespace QuasarEngine
 
 			Renderer::Instance().BeginScene(scene);
 
-			//Renderer::Instance().CollectLights(scene);
-			Renderer::Instance().BuildLight(camera);
+			Renderer::Instance().BuildLight();
 
 			m_ViewportFrameBuffer->Bind();
 
@@ -63,8 +65,10 @@ namespace QuasarEngine
 			RenderCommand::Instance().ClearColor(m_ClearColor);
 			RenderCommand::Instance().Clear();
 
-			Renderer::Instance().RenderSkybox(camera);
-			Renderer::Instance().Render(camera);
+			glm::mat4 view = tc.GetGlobalViewMatrix();
+			glm::mat4 skyboxView = glm::mat4(glm::mat3(view));
+			Renderer::Instance().RenderSkybox(skyboxView, cc.Projection());
+			Renderer::Instance().Render(tc.GetGlobalViewMatrix(), cc.Projection(), tc.Position);
 			//Renderer::Instance().RenderUI(camera, fbW, fbH, dpiScale);
 			Renderer::Instance().EndScene();
 
@@ -85,7 +89,7 @@ namespace QuasarEngine
 				m_ViewportFrameBuffer->Resize(w, h);
 
 			if (scene.HasPrimaryCamera())
-				scene.GetPrimaryCamera().OnResize(w, h);
+				scene.GetPrimaryCameraEntity().value().GetComponent<CameraComponent>().SetViewport(w, h);
 
 			m_ViewportSize = { (float)w, (float)h };
 		}

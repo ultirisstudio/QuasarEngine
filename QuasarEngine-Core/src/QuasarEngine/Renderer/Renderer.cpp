@@ -496,12 +496,12 @@ namespace QuasarEngine
 		m_SceneData.m_Scene = &scene;
 	}
 
-	void Renderer::Render(BaseCamera& camera)
+	void Renderer::Render(const glm::mat4& viewMat, const glm::mat4& projMat, const glm::vec3& cam_pos)
 	{
 		RenderContext ctx;
-		ctx.view = camera.getViewMatrix();
-		ctx.projection = camera.getProjectionMatrix();
-		ctx.cameraPosition = camera.GetPosition();
+		ctx.view = viewMat;
+		ctx.projection = projMat;
+		ctx.cameraPosition = cam_pos;
 
 		ctx.numPointLights = m_SceneData.nPts;
 		ctx.numDirLights = m_SceneData.nDirs;
@@ -701,7 +701,7 @@ namespace QuasarEngine
 		}*/
 	}
 
-	void Renderer::RenderDebug(BaseCamera& camera)
+	void Renderer::RenderDebug(const glm::mat4& viewMat, const glm::mat4& projMat)
 	{
 		/*if (PhysicEngine::Instance().GetDebugVertexArray())
 		{
@@ -727,12 +727,9 @@ namespace QuasarEngine
 		}*/
 	}
 
-	void Renderer::RenderSkybox(BaseCamera& camera)
+	void Renderer::RenderSkybox(const glm::mat4& viewMat, const glm::mat4& projMat)
 	{
-		const glm::mat4 V = camera.getViewMatrix();
-		const glm::mat4 P = camera.getProjectionMatrix();
-
-		m_SceneData.m_SkyboxHDR->Draw(V, P);
+		m_SceneData.m_SkyboxHDR->Draw(viewMat, projMat);
 	}
 
 	void Renderer::RenderUI(BaseCamera& camera, int fbW, int fbH, float dpi)
@@ -746,7 +743,7 @@ namespace QuasarEngine
 
 	}
 
-	void Renderer::BuildLight(BaseCamera& camera)
+	void Renderer::BuildLight()
 	{
 		m_SceneData.nDirs = 0;
 		m_SceneData.nPts = 0;

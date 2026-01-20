@@ -4,7 +4,6 @@
 #include <memory>
 #include <string>
 #include <optional>
-#include <QuasarEngine/Scene/Camera.h>
 #include <QuasarEngine/ECS/Registry.h>
 #include <QuasarEngine/Core/UUID.h>
 
@@ -36,7 +35,6 @@ namespace QuasarEngine
         void OnRuntimeStop();
 
         std::optional<Entity> GetPrimaryCameraEntity() const;
-        Camera& GetPrimaryCamera();
         bool HasPrimaryCamera() const;
 
         bool isOnRuntime() const { return m_OnRuntime; }

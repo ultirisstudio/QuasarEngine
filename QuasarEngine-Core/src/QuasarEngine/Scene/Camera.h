@@ -10,7 +10,7 @@
 
 namespace QuasarEngine
 {
-	enum class CameraType
+	/*enum class CameraType
 	{
 		PERSPECTIVE = 0,
 		ORTHOGRAPHIC
@@ -61,5 +61,5 @@ namespace QuasarEngine
 		void SetFarZ(float farZ);
 
 		void OnResize(float width, float height);
-	};
+	};*/
 }

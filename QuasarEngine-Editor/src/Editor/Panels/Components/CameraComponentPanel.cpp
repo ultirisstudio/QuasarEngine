@@ -8,6 +8,14 @@
 
 namespace QuasarEngine
 {
+	static constexpr const char* CameraTypeLabel(QuasarEngine::CameraType t) {
+		switch (t) {
+		case QuasarEngine::CameraType::Perspective:  return "Perspective";
+		case QuasarEngine::CameraType::Orthographic: return "Orthographic";
+		default: return "Unknown";
+		}
+	}
+
 	void CameraComponentPanel::Render(Entity entity)
 	{
 		if (!entity || !entity.IsValid())
@@ -32,7 +40,7 @@ namespace QuasarEngine
 					std::optional<Entity> primaryCameraEntity = Renderer::Instance().m_SceneData.m_Scene->GetPrimaryCameraEntity();
 					if (primaryCameraEntity.has_value())
 					{
-						if (&primaryCameraEntity.value().GetComponent<CameraComponent>().GetCamera() != &cc.GetCamera())
+						if (&primaryCameraEntity.value().GetComponent<CameraComponent>() != &cc)
 						{
 							if (primaryCameraEntity.value().GetComponent<CameraComponent>().Primary == true)
 							{
@@ -49,36 +57,30 @@ namespace QuasarEngine
 			}
 
 			const char* items[] = { "Perspective", "Orthographic" };
-			const char* current_item = cc.item_type;
+			const char* current_item = CameraTypeLabel(cc.Type);
 
 			if (ImGui::BeginCombo("##combocameratype", current_item))
 			{
-				for (int n = 0; n <= 1; n++)
+				for (int n = 0; n < 2; n++)
 				{
-					bool is_selected = (current_item == items[n]);
+					const auto type = (n == 0) ? QuasarEngine::CameraType::Perspective : QuasarEngine::CameraType::Orthographic;
+
+					bool is_selected = (cc.Type == type);
+
 					if (ImGui::Selectable(items[n], is_selected))
 					{
-						if (items[n] == "Perspective")
-						{
-							cc.setType(CameraType::PERSPECTIVE);
-						}
-						else if (items[n] == "Orthographic")
-						{
-							cc.setType(CameraType::ORTHOGRAPHIC);
-						}
+						cc.SetType(type);
 					}
 					if (is_selected)
+					{
 						ImGui::SetItemDefaultFocus();
+					}
 				}
 				ImGui::EndCombo();
 			}
 
 			ImGui::Text("FOV: "); ImGui::SameLine();
-			float fov = cc.GetCamera().GetFov();
-			if (ImGui::DragFloat("##FOV", &fov, 0.1f, 0.0f, 180.0f, "%.1f"))
-			{
-				cc.GetCamera().SetFov(fov);
-			}
+			if (ImGui::DragFloat("##FOV", &cc.FovDeg, 0.1f, 0.0f, 180.0f, "%.1f"));
 
 			if (ImGui::BeginPopupContextItem())
 			{

@@ -498,9 +498,8 @@ namespace QuasarEngine
                         else if (key == "CameraComponent")
                         {
                             auto& c = entity.AddOrReplaceComponent<CameraComponent>();
-                            c.GetCamera().Init(&entity.GetComponent<TransformComponent>());
                             float f;
-                            if (value["fov"] && AsFloatLocaleSafe(value["fov"], f)) c.GetCamera().SetFov(f);
+                            if (value["fov"] && AsFloatLocaleSafe(value["fov"], f)) c.SetFov(f);
                             if (value["primary"]) {
                                 c.Primary = value["primary"].as<bool>();
                             }
@@ -818,7 +817,7 @@ namespace QuasarEngine
             out << YAML::BeginMap;
             out << YAML::Key << "CameraComponent" << YAML::Value << YAML::BeginMap;
             auto& cc = entity.GetComponent<CameraComponent>();
-            out << YAML::Key << "fov" << YAML::Value << cc.GetCamera().GetFov();
+            out << YAML::Key << "fov" << YAML::Value << cc.FovDeg;
             out << YAML::Key << "primary" << YAML::Value << cc.Primary;
             out << YAML::EndMap << YAML::EndMap;
         }

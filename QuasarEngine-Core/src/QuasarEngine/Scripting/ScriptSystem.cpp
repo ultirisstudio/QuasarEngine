@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include <QuasarEngine/Entity/Components/TransformComponent.h>
 #include <QuasarEngine/Entity/Components/Scripting/ScriptComponent.h>
 #include <QuasarEngine/Entity/Components/MeshComponent.h>
 #include <QuasarEngine/Entity/Components/MaterialComponent.h>

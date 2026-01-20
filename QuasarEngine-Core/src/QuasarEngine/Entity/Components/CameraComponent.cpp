@@ -1,5 +1,34 @@
 #include "qepch.h"
 #include "CameraComponent.h"
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <glm/ext/matrix_clip_space.hpp>
+
+namespace QuasarEngine
+{
+	void CameraComponent::RebuildProjection() {
+		const float aspect = Aspect();
+
+		switch (Type) {
+		case CameraType::Perspective: {
+			m_projection = glm::perspectiveRH_ZO(glm::radians(FovDeg), aspect, NearZ, FarZ);
+			break;
+		}
+		case CameraType::Orthographic: {
+			const float halfH = 0.5f * OrthoHeight;
+			const float halfW = halfH * aspect;
+			m_projection = glm::orthoRH_ZO(-halfW, +halfW, -halfH, +halfH, NearZ, FarZ);
+			break;
+		}
+		default:
+			m_projection = glm::mat4(1.0f);
+			break;
+		}
+	}
+}
+
+/*#include "qepch.h"
+#include "CameraComponent.h"
 
 #include <QuasarEngine/Entity/Entity.h>
 #include <QuasarEngine/Entity/Components/TransformComponent.h>
@@ -32,4 +61,4 @@ namespace QuasarEngine
 			break;
 		}
 	}
-}
+}*/

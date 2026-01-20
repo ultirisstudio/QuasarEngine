@@ -5,6 +5,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtx/norm.hpp>
 
 #include <QuasarEngine/Renderer/RendererAPI.h>
 #include <QuasarEngine/Renderer/RenderCommand.h>
