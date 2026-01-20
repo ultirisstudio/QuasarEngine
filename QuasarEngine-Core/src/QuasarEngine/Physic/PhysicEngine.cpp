@@ -79,6 +79,7 @@ namespace QuasarEngine
         sceneDesc.broadPhaseType = physx::PxBroadPhaseType::eSAP;
 
         m_Scene = m_Physics->createScene(sceneDesc);
+        m_Scene->lockWrite();
         if (!m_Scene) { ReleaseAll(); return false; }
 
 #if QE_ENABLE_PVD
@@ -99,6 +100,8 @@ namespace QuasarEngine
         m_Scene->setVisualizationParameter(physx::PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
 
         m_CCTManager = PxCreateControllerManager(*m_Scene);
+
+        m_Scene->unlockWrite();
 
         m_DefaultMaterial = CreateMaterial(0.5f, 0.5f, 0.1f);
         if (!m_DefaultMaterial) { ReleaseAll(); return false; }

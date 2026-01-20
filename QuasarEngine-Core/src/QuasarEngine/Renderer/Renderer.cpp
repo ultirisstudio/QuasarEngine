@@ -512,16 +512,20 @@ namespace QuasarEngine
 		ctx.skybox = m_SceneData.m_SkyboxHDR.get();
 
 		auto& registry = m_SceneData.m_Scene->GetRegistry()->GetRegistry();
-		auto group = registry.group<TransformComponent, MeshComponent,
-			MaterialComponent, MeshRendererComponent>();
 
 		std::vector<RenderObject> staticMeshes;
 		std::vector<RenderObject> skinnedMeshes;
 		std::vector<RenderObject> pointClouds;
 		std::vector<RenderObject> terrains;
 
-		for (auto [e, tr, mc, matc, mr] : group.each())
+		auto view = registry.view<TransformComponent, MeshComponent, MaterialComponent, MeshRendererComponent>();
+		for (auto e : view)
 		{
+			auto& tr = view.get<TransformComponent>(e);
+			auto& mc = view.get<MeshComponent>(e);
+			auto& matc = view.get<MaterialComponent>(e);
+			auto& mr = view.get<MeshRendererComponent>(e);
+
 			if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
 			RenderObject obj;
@@ -546,10 +550,14 @@ namespace QuasarEngine
 				staticMeshes.push_back(obj);
 		}
 
-		for (auto [e, tr, tec, matc, mr] :
-			registry.group<TransformComponent, TerrainComponent,
-			MaterialComponent, MeshRendererComponent>().each())
+		auto viewT = registry.view<TransformComponent, TerrainComponent, MaterialComponent, MeshRendererComponent>();
+		for (auto e : viewT)
 		{
+			auto& tr = viewT.get<TransformComponent>(e);
+			auto& tec = viewT.get<TerrainComponent>(e);
+			auto& matc = viewT.get<MaterialComponent>(e);
+			auto& mr = viewT.get<MeshRendererComponent>(e);
+
 			if (!mr.m_Rendered || !tec.IsGenerated())
 				continue;
 
@@ -639,8 +647,12 @@ namespace QuasarEngine
 
 		if (m_SceneData.m_PointCloudShader->UpdateGlobalState())
 		{
-			for (auto [e, tr, mc, matc, mr] : group.each())
+			auto viewP = registry.view<TransformComponent, ParticleComponent>();
+			for (auto e : viewP)
 			{
+				auto &tr = viewP.get<TransformComponent>(e);
+				auto &pc = viewP.get<ParticleComponent>(e);
+
 				if (!mr.m_Rendered || !mc.HasMesh()) continue;
 
 				Mesh& mesh = mc.GetMesh();

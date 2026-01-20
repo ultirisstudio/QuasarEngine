@@ -14,3 +14,14 @@ project "tinyfiledialogs"
 		"include/tinyfiledialogs/tinyfiledialogs.h",
 		"src/tinyfiledialogs.c"
 	}
+	
+	filter "system:windows"
+		systemversion "latest"
+
+	filter "configurations:Debug"
+		runtime "Debug"
+		symbols "on"
+
+	filter "configurations:Release"
+		runtime "Release"
+		optimize "on"

@@ -14,6 +14,10 @@ workspace "QuasarEngine"
 	{
 		"MultiProcessorCompile"
 	}
+	
+	filter "action:vs*"
+		toolset "v145"
+		systemversion "latest"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 

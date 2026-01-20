@@ -24,7 +24,7 @@ namespace QuasarEngine
         , m_sampler(std::move(sampler))
         , m_lod(lodSettings)
     {
-        Q_ASSERT(m_gridW > 1 && m_gridH > 1);
+        Q_ASSERT(m_gridW > 1 && m_gridH > 1, "gridW/gridH must be > 1");
 
         m_cellSizeX = m_worldSizeX / float(m_gridW - 1);
         m_cellSizeZ = m_worldSizeZ / float(m_gridH - 1);

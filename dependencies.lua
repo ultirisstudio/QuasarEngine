@@ -22,7 +22,8 @@ IncludeDir["PhysX"] = "%{wks.location}/vendor/PhysX/physx/include"
 
 LibraryDir = {}
 LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/Lib"
-LibraryDir["PhysX"] = "%{wks.location}/vendor/PhysX/physx/libs"
+LibraryDir["PhysX_Realease"] = "%{wks.location}/vendor/PhysX/physx/libs/release"
+LibraryDir["PhysX_Debug"] = "%{wks.location}/vendor/PhysX/physx/libs/debug"
 
 Library = {}
 Library["Vulkan"] = "%{LibraryDir.VulkanSDK}/vulkan-1.lib"

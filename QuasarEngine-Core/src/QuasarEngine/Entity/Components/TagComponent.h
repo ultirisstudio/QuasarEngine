@@ -21,7 +21,7 @@ namespace QuasarEngine
         Boss = 1ull << 7,
         Projectile = 1ull << 8,
         
-        All = ~0ull
+        All = Player | Enemy | NPC | Collectible | Trigger | Static | Dynamic | Boss | Projectile
     };
 
     [[nodiscard]] constexpr TagMask operator|(TagMask a, TagMask b) {

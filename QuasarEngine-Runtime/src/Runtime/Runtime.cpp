@@ -44,11 +44,11 @@ namespace QuasarEngine
 
 		m_ScreenQuad = std::make_unique<ScreenQuad>();
 
-		//m_Scene = std::make_unique<Scene>();
-		//Renderer::Instance().BeginScene(*m_Scene);
+		m_Scene = std::make_unique<Scene>();
+		Renderer::Instance().BeginScene(*m_Scene);
 		
-		m_SceneManager = std::make_unique<SceneManager>("");
-		m_SceneManager->LoadScene("Assets/Scenes/script_test.scene");
+		//m_SceneManager = std::make_unique<SceneManager>("");
+		//m_SceneManager->LoadScene("Assets/Scenes/script_test.scene");
 
 		Shader::ShaderDescription screenDesc;
 
@@ -143,7 +143,7 @@ namespace QuasarEngine
 		RenderCommand::Instance().SetViewport(0u, 0u, static_cast<uint32_t>(m_ApplicationSize.x), static_cast<uint32_t>(m_ApplicationSize.y));
 		m_FrameBuffer->Resize(static_cast<uint32_t>(m_ApplicationSize.x), static_cast<uint32_t>(m_ApplicationSize.y));
 
-		/*m_ChunkManager = std::make_unique<ChunkManager>();
+		m_ChunkManager = std::make_unique<ChunkManager>();
 		m_Player = std::make_unique<Player>();
 
 		m_Player->GetCamera().OnResize(m_ApplicationSize.x, m_ApplicationSize.y);
@@ -155,7 +155,7 @@ namespace QuasarEngine
 		std::cout << "VoxelType: " << sizeof(BlockType) << std::endl;
 
 		Entity light = m_Scene->CreateEntity("Light");
-		light.GetComponent<TransformComponent>().Rotation = { 20, 90, 45};
+		light.GetComponent<TransformComponent>().Rotation = { 30, 40, 90};
 		auto& light_component = light.AddComponent<LightComponent>();
 		light_component.SetType(QuasarEngine::LightComponent::LightType::DIRECTIONAL);
 		light_component.directional_light.power = 30.0f;
@@ -164,7 +164,7 @@ namespace QuasarEngine
 		auto& player_light_component = player_light.AddComponent<LightComponent>();
 		player_light_component.SetType(QuasarEngine::LightComponent::LightType::POINT);
 		player_light_component.point_light.power = 60.0f;
-		player_light_component.point_light.attenuation = 0.2f;*/
+		player_light_component.point_light.attenuation = 0.2f;
 
 		//Application::Get().GetWindow().SetCursorVisibility(false);
 		//Application::Get().GetWindow().SetInputMode(true, false);
@@ -183,21 +183,21 @@ namespace QuasarEngine
 	{
 		Input::Update();
 
-		/*m_Scene->Update(dt);
+		m_Scene->Update(dt);
 
 		m_Player->Update(dt);
 
 		m_Player->GetCamera().Update();
 
-		m_ChunkManager->UpdateChunks(glm::floor(m_Player->GetPosition()), dt);*/
+		m_ChunkManager->UpdateChunks(glm::floor(m_Player->GetPosition()), dt);
 
-		m_SceneManager->Update(dt);
+		//m_SceneManager->Update(dt);
 
-		static bool test = false;
+		/*static bool test = false;
 		if (test == false) {
 			m_SceneManager->GetActiveScene().OnRuntimeStart();
 			test = true;
-		}
+		}*/
 	}
 
 	void Runtime::OnRender()
@@ -211,14 +211,16 @@ namespace QuasarEngine
 		RenderCommand::Instance().SetViewport(0, 0, spec.Width, spec.Height);
 		RenderCommand::Instance().SetScissor(0, 0, spec.Width, spec.Height);
 
-		Renderer::Instance().BeginScene(m_SceneManager->GetActiveScene());
-		//Renderer::Instance().BeginScene(*m_Scene.get());
+		//Renderer::Instance().BeginScene(m_SceneManager->GetActiveScene());
+		Renderer::Instance().BeginScene(*m_Scene.get());
 
-		//Renderer::Instance().CollectLights(*m_Scene.get());
+		Renderer::Instance().BuildLight(m_Player->GetCamera());
 
-		if (m_SceneManager->GetActiveScene().HasPrimaryCamera()) {
+		//if (m_SceneManager->GetActiveScene().HasPrimaryCamera()) {
+		//if (m_Scene->HasPrimaryCamera()) {
 
-			Camera& camera = m_SceneManager->GetActiveScene().GetPrimaryCamera();
+			//Camera& camera = m_SceneManager->GetActiveScene().GetPrimaryCamera();
+			BaseCamera& camera = m_Player->GetCamera();
 
 			Renderer::Instance().BuildLight(camera);
 
@@ -229,7 +231,7 @@ namespace QuasarEngine
 			//Renderer::Instance().Render(m_Player->GetCamera());
 
 			Renderer::Instance().EndScene();
-		}
+		//}
 
 		m_FrameBuffer->Unbind();
 
@@ -265,7 +267,7 @@ namespace QuasarEngine
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowResizeEvent>(std::bind(&Runtime::OnWindowResize, this, std::placeholders::_1));
 		 
-		//m_Player->GetCamera().OnEvent(e);
+		m_Player->GetCamera().OnEvent(e);
 	}
 
 	bool Runtime::OnWindowResize(WindowResizeEvent& e)
@@ -274,12 +276,12 @@ namespace QuasarEngine
 
 		m_FrameBuffer->Resize(e.GetWidth(), e.GetHeight());
 
-		if (m_SceneManager->GetActiveScene().HasPrimaryCamera()) {
+		/*if (m_SceneManager->GetActiveScene().HasPrimaryCamera()) {
 			Camera& camera = m_SceneManager->GetActiveScene().GetPrimaryCamera();
 			camera.OnResize(e.GetWidth(), e.GetHeight());
-		}
+		}*/
 
-		//m_Player->GetCamera().OnResize(e.GetWidth(), e.GetHeight());
+		m_Player->GetCamera().OnResize(e.GetWidth(), e.GetHeight());
 
 		m_ApplicationSize = { e.GetWidth(), e.GetHeight() };
 
