@@ -10,6 +10,7 @@
 
 #include <QuasarEngine/Resources/Model.h>
 #include <QuasarEngine/Asset/AssetManager.h>
+#include <QuasarEngine/Core/Logger.h>
 
 namespace QuasarEngine
 {
@@ -335,12 +336,14 @@ namespace QuasarEngine
             | aiProcess_LimitBoneWeights
             | aiProcess_GenSmoothNormals;
 
+		std::cout << "Loading model from file: " << path << "\n";
+
         const aiScene* scene = importer.ReadFile(path, flags);
         if (!scene) {
-            const unsigned int ppMinimal =
-                aiProcess_Triangulate
-                | aiProcess_JoinIdenticalVertices
-                | aiProcess_LimitBoneWeights;
+            Q_ERROR("Assimp failed to load '" + path + "': " + importer.GetErrorString());
+            Q_ERROR("FBX supported by this Assimp build? " + importer.IsExtensionSupported("fbx"));
+
+            const unsigned int ppMinimal = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_LimitBoneWeights;
             scene = importer.ReadFile(path, ppMinimal);
         }
 
@@ -354,6 +357,8 @@ namespace QuasarEngine
         m_Name = scene->mRootNode->mName.C_Str();
         m_root = buildNode(scene->mRootNode, scene, nullptr);
 
+		std::cout << "Model root node name: " << m_Name << "\n";
+
         glm::mat4 rootM = AiToGlmLocal(scene->mRootNode->mTransformation);
         m_GlobalInverse = glm::inverse(rootM);
 
@@ -366,6 +371,7 @@ namespace QuasarEngine
             info.material = inst.material;
             info.skinned = inst.skinned;
             m_Loaded.meshes.push_back(std::move(info));
+			std::cout << "Loaded mesh instance: " << pathStr << " / " << inst.name << "\n";
             });
         m_Loaded.bones = m_boneInfoMap;
         m_Loaded.globalInverse = m_GlobalInverse;

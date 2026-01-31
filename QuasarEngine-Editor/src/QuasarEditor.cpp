@@ -90,6 +90,15 @@ namespace QuasarEngine
     public:
         QuasarEditor(const ApplicationSpecification& spec) : Application(spec)
         {
+            EditorSpecification editorSpec;
+            editorSpec.EngineExecutablePath = spec.CommandLineArgs[0];
+            editorSpec.ProjectPath = "C:\\Users\\rouff\\Documents\\Ultiris Projects\\MyProject";
+            editorSpec.ProjectName = "MyProject";
+
+            PushLayer(new Editor(editorSpec));
+
+            return;
+
             EnsureConfigExists();
 
             if (auto projectArg = GetProjectArg(spec.CommandLineArgs))
