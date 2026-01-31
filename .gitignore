@@ -5,11 +5,8 @@ bin/
 bin-int/
 Intermediates/
 
-OpenGLEngine/Scripts/
-
-#Vérifier
-OpenGLEngine/vendor/**/bin/
-OpenGLEngine/vendor/**/bin-int/
+vendor/**/bin/
+vendor/**/bin-int/
 
 **.user
 **.vcxproj
