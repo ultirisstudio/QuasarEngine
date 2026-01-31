@@ -70,7 +70,7 @@ namespace QuasarEngine
 		RegisterExtention(".png",		AssetType::TEXTURE);
 		RegisterExtention(".jpg",		AssetType::TEXTURE);
 		RegisterExtention(".jpeg",		AssetType::TEXTURE);
-		RegisterExtention(".qasset",		AssetType::QASSET);
+		RegisterExtention(".qasset",	AssetType::QASSET);
 		RegisterExtention(".lua",		AssetType::SCRIPT);
 		RegisterExtention(".scene",		AssetType::SCENE);
 		RegisterExtention(".qparticle",	AssetType::PARTICLE);

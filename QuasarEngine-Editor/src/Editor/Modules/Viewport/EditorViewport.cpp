@@ -710,9 +710,7 @@ namespace QuasarEngine
 
 						std::cout << "Dropped file: " << filePath << " (." << ext << ")\n";
 
-						bool isModelExt =
-							(ext == "obj" || ext == "dae" || ext == "fbx" ||
-								ext == "glb" || ext == "gltf" || ext == "bin" || ext == "ply");
+						bool isModelExt = (ext == "obj" || ext == "dae" || ext == "fbx" || ext == "glb" || ext == "gltf" || ext == "bin" || ext == "ply");
 
 						if (isModelExt)
 						{
