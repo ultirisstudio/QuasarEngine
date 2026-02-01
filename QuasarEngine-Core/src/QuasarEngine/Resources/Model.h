@@ -97,7 +97,7 @@ namespace QuasarEngine
             bool                       skinned = false;
         };
 
-        BuiltGeometry buildMeshGeometry(const aiMesh* mesh, const ModelImportOptions& opt);
+        BuiltGeometry buildMeshGeometry(const aiMesh* mesh, const ModelImportOptions& opt, int uvChannel);
 
         MaterialSpecification loadMaterial(const aiMaterial* material, const std::filesystem::path& modelDir);
 
