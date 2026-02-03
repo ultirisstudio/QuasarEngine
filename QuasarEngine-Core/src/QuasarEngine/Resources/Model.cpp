@@ -10,7 +10,6 @@
 
 #include <QuasarEngine/Resources/Model.h>
 #include <QuasarEngine/Asset/AssetManager.h>
-#include <QuasarEngine/Core/Logger.h>
 
 namespace QuasarEngine
 {
@@ -24,27 +23,7 @@ namespace QuasarEngine
             r[0][3] = m.d1; r[1][3] = m.d2; r[2][3] = m.d3; r[3][3] = m.d4;
             return r;
         }
-
         inline bool IsEmbedded(const aiString& s) { return s.C_Str() && s.C_Str()[0] == '*'; }
-
-        inline int GetMaterialUVIndex(const aiMaterial* mat, aiTextureType type, unsigned texSlot = 0)
-        {
-            if (!mat) return 0;
-            if (mat->GetTextureCount(type) <= texSlot) return 0;
-
-            aiString path;
-            aiTextureMapping mapping{};
-            unsigned int uvindex = 0;
-            float blend = 0.0f;
-            aiTextureOp op{};
-            aiTextureMapMode mapmode[3]{};
-
-            if (mat->GetTexture(type, texSlot, &path, &mapping, &uvindex, &blend, &op, mapmode) != AI_SUCCESS)
-                return 0;
-
-            return static_cast<int>(uvindex);
-        }
-
     }
 
     MaterialSpecification Model::loadMaterial(const aiMaterial* material, const std::filesystem::path& modelDir)
@@ -113,13 +92,13 @@ namespace QuasarEngine
         }
     }
 
-    Model::BuiltGeometry Model::buildMeshGeometry(const aiMesh* mesh, const ModelImportOptions& opt, int uvChannel)
+    Model::BuiltGeometry Model::buildMeshGeometry(const aiMesh* mesh, const ModelImportOptions& opt)
     {
         BuiltGeometry out;
         if (!opt.buildMeshes) return out;
 
         const bool hasN = opt.loadNormals && mesh->HasNormals();
-        const bool hasUV = opt.loadTexcoords0 && mesh->mTextureCoords[uvChannel] != nullptr;
+        const bool hasUV = opt.loadTexcoords0 && mesh->mTextureCoords[0] != nullptr;
         const bool hasTan = (opt.loadTangents || opt.generateTangents) && mesh->HasTangentsAndBitangents();
         const bool useCustomLayout = opt.vertexLayout.has_value();
 
@@ -140,12 +119,11 @@ namespace QuasarEngine
 
                 float u = 0.f, v = 0.f;
                 if (hasUV) {
-                    u = mesh->mTextureCoords[uvChannel][i].x;
-                    v = mesh->mTextureCoords[uvChannel][i].y;
+                    u = mesh->mTextureCoords[0][i].x;
+                    v = mesh->mTextureCoords[0][i].y;
                 }
                 out.vertices.push_back(u);
                 out.vertices.push_back(v);
-				std::cout << "UV: " << u << ", " << v << std::endl;
 
                 aiVector3D t(1.f, 0.f, 0.f);
                 if (hasTan) {
@@ -167,7 +145,7 @@ namespace QuasarEngine
                 const aiVector3D nrm = mesh->HasNormals() ? mesh->mNormals[i] : aiVector3D(0, 0, 0);
                 const aiVector3D tan = mesh->HasTangentsAndBitangents() ? mesh->mTangents[i] : aiVector3D(0, 0, 0);
                 const aiVector3D bit = mesh->HasTangentsAndBitangents() ? mesh->mBitangents[i] : aiVector3D(0, 0, 0);
-                const aiVector3D uv0 = mesh->mTextureCoords[uvChannel] ? mesh->mTextureCoords[uvChannel][i] : aiVector3D(0, 0, 0);
+                const aiVector3D uv0 = (mesh->mTextureCoords[0] ? mesh->mTextureCoords[0][i] : aiVector3D(0, 0, 0));
 
                 aiColor4D color(1.0f, 0.0f, 0.0f, 1.0f);
                 if (hasColor) {
@@ -177,7 +155,7 @@ namespace QuasarEngine
                 for (const auto& el : layout) {
                     if (el.Name == "inPosition") { AppendAttribute(out.vertices, el.Type, &pos.x, 3); }
                     else if (el.Name == "inNormal") {    AppendAttribute(out.vertices, el.Type, hasN ? &nrm.x : nullptr, 3); }
-                    else if (el.Name == "inTexCoord") { AppendAttribute(out.vertices, el.Type, hasUV ? &uv0.x : nullptr, 2); }
+                    else if (el.Name == "inTexCoord") {  AppendAttribute(out.vertices, el.Type, hasUV ? &uv0.x : nullptr, 2); }
                     else if (el.Name == "inTangent") {   AppendAttribute(out.vertices, el.Type, hasTan ? &tan.x : nullptr, 3); }
                     else if (el.Name == "inBitangent") { AppendAttribute(out.vertices, el.Type, hasTan ? &bit.x : nullptr, 3); }
                     else if (el.Name == "inColor") { AppendAttribute(out.vertices, el.Type, hasColor ? &color.r : nullptr, 4); }
@@ -237,30 +215,7 @@ namespace QuasarEngine
         for (unsigned i = 0; i < src->mNumMeshes; ++i)
         {
             const aiMesh* aimesh = scene->mMeshes[src->mMeshes[i]];
-
-            int uvChannel = 0;
-
-            const aiMaterial* aimat = nullptr;
-            if ((!opt || opt->loadMaterials) && aimesh->mMaterialIndex >= 0)
-                aimat = scene->mMaterials[aimesh->mMaterialIndex];
-            
-            if (aimat) {
-                uvChannel = GetMaterialUVIndex(aimat, aiTextureType_AMBIENT, 0);
-                if (uvChannel == 0) uvChannel = GetMaterialUVIndex(aimat, aiTextureType_DIFFUSE, 0);
-
-                if (uvChannel == 0) uvChannel = GetMaterialUVIndex(aimat, aiTextureType_NORMALS, 0);
-                if (uvChannel == 0) uvChannel = GetMaterialUVIndex(aimat, aiTextureType_HEIGHT, 0);
-            }
-            
-            if (uvChannel < 0 || uvChannel >= AI_MAX_NUMBER_OF_TEXTURECOORDS) uvChannel = 0;
-            if (!aimesh->mTextureCoords[uvChannel]) {
-                for (int c = 0; c < AI_MAX_NUMBER_OF_TEXTURECOORDS; ++c) {
-                    if (aimesh->mTextureCoords[c]) { uvChannel = c; break; }
-                }
-            }
-
-            BuiltGeometry geom = opt ? buildMeshGeometry(aimesh, *opt, uvChannel) : buildMeshGeometry(aimesh, ModelImportOptions{}, uvChannel);
-
+            BuiltGeometry geom = opt ? buildMeshGeometry(aimesh, *opt) : buildMeshGeometry(aimesh, ModelImportOptions{});
             const std::string key = node->name + ":" + aimesh->mName.C_Str() + ":" + std::to_string(i);
             std::shared_ptr<Mesh> meshAsset;
 
@@ -380,14 +335,12 @@ namespace QuasarEngine
             | aiProcess_LimitBoneWeights
             | aiProcess_GenSmoothNormals;
 
-		std::cout << "Loading model from file: " << path << "\n";
-
         const aiScene* scene = importer.ReadFile(path, flags);
         if (!scene) {
-            Q_ERROR("Assimp failed to load '" + path + "': " + importer.GetErrorString());
-            Q_ERROR("FBX supported by this Assimp build? " + importer.IsExtensionSupported("fbx"));
-
-            const unsigned int ppMinimal = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_LimitBoneWeights;
+            const unsigned int ppMinimal =
+                aiProcess_Triangulate
+                | aiProcess_JoinIdenticalVertices
+                | aiProcess_LimitBoneWeights;
             scene = importer.ReadFile(path, ppMinimal);
         }
 
@@ -401,8 +354,6 @@ namespace QuasarEngine
         m_Name = scene->mRootNode->mName.C_Str();
         m_root = buildNode(scene->mRootNode, scene, nullptr);
 
-		std::cout << "Model root node name: " << m_Name << "\n";
-
         glm::mat4 rootM = AiToGlmLocal(scene->mRootNode->mTransformation);
         m_GlobalInverse = glm::inverse(rootM);
 
@@ -415,7 +366,6 @@ namespace QuasarEngine
             info.material = inst.material;
             info.skinned = inst.skinned;
             m_Loaded.meshes.push_back(std::move(info));
-			std::cout << "Loaded mesh instance: " << pathStr << " / " << inst.name << "\n";
             });
         m_Loaded.bones = m_boneInfoMap;
         m_Loaded.globalInverse = m_GlobalInverse;
@@ -439,14 +389,12 @@ namespace QuasarEngine
         flags |= aiProcess_LimitBoneWeights;
         if (opt.flipUVs)                flags |= aiProcess_FlipUVs;
 
-        std::cout << "Loading model from file: " << path << "\n";
-
         const aiScene* scene = importer.ReadFile(path, flags);
         if (!scene) {
-            Q_ERROR("Assimp failed to load '" + path + "': " + importer.GetErrorString());
-            Q_ERROR("FBX supported by this Assimp build? " + importer.IsExtensionSupported("fbx") ? "True" : "False");
-
-            const unsigned int ppMinimal = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_LimitBoneWeights;
+            const unsigned int ppMinimal =
+                aiProcess_Triangulate
+                | aiProcess_JoinIdenticalVertices
+                | aiProcess_LimitBoneWeights;
             scene = importer.ReadFile(path, ppMinimal);
         }
 
@@ -460,8 +408,6 @@ namespace QuasarEngine
         m_Name = scene->mRootNode->mName.C_Str();
         m_root = buildNode(scene->mRootNode, scene, &opt);
 
-        std::cout << "Model root node name: " << m_Name << "\n";
-
         glm::mat4 rootM = AiToGlmLocal(scene->mRootNode->mTransformation);
         m_GlobalInverse = glm::inverse(rootM);
 
@@ -474,7 +420,6 @@ namespace QuasarEngine
             info.material = inst.material;
             info.skinned = inst.skinned;
             m_Loaded.meshes.push_back(std::move(info));
-            std::cout << "Loaded mesh instance: " << pathStr << " / " << inst.name << "\n";
             });
         m_Loaded.bones = m_boneInfoMap;
         m_Loaded.globalInverse = m_GlobalInverse;
