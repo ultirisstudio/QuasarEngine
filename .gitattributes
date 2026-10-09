@@ -1,0 +1,28 @@
+# Normalize line endings: LF in the repository and in working copies
+* text=auto eol=lf
+
+# Windows scripts need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: no line ending conversion, no text diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.bmp binary
+*.hdr binary
+*.exr binary
+*.ktx binary
+*.dds binary
+*.glb binary
+*.fbx binary
+*.ttf binary
+*.otf binary
+*.skeleton binary
+*.anim binary
+*.exe binary
+*.dll binary
+*.so binary
+*.lib binary
+*.a binary
