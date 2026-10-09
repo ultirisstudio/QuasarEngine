@@ -39,6 +39,16 @@ Planned later:
 - [ ] Physics
 - [ ] Audio
 
+## Repository layout
+
+| Folder | Content |
+|---|---|
+| `engine/` | The engine, built as a static library |
+| `editor/` | The editor application |
+| `sandbox/` | A small application to try engine features without the editor |
+| `tests/` | Unit tests |
+| `external/` | Third-party libraries |
+
 ## Contributing
 
 Contributions are welcome. All tasks are tracked as issues in the organization's GitHub Project.
