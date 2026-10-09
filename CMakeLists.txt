@@ -41,7 +41,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
 
-# Sub-projects are added here as they are created (external, engine, sandbox, editor, tests).
+# Sub-projects. Others are added here as they are created (external, sandbox, editor, tests).
+add_subdirectory(engine)
 
 message(STATUS "${PROJECT_NAME} ${PROJECT_VERSION}")
 message(STATUS "  Generator ... ${CMAKE_GENERATOR}")
