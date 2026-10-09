@@ -45,7 +45,7 @@ Contributions are welcome. All tasks are tracked as issues in the organization's
 
 1. Pick a task in the **Ready** column that nobody is assigned to. If you are new to the project, start with one labeled `good first issue`.
 2. Claim it: team members assign themselves, other contributors leave a comment and wait for a maintainer to assign them.
-3. Work on a branch named after the task, for example `feature/CORE-15-events`. External contributors work from a fork.
+3. Create a branch from the issue with the **Create a branch** link in its sidebar. External contributors work from a fork.
 4. Open a pull request that includes `Closes #<issue number>`. CI must pass on Windows and Linux, and one approval is required before merging.
 
 To report a bug or propose a task, open an issue with the matching template.

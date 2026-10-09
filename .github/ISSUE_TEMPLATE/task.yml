@@ -1,12 +1,12 @@
 name: Task
 description: Propose a new development task
-title: "[MODULE-NN] "
 type: Feature
 labels: ["needs triage"]
 body:
   - type: markdown
     attributes:
       value: |
+        Title format: module, then a short action. For example: "Renderer: Add a skybox".
         A task should be something that someone who missed the discussions can still pick up.
         Describe what needs to be done and how to check that it is done.
         If the task takes more than half a day, split it into several issues.
@@ -69,7 +69,7 @@ body:
     attributes:
       label: Dependencies
       description: Tasks that must be done first. Also add them as "Blocked by" on the issue.
-      placeholder: "- #12 CORE-15"
+      placeholder: "- #12"
 
   - type: textarea
     id: criteria

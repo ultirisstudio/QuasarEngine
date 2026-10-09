@@ -18,15 +18,14 @@ Ask questions in the issue comments. If you cannot finish a task, unassign yours
 
 ## Working on a task
 
-Team members create a branch in this repository:
+Team members create the branch from the issue: **Create a branch** in the Development section of the sidebar. GitHub names it after the issue, for example `23-add-the-event-dispatcher`, and links it to the issue. Then fetch it locally:
 
 ```
-git switch master
-git pull
-git switch -c feature/CORE-15-events
+git fetch origin
+git switch 23-add-the-event-dispatcher
 ```
 
-Other contributors fork the repository and create the branch in their fork. Use `fix/short-description` for bug fixes.
+Other contributors fork the repository and create a branch with the same kind of name in their fork.
 
 Code guidelines:
 
@@ -37,7 +36,7 @@ Code guidelines:
 
 ## Pull requests
 
-- Fill in the pull request template and include `Closes #<issue number>`.
+- Use the issue title as the pull request title, fill in the template and include `Closes #<issue number>`.
 - CI must pass on Windows and Linux. For a first contribution from a fork, a maintainer approves the CI run.
 - One approval is required. Pull requests are squash-merged, so each task becomes a single commit on `master`.
 

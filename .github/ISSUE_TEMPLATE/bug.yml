@@ -1,9 +1,13 @@
 name: Bug
 description: Report incorrect behavior, a crash or a build error
-title: "[Bug] "
 type: Bug
 labels: ["needs triage"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Title format: module, then a short description of the problem. For example: "Editor: Crash when deleting a parent entity".
+
   - type: textarea
     id: description
     attributes:
