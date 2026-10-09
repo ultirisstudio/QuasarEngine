@@ -29,7 +29,7 @@ Other contributors fork the repository and create a branch with the same kind of
 
 Code guidelines:
 
-- The code must build and run on Windows and Linux. OS-specific code goes in `Engine/src/Platform/` only.
+- The code must build and run on Windows and Linux. OS-specific code goes in `engine/src/platform/` only.
 - Paths stored in files are relative and use `/`.
 - Format the code with `.clang-format` before committing.
 - Add unit tests when the code can be tested without a window.
