@@ -1,0 +1,82 @@
+name: Task
+description: Propose a new development task
+title: "[MODULE-NN] "
+type: Feature
+labels: ["needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A task should be something that someone who missed the discussions can still pick up.
+        Describe what needs to be done and how to check that it is done.
+        If the task takes more than half a day, split it into several issues.
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - Infrastructure
+        - Core
+        - Renderer
+        - Scene and ECS
+        - Project
+        - Assets
+        - Animation
+        - Editor
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Estimated size
+      description: "XS: up to 2 hours. S: up to half a day. M: 1 to 2 days (rare)."
+      options:
+        - XS
+        - S
+        - M
+    validations:
+      required: true
+
+  - type: dropdown
+    id: level
+    attributes:
+      label: Level
+      options:
+        - Beginner
+        - Intermediate
+        - Advanced
+    validations:
+      required: true
+
+  - type: textarea
+    id: task
+    attributes:
+      label: Task
+      description: What should exist once the task is done (classes, functions, behavior).
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this task is needed and the design choices to follow.
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Tasks that must be done first. Also add them as "Blocked by" on the issue.
+      placeholder: "- #12 CORE-15"
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: Concrete points a reviewer can check.
+      value: |
+        - [ ]
+    validations:
+      required: true
