@@ -1,0 +1,37 @@
+# Build output
+/build*/
+/out/
+/bin/
+/lib/
+compile_commands.json
+
+# CMake
+CMakeUserPresets.json
+CMakeSettings.json
+
+# Visual Studio
+.vs/
+*.user
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# Visual Studio Code
+.vscode/
+
+# CLion
+.idea/
+cmake-build-*/
+
+# clangd
+.cache/
+
+# Runtime files
+imgui.ini
+*.log
+
+# OS and editor files
+Thumbs.db
+desktop.ini
+*~
+*.swp
