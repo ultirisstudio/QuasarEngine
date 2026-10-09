@@ -1,0 +1,71 @@
+name: Bug
+description: Report incorrect behavior, a crash or a build error
+type: Bug
+labels: ["needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Title format: module, then a short description of the problem. For example: "Editor: Crash when deleting a parent entity".
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is wrong, in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the project
+        2. Drag the file into the viewport
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Error message, screenshot or observed behavior.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platform
+    attributes:
+      label: Affected platforms
+      options:
+        - label: Windows
+        - label: Linux
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS version, compiler, graphics card and driver version.
+      placeholder: "Ubuntu 24.04, GCC 13, AMD RX 6700, Mesa 24.0"
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or branch
+      placeholder: "master at a1b2c3d"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Engine console output or compiler output.
+      render: shell
