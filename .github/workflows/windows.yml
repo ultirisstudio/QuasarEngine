@@ -41,3 +41,6 @@ jobs:
 
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}

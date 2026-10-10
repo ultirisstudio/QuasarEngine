@@ -85,5 +85,31 @@
     { "name": "linux-gcc-release",   "inherits": "linux-build-base",   "configurePreset": "linux-gcc-release" },
     { "name": "linux-clang-debug",   "inherits": "linux-build-base",   "configurePreset": "linux-clang-debug" },
     { "name": "linux-clang-release", "inherits": "linux-build-base",   "configurePreset": "linux-clang-release" }
+  ],
+  "testPresets": [
+    {
+      "name": "test-base",
+      "hidden": true,
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "windows-test-base",
+      "hidden": true,
+      "inherits": "test-base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "linux-test-base",
+      "hidden": true,
+      "inherits": "test-base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    { "name": "windows-debug",       "inherits": "windows-test-base", "configurePreset": "windows-debug",   "configuration": "Debug" },
+    { "name": "windows-release",     "inherits": "windows-test-base", "configurePreset": "windows-release", "configuration": "Release" },
+    { "name": "linux-gcc-debug",     "inherits": "linux-test-base",   "configurePreset": "linux-gcc-debug" },
+    { "name": "linux-gcc-release",   "inherits": "linux-test-base",   "configurePreset": "linux-gcc-release" },
+    { "name": "linux-clang-debug",   "inherits": "linux-test-base",   "configurePreset": "linux-clang-debug" },
+    { "name": "linux-clang-release", "inherits": "linux-test-base",   "configurePreset": "linux-clang-release" }
   ]
 }
