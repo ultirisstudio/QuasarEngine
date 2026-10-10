@@ -40,6 +40,10 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
 include(cmake/CompilerOptions.cmake)
 
 add_subdirectory(engine)
+add_subdirectory(sandbox)
+add_subdirectory(editor)
+
+set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY VS_STARTUP_PROJECT QuasarEditor)
 
 message(STATUS "${PROJECT_NAME} ${PROJECT_VERSION}")
 message(STATUS "  Generator ........... ${CMAKE_GENERATOR}")
