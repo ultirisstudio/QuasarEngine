@@ -13,6 +13,8 @@ target_sources(QuasarEngine
 
 target_include_directories(QuasarEngine PRIVATE src)
 
+target_link_libraries(QuasarEngine PRIVATE Quasar::CompileOptions)
+
 target_compile_definitions(QuasarEngine PRIVATE
     QUASAR_VERSION="${PROJECT_VERSION}"
 )
