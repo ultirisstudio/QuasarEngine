@@ -39,9 +39,17 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
 
 include(cmake/CompilerOptions.cmake)
 
+option(QUASAR_BUILD_TESTS "Build the unit tests" ON)
+
+add_subdirectory(external)
 add_subdirectory(engine)
 add_subdirectory(sandbox)
 add_subdirectory(editor)
+
+if(QUASAR_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY VS_STARTUP_PROJECT QuasarEditor)
 
@@ -49,6 +57,7 @@ message(STATUS "${PROJECT_NAME} ${PROJECT_VERSION}")
 message(STATUS "  Generator ........... ${CMAKE_GENERATOR}")
 message(STATUS "  Compiler ............ ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "  Warnings as errors .. ${QUASAR_WARNINGS_AS_ERRORS}")
+message(STATUS "  Unit tests .......... ${QUASAR_BUILD_TESTS}")
 if(NOT QUASAR_MULTI_CONFIG)
     message(STATUS "  Build type .......... ${CMAKE_BUILD_TYPE}")
 endif()
