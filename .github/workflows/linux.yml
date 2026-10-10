@@ -1,0 +1,67 @@
+name: Linux
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to the same branch or pull request cancels the run in progress
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Linux ${{ matrix.compiler }} (${{ matrix.config }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: GCC
+            config: Debug
+            preset: linux-gcc-debug
+          - compiler: GCC
+            config: Release
+            preset: linux-gcc-release
+          - compiler: Clang
+            config: Debug
+            preset: linux-clang-debug
+          - compiler: Clang
+            config: Release
+            preset: linux-clang-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # Build tools, plus the development packages needed by GLFW (X11 and Wayland),
+      # OpenGL and nativefiledialog-extended (GTK3)
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols \
+            libgl1-mesa-dev \
+            libgtk-3-dev
+
+      - name: Show tool versions
+        run: |
+          cmake --version
+          ninja --version
+          gcc --version
+          clang --version
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
