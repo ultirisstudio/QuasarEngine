@@ -4,6 +4,28 @@ set(DOCTEST_WITH_MAIN_IN_STATIC_LIB  ON  CACHE BOOL "" FORCE)
 set(DOCTEST_NO_INSTALL               ON  CACHE BOOL "" FORCE)
 add_subdirectory(doctest EXCLUDE_FROM_ALL)
 
+# GLFW: window and input library
+set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL        OFF CACHE BOOL "" FORCE)
+add_subdirectory(glfw EXCLUDE_FROM_ALL)
+
+# GLM: math library, header only
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_TESTS   OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(glm EXCLUDE_FROM_ALL)
+
+target_compile_definitions(glm INTERFACE
+    GLM_FORCE_XYZW_ONLY
+    GLM_FORCE_EXPLICIT_CTOR
+    GLM_ENABLE_EXPERIMENTAL
+)
+
+# glad: OpenGL loader
+add_subdirectory(glad EXCLUDE_FROM_ALL)
+
 function(quasar_mark_external directory)
     get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
     foreach(target IN LISTS targets)

@@ -13,10 +13,18 @@ target_sources(QuasarEngine
 
 target_include_directories(QuasarEngine PRIVATE src)
 
-target_link_libraries(QuasarEngine PRIVATE Quasar::CompileOptions)
+target_link_libraries(QuasarEngine
+    PUBLIC
+        glm::glm
+    PRIVATE
+        Quasar::CompileOptions
+        glfw
+        glad::glad
+)
 
 target_compile_definitions(QuasarEngine PRIVATE
     QUASAR_VERSION="${PROJECT_VERSION}"
+    GLFW_INCLUDE_NONE
 )
 
 set_target_properties(QuasarEngine PROPERTIES FOLDER "Engine")
