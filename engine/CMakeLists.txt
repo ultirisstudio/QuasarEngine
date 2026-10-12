@@ -16,6 +16,8 @@ target_include_directories(QuasarEngine PRIVATE src)
 target_link_libraries(QuasarEngine
     PUBLIC
         glm::glm
+        imgui::imgui
+        imguizmo::imguizmo
     PRIVATE
         Quasar::CompileOptions
         glfw
@@ -23,8 +25,8 @@ target_link_libraries(QuasarEngine
 )
 
 target_compile_definitions(QuasarEngine PRIVATE
-    QUASAR_VERSION="${PROJECT_VERSION}"
     GLFW_INCLUDE_NONE
+    QUASAR_VERSION="${PROJECT_VERSION}"
 )
 
 set_target_properties(QuasarEngine PROPERTIES FOLDER "Engine")
