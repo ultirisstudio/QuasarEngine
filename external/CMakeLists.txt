@@ -26,6 +26,21 @@ target_compile_definitions(glm INTERFACE
 # glad: OpenGL loader
 add_subdirectory(glad EXCLUDE_FROM_ALL)
 
+# imgui: immediate mode GUI library
+add_subdirectory(imgui-cmake EXCLUDE_FROM_ALL)
+
+# imguizmo: gizmo library for imgui
+set(IMGUIZMO_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+add_subdirectory(imguizmo EXCLUDE_FROM_ALL)
+
+target_link_libraries(imguizmo PUBLIC imgui::imgui)
+
+if(MSVC)
+    target_compile_options(imguizmo PRIVATE /W0)
+else()
+    target_compile_options(imguizmo PRIVATE -w)
+endif()
+
 function(quasar_mark_external directory)
     get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
     foreach(target IN LISTS targets)
