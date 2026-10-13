@@ -33,6 +33,23 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Compute the cache key
+        id: cache-key
+        shell: bash
+        run: |
+          hash=$(git ls-files -s -- external CMakeLists.txt CMakePresets.json cmake | git hash-object --stdin)
+          echo "key=build-${{ matrix.preset }}-$ImageOS-$ImageVersion-$hash" >> "$GITHUB_OUTPUT"
+
+      - name: Reset third-party timestamps
+        shell: bash
+        run: find external -type f -exec touch -d '2000-01-01 00:00:00' {} +
+
+      - name: Cache the build folder
+        uses: actions/cache@v6
+        with:
+          path: build/${{ matrix.preset }}
+          key: ${{ steps.cache-key.outputs.key }}
+
       - name: Show tool versions
         run: cmake --version
 

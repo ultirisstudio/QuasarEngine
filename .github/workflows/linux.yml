@@ -41,6 +41,21 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Compute the cache key
+        id: cache-key
+        run: |
+          hash=$(git ls-files -s -- external CMakeLists.txt CMakePresets.json cmake | git hash-object --stdin)
+          echo "key=build-${{ matrix.preset }}-$ImageOS-$ImageVersion-$hash" >> "$GITHUB_OUTPUT"
+
+      - name: Reset third-party timestamps
+        run: find external -type f -exec touch -d '2000-01-01 00:00:00' {} +
+
+      - name: Cache the build folder
+        uses: actions/cache@v6
+        with:
+          path: build/${{ matrix.preset }}
+          key: ${{ steps.cache-key.outputs.key }}
+
       # Build tools, plus the development packages needed by GLFW (X11 and Wayland),
       # OpenGL and nativefiledialog-extended (GTK3)
       - name: Install system packages
