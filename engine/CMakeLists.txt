@@ -26,6 +26,8 @@ target_link_libraries(QuasarEngine
         glad::glad
         yaml-cpp::yaml-cpp
         assimp::assimp
+        stb::image
+        nfd::nfd
 )
 
 target_compile_definitions(QuasarEngine PRIVATE
