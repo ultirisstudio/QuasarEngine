@@ -23,3 +23,7 @@
 [submodule "external/yaml-cpp"]
 	path = external/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
+[submodule "external/assimp"]
+	path = external/assimp
+	url = https://github.com/assimp/assimp
+	shallow = true
