@@ -1,3 +1,6 @@
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_DEBUG_POSTFIX "")
+
 # doctest: unit test framework
 set(DOCTEST_WITH_TESTS               OFF CACHE BOOL "" FORCE)
 set(DOCTEST_WITH_MAIN_IN_STATIC_LIB  ON  CACHE BOOL "" FORCE)
@@ -59,6 +62,35 @@ set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(YAML_MSVC_SHARED_RT    ON  CACHE BOOL "" FORCE)
 set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 add_subdirectory(yaml-cpp EXCLUDE_FROM_ALL)
+
+if(MSVC)
+    target_compile_options(yaml-cpp PRIVATE /wd4267)
+endif()
+
+# assimp: Open Asset Import Library
+set(ASSIMP_BUILD_TESTS                    OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS             OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_SAMPLES                  OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL                        OFF CACHE BOOL "" FORCE)
+set(ASSIMP_NO_EXPORT                      ON  CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_FBX_IMPORTER             ON  CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_GLTF_IMPORTER            ON  CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_OBJ_IMPORTER             ON  CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB                     ON  CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS             OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_USE_CCACHE               OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INJECT_DEBUG_POSTFIX           OFF CACHE BOOL "" FORCE)
+set(ASSIMP_IGNORE_GIT_HASH                ON  CACHE BOOL "" FORCE)
+add_subdirectory(assimp EXCLUDE_FROM_ALL)
+
+foreach(target IN ITEMS assimp zlibstatic)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W0)
+    else()
+        target_compile_options(${target} PRIVATE -w)
+    endif()
+endforeach()
 
 function(quasar_mark_external directory)
     get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
