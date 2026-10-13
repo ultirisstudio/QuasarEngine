@@ -1,0 +1,30 @@
+name: Format
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    name: Check formatting
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install clang-format
+        run: pipx install clang-format==18.1.8
+
+      - name: Check formatting
+        run: |
+          clang-format --version
+          git ls-files -z -- '*.h' '*.cpp' ':!external' | xargs -0 -r clang-format --dry-run --Werror
