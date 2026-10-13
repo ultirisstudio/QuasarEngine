@@ -27,3 +27,9 @@
 	path = external/assimp
 	url = https://github.com/assimp/assimp
 	shallow = true
+[submodule "external/stb"]
+	path = external/stb
+	url = https://github.com/nothings/stb
+[submodule "external/nfd"]
+	path = external/nfd
+	url = https://github.com/btzy/nativefiledialog-extended

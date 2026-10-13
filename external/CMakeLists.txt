@@ -1,3 +1,4 @@
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_DEBUG_POSTFIX "")
 
@@ -91,6 +92,21 @@ foreach(target IN ITEMS assimp zlibstatic)
         target_compile_options(${target} PRIVATE -w)
     endif()
 endforeach()
+
+# stb image: image loading library
+add_subdirectory(stb-cmake EXCLUDE_FROM_ALL)
+
+# nativefiledialog: cross-platform file dialog library
+set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(NFD_INSTALL     OFF CACHE BOOL "" FORCE)
+set(NFD_PORTAL      OFF CACHE BOOL "" FORCE)
+add_subdirectory(nfd EXCLUDE_FROM_ALL)
+
+if(MSVC)
+    target_compile_options(nfd PRIVATE /W0)
+else()
+    target_compile_options(nfd PRIVATE -w)
+endif()
 
 function(quasar_mark_external directory)
     get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
