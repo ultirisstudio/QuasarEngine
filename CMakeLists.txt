@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24...4.1)
+cmake_minimum_required(VERSION 3.28...4.1)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "In-source builds are not allowed. Use a preset, for example: cmake --preset windows-debug")

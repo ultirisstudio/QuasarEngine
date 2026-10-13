@@ -18,10 +18,13 @@ target_link_libraries(QuasarEngine
         glm::glm
         imgui::imgui
         imguizmo::imguizmo
+        spdlog::spdlog
+        EnTT::EnTT
     PRIVATE
         Quasar::CompileOptions
         glfw
         glad::glad
+        yaml-cpp::yaml-cpp
 )
 
 target_compile_definitions(QuasarEngine PRIVATE
