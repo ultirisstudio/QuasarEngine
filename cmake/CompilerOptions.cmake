@@ -7,11 +7,6 @@ option(QUASAR_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 add_library(quasar_compile_options INTERFACE)
 add_library(Quasar::CompileOptions ALIAS quasar_compile_options)
 
-target_compile_definitions(quasar_compile_options INTERFACE
-    $<$<CONFIG:Debug>:QUASAR_DEBUG>
-    $<$<CONFIG:Release>:QUASAR_RELEASE>
-)
-
 if(MSVC)
     target_compile_options(quasar_compile_options INTERFACE
         # Standard conformance
