@@ -14,4 +14,5 @@ target_compile_definitions(QuasarTests PRIVATE
 
 set_target_properties(QuasarTests PROPERTIES FOLDER "Tests")
 
-add_test(NAME QuasarTests COMMAND QuasarTests --no-intro=true)
+include("${PROJECT_SOURCE_DIR}/external/doctest/scripts/cmake/doctest.cmake")
+doctest_discover_tests(QuasarTests EXTRA_ARGS --no-intro=true)
