@@ -4,12 +4,14 @@ add_library(Quasar::Engine ALIAS QuasarEngine)
 target_sources(QuasarEngine
     PRIVATE
         src/Version.cpp
+        src/core/Log.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
         FILES
             include/quasar/Version.h
             include/quasar/core/PlatformDetection.h
+            include/quasar/core/Log.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
