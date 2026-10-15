@@ -1,4 +1,3 @@
-#include <quasar/Version.h>
 #include <quasar/core/Log.h>
 
 int main()
