@@ -16,7 +16,7 @@ namespace
     };
 }
 
-TEST_CASE("Scope")
+TEST_CASE("Scope and CreateScope correctly connect std::unique_ptr and std::make_unique with all functionality")
 {
     Quasar::Scope<Foo> foo = Quasar::CreateScope<Foo>(42, "foo");
     REQUIRE(foo);
@@ -27,7 +27,7 @@ TEST_CASE("Scope")
     CHECK_FALSE(foo);
 }
 
-TEST_CASE("Ref")
+TEST_CASE("Ref and CreateRef correctly connect std::shared_ptr and std::make_shared with all functionality")
 {
     Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
     REQUIRE(foo.get() != nullptr);
@@ -42,7 +42,7 @@ TEST_CASE("Ref")
     CHECK(copy.get() == nullptr);
 }
 
-TEST_CASE("Bit")
+TEST_CASE("Bit sets only the requested bit")
 {
     CHECK(Quasar::Bit(0) == 1u);
     CHECK(Quasar::Bit(1) == 2u);
