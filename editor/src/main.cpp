@@ -1,9 +1,13 @@
 #include <quasar/Version.h>
-
-#include <cstdio>
+#include <quasar/core/Log.h>
 
 int main()
 {
-    std::printf("QuasarEngine Editor %s\n", Quasar::GetVersionString());
+    Quasar::Log::Init();
+
+    QUASAR_INFO("QuasarEditor v{}", "0.1.0");
+
+    Quasar::Log::Shutdown();
+
     return 0;
 }

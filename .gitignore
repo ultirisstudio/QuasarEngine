@@ -35,3 +35,6 @@ Thumbs.db
 desktop.ini
 *~
 *.swp
+
+# Engine
+*.log
