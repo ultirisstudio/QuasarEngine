@@ -5,6 +5,7 @@ target_sources(QuasarEngine
     PRIVATE
         src/Version.cpp
         src/core/Log.cpp
+        src/io/File.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -13,6 +14,7 @@ target_sources(QuasarEngine
             include/quasar/core/PlatformDetection.h
             include/quasar/core/Log.h
             include/quasar/core/Base.h
+            include/quasar/io/File.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
