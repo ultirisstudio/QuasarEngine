@@ -12,6 +12,7 @@ target_sources(QuasarEngine
             include/quasar/Version.h
             include/quasar/core/PlatformDetection.h
             include/quasar/core/Log.h
+            include/quasar/core/Base.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
