@@ -6,6 +6,7 @@ target_sources(QuasarEngine
         src/Version.cpp
         src/core/Log.cpp
         src/core/UUID.cpp
+        src/io/File.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -16,6 +17,7 @@ target_sources(QuasarEngine
             include/quasar/core/Base.h
             include/quasar/core/UUID.h
             include/quasar/core/Timestep.h
+            include/quasar/io/File.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
