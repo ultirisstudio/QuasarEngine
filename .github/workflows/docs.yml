@@ -35,7 +35,6 @@ jobs:
 
       # Doxygen only checks macros in files that have a \file comment
       - name: Check that every public header has a file comment
-        continue-on-error: true
         run: |
           missing=0
           for header in $(git ls-files 'engine/include/*.h'); do
@@ -48,7 +47,6 @@ jobs:
 
       # The warning format is changed so that GitHub shows each problem on the line of the pull request
       - name: Generate the documentation
-        continue-on-error: true
         run: |
           mkdir -p build
           doxygen --version
