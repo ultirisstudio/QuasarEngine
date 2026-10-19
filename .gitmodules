@@ -33,3 +33,6 @@
 [submodule "external/nfd"]
 	path = external/nfd
 	url = https://github.com/btzy/nativefiledialog-extended
+[submodule "external/doxygen-awesome-css"]
+	path = external/doxygen-awesome-css
+	url = https://github.com/jothepro/doxygen-awesome-css.git
