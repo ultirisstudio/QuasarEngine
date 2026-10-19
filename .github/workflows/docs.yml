@@ -52,6 +52,27 @@ jobs:
           doxygen --version
           { cat docs/Doxyfile; echo 'WARN_FORMAT = "::error file=$file,line=$line::$text"'; } | doxygen -
 
+      # Small JSON files read by the shields.io badges of the README
+      - name: Compute the code statistics
+        run: |
+          mkdir -p build/docs/html/badges
+          badge() {
+            printf '{"schemaVersion": 1, "label": "%s", "message": "%s", "color": "blue"}\n' "$2" "$3" \
+              > "build/docs/html/badges/$1.json"
+          }
+
+          files=$(git ls-files -- engine editor sandbox tests | grep -E '\.(h|cpp)$')
+          headers=$(grep -c '\.h$' <<< "$files" || true)
+          sources=$(grep -c '\.cpp$' <<< "$files" || true)
+          lines=$(xargs cat <<< "$files" | grep -cv '^[[:space:]]*$' || true)
+          tests=$(git grep -h 'TEST_CASE(' -- tests | wc -l || true)
+
+          badge headers "header files" "$headers"
+          badge sources "source files" "$sources"
+          badge lines "lines of code" "$lines"
+          badge tests "unit tests" "$tests"
+          cat build/docs/html/badges/*.json
+
       - name: Upload the site
         if: github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v5
