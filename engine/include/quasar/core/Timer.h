@@ -1,7 +1,7 @@
 #pragma once
 
 /// \file
-/// \brief A high-resolution timer for measuring elapsed time.
+/// \brief A high-resolution (steady) timer for measuring elapsed time.
 /// \author Fadiwahbeh
 /// \date 2026-10-19
 
@@ -9,7 +9,7 @@
 
 namespace Quasar
 {
-    /// @brief High-resolution timer that measures the time elapsed since it was created or last reset.
+    /// @brief High-resolution (steady) timer that measures the time elapsed since it was created or last reset.
     ///
     /// It relies on a monotonic clock, so changes to the system time do not affect it.
     ///
@@ -20,11 +20,9 @@ namespace Quasar
     public:
         /// @brief Clock used by the timer, monotonic with nanosecond resolution.
         ///
-        /// `std::chrono::high_resolution_clock` is not used on purpose: it is an alias whose target depends on the
+        /// `std::chrono::steady_clock` is not used on purpose: it is an alias whose target depends on the
         /// standard library, and with libstdc++ it is the system clock, which is not monotonic.
-        using Clock = std::chrono::high_resolution_clock;
-
-        static_assert(Clock::is_steady, "Timer requires a monotonic clock");
+        using Clock = std::chrono::steady_clock;
 
         /// @brief Creates a timer that starts measuring right away.
         Timer() { Reset(); }
