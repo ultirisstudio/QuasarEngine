@@ -4,6 +4,11 @@
 [![Linux](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/linux.yml/badge.svg)](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/linux.yml)
 [![Documentation](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/docs.yml/badge.svg)](https://ultirisstudio.github.io/QuasarEngine/)
 
+![Header files](https://img.shields.io/endpoint?url=https://ultirisstudio.github.io/QuasarEngine/badges/headers.json)
+![Source files](https://img.shields.io/endpoint?url=https://ultirisstudio.github.io/QuasarEngine/badges/sources.json)
+![Lines of code](https://img.shields.io/endpoint?url=https://ultirisstudio.github.io/QuasarEngine/badges/lines.json)
+![Unit tests](https://img.shields.io/endpoint?url=https://ultirisstudio.github.io/QuasarEngine/badges/tests.json)
+
 A cross-platform 3D engine written in C++20, with an integrated editor. It uses OpenGL 4.5 for rendering, EnTT for its entity component system and Dear ImGui for the editor interface.
 
 The project is in early development and not usable yet. The API reference is published at
