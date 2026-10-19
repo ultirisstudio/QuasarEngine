@@ -18,7 +18,6 @@ namespace Quasar
     class Timer
     {
     public:
-        
         /// @brief Clock used by the timer, monotonic with nanosecond resolution.
         ///
         /// `std::chrono::high_resolution_clock` is not used on purpose: it is an alias whose target depends on the
@@ -27,7 +26,7 @@ namespace Quasar
 
         static_assert(Clock::is_steady, "Timer requires a monotonic clock");
 
-        /// @brief Creates a timer that starts measuring right away.    
+        /// @brief Creates a timer that starts measuring right away.
         Timer() { Reset(); }
 
         /// @brief Resets the timer to zero.
@@ -36,7 +35,7 @@ namespace Quasar
         /// @brief Returns the time elapsed since the timer was created or last reset, in seconds.
         /// @return The elapsed time in seconds.
         double ElapsedSeconds() const;
-        
+
         /// @brief Returns the time elapsed since the timer was created or last reset, in milliseconds.
         /// @return The elapsed time in milliseconds.
         double ElapsedMilliseconds() const;
