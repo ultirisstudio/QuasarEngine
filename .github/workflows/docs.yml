@@ -1,0 +1,77 @@
+name: Documentation
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOXYGEN_VERSION: 1.18.0
+
+jobs:
+  check:
+    name: Check documentation
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Fetch the documentation theme
+        run: git submodule update --init --depth 1 external/doxygen-awesome-css
+
+      - name: Install Doxygen
+        run: |
+          url="https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}"
+          curl -fsSL "$url/doxygen-$DOXYGEN_VERSION.linux.bin.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/doxygen-$DOXYGEN_VERSION/bin" >> "$GITHUB_PATH"
+
+      # Doxygen only checks macros in files that have a \file comment
+      - name: Check that every public header has a file comment
+        continue-on-error: true
+        run: |
+          missing=0
+          for header in $(git ls-files 'engine/include/*.h'); do
+            if ! grep -q '^/// \\file' "$header"; then
+              echo "::error file=$header,line=1::This header has no '/// \\file' comment"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      # The warning format is changed so that GitHub shows each problem on the line of the pull request
+      - name: Generate the documentation
+        continue-on-error: true
+        run: |
+          mkdir -p build
+          doxygen --version
+          { cat docs/Doxyfile; echo 'WARN_FORMAT = "::error file=$file,line=$line::$text"'; } | doxygen -
+
+      - name: Upload the site
+        if: github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/docs/html
+
+  publish:
+    name: Publish documentation
+    if: github.ref == 'refs/heads/master'
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
