@@ -18,14 +18,14 @@ namespace Quasar
         {
             switch (glfwGetPlatform())
             {
-            case GLFW_PLATFORM_WIN32:
-                return "Win32";
-            case GLFW_PLATFORM_X11:
-                return "X11";
-            case GLFW_PLATFORM_WAYLAND:
-                return "Wayland";
-            default:
-                return "unknown";
+                case GLFW_PLATFORM_WIN32:
+                    return "Win32";
+                case GLFW_PLATFORM_X11:
+                    return "X11";
+                case GLFW_PLATFORM_WAYLAND:
+                    return "Wayland";
+                default:
+                    return "unknown";
             }
         }
     }
@@ -61,11 +61,9 @@ namespace Quasar
             QUASAR_ENGINE_INFO("Window platform: {}", GetPlatformName());
         }
 
-        GLFWwindow* handle = glfwCreateWindow(static_cast<int>(specification.Width),
-                                              static_cast<int>(specification.Height),
-                                              specification.Title.c_str(),
-                                              nullptr,
-                                              nullptr);
+        GLFWwindow* handle =
+            glfwCreateWindow(static_cast<int>(specification.Width), static_cast<int>(specification.Height),
+                             specification.Title.c_str(), nullptr, nullptr);
         if (handle == nullptr)
         {
             QUASAR_ENGINE_ERROR("Cannot create the window '{}'", specification.Title);
@@ -82,7 +80,8 @@ namespace Quasar
         Scope<Window> window(new Window(handle, specification));
         window->SetVSync(specification.VSync);
 
-        QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(), window->GetHeight());
+        QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(),
+                           window->GetHeight());
         return window;
     }
 
