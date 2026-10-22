@@ -20,6 +20,8 @@ target_sources(QuasarEngine
             include/quasar/core/Timestep.h
             include/quasar/io/File.h
             include/quasar/core/Timer.h
+            include/quasar/core/KeyCodes.h
+            include/quasar/core/MouseCodes.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
