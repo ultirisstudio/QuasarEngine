@@ -1,5 +1,6 @@
 #include <quasar/core/Log.h>
 #include <quasar/core/Timer.h>
+#include <quasar/core/Window.h>
 
 int main()
 {
@@ -21,6 +22,13 @@ int main()
 
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
     QUASAR_INFO("After sleeping 250 ms: {:.3f} ms", timer.ElapsedMilliseconds());
+
+    Quasar::Scope<Quasar::Window> window = Quasar::Window::Create({.Title = "Test Window", .Width = 800, .Height = 600, .VSync = true});
+
+    while(!window->ShouldClose())
+    {
+        window->Update();
+    }
 
     Quasar::Log::Shutdown();
 
