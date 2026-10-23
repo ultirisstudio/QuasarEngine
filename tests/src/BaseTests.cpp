@@ -82,7 +82,7 @@ TEST_CASE("A QUASAR_FORCE_INLINE function can be called")
 
 TEST_CASE("QUASAR_CONCAT joins two tokens into one name")
 {
-    const int QUASAR_CONCAT( value, 42 ) = 7;
+    const int QUASAR_CONCAT(value, 42) = 7;
 
     CHECK(value42 == 7);
 }
