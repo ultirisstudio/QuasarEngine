@@ -8,6 +8,7 @@ target_sources(QuasarEngine
         src/core/UUID.cpp
         src/io/File.cpp
         src/core/Timer.cpp
+        src/core/Window.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -22,6 +23,7 @@ target_sources(QuasarEngine
             include/quasar/core/Timer.h
             include/quasar/core/KeyCodes.h
             include/quasar/core/MouseCodes.h
+            include/quasar/core/Window.h
             include/quasar/events/Event.h
 )
 
