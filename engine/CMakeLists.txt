@@ -22,6 +22,7 @@ target_sources(QuasarEngine
             include/quasar/core/Timer.h
             include/quasar/core/KeyCodes.h
             include/quasar/core/MouseCodes.h
+            include/quasar/events/Event.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
