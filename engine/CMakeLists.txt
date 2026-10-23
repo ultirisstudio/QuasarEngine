@@ -9,6 +9,7 @@ target_sources(QuasarEngine
         src/io/File.cpp
         src/core/Timer.cpp
         src/core/Window.cpp
+        src/core/ScopedTimer.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -26,6 +27,7 @@ target_sources(QuasarEngine
             include/quasar/core/Window.h
             include/quasar/events/Event.h
             include/quasar/events/EventDispatcher.h
+            include/quasar/core/ScopedTimer.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
