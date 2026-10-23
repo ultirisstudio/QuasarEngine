@@ -29,7 +29,7 @@ namespace
             Quasar::Log::Engine().sinks().push_back(sink);
         }
 
-        ~LogCapture() {Quasar::Log::Shutdown();}
+        ~LogCapture() { Quasar::Log::Shutdown(); }
 
         LogCapture(const LogCapture&) = delete;
         LogCapture& operator=(const LogCapture&) = delete;
@@ -72,7 +72,7 @@ TEST_CASE("A ScopedTimer measures at least the time spent in its scope")
     }
 
     const std::string text = capture.GetText();
-    const std::string prefix  =  "Sleep took ";
+    const std::string prefix = "Sleep took ";
     REQUIRE(text.starts_with(prefix));
     CHECK(std::stod(text.substr(prefix.size())) >= 20.0);
 }
