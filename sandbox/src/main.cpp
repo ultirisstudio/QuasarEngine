@@ -29,7 +29,7 @@ int main()
 
     if (window)
     {
-        window->SetEventCallback([](Quasar::Event& event) { QUASAR_TRACE("{}", event); });
+        window->SetEventCallback([](Quasar::Event& event) { QUASAR_INFO("{}", event); });
 
         while (!window->ShouldClose())
         {
