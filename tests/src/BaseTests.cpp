@@ -80,6 +80,22 @@ TEST_CASE("A QUASAR_FORCE_INLINE function can be called")
     CHECK(Twice(21) == 42);
 }
 
+TEST_CASE("QUASAR_CONCAT joins two tokens into one name")
+{
+    const int QUASAR_CONCAT(value, 42) = 7;
+
+    CHECK(value42 == 7);
+}
+
+TEST_CASE("QUASAR_CONCAT expands a macro before joining")
+{
+#define QUASAR_TEST_SUFFIX 5
+    const int QUASAR_CONCAT(value, QUASAR_TEST_SUFFIX) = 3;
+#undef QUASAR_TEST_SUFFIX
+
+    CHECK(value5 == 3);
+}
+
 TEST_CASE("A passing assertion evaluates its condition only in Debug")
 {
     int evaluations = 0;
