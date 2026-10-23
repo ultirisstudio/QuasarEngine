@@ -25,6 +25,7 @@ target_sources(QuasarEngine
             include/quasar/core/MouseCodes.h
             include/quasar/core/Window.h
             include/quasar/events/Event.h
+            include/quasar/events/EventDispatcher.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
