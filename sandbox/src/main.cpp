@@ -1,6 +1,7 @@
 #include <quasar/core/Log.h>
 #include <quasar/core/Timer.h>
 #include <quasar/core/Window.h>
+#include <quasar/events/Event.h>
 
 int main()
 {
@@ -28,6 +29,8 @@ int main()
 
     if (window)
     {
+        window->SetEventCallback([](Quasar::Event& event) { QUASAR_INFO("{}", event); });
+
         while (!window->ShouldClose())
         {
             window->Update();

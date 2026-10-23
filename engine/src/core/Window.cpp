@@ -1,7 +1,11 @@
 #include <quasar/core/Log.h>
 #include <quasar/core/Window.h>
+#include <quasar/events/KeyEvent.h>
+#include <quasar/events/WindowEvent.h>
 
 #include <GLFW/glfw3.h>
+
+#include <utility>
 
 namespace Quasar
 {
@@ -28,11 +32,20 @@ namespace Quasar
                     return "unknown";
             }
         }
+
+        Window& GetWindow(GLFWwindow* handle)
+        {
+            Window* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
+            QUASAR_ENGINE_ASSERT(window != nullptr, "GLFW window has no user pointer");
+            return *window;
+        }
     }
 
     Window::Window(GLFWwindow* handle, const WindowSpecification& specification)
         : m_Handle(handle), m_Title(specification.Title)
     {
+        glfwSetWindowUserPointer(handle, this);
+        SetGlfwCallbacks();
     }
 
     Window::~Window()
@@ -91,6 +104,11 @@ namespace Quasar
         glfwPollEvents();
     }
 
+    void Window::SetEventCallback(EventCallback callback)
+    {
+        m_EventCallback = std::move(callback);
+    }
+
     bool Window::ShouldClose() const
     {
         return glfwWindowShouldClose(m_Handle) == GLFW_TRUE;
@@ -140,5 +158,81 @@ namespace Quasar
     {
         const char* name = glfwGetKeyName(static_cast<int>(key), 0);
         return name != nullptr ? std::string(name) : std::string();
+    }
+
+    void Window::SetGlfwCallbacks()
+    {
+        glfwSetFramebufferSizeCallback(m_Handle,
+                                       [](GLFWwindow* handle, int width, int height)
+                                       {
+                                           Window& window = GetWindow(handle);
+                                           WindowResizeEvent event(static_cast<std::uint32_t>(width),
+                                                                   static_cast<std::uint32_t>(height));
+                                           window.SendEvent(event);
+                                       });
+
+        glfwSetWindowCloseCallback(m_Handle,
+                                   [](GLFWwindow* handle)
+                                   {
+                                       Window& window = GetWindow(handle);
+                                       WindowCloseEvent event;
+                                       window.SendEvent(event);
+                                   });
+
+        glfwSetWindowFocusCallback(m_Handle,
+                                   [](GLFWwindow* handle, int focused)
+                                   {
+                                       Window& window = GetWindow(handle);
+                                       WindowFocusEvent event(focused == GLFW_TRUE);
+                                       window.SendEvent(event);
+                                   });
+
+        glfwSetKeyCallback(m_Handle,
+                           [](GLFWwindow* handle, int key, int, int action, int)
+                           {
+                               if (key == GLFW_KEY_UNKNOWN)
+                               {
+                                   return;
+                               }
+
+                               Window& window = GetWindow(handle);
+                               switch (action)
+                               {
+                                   case GLFW_PRESS:
+                                   {
+                                       KeyPressedEvent event(static_cast<Key>(key), false);
+                                       window.SendEvent(event);
+                                       break;
+                                   }
+                                   case GLFW_RELEASE:
+                                   {
+                                       KeyReleasedEvent event(static_cast<Key>(key));
+                                       window.SendEvent(event);
+                                       break;
+                                   }
+                                   case GLFW_REPEAT:
+                                   {
+                                       KeyPressedEvent event(static_cast<Key>(key), true);
+                                       window.SendEvent(event);
+                                       break;
+                                   }
+                               }
+                           });
+
+        glfwSetCharCallback(m_Handle,
+                            [](GLFWwindow* handle, unsigned int codePoint)
+                            {
+                                Window& window = GetWindow(handle);
+                                KeyTypedEvent event(static_cast<char32_t>(codePoint));
+                                window.SendEvent(event);
+                            });
+    }
+
+    void Window::SendEvent(Event& event)
+    {
+        if (m_EventCallback)
+        {
+            m_EventCallback(event);
+        }
     }
 }

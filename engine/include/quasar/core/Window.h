@@ -7,8 +7,10 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/core/KeyCodes.h>
+#include <quasar/events/Event.h>
 
 #include <cstdint>
+#include <functional>
 #include <string>
 
 struct GLFWwindow;
@@ -33,6 +35,8 @@ namespace Quasar
     class Window
     {
     public:
+        /// @brief Function that receives the events of the window.
+        using EventCallback = std::function<void(Event&)>;
         ~Window();
 
         Window(const Window&) = delete;
@@ -49,6 +53,9 @@ namespace Quasar
         ///
         /// Call it once per frame, after rendering.
         void Update();
+
+        /// @brief Sets the function that receives every event of the window.
+        void SetEventCallback(EventCallback callback);
 
         /// @brief Returns true when the window was asked to close, by the user or by Close().
         bool ShouldClose() const;
@@ -83,8 +90,12 @@ namespace Quasar
     private:
         Window(GLFWwindow* handle, const WindowSpecification& specification);
 
+        void SetGlfwCallbacks();
+        void SendEvent(Event& event);
+
         GLFWwindow* m_Handle = nullptr;
         std::string m_Title;
         bool m_VSync = false;
+        EventCallback m_EventCallback;
     };
 }
