@@ -26,6 +26,7 @@ target_sources(QuasarEngine
             include/quasar/core/Window.h
             include/quasar/events/Event.h
             include/quasar/events/EventDispatcher.h
+            include/quasar/events/WindowEvent.h
             include/quasar/events/KeyEvent.h
 )
 
