@@ -30,7 +30,7 @@ namespace Quasar
         /// @brief Logs the name and the time elapsed since the creation, in milliseconds.
         ~ScopedTimer();
 
-        ScopedTimer(const ScopedTimer &) = delete;
+        ScopedTimer(const ScopedTimer&) = delete;
         ScopedTimer& operator=(const ScopedTimer&) = delete;
         ScopedTimer(ScopedTimer&&) = delete;
         ScopedTimer& operator=(ScopedTimer&&) = delete;
