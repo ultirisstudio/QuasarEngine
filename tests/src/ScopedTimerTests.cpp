@@ -1,4 +1,5 @@
 #include <quasar/core/Log.h>
+#include <quasar/core/PlatformDetection.h>
 #include <quasar/core/ScopedTimer.h>
 
 #include <doctest/doctest.h>
@@ -75,4 +76,38 @@ TEST_CASE("A ScopedTimer measures at least the time spent in its scope")
     const std::string prefix = "Sleep took ";
     REQUIRE(text.starts_with(prefix));
     CHECK(std::stod(text.substr(prefix.size())) >= 20.0);
+}
+
+TEST_CASE("QUASAR_SCOPED_TIMER logs the name when its scope ends only in Debug")
+{
+    const LogCapture capture;
+
+    {
+        QUASAR_SCOPED_TIMER("Loading");
+    }
+
+    if (Quasar::PlatformDetection::IsDebug())
+    {
+        CHECK(capture.GetText().starts_with("Loading took "));
+    }
+    else
+    {
+        CHECK(capture.GetText().empty());
+    }
+}
+
+TEST_CASE("Several QUASAR_SCOPED_TIMER can be used in the same scope")
+{
+    const LogCapture capture;
+
+    {
+        QUASAR_SCOPED_TIMER("First");
+        QUASAR_SCOPED_TIMER("Second");
+    }
+
+    const std::string text = capture.GetText();
+    const bool firstLogged = text.find("First took ") != std::string::npos;
+    const bool secondLogged = text.find("Second took ") != std::string::npos;
+    CHECK(firstLogged == Quasar::PlatformDetection::IsDebug());
+    CHECK(secondLogged == Quasar::PlatformDetection::IsDebug());
 }
