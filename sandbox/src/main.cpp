@@ -26,9 +26,12 @@ int main()
     Quasar::Scope<Quasar::Window> window =
         Quasar::Window::Create({.Title = "Test Window", .Width = 800, .Height = 600, .VSync = true});
 
-    while (!window->ShouldClose())
+    if (window)
     {
-        window->Update();
+        while (!window->ShouldClose())
+        {
+            window->Update();
+        }
     }
 
     Quasar::Log::Shutdown();
