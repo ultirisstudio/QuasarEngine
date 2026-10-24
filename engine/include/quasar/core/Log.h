@@ -50,8 +50,8 @@ namespace Quasar
 /// by the compiler but never evaluated.
 
 /// \def QUASAR_TRACE(...)
-/// @brief Writes a trace message from the application. Removed from Release builds, where its arguments are still checked
-/// by the compiler but never evaluated.
+/// @brief Writes a trace message from the application. Removed from Release builds, where its arguments are still
+/// checked by the compiler but never evaluated.
 #ifdef QUASAR_DEBUG
 #define QUASAR_ENGINE_TRACE(...) ::Quasar::Log::Engine().trace(__VA_ARGS__)
 #define QUASAR_TRACE(...) ::Quasar::Log::App().trace(__VA_ARGS__)
