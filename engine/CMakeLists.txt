@@ -9,6 +9,7 @@ target_sources(QuasarEngine
         src/io/File.cpp
         src/core/Timer.cpp
         src/core/Window.cpp
+        src/core/LayerStack.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -30,6 +31,7 @@ target_sources(QuasarEngine
             include/quasar/events/KeyEvent.h
             include/quasar/events/MouseEvent.h
             include/quasar/core/Layer.h
+            include/quasar/core/LayerStack.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
