@@ -1,6 +1,7 @@
 #include <quasar/core/Log.h>
 #include <quasar/core/Window.h>
 #include <quasar/events/KeyEvent.h>
+#include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
 
 #include <GLFW/glfw3.h>
@@ -226,6 +227,43 @@ namespace Quasar
                                 KeyTypedEvent event(static_cast<char32_t>(codePoint));
                                 window.SendEvent(event);
                             });
+
+        glfwSetCursorPosCallback(m_Handle,
+                                 [](GLFWwindow* handle, double x, double y)
+                                 {
+                                     Window& window = GetWindow(handle);
+                                     MouseMovedEvent event(static_cast<float>(x), static_cast<float>(y));
+                                     window.SendEvent(event);
+                                 });
+
+        glfwSetScrollCallback(m_Handle,
+                              [](GLFWwindow* handle, double xOffset, double yOffset)
+                              {
+                                  Window& window = GetWindow(handle);
+                                  MouseScrolledEvent event(static_cast<float>(xOffset), static_cast<float>(yOffset));
+                                  window.SendEvent(event);
+                              });
+
+        glfwSetMouseButtonCallback(m_Handle,
+                                   [](GLFWwindow* handle, int button, int action, int)
+                                   {
+                                       Window& window = GetWindow(handle);
+                                       switch (action)
+                                       {
+                                           case GLFW_PRESS:
+                                           {
+                                               MouseButtonPressedEvent event(static_cast<MouseButton>(button));
+                                               window.SendEvent(event);
+                                               break;
+                                           }
+                                           case GLFW_RELEASE:
+                                           {
+                                               MouseButtonReleasedEvent event(static_cast<MouseButton>(button));
+                                               window.SendEvent(event);
+                                               break;
+                                           }
+                                       }
+                                   });
     }
 
     void Window::SendEvent(Event& event)
