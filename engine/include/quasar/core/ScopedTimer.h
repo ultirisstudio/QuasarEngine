@@ -46,14 +46,22 @@ namespace Quasar
 
 /// \def QUASAR_SCOPED_TIMER(name)
 /// @brief Measures the rest of the current scope and logs the time with the given name. Removed from Release
-/// builds.
+/// builds, where `name` is still checked by the compiler but never evaluated.
 ///
 /// `{ QUASAR_SCOPED_TIMER("LoadScene"); LoadScene(); }`
 ///
 /// The macro creates a ScopedTimer with a variable name that contains the line number, so several timers can be
-/// used in the same scope, one per line. In Release, the macro is empty and `name` is not evaluated.
+/// used in the same scope, one per line. Because `name` is still compiled in Release, a variable used only as the
+/// name does not cause an unused variable warning.
 #ifdef QUASAR_DEBUG
 #define QUASAR_SCOPED_TIMER(name) ::Quasar::ScopedTimer QUASAR_CONCAT(scopedTimer, __LINE__)(name)
 #else
-#define QUASAR_SCOPED_TIMER(name) ((void)0)
+#define QUASAR_SCOPED_TIMER(name)                                                                                      \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if constexpr (false)                                                                                           \
+        {                                                                                                              \
+            static_cast<void>(::Quasar::ScopedTimer(name));                                                            \
+        }                                                                                                              \
+    } while (false)
 #endif
