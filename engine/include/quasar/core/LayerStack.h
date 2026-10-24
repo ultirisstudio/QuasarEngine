@@ -30,7 +30,7 @@ namespace Quasar
 
         /// @brief Iterator over the layers, from the bottom to the top, without changing them.
         using ConstIterator = std::vector<Scope<Layer>>::const_iterator;
-        
+
         LayerStack() = default;
 
         /// @brief Detaches every layer, from the top to the bottom, then destroys them.
