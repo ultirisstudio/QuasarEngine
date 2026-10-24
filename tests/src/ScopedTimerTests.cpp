@@ -115,7 +115,7 @@ TEST_CASE("Several QUASAR_SCOPED_TIMER can be used in the same scope")
 TEST_CASE("A name used only by QUASAR_SCOPED_TIMER compiles in every build type")
 {
     const LogCapture capture;
-    const char* const name  =  "Loading";
+    const char* const name = "Loading";
 
     {
         QUASAR_SCOPED_TIMER(name);
