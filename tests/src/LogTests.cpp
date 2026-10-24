@@ -22,3 +22,10 @@ TEST_CASE("Loggers have the correct log level based on build configuration")
 
     Quasar::Log::Shutdown();
 }
+
+TEST_CASE("A value used only in a trace message compiles in every build type")
+{
+    Quasar::Log::Init();
+    QUASAR_TRACE("value {}", 42);
+    Quasar::Log::Shutdown();
+}
