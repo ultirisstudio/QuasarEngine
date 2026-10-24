@@ -1,43 +1,55 @@
+#include <quasar/core/Application.h>
+#include <quasar/core/Layer.h>
 #include <quasar/core/Log.h>
-#include <quasar/core/Timer.h>
-#include <quasar/core/Window.h>
-#include <quasar/events/Event.h>
+
+namespace
+{
+    class SandboxLayer : public Quasar::Layer
+    {
+    public:
+        SandboxLayer() : Layer("Sandbox") {}
+
+        void OnAttach() override { QUASAR_INFO("Layer '{}' attached", GetName()); }
+
+        void OnDetach() override { QUASAR_INFO("Layer '{}' detached", GetName()); }
+
+        void OnUpdate(Quasar::Timestep timestep) override
+        {
+            m_ElapsedSeconds += timestep.GetSeconds();
+            ++m_FrameCount;
+
+            if (m_ElapsedSeconds >= 1.0f)
+            {
+                QUASAR_INFO("{} frames in {:.3f} s", m_FrameCount, m_ElapsedSeconds);
+                m_ElapsedSeconds = 0.0f;
+                m_FrameCount = 0;
+            }
+        }
+
+    private:
+        float m_ElapsedSeconds = 0.0f;
+        int m_FrameCount = 0;
+    };
+}
 
 int main()
 {
     Quasar::Log::Init();
 
-    QUASAR_INFO("This is an info message");
-    QUASAR_WARN("This is a warning message");
-    QUASAR_ERROR("This is an error message at {} on {}", __FILE__, __LINE__);
-    QUASAR_TRACE("This is a trace message");
-
-    Quasar::Timer timer;
-    QUASAR_INFO("Timer just created: {:.6f} ms", timer.ElapsedMilliseconds());
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    QUASAR_INFO("After sleeping 100 ms: {:.3f} ms / {:.6f} s", timer.ElapsedMilliseconds(), timer.ElapsedSeconds());
-
-    timer.Reset();
-    QUASAR_INFO("Right after Reset: {:.6f} ms", timer.ElapsedMilliseconds());
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(250));
-    QUASAR_INFO("After sleeping 250 ms: {:.3f} ms", timer.ElapsedMilliseconds());
-
-    Quasar::Scope<Quasar::Window> window =
-        Quasar::Window::Create({.Title = "Test Window", .Width = 800, .Height = 600, .VSync = true});
-
-    if (window)
+    int exitCode = 0;
     {
-        window->SetEventCallback([](Quasar::Event& event) { QUASAR_INFO("{}", event); });
-
-        while (!window->ShouldClose())
+        Quasar::Scope<Quasar::Application> application = Quasar::Application::Create({.Window = {.Title = "Sandbox"}});
+        if (application)
         {
-            window->Update();
+            application->PushLayer(Quasar::CreateScope<SandboxLayer>());
+            application->Run();
+        }
+        else
+        {
+            exitCode = 1;
         }
     }
 
     Quasar::Log::Shutdown();
-
-    return 0;
+    return exitCode;
 }
