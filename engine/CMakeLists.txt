@@ -29,6 +29,7 @@ target_sources(QuasarEngine
             include/quasar/events/WindowEvent.h
             include/quasar/events/KeyEvent.h
             include/quasar/events/MouseEvent.h
+            include/quasar/core/Layer.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
