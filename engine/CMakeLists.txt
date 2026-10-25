@@ -11,6 +11,7 @@ target_sources(QuasarEngine
         src/core/Window.cpp
         src/core/LayerStack.cpp
         src/core/Application.cpp
+        src/core/MemoryLogSink.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -34,6 +35,7 @@ target_sources(QuasarEngine
             include/quasar/core/Layer.h
             include/quasar/core/LayerStack.h
             include/quasar/core/Application.h
+            include/quasar/core/MemoryLogSink.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
