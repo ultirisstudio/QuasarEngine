@@ -7,6 +7,7 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Layer.h>
+#include <quasar/events/Event.h>
 
 #include <cstddef>
 #include <vector>
@@ -60,6 +61,11 @@ namespace Quasar
         /// @return The removed overlay, now owned by the caller, or an empty Scope if it is not an overlay of this
         /// stack. In that case, a warning is logged.
         Scope<Layer> PopOverlay(Layer& overlay);
+
+        /// @brief Sends an event to the layers, from the top to the bottom, until one of them handles it.
+        ///
+        /// An event that is already handled is not sent to any layer.
+        void OnEvent(Event& event);
 
         /// @brief Returns the number of layers and overlays in the stack.
         std::size_t GetSize() const { return m_Layers.size(); }

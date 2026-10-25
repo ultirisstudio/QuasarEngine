@@ -1,5 +1,7 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/Log.h>
+#include <quasar/events/EventDispatcher.h>
+#include <quasar/events/WindowEvent.h>
 
 #include <utility>
 
@@ -13,10 +15,12 @@ namespace Quasar
     Application::Application(Scope<Window> window) : m_Window(std::move(window))
     {
         s_Instance = this;
+        m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
     }
 
     Application::~Application()
     {
+        m_Window->SetEventCallback({});
         s_Instance = nullptr;
     }
 
@@ -65,15 +69,37 @@ namespace Quasar
                 layer->OnUpdate(timestep);
             }
 
-            for (Scope<Layer>& layer : m_LayerStack)
+            if (!m_Minimized)
             {
-                layer->OnRender();
+                for (Scope<Layer>& layer : m_LayerStack)
+                {
+                    layer->OnRender();
+                }
             }
 
             m_Window->Update();
         }
 
         m_Running = false;
+    }
+
+    void Application::OnEvent(Event& event)
+    {
+        EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<WindowCloseEvent>(
+            [this](WindowCloseEvent&)
+            {
+                Close();
+                return true;
+            });
+        dispatcher.Dispatch<WindowResizeEvent>(
+            [this](WindowResizeEvent& resize)
+            {
+                m_Minimized = resize.GetWidth() == 0 || resize.GetHeight() == 0;
+                return false;
+            });
+
+        m_LayerStack.OnEvent(event);
     }
 
     void Application::Close()
