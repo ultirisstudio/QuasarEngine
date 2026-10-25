@@ -13,10 +13,13 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cstddef>
 #include <memory>
 
 namespace Quasar
 {
+    class MemoryLogSink;
+
     /// @brief The loggers for the engine and the application.
     /// Owns the two loggers: one for engine messages and one for application messages.
     ///
@@ -39,9 +42,18 @@ namespace Quasar
         /// @return
         static spdlog::logger& App() { return *s_AppLogger; }
 
+        /// @brief Returns the sink that keeps the most recent messages of both loggers, for the editor console.
+        ///
+        /// It keeps the last MemoryCapacity messages. Init() must have been called.
+        static std::shared_ptr<MemoryLogSink> GetMemorySink() { return s_MemorySink; }
+
+        /// @brief Number of messages kept by the memory sink.
+        static constexpr std::size_t MemoryCapacity = 1000;
+
     private:
         static std::shared_ptr<spdlog::logger> s_EngineLogger;
         static std::shared_ptr<spdlog::logger> s_AppLogger;
+        static std::shared_ptr<MemoryLogSink> s_MemorySink;
     };
 }
 

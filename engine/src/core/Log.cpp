@@ -1,5 +1,6 @@
 #include <quasar/Version.h>
 #include <quasar/core/Log.h>
+#include <quasar/core/MemoryLogSink.h>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -10,6 +11,7 @@ namespace Quasar
 {
     std::shared_ptr<spdlog::logger> Log::s_EngineLogger;
     std::shared_ptr<spdlog::logger> Log::s_AppLogger;
+    std::shared_ptr<MemoryLogSink> Log::s_MemorySink;
 
     void Log::Init()
     {
@@ -24,7 +26,9 @@ namespace Quasar
         auto file = std::make_shared<spdlog::sinks::basic_file_sink_mt>("QuasarEngine.log", true);
         file->set_pattern("[%Y-%m-%d %T.%e] [%l] %n: %v");
 
-        const std::vector<spdlog::sink_ptr> sinks{console, file};
+        s_MemorySink = std::make_shared<MemoryLogSink>(MemoryCapacity);
+
+        const std::vector<spdlog::sink_ptr> sinks{console, file, s_MemorySink};
         s_EngineLogger = std::make_shared<spdlog::logger>("ENGINE", sinks.begin(), sinks.end());
         s_AppLogger = std::make_shared<spdlog::logger>("APP", sinks.begin(), sinks.end());
 
@@ -42,6 +46,7 @@ namespace Quasar
     {
         s_AppLogger.reset();
         s_EngineLogger.reset();
+        s_MemorySink.reset();
         spdlog::shutdown();
     }
 }
