@@ -7,6 +7,7 @@
 #include <functional>
 #include <limits>
 #include <optional>
+#include <ostream> // CAPTURE prints a std::string_view with operator<<, which MSVC only declares without this header
 #include <string>
 #include <string_view>
 #include <thread>
