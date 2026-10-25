@@ -1,7 +1,7 @@
 #pragma once
 
 /// \file
-/// \brief Events sent by the window: close, resize and focus changes.
+/// \brief Events sent by the window: close, resize, focus changes and minimization.
 /// \author Kurogenshi
 /// \date 2026-10-23
 
@@ -62,5 +62,29 @@ namespace Quasar
 
     private:
         bool m_Focused = false;
+    };
+
+    /// @brief Sent when the window is minimized, or restored after being minimized.
+    ///
+    /// It is sent on Windows and on Linux with X11. On Linux with Wayland, the system never tells an application that
+    /// its window is minimized, so this event is never sent.
+    class WindowMinimizeEvent final : public EventOf<EventType::WindowMinimize, EventCategory::Window>
+    {
+    public:
+        /// @brief Creates the event.
+        /// @param minimized True if the window was minimized, false if it was restored.
+        explicit WindowMinimizeEvent(bool minimized) : m_Minimized(minimized) {}
+
+        /// @brief Returns true if the window was minimized, false if it was restored.
+        bool IsMinimized() const { return m_Minimized; }
+
+        /// @brief Returns the event with the change, for example "WindowMinimize: minimized".
+        std::string ToString() const override
+        {
+            return fmt::format("{}: {}", GetName(), m_Minimized ? "minimized" : "restored");
+        }
+
+    private:
+        bool m_Minimized = false;
     };
 }

@@ -47,8 +47,8 @@ namespace Quasar
         ///
         /// Each frame, the loop computes the time elapsed since the previous frame, updates every layer, renders
         /// every layer, then shows the image and processes the messages of the operating system. Layers are updated
-        /// and rendered from the bottom of the stack to the top. While the window is minimized, the layers are still
-        /// updated but not rendered.
+        /// and rendered from the bottom of the stack to the top. While the window is minimized, or while its drawing
+        /// area is empty, the layers are still updated but not rendered.
         ///
         /// The events of the window go to the application first, then to the layers from the top of the stack to
         /// the bottom, until a layer handles them. Closing the window stops the loop.

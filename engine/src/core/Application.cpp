@@ -69,7 +69,8 @@ namespace Quasar
                 layer->OnUpdate(timestep);
             }
 
-            if (!m_Minimized)
+            const bool canRender = !m_Minimized && m_Window->GetWidth() > 0 && m_Window->GetHeight() > 0;
+            if (canRender)
             {
                 for (Scope<Layer>& layer : m_LayerStack)
                 {
@@ -92,10 +93,10 @@ namespace Quasar
                 Close();
                 return true;
             });
-        dispatcher.Dispatch<WindowResizeEvent>(
-            [this](WindowResizeEvent& resize)
+        dispatcher.Dispatch<WindowMinimizeEvent>(
+            [this](WindowMinimizeEvent& minimize)
             {
-                m_Minimized = resize.GetWidth() == 0 || resize.GetHeight() == 0;
+                m_Minimized = minimize.IsMinimized();
                 return false;
             });
 

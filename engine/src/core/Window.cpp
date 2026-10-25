@@ -188,6 +188,14 @@ namespace Quasar
                                        window.SendEvent(event);
                                    });
 
+        glfwSetWindowIconifyCallback(m_Handle,
+                                     [](GLFWwindow* handle, int iconified)
+                                     {
+                                         Window& window = GetWindow(handle);
+                                         WindowMinimizeEvent event(iconified == GLFW_TRUE);
+                                         window.SendEvent(event);
+                                     });
+
         glfwSetKeyCallback(m_Handle,
                            [](GLFWwindow* handle, int key, int, int action, int)
                            {
