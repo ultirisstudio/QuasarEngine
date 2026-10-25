@@ -9,6 +9,7 @@ using Quasar::EventCategory;
 using Quasar::EventType;
 using Quasar::WindowCloseEvent;
 using Quasar::WindowFocusEvent;
+using Quasar::WindowMinimizeEvent;
 using Quasar::WindowResizeEvent;
 
 TEST_CASE("Window events have their own type")
@@ -16,6 +17,7 @@ TEST_CASE("Window events have their own type")
     CHECK(WindowCloseEvent().GetType() == EventType::WindowClose);
     CHECK(WindowResizeEvent(1280, 720).GetType() == EventType::WindowResize);
     CHECK(WindowFocusEvent(true).GetType() == EventType::WindowFocus);
+    CHECK(WindowMinimizeEvent(true).GetType() == EventType::WindowMinimize);
 }
 
 TEST_CASE("All window events share the window category")
@@ -23,8 +25,9 @@ TEST_CASE("All window events share the window category")
     const WindowCloseEvent close;
     const WindowResizeEvent resize(1280, 720);
     const WindowFocusEvent focus(true);
+    const WindowMinimizeEvent minimize(true);
 
-    const Quasar::Event* events[] = {&close, &resize, &focus};
+    const Quasar::Event* events[] = {&close, &resize, &focus, &minimize};
 
     for (const Quasar::Event* event : events)
     {
@@ -51,6 +54,17 @@ TEST_CASE("A focus event tells whether the window gained or lost the focus")
     CHECK_FALSE(lost.IsFocused());
     CHECK(gained.ToString() == "WindowFocus: gained");
     CHECK(lost.ToString() == "WindowFocus: lost");
+}
+
+TEST_CASE("A minimize event tells whether the window was minimized or restored")
+{
+    const WindowMinimizeEvent minimized(true);
+    const WindowMinimizeEvent restored(false);
+
+    CHECK(minimized.IsMinimized());
+    CHECK_FALSE(restored.IsMinimized());
+    CHECK(minimized.ToString() == "WindowMinimize: minimized");
+    CHECK(restored.ToString() == "WindowMinimize: restored");
 }
 
 TEST_CASE("A close event is printed with its name")
