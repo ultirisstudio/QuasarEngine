@@ -11,7 +11,7 @@
 TEST_CASE("The same file gives the same normalized path with both separators")
 {
     const std::string_view spellings[] = {
-        "Assets/Models/cube.obj", "Assets\\Models\\cube.obj", "Assets\\Textures\\..\\Models\\cube.obj",
+        "Assets/Models/cube.obj",      "Assets\\Models\\cube.obj", "Assets\\Textures\\..\\Models\\cube.obj",
         "./Assets//Models/./cube.obj", "Assets/Models\\cube.obj",
     };
 
