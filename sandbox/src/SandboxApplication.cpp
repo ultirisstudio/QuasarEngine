@@ -1,8 +1,13 @@
 #include <quasar/core/Application.h>
+#include <quasar/core/EntryPoint.h>
 #include <quasar/core/Input.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/Log.h>
 #include <quasar/events/Event.h>
+
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace
 {
@@ -51,24 +56,18 @@ namespace
     };
 }
 
-int main()
+Quasar::Scope<Quasar::Application> Quasar::CreateApplication(std::vector<std::string> arguments)
 {
-    Quasar::Log::Init();
-
-    int exitCode = 0;
+    for (const std::string& argument : arguments)
     {
-        Quasar::Scope<Quasar::Application> application = Quasar::Application::Create({.Window = {.Title = "Sandbox"}});
-        if (application)
-        {
-            application->PushLayer(Quasar::CreateScope<SandboxLayer>());
-            application->Run();
-        }
-        else
-        {
-            exitCode = 1;
-        }
+        QUASAR_INFO("Argument: '{}'", argument);
     }
 
-    Quasar::Log::Shutdown();
-    return exitCode;
+    Quasar::Scope<Application> application = Application::Create({.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox"}});
+    if (application)
+    {
+        application->PushLayer(Quasar::CreateScope<SandboxLayer>());
+    }
+    
+    return application;
 }

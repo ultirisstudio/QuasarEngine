@@ -40,7 +40,13 @@ target_sources(QuasarEngine
             include/quasar/core/MemoryLogSink.h
             include/quasar/io/Path.h
             include/quasar/core/Input.h
+            include/quasar/core/EntryPoint.h
 )
+
+add_library(QuasarEntryPoint STATIC src/core/EntryPoint.cpp)
+add_library(Quasar::EntryPoint ALIAS QuasarEntryPoint)
+target_link_libraries(QuasarEntryPoint PUBLIC Quasar::Engine PRIVATE Quasar::CompileOptions)
+set_target_properties(QuasarEntryPoint PROPERTIES FOLDER "Engine")
 
 target_include_directories(QuasarEngine PRIVATE src)
 

@@ -3,6 +3,9 @@
 #include <quasar/events/EventDispatcher.h>
 #include <quasar/events/WindowEvent.h>
 
+#include <spdlog/fmt/std.h>
+
+#include <system_error>
 #include <utility>
 
 namespace Quasar
@@ -12,7 +15,8 @@ namespace Quasar
         Application* s_Instance = nullptr;
     }
 
-    Application::Application(Scope<Window> window) : m_Window(std::move(window))
+    Application::Application(ApplicationSpecification specification, Scope<Window> window)
+        : m_Specification(std::move(specification)), m_Window(std::move(window))
     {
         s_Instance = this;
         m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
@@ -29,21 +33,31 @@ namespace Quasar
         if (s_Instance != nullptr)
         {
             QUASAR_ENGINE_ERROR("Cannot create the application '{}': an application already exists",
-                                specification.Window.Title);
+                                specification.Name);
             return nullptr;
+        }
+
+        if (!specification.WorkingDirectory.empty())
+        {
+            std::error_code error;
+            std::filesystem::current_path(specification.WorkingDirectory, error);
+            if (error)
+            {
+                QUASAR_ENGINE_ERROR("Cannot create the application '{}': cannot use '{}' as working directory: {}",
+                                    specification.Name, specification.WorkingDirectory, error.message());
+                return nullptr;
+            }
         }
 
         Scope<Window> window = Window::Create(specification.Window);
         if (window == nullptr)
         {
-            QUASAR_ENGINE_ERROR("Cannot create the application '{}': its window cannot be created",
-                                specification.Window.Title);
+            QUASAR_ENGINE_ERROR("Cannot create the application '{}': its window cannot be created", specification.Name);
             return nullptr;
         }
 
-        window->SetVSync(false);
-
-        return Scope<Application>(new Application(std::move(window)));
+        QUASAR_ENGINE_INFO("Created the application '{}'", specification.Name);
+        return Scope<Application>(new Application(specification, std::move(window)));
     }
 
     Application& Application::Get()

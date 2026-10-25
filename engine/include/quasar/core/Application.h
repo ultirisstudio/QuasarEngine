@@ -12,12 +12,23 @@
 #include <quasar/core/Window.h>
 #include <quasar/events/Event.h>
 
+#include <filesystem>
+#include <string>
+#include <vector>
+
 namespace Quasar
 {
     /// @brief Settings used to create the application.
     struct ApplicationSpecification
     {
-        WindowSpecification Window; ///< Settings of the main window, created with the application.
+        std::string Name = "QuasarEngine"; ///< Name of the application, used in the logs.
+
+        /// Directory used as the current directory, so that relative paths start from it. A relative directory starts
+        /// from the directory the program was started from. Empty keeps the current directory.
+        std::filesystem::path WorkingDirectory{};
+
+        std::vector<std::string> Arguments{}; ///< Command-line arguments, without the name of the program.
+        WindowSpecification Window{}; ///< Settings of the main window, created with the application.
     };
 
     /// @brief The application: it creates the window, owns the layers and runs the main loop.
@@ -36,8 +47,8 @@ namespace Quasar
 
         /// @brief Creates the application and its window.
         /// @param specification Settings of the application and of its window.
-        /// @return The new application, or `nullptr` if an application already exists or if the window cannot be
-        /// created. The reason is logged as an engine error.
+        /// @return The new application, or `nullptr` if an application already exists, if the working directory
+        /// cannot be used or if the window cannot be created. The reason is logged as an engine error.
         [[nodiscard]] static Scope<Application> Create(const ApplicationSpecification& specification);
 
         /// @brief Returns the application. An application must exist.
@@ -72,10 +83,15 @@ namespace Quasar
         /// @brief Returns the main window.
         Window& GetWindow() { return *m_Window; }
 
+        /// @brief Returns the settings the application was created with, including the command-line arguments.
+        const ApplicationSpecification& GetSpecification() const { return m_Specification; }
+
     private:
-        explicit Application(Scope<Window> window);
+        Application(ApplicationSpecification specification, Scope<Window> window);
 
         void OnEvent(Event& event);
+
+        ApplicationSpecification m_Specification;
 
         Scope<Window> m_Window;
         LayerStack m_LayerStack;
