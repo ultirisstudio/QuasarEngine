@@ -1,4 +1,5 @@
 #include <quasar/core/Application.h>
+#include <quasar/core/Input.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/Log.h>
 #include <quasar/events/Event.h>
@@ -25,6 +26,14 @@ namespace
                 m_ElapsedSeconds = 0.0f;
                 m_FrameCount = 0;
             }
+
+            const bool spaceHeld = Quasar::Input::IsKeyPressed(Quasar::Key::Space);
+            if (spaceHeld != m_SpaceHeld)
+            {
+                m_SpaceHeld = spaceHeld;
+                const glm::vec2 cursor = Quasar::Input::GetMousePosition();
+                QUASAR_INFO("Space {} (polled), cursor at {}, {}", spaceHeld ? "held" : "released", cursor.x, cursor.y);
+            }
         }
 
         void OnEvent(Quasar::Event& event) override
@@ -38,6 +47,7 @@ namespace
     private:
         float m_ElapsedSeconds = 0.0f;
         int m_FrameCount = 0;
+        bool m_SpaceHeld = false;
     };
 }
 
