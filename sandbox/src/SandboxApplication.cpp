@@ -63,11 +63,12 @@ Quasar::Scope<Quasar::Application> Quasar::CreateApplication(std::vector<std::st
         QUASAR_INFO("Argument: '{}'", argument);
     }
 
-    Quasar::Scope<Application> application = Application::Create({.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox"}});
+    Quasar::Scope<Application> application =
+        Application::Create({.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox"}});
     if (application)
     {
         application->PushLayer(Quasar::CreateScope<SandboxLayer>());
     }
-    
+
     return application;
 }
