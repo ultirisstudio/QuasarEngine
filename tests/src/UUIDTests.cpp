@@ -1,11 +1,17 @@
 #include <quasar/core/UUID.h>
 
 #include <doctest/doctest.h>
+#include <spdlog/fmt/fmt.h>
 
 #include <cstddef>
 #include <functional>
+#include <limits>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -83,4 +89,74 @@ TEST_CASE("UUIDs are compared by value")
     CHECK(Quasar::UUID(42) == Quasar::UUID(42));
     CHECK(Quasar::UUID(42) != Quasar::UUID(43));
     CHECK(Quasar::UUID(42) < Quasar::UUID(43));
+}
+
+TEST_CASE("UUIDs work as keys of an unordered map")
+{
+    const Quasar::UUID first = Quasar::UUID::Generate();
+    const Quasar::UUID second = Quasar::UUID::Generate();
+
+    std::unordered_map<Quasar::UUID, std::string> names;
+    names[first] = "Camera";
+    names[second] = "Light";
+
+    CHECK(names.size() == 2);
+    CHECK(names.at(first) == "Camera");
+    CHECK(names.at(second) == "Light");
+    CHECK(names.find(Quasar::UUID(first.GetValue())) != names.end());
+}
+
+TEST_CASE("A UUID is written as 16 lowercase hexadecimal digits")
+{
+    CHECK(Quasar::UUID(0xAB).ToString() == "00000000000000ab");
+    CHECK(Quasar::UUID(0x0123456789ABCDEF).ToString() == "0123456789abcdef");
+    CHECK(Quasar::UUID().ToString() == "0000000000000000");
+}
+
+TEST_CASE("Converting a UUID to text and back gives the same value")
+{
+    const Quasar::UUID uuids[] = {Quasar::UUID::Generate(), Quasar::UUID(), Quasar::UUID(1),
+                                  Quasar::UUID(std::numeric_limits<std::uint64_t>::max())};
+
+    for (const Quasar::UUID uuid : uuids)
+    {
+        const std::optional<Quasar::UUID> read = Quasar::UUID::FromString(uuid.ToString());
+
+        REQUIRE(read.has_value());
+        CHECK(*read == uuid);
+    }
+}
+
+TEST_CASE("Uppercase hexadecimal digits are read too")
+{
+    const std::optional<Quasar::UUID> read = Quasar::UUID::FromString("0123456789ABCDEF");
+
+    REQUIRE(read.has_value());
+    CHECK(read->GetValue() == 0x0123456789ABCDEF);
+}
+
+TEST_CASE("Invalid text gives no UUID")
+{
+    const std::string_view invalidTexts[] = {
+        "",                  // empty
+        "123",               // too short
+        "00000000000000001", // too long
+        "0x000000000000ab",  // prefix
+        "zzzzzzzzzzzzzzzz",  // not hexadecimal
+        " 00000000000000a",  // space before
+        "00000000000000a ",  // space after
+        "-000000000000001",  // sign
+        "+000000000000001",  // sign
+    };
+
+    for (const std::string_view text : invalidTexts)
+    {
+        CAPTURE(text);
+        CHECK_FALSE(Quasar::UUID::FromString(text).has_value());
+    }
+}
+
+TEST_CASE("A UUID is printed by the log macros as text")
+{
+    CHECK(fmt::format("{}", Quasar::UUID(0xAB)) == "00000000000000ab");
 }

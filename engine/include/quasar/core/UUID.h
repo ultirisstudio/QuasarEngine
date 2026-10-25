@@ -9,6 +9,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <string>
+#include <string_view>
 
 namespace Quasar
 {
@@ -40,12 +43,30 @@ namespace Quasar
         /// @return False for a default-constructed UUID, true for a generated one.
         constexpr bool IsValid() const { return m_Value != 0; }
 
+        /// @brief Returns the UUID as text, to save it in a file: 16 lowercase hexadecimal digits.
+        /// @return For example "00ab3f9c12e45d07". An invalid UUID gives "0000000000000000".
+        std::string ToString() const;
+
+        /// @brief Reads a UUID from the text written by ToString().
+        ///
+        /// Nothing is logged when the text is invalid: the caller knows which file or field it came from, so it can
+        /// report a clearer error.
+        /// @param text Exactly 16 hexadecimal digits, in lowercase or uppercase, with nothing before or after.
+        /// @return The UUID, or no value if the text has another form.
+        static std::optional<UUID> FromString(std::string_view text);
+
         /// @brief Compares two UUIDs by their value, so they can be sorted and used as map keys.
         constexpr auto operator<=>(const UUID&) const = default;
 
     private:
         std::uint64_t m_Value = 0;
     };
+
+    /// @brief Lets the log macros print a UUID with `{}`, using UUID::ToString().
+    inline std::string format_as(UUID uuid)
+    {
+        return uuid.ToString();
+    }
 }
 
 namespace std
