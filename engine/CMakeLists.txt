@@ -13,6 +13,7 @@ target_sources(QuasarEngine
         src/core/Application.cpp
         src/core/MemoryLogSink.cpp
         src/io/Path.cpp
+        src/core/Input.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -38,6 +39,7 @@ target_sources(QuasarEngine
             include/quasar/core/Application.h
             include/quasar/core/MemoryLogSink.h
             include/quasar/io/Path.h
+            include/quasar/core/Input.h
 )
 
 target_include_directories(QuasarEngine PRIVATE src)
