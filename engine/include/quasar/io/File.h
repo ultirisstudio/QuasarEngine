@@ -1,14 +1,16 @@
 #pragma once
 
 /// \file
-/// \brief Functions to read a whole file from the disk.
+/// \brief Functions to read and write whole files, and to create directories.
 /// \author Kurogenshi
 /// \date 2026-10-19
 
 #include <cstddef>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Quasar
@@ -29,4 +31,27 @@ namespace Quasar
     /// @return The bytes of the file, or no value if the file is missing, is a folder or cannot be read. The
     /// reason is logged as an engine error.
     std::optional<std::vector<std::byte>> ReadBinaryFile(const std::filesystem::path& path);
+
+    /// @brief Writes a whole text file, replacing its content if it already exists.
+    ///
+    /// The text is written exactly as given, so line endings are the same on every platform. The missing parent
+    /// directories are created.
+    /// @param path Path of the file to write.
+    /// @param text Content of the file.
+    /// @return True if the file was written. Otherwise the reason is logged as an engine error.
+    bool WriteTextFile(const std::filesystem::path& path, std::string_view text);
+
+    /// @brief Writes a whole binary file, byte for byte, replacing its content if it already exists.
+    ///
+    /// The missing parent directories are created.
+    /// @param path Path of the file to write.
+    /// @param data Content of the file.
+    /// @return True if the file was written. Otherwise the reason is logged as an engine error.
+    bool WriteBinaryFile(const std::filesystem::path& path, std::span<const std::byte> data);
+
+    /// @brief Creates a directory and its missing parents.
+    /// @param path Path of the directory to create.
+    /// @return True if the directory exists after the call, even if it already existed. Otherwise the reason is
+    /// logged as an engine error.
+    bool CreateDirectories(const std::filesystem::path& path);
 }

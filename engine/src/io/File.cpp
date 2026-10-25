@@ -4,6 +4,7 @@
 #include <spdlog/fmt/std.h>
 
 #include <fstream>
+#include <span>
 #include <string_view>
 #include <system_error>
 #include <type_traits>
@@ -66,6 +67,32 @@ namespace Quasar
 
             return content;
         }
+
+        bool WriteWholeFile(const std::filesystem::path& path, const char* data, std::size_t size)
+        {
+            if (path.has_parent_path() && !CreateDirectories(path.parent_path()))
+            {
+                QUASAR_ENGINE_ERROR("Cannot write '{}': its directory cannot be created", path);
+                return false;
+            }
+
+            std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+            if (!stream)
+            {
+                QUASAR_ENGINE_ERROR("Cannot open '{}' for writing", path);
+                return false;
+            }
+
+            stream.write(data, static_cast<std::streamsize>(size));
+            stream.close();
+            if (!stream)
+            {
+                QUASAR_ENGINE_ERROR("Cannot write '{}'", path);
+                return false;
+            }
+
+            return true;
+        }
     }
 
     std::optional<std::string> ReadTextFile(const std::filesystem::path& path)
@@ -84,5 +111,34 @@ namespace Quasar
     std::optional<std::vector<std::byte>> ReadBinaryFile(const std::filesystem::path& path)
     {
         return ReadWholeFile<std::vector<std::byte>>(path);
+    }
+
+    bool WriteTextFile(const std::filesystem::path& path, std::string_view text)
+    {
+        return WriteWholeFile(path, text.data(), text.size());
+    }
+
+    bool WriteBinaryFile(const std::filesystem::path& path, std::span<const std::byte> data)
+    {
+        return WriteWholeFile(path, reinterpret_cast<const char*>(data.data()), data.size());
+    }
+
+    bool CreateDirectories(const std::filesystem::path& path)
+    {
+        std::error_code error;
+        std::filesystem::create_directories(path, error);
+        if (error)
+        {
+            QUASAR_ENGINE_ERROR("Cannot create the directory '{}': {}", path, error.message());
+            return false;
+        }
+
+        if (!std::filesystem::is_directory(path, error))
+        {
+            QUASAR_ENGINE_ERROR("Cannot create the directory '{}': a file has this name", path);
+            return false;
+        }
+
+        return true;
     }
 }
