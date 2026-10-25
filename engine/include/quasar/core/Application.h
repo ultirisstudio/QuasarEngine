@@ -10,6 +10,7 @@
 #include <quasar/core/LayerStack.h>
 #include <quasar/core/Timer.h>
 #include <quasar/core/Window.h>
+#include <quasar/events/Event.h>
 
 namespace Quasar
 {
@@ -46,7 +47,11 @@ namespace Quasar
         ///
         /// Each frame, the loop computes the time elapsed since the previous frame, updates every layer, renders
         /// every layer, then shows the image and processes the messages of the operating system. Layers are updated
-        /// and rendered from the bottom of the stack to the top.
+        /// and rendered from the bottom of the stack to the top. While the window is minimized, the layers are still
+        /// updated but not rendered.
+        ///
+        /// The events of the window go to the application first, then to the layers from the top of the stack to
+        /// the bottom, until a layer handles them. Closing the window stops the loop.
         void Run();
 
         /// @brief Asks the main loop to stop at the end of the current frame.
@@ -70,10 +75,13 @@ namespace Quasar
     private:
         explicit Application(Scope<Window> window);
 
+        void OnEvent(Event& event);
+
         Scope<Window> m_Window;
         LayerStack m_LayerStack;
         Timer m_FrameTimer;
         double m_LastFrameTime = 0.0;
         bool m_Running = false;
+        bool m_Minimized = false;
     };
 }

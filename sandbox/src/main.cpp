@@ -1,6 +1,7 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/Log.h>
+#include <quasar/events/Event.h>
 
 namespace
 {
@@ -23,6 +24,14 @@ namespace
                 QUASAR_INFO("{} frames in {:.3f} s", m_FrameCount, m_ElapsedSeconds);
                 m_ElapsedSeconds = 0.0f;
                 m_FrameCount = 0;
+            }
+        }
+
+        void OnEvent(Quasar::Event& event) override
+        {
+            if (event.GetType() != Quasar::EventType::MouseMoved)
+            {
+                QUASAR_INFO("{}", event);
             }
         }
 
