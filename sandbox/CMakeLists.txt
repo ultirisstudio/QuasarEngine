@@ -1,11 +1,11 @@
 add_executable(QuasarSandbox)
 
 target_sources(QuasarSandbox PRIVATE
-    src/main.cpp
+    src/SandboxApplication.cpp
 )
 
 target_link_libraries(QuasarSandbox PRIVATE
-    Quasar::Engine
+    Quasar::EntryPoint
     Quasar::CompileOptions
 )
 

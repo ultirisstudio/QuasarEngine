@@ -1,11 +1,11 @@
 add_executable(QuasarEditor)
 
 target_sources(QuasarEditor PRIVATE
-    src/main.cpp
+    src/EditorApplication.cpp
 )
 
 target_link_libraries(QuasarEditor PRIVATE
-    Quasar::Engine
+    Quasar::EntryPoint
     Quasar::CompileOptions
 )
 
