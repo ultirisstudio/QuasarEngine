@@ -30,7 +30,7 @@ namespace Quasar
     };
 
     /// @brief Categories of an event. An event can belong to several categories, combined with the `|` operator.
-    enum class EventCategory : std::uint32_t
+    enum class EventCategory : std::uint8_t
     {
         None = 0,          ///< No category.
         Window = Bit(0),   ///< Events about the window.

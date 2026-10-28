@@ -12,7 +12,13 @@
       "hidden": true,
       "inherits": "base",
       "architecture": { "value": "x64", "strategy": "set" },
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "enableClangTidyCodeAnalysis": true,
+          "enableMicrosoftCodeAnalysis": false
+        }
+      }
     },
     {
       "name": "windows-debug",

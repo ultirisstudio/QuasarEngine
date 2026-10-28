@@ -3,6 +3,7 @@
 #include <doctest/doctest.h>
 #include <spdlog/fmt/fmt.h>
 
+#include <array>
 #include <cstddef>
 #include <functional>
 #include <limits>
@@ -66,8 +67,8 @@ TEST_CASE("UUIDs generated on different threads are unique")
     std::vector<Quasar::UUID> first;
     std::vector<Quasar::UUID> second;
     {
-        std::jthread firstThread(GenerateUUIDs, std::ref(first));
-        std::jthread secondThread(GenerateUUIDs, std::ref(second));
+        const std::jthread firstThread(GenerateUUIDs, std::ref(first));
+        const std::jthread secondThread(GenerateUUIDs, std::ref(second));
     }
 
     std::unordered_set<Quasar::UUID> uuids(first.begin(), first.end());
@@ -116,8 +117,8 @@ TEST_CASE("A UUID is written as 16 lowercase hexadecimal digits")
 
 TEST_CASE("Converting a UUID to text and back gives the same value")
 {
-    const Quasar::UUID uuids[] = {Quasar::UUID::Generate(), Quasar::UUID(), Quasar::UUID(1),
-                                  Quasar::UUID(std::numeric_limits<std::uint64_t>::max())};
+    const auto uuids = std::to_array<Quasar::UUID>({Quasar::UUID::Generate(), Quasar::UUID(), Quasar::UUID(1),
+                                                    Quasar::UUID(std::numeric_limits<std::uint64_t>::max())});
 
     for (const Quasar::UUID uuid : uuids)
     {
@@ -138,7 +139,7 @@ TEST_CASE("Uppercase hexadecimal digits are read too")
 
 TEST_CASE("Invalid text gives no UUID")
 {
-    const std::string_view invalidTexts[] = {
+    const auto invalidTexts = std::to_array<std::string_view>({
         "",                  // empty
         "123",               // too short
         "00000000000000001", // too long
@@ -148,7 +149,7 @@ TEST_CASE("Invalid text gives no UUID")
         "00000000000000a ",  // space after
         "-000000000000001",  // sign
         "+000000000000001",  // sign
-    };
+    });
 
     for (const std::string_view text : invalidTexts)
     {

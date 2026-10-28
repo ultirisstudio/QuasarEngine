@@ -12,6 +12,8 @@ namespace Quasar
 {
     namespace
     {
+        // The only application, reached from anywhere with Application::Get()
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
         Application* s_Instance = nullptr;
     }
 

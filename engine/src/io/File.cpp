@@ -56,6 +56,8 @@ namespace Quasar
             }
             else
             {
+                // Streams only read characters, and any object can be read as characters
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 stream.read(reinterpret_cast<char*>(content.data()), byteCount);
             }
 
@@ -120,6 +122,8 @@ namespace Quasar
 
     bool WriteBinaryFile(const std::filesystem::path& path, std::span<const std::byte> data)
     {
+        // Streams only write characters, and any object can be read as characters
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         return WriteWholeFile(path, reinterpret_cast<const char*>(data.data()), data.size());
     }
 

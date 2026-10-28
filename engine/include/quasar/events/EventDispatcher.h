@@ -63,6 +63,8 @@ namespace Quasar
         }
 
     private:
+        // The dispatcher only lives while one event is dispatched, so it can keep a reference to it
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
         Event& m_Event;
     };
 }

@@ -1,0 +1,82 @@
+---
+# Static analysis with clang-tidy 18: finds bugs and risky code without running the program. See CONTRIBUTING.md.
+#
+# Every check of these groups is enabled, except:
+# - bugprone-easily-swappable-parameters: too many reports on simple functions, such as Resize(width, height)
+# - clang-analyzer-optin.core.EnumCastOutOfRange: flags such as EventCategory combine values with the | operator,
+#   which gives values that are not in the enum but are valid for its underlying type
+# - cppcoreguidelines-avoid-do-while: macros with several statements need do { } while (false)
+# - cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers: key codes, sizes and test values are clearer
+#   as numbers
+# - cppcoreguidelines-macro-usage: the log and assert macros need __FILE__, __LINE__ and to disappear in Release
+# - misc-include-cleaner: a source file relies on the includes of its own header, and spdlog and glm are included
+#   through their main header
+# - modernize-use-nodiscard: [[nodiscard]] is only added where ignoring the result is a bug, such as Create()
+# - modernize-use-trailing-return-type, readability-identifier-length, readability-uppercase-literal-suffix: style
+#   choices that the project does not follow
+# - readability-redundant-member-init: GCC warns about a missing field in a designated initializer when the member
+#   has no initializer, even an empty one
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -clang-analyzer-optin.core.EnumCastOutOfRange,
+  -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-macro-usage,
+  -misc-include-cleaner,
+  -modernize-use-nodiscard,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-redundant-member-init,
+  -readability-uppercase-literal-suffix
+
+WarningsAsErrors: "*"
+
+# Only the headers of the project are checked, not the ones of the third-party libraries
+HeaderFilterRegex: "/(engine/include|engine/src|sandbox/src|editor/src|tests/src)/"
+
+CheckOptions:
+  # Structs whose members are all public, such as WindowSpecification, are allowed
+  misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
+
+  # Names, as described in CONTRIBUTING.md
+  readability-identifier-naming.NamespaceCase: CamelCase
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.ConceptCase: CamelCase
+  readability-identifier-naming.FunctionCase: CamelCase
+  readability-identifier-naming.MethodCase: CamelCase
+  # begin() and end() let range-based for loops go through a class
+  readability-identifier-naming.MethodIgnoredRegexp: "^(begin|end)$"
+  # main() and format_as() must keep their names: the language and fmt look for them
+  readability-identifier-naming.FunctionIgnoredRegexp: "^(main|format_as)$"
+  readability-identifier-naming.PublicMemberCase: CamelCase
+  readability-identifier-naming.PrivateMemberCase: CamelCase
+  readability-identifier-naming.PrivateMemberPrefix: m_
+  readability-identifier-naming.ProtectedMemberCase: CamelCase
+  readability-identifier-naming.ProtectedMemberPrefix: m_
+  readability-identifier-naming.ClassMemberCase: CamelCase
+  readability-identifier-naming.ClassMemberPrefix: s_
+  readability-identifier-naming.ClassConstantCase: CamelCase
+  readability-identifier-naming.GlobalVariableCase: CamelCase
+  readability-identifier-naming.GlobalVariablePrefix: s_
+  readability-identifier-naming.GlobalConstantCase: CamelCase
+  readability-identifier-naming.LocalVariableCase: camelBack
+  readability-identifier-naming.LocalConstantCase: camelBack
+  readability-identifier-naming.ParameterCase: camelBack
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE

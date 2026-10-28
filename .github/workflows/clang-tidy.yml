@@ -1,0 +1,59 @@
+name: Static analysis
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its run in progress. Runs on master always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # clang-tidy, plus what CMake needs to configure the project: build tools and the development packages of
+      # GLFW (X11 and Wayland), OpenGL and nativefiledialog-extended (GTK3)
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang-tidy-18 ninja-build pkg-config \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols \
+            libgl1-mesa-dev \
+            libgtk-3-dev
+
+      - name: Show tool versions
+        run: |
+          cmake --version
+          clang-tidy-18 --version
+
+      # Configuring is enough: it writes compile_commands.json, which tells clang-tidy how each file is compiled
+      - name: Configure
+        run: cmake --preset linux-clang-debug
+
+      # Each problem is also shown on its line in the pull request
+      - name: Run clang-tidy
+        run: |
+          run-clang-tidy-18 -clang-tidy-binary clang-tidy-18 -p build/linux-clang-debug -quiet -j "$(nproc)" \
+            '/(engine|sandbox|editor|tests)/src/' | tee clang-tidy.log
+          status=${PIPESTATUS[0]}
+          grep -E '^/[^ ]+:[0-9]+:[0-9]+: (warning|error): ' clang-tidy.log | sort -u \
+            | sed -E -e "s#^$GITHUB_WORKSPACE/##" \
+                -e "s#^([^:]+):([0-9]+):([0-9]+): [a-z]+: (.*)#::error file=\1,line=\2,col=\3::\4#" \
+                -e "s#,-warnings-as-errors\]#]#" \
+            || true
+          exit "$status"
