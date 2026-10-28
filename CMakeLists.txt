@@ -39,6 +39,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
 
 include(cmake/CompilerOptions.cmake)
+include(cmake/Sanitizers.cmake)
 
 option(QUASAR_BUILD_TESTS "Build the unit tests" ON)
 
@@ -58,6 +59,9 @@ message(STATUS "${PROJECT_NAME} ${PROJECT_VERSION}")
 message(STATUS "  Generator ........... ${CMAKE_GENERATOR}")
 message(STATUS "  Compiler ............ ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "  Warnings as errors .. ${QUASAR_WARNINGS_AS_ERRORS}")
+if(QUASAR_SANITIZERS)
+    message(STATUS "  Sanitizers .......... ${QUASAR_SANITIZERS}")
+endif()
 message(STATUS "  Unit tests .......... ${QUASAR_BUILD_TESTS}")
 if(NOT QUASAR_MULTI_CONFIG)
     message(STATUS "  Build type .......... ${CMAKE_BUILD_TYPE}")

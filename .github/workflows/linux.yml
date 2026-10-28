@@ -34,6 +34,22 @@ jobs:
           - compiler: Clang
             config: Release
             preset: linux-clang-release
+          - compiler: GCC
+            config: ASan + UBSan
+            preset: linux-gcc-asan
+            sanitizers: true
+          - compiler: GCC
+            config: TSan + UBSan
+            preset: linux-gcc-tsan
+            sanitizers: true
+          - compiler: Clang
+            config: ASan + UBSan
+            preset: linux-clang-asan
+            sanitizers: true
+          - compiler: Clang
+            config: TSan + UBSan
+            preset: linux-clang-tsan
+            sanitizers: true
 
     steps:
       - name: Checkout
@@ -56,13 +72,13 @@ jobs:
           path: build/${{ matrix.preset }}
           key: ${{ steps.cache-key.outputs.key }}
 
-      # Build tools, plus the development packages needed by GLFW (X11 and Wayland),
-      # OpenGL and nativefiledialog-extended (GTK3)
+      # Build tools, the runtime libraries of the Clang sanitizers, plus the development packages needed by GLFW
+      # (X11 and Wayland), OpenGL and nativefiledialog-extended (GTK3)
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ninja-build pkg-config \
+            ninja-build pkg-config libclang-rt-18-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
             libwayland-dev libxkbcommon-dev wayland-protocols \
             libgl1-mesa-dev \
@@ -74,6 +90,11 @@ jobs:
           ninja --version
           gcc --version
           clang --version
+
+      # The sanitizers of GCC 13 and Clang 18 do not support the address randomization of recent Linux kernels
+      - name: Reduce the address randomization for the sanitizers
+        if: matrix.sanitizers
+        run: sudo sysctl vm.mmap_rnd_bits=28
 
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}

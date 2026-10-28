@@ -25,6 +25,31 @@ Every pull request must pass these checks. Run them locally first:
 Warnings are treated as errors. The CI builds on Windows with MSVC and on Linux with GCC and Clang, in Debug and
 Release, so code that builds on your machine can still fail on another compiler.
 
+## Sanitizers
+
+The sanitizers add checks to a program while it runs. The program stops with a report on the first memory error,
+undefined behavior or data race, and lists the memory leaks when it exits. The CI runs the unit tests with them.
+
+| Preset | Checks |
+|---|---|
+| `windows-asan` | Memory errors |
+| `linux-gcc-asan`, `linux-clang-asan` | Memory errors, memory leaks and undefined behavior |
+| `linux-gcc-tsan`, `linux-clang-tsan` | Data races and undefined behavior |
+
+To check the sandbox or the editor, build one of these presets and run the program as usual. For example, on Linux:
+
+```sh
+cmake --preset linux-clang-asan
+cmake --build --preset linux-clang-asan
+ctest --preset linux-clang-asan
+build/linux-clang-asan/bin/Debug/QuasarSandbox
+```
+
+On Windows, use the `windows-asan` preset the same way, or select it in Visual Studio. The programs are in
+`build/windows-asan/bin/Debug`. When a check fails under the Visual Studio debugger, it stops on the faulty line.
+
+On Linux, if a program stops at startup with an error about memory mappings, run `sudo sysctl vm.mmap_rnd_bits=28`.
+
 ## Code style
 
 The formatting is defined in `.clang-format`. Use clang-format 18, like the CI (`pip install clang-format==18.1.8`),
