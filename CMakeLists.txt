@@ -44,6 +44,12 @@ include(cmake/Sanitizers.cmake)
 option(QUASAR_BUILD_TESTS "Build the unit tests" ON)
 
 add_subdirectory(external)
+
+# Visual Studio runs clang-tidy on the project code, not on the third-party libraries, with Analyze > Run Code Analysis
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+    set(CMAKE_VS_GLOBALS "EnableClangTidyCodeAnalysis=true" "EnableMicrosoftCodeAnalysis=false")
+endif()
+
 add_subdirectory(engine)
 add_subdirectory(sandbox)
 add_subdirectory(editor)

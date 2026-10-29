@@ -3,6 +3,8 @@
 
 #include <doctest/doctest.h>
 
+#include <array>
+
 using Quasar::EventCategory;
 using Quasar::EventType;
 using Quasar::MouseButton;
@@ -26,7 +28,7 @@ TEST_CASE("All mouse events share the mouse and input categories")
     const MouseButtonPressedEvent pressed(MouseButton::Left);
     const MouseButtonReleasedEvent released(MouseButton::Left);
 
-    const Quasar::Event* events[] = {&moved, &scrolled, &pressed, &released};
+    const auto events = std::to_array<const Quasar::Event*>({&moved, &scrolled, &pressed, &released});
 
     for (const Quasar::Event* event : events)
     {

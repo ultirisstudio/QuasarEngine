@@ -2,6 +2,7 @@
 
 #include <doctest/doctest.h>
 
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <ostream> // CAPTURE prints a std::string_view with operator<<, which MSVC only declares without this header
@@ -10,10 +11,13 @@
 
 TEST_CASE("The same file gives the same normalized path with both separators")
 {
-    const std::string_view spellings[] = {
-        "Assets/Models/cube.obj",      "Assets\\Models\\cube.obj", "Assets\\Textures\\..\\Models\\cube.obj",
-        "./Assets//Models/./cube.obj", "Assets/Models\\cube.obj",
-    };
+    const auto spellings = std::to_array<std::string_view>({
+        "Assets/Models/cube.obj",
+        R"(Assets\Models\cube.obj)",
+        R"(Assets\Textures\..\Models\cube.obj)",
+        "./Assets//Models/./cube.obj",
+        R"(Assets/Models\cube.obj)",
+    });
 
     for (const std::string_view spelling : spellings)
     {
@@ -49,7 +53,7 @@ TEST_CASE("A path is made relative to a root folder")
 TEST_CASE("A relative path gives the same result when both separators are mixed")
 {
     const std::filesystem::path root = std::filesystem::temp_directory_path() / "QuasarProject";
-    const std::string mixed = root.generic_string() + "\\Assets\\Textures\\..\\cube.obj";
+    const std::string mixed = root.generic_string() + R"(\Assets\Textures\..\cube.obj)";
 
     const std::optional<std::string> relative = Quasar::MakeRelativePath(mixed, root);
 

@@ -1,0 +1,10 @@
+---
+# The tests use the configuration of the repository, with these changes:
+# - bugprone-unchecked-optional-access: REQUIRE() stops the test when the optional is empty, but clang-tidy cannot
+#   see it
+# - readability-function-cognitive-complexity: each CHECK() counts as several branches, so a short test goes over
+#   the limit
+InheritParentConfig: true
+Checks: >
+  -bugprone-unchecked-optional-access,
+  -readability-function-cognitive-complexity

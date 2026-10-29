@@ -20,6 +20,7 @@ Every pull request must pass these checks. Run them locally first:
 | Build | `cmake --build --preset <preset>` |
 | Unit tests | `ctest --preset <preset>` |
 | Formatting | `clang-format --dry-run --Werror <file>` |
+| Static analysis | `run-clang-tidy -p build/<preset> '/(engine\|sandbox\|editor\|tests)/src/'` |
 | Documentation | `doxygen docs/Doxyfile` |
 
 Warnings are treated as errors. The CI builds on Windows with MSVC and on Linux with GCC and Clang, in Debug and
@@ -61,6 +62,23 @@ and format the files you change with `clang-format -i <file>` or with format on 
   `#include <quasar/...>`.
 - New engine files must be added to `target_sources` in `engine/CMakeLists.txt`.
 - Errors are reported with `std::optional` or `bool`, and a `QUASAR_ENGINE_ERROR` message. Do not throw exceptions.
+
+## Static analysis
+
+clang-tidy 18 reads the code without running it and reports bugs and risky code, such as a use after `std::move`, an
+empty `std::optional` that is read, or a name that does not follow the code style. The checks are listed in
+`.clang-tidy`, and `tests/.clang-tidy` changes a few of them for the tests. Every report is an error.
+
+On Linux, configure a preset, then run `run-clang-tidy` from the repository root (see the table above). In Visual
+Studio, use Analyze > Run Code Analysis.
+
+When a report is wrong for one line, explain why in a comment, then silence it for that line only:
+
+```cpp
+// The only application, reached from anywhere with Application::Get()
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+Application* s_Instance = nullptr;
+```
 
 ## Tests
 

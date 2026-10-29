@@ -3,6 +3,7 @@
 
 #include <doctest/doctest.h>
 
+#include <array>
 #include <cstdint>
 
 using Quasar::EventCategory;
@@ -27,7 +28,7 @@ TEST_CASE("All window events share the window category")
     const WindowFocusEvent focus(true);
     const WindowMinimizeEvent minimize(true);
 
-    const Quasar::Event* events[] = {&close, &resize, &focus, &minimize};
+    const auto events = std::to_array<const Quasar::Event*>({&close, &resize, &focus, &minimize});
 
     for (const Quasar::Event* event : events)
     {

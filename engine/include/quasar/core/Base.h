@@ -71,7 +71,7 @@ namespace Quasar
 #define QUASAR_DEBUGBREAK() __debugbreak()
 #define QUASAR_FORCE_INLINE __forceinline
 #else
-#define QUASAR_DEBUGBREAK() std::raise(SIGTRAP)
+#define QUASAR_DEBUGBREAK() static_cast<void>(std::raise(SIGTRAP))
 #define QUASAR_FORCE_INLINE [[gnu::always_inline]] inline
 #endif
 

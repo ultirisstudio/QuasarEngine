@@ -11,7 +11,7 @@ namespace Quasar
         {
             std::string text = path.generic_string();
             std::replace(text.begin(), text.end(), '\\', '/');
-            return std::filesystem::path(text);
+            return {text};
         }
     }
 

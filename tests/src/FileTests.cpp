@@ -33,6 +33,8 @@ namespace
 
         TemporaryFile(const TemporaryFile&) = delete;
         TemporaryFile& operator=(const TemporaryFile&) = delete;
+        TemporaryFile(TemporaryFile&&) = delete;
+        TemporaryFile& operator=(TemporaryFile&&) = delete;
 
         const std::filesystem::path& GetPath() const { return m_Path; }
 
@@ -58,6 +60,8 @@ namespace
 
         TemporaryFolder(const TemporaryFolder&) = delete;
         TemporaryFolder& operator=(const TemporaryFolder&) = delete;
+        TemporaryFolder(TemporaryFolder&&) = delete;
+        TemporaryFolder& operator=(TemporaryFolder&&) = delete;
 
         const std::filesystem::path& GetPath() const { return m_Path; }
 

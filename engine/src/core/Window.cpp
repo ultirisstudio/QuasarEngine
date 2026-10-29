@@ -12,6 +12,8 @@ namespace Quasar
 {
     namespace
     {
+        // GLFW is started with the first window and stopped with the last one
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
         std::uint32_t s_WindowCount = 0;
 
         void OnGlfwError(int code, const char* description)
@@ -36,7 +38,7 @@ namespace Quasar
 
         Window& GetWindow(GLFWwindow* handle)
         {
-            Window* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
+            auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
             QUASAR_ENGINE_ASSERT(window != nullptr, "GLFW window has no user pointer");
             return *window;
         }
@@ -155,6 +157,8 @@ namespace Quasar
         return m_Handle;
     }
 
+    // Not static on purpose: GLFW must be started, which an existing window guarantees
+    // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     std::string Window::GetKeyName(Key key) const
     {
         const char* name = glfwGetKeyName(static_cast<int>(key), 0);
@@ -225,6 +229,8 @@ namespace Quasar
                                        window.SendEvent(event);
                                        break;
                                    }
+                                   default:
+                                       break;
                                }
                            });
 
@@ -270,6 +276,8 @@ namespace Quasar
                                                window.SendEvent(event);
                                                break;
                                            }
+                                           default:
+                                               break;
                                        }
                                    });
     }
