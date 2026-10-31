@@ -34,6 +34,8 @@ namespace
 
         LogCapture(const LogCapture&) = delete;
         LogCapture& operator=(const LogCapture&) = delete;
+        LogCapture(LogCapture&&) = delete;
+        LogCapture& operator=(LogCapture&&) = delete;
 
         std::string GetText() const { return m_Stream.str(); }
 
