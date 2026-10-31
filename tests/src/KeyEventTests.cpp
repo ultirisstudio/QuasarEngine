@@ -3,6 +3,8 @@
 
 #include <doctest/doctest.h>
 
+#include <array>
+
 using Quasar::EventCategory;
 using Quasar::EventType;
 using Quasar::Key;
@@ -23,7 +25,7 @@ TEST_CASE("All keyboard events share the keyboard and input categories")
     const KeyReleasedEvent released(Key::W);
     const KeyTypedEvent typed(U'w');
 
-    const Quasar::Event* events[] = {&pressed, &released, &typed};
+    const auto events = std::to_array<const Quasar::Event*>({&pressed, &released, &typed});
 
     for (const Quasar::Event* event : events)
     {

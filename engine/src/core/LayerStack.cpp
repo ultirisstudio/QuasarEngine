@@ -80,4 +80,16 @@ namespace Quasar
         m_Layers.erase(found);
         return removed;
     }
+
+    void LayerStack::OnEvent(Event& event)
+    {
+        for (Scope<Layer>& layer : std::views::reverse(m_Layers))
+        {
+            if (event.IsHandled())
+            {
+                break;
+            }
+            layer->OnEvent(event);
+        }
+    }
 }

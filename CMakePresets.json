@@ -12,7 +12,13 @@
       "hidden": true,
       "inherits": "base",
       "architecture": { "value": "x64", "strategy": "set" },
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "enableClangTidyCodeAnalysis": true,
+          "enableMicrosoftCodeAnalysis": false
+        }
+      }
     },
     {
       "name": "windows-debug",
@@ -66,6 +72,36 @@
       "displayName": "Linux Release (Clang)",
       "inherits": "linux-clang-base",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "windows-asan",
+      "displayName": "Windows Debug with ASan (MSVC)",
+      "inherits": "windows-base",
+      "cacheVariables": { "QUASAR_SANITIZERS": "address" }
+    },
+    {
+      "name": "linux-gcc-asan",
+      "displayName": "Linux Debug with ASan and UBSan (GCC)",
+      "inherits": "linux-gcc-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "QUASAR_SANITIZERS": "address;undefined" }
+    },
+    {
+      "name": "linux-gcc-tsan",
+      "displayName": "Linux Debug with TSan and UBSan (GCC)",
+      "inherits": "linux-gcc-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "QUASAR_SANITIZERS": "thread;undefined" }
+    },
+    {
+      "name": "linux-clang-asan",
+      "displayName": "Linux Debug with ASan and UBSan (Clang)",
+      "inherits": "linux-clang-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "QUASAR_SANITIZERS": "address;undefined" }
+    },
+    {
+      "name": "linux-clang-tsan",
+      "displayName": "Linux Debug with TSan and UBSan (Clang)",
+      "inherits": "linux-clang-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "QUASAR_SANITIZERS": "thread;undefined" }
     }
   ],
   "buildPresets": [
@@ -84,7 +120,12 @@
     { "name": "linux-gcc-debug",     "inherits": "linux-build-base",   "configurePreset": "linux-gcc-debug" },
     { "name": "linux-gcc-release",   "inherits": "linux-build-base",   "configurePreset": "linux-gcc-release" },
     { "name": "linux-clang-debug",   "inherits": "linux-build-base",   "configurePreset": "linux-clang-debug" },
-    { "name": "linux-clang-release", "inherits": "linux-build-base",   "configurePreset": "linux-clang-release" }
+    { "name": "linux-clang-release", "inherits": "linux-build-base",   "configurePreset": "linux-clang-release" },
+    { "name": "windows-asan",        "inherits": "windows-build-base", "configurePreset": "windows-asan",    "configuration": "Debug" },
+    { "name": "linux-gcc-asan",      "inherits": "linux-build-base",   "configurePreset": "linux-gcc-asan" },
+    { "name": "linux-gcc-tsan",      "inherits": "linux-build-base",   "configurePreset": "linux-gcc-tsan" },
+    { "name": "linux-clang-asan",    "inherits": "linux-build-base",   "configurePreset": "linux-clang-asan" },
+    { "name": "linux-clang-tsan",    "inherits": "linux-build-base",   "configurePreset": "linux-clang-tsan" }
   ],
   "testPresets": [
     {
@@ -110,6 +151,11 @@
     { "name": "linux-gcc-debug",     "inherits": "linux-test-base",   "configurePreset": "linux-gcc-debug" },
     { "name": "linux-gcc-release",   "inherits": "linux-test-base",   "configurePreset": "linux-gcc-release" },
     { "name": "linux-clang-debug",   "inherits": "linux-test-base",   "configurePreset": "linux-clang-debug" },
-    { "name": "linux-clang-release", "inherits": "linux-test-base",   "configurePreset": "linux-clang-release" }
+    { "name": "linux-clang-release", "inherits": "linux-test-base",   "configurePreset": "linux-clang-release" },
+    { "name": "windows-asan",        "inherits": "windows-test-base", "configurePreset": "windows-asan",    "configuration": "Debug" },
+    { "name": "linux-gcc-asan",      "inherits": "linux-test-base",   "configurePreset": "linux-gcc-asan" },
+    { "name": "linux-gcc-tsan",      "inherits": "linux-test-base",   "configurePreset": "linux-gcc-tsan" },
+    { "name": "linux-clang-asan",    "inherits": "linux-test-base",   "configurePreset": "linux-clang-asan" },
+    { "name": "linux-clang-tsan",    "inherits": "linux-test-base",   "configurePreset": "linux-clang-tsan" }
   ]
 }

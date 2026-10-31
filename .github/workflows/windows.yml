@@ -26,6 +26,8 @@ jobs:
             preset: windows-debug
           - config: Release
             preset: windows-release
+          - config: ASan
+            preset: windows-asan
 
     steps:
       - name: Checkout

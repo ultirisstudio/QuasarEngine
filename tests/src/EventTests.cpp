@@ -74,4 +74,5 @@ TEST_CASE("Every event type has a name")
 {
     CHECK(Quasar::GetEventTypeName(EventType::MouseScrolled) == std::string("MouseScrolled"));
     CHECK(Quasar::GetEventTypeName(EventType::WindowFocus) == std::string("WindowFocus"));
+    CHECK(Quasar::GetEventTypeName(EventType::WindowMinimize) == std::string("WindowMinimize"));
 }

@@ -19,6 +19,7 @@ namespace Quasar
         WindowClose,         ///< The user asked to close the window.
         WindowResize,        ///< The size of the window changed.
         WindowFocus,         ///< The window gained or lost the focus.
+        WindowMinimize,      ///< The window was minimized or restored.
         KeyPressed,          ///< A key was pressed, or is repeating while held down.
         KeyReleased,         ///< A key was released.
         KeyTyped,            ///< A character was typed, for text input.
@@ -29,7 +30,7 @@ namespace Quasar
     };
 
     /// @brief Categories of an event. An event can belong to several categories, combined with the `|` operator.
-    enum class EventCategory : std::uint32_t
+    enum class EventCategory : std::uint8_t
     {
         None = 0,          ///< No category.
         Window = Bit(0),   ///< Events about the window.
@@ -63,6 +64,8 @@ namespace Quasar
                 return "WindowResize";
             case EventType::WindowFocus:
                 return "WindowFocus";
+            case EventType::WindowMinimize:
+                return "WindowMinimize";
             case EventType::KeyPressed:
                 return "KeyPressed";
             case EventType::KeyReleased:

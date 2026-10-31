@@ -39,7 +39,7 @@ TEST_CASE("A Scope cannot be copied")
 
 TEST_CASE("CreateRef builds the object from the given arguments")
 {
-    Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
+    const Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
     REQUIRE(foo.use_count() == 1);
     CHECK(foo->Value == 7);
     CHECK(foo->Name == "bar");
@@ -47,8 +47,10 @@ TEST_CASE("CreateRef builds the object from the given arguments")
 
 TEST_CASE("A copied Ref shares the same object")
 {
-    Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
-    Quasar::Ref<Foo> copy = foo;
+    const Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
+    // The copy is what the test checks
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    const Quasar::Ref<Foo> copy = foo;
 
     CHECK(foo.use_count() == 2);
     CHECK(copy.get() == foo.get());
@@ -58,7 +60,7 @@ TEST_CASE("The object lives until the last Ref is released")
 {
     Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
     Quasar::Ref<Foo> copy = foo;
-    std::weak_ptr<Foo> observer = foo;
+    const std::weak_ptr<Foo> observer = foo;
 
     foo.reset();
     CHECK_FALSE(observer.expired());
