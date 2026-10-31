@@ -42,6 +42,21 @@ TEST_CASE("A default UUID is invalid")
     CHECK(uuid.GetValue() == 0);
 }
 
+TEST_CASE("Only the zero value is invalid")
+{
+    CHECK_FALSE(Quasar::UUID(0).IsValid());
+    CHECK(Quasar::UUID(1).IsValid());
+    CHECK(Quasar::UUID(std::numeric_limits<std::uint64_t>::max()).IsValid());
+}
+
+TEST_CASE("Reading sixteen zeros gives the invalid UUID")
+{
+    const std::optional<Quasar::UUID> read = Quasar::UUID::FromString("0000000000000000");
+
+    REQUIRE(read.has_value());
+    CHECK_FALSE(read->IsValid());
+}
+
 TEST_CASE("A generated UUID is valid")
 {
     const Quasar::UUID uuid = Quasar::UUID::Generate();
@@ -49,16 +64,23 @@ TEST_CASE("A generated UUID is valid")
     CHECK(uuid.IsValid());
 }
 
-TEST_CASE("Generated UUIDs are unique")
+TEST_CASE("Generated UUIDs are unique and all valid")
 {
     constexpr std::size_t count = 100'000;
 
     std::unordered_set<Quasar::UUID> uuids;
+    std::size_t invalidCount = 0;
     for (std::size_t i = 0; i < count; ++i)
     {
-        uuids.insert(Quasar::UUID::Generate());
+        const Quasar::UUID uuid = Quasar::UUID::Generate();
+        if (!uuid.IsValid())
+        {
+            ++invalidCount;
+        }
+        uuids.insert(uuid);
     }
 
+    CHECK(invalidCount == 0);
     CHECK(uuids.size() == count);
 }
 
@@ -91,6 +113,15 @@ TEST_CASE("UUIDs are compared by value")
     CHECK(Quasar::UUID(42) == Quasar::UUID(42));
     CHECK(Quasar::UUID(42) != Quasar::UUID(43));
     CHECK(Quasar::UUID(42) < Quasar::UUID(43));
+}
+
+TEST_CASE("Equal UUIDs have the same hash")
+{
+    const Quasar::UUID uuid = Quasar::UUID::Generate();
+    const std::hash<Quasar::UUID> hash;
+
+    CHECK(hash(uuid) == hash(Quasar::UUID(uuid.GetValue())));
+    CHECK(hash(Quasar::UUID()) == hash(Quasar::UUID(0)));
 }
 
 TEST_CASE("UUIDs work as keys of an unordered map")
