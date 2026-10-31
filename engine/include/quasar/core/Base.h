@@ -75,6 +75,15 @@ namespace Quasar
 #define QUASAR_FORCE_INLINE [[gnu::always_inline]] inline
 #endif
 
+/// @brief Joins two tokens with `##`. Use QUASAR_CONCAT() instead, which expands the macros first.
+#define QUASAR_CONCAT_IMPL(a, b) a##b
+
+/// @brief Joins two tokens into one, after expanding the macros they contain.
+///
+/// `QUASAR_CONCAT(timer, __LINE__)` gives `timer42` on line 42. Writing `timer##__LINE__` directly would give
+/// `timer__LINE__`, because `##` joins the tokens before `__LINE__` is replaced by its value.
+#define QUASAR_CONCAT(a, b) QUASAR_CONCAT_IMPL(a, b)
+
 /// \def QUASAR_ENGINE_ASSERT(condition, ...)
 /// @brief Checks a condition that must always be true in the engine code.
 ///
