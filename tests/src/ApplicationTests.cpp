@@ -122,13 +122,8 @@ TEST_CASE("Layers are updated and rendered from the bottom of the stack to the t
 
     application->Run();
 
-    const std::vector<std::string> expected{
-        "First update",
-        "Second update",
-        "Overlay update",
-        "First render",
-        "Second render",
-        "Overlay render"};
+    const std::vector<std::string> expected{"First update", "Second update", "Overlay update",
+                                            "First render", "Second render", "Overlay render"};
     CHECK(calls == expected);
 }
 
@@ -256,16 +251,8 @@ TEST_CASE("Layers added during a frame start at the next frame")
     application->Run();
 
     const std::vector<std::string> expected{
-        "A update",
-        "A render",
-        "B attach",
-        "Overlay attach",
-        "A update",
-        "B update",
-        "Overlay update",
-        "A render",
-        "B render",
-        "Overlay render",
+        "A update", "A render",       "B attach", "Overlay attach", "A update",
+        "B update", "Overlay update", "A render", "B render",       "Overlay render",
     };
     CHECK(calls == expected);
 }
@@ -284,13 +271,8 @@ TEST_CASE("A layer can remove itself during an update")
     application->Run();
 
     const std::vector<std::string> expected{
-        "Removed update",
-        "Overlay update",
-        "Removed render",
-        "Overlay render",
-        "Removed detach",
-        "Overlay update",
-        "Overlay render",
+        "Removed update", "Overlay update", "Removed render", "Overlay render",
+        "Removed detach", "Overlay update", "Overlay render",
     };
     CHECK(calls == expected);
 }
@@ -342,16 +324,8 @@ TEST_CASE("Layers added while the changes are applied are added in the same fram
     application->Run();
 
     const std::vector<std::string> expected{
-        "A update",
-        "A render",
-        "Parent attach",
-        "Child attach", 
-        "A update",
-        "Parent update",
-        "Child update",
-        "A render",
-        "Parent render",
-        "Child render",
+        "A update",      "A render",     "Parent attach", "Child attach",  "A update",
+        "Parent update", "Child update", "A render",      "Parent render", "Child render",
     };
     CHECK(calls == expected);
 }
