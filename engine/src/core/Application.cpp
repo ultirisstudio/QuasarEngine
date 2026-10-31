@@ -71,6 +71,7 @@ namespace Quasar
     void Application::Run()
     {
         m_Running = true;
+        m_InMainLoop = true;
         m_FrameTimer.Reset();
         m_LastFrameTime = 0.0;
 
@@ -95,8 +96,10 @@ namespace Quasar
             }
 
             m_Window->Update();
+            ApplyLayerChanges();
         }
 
+        m_InMainLoop = false;
         m_Running = false;
     }
 
@@ -126,21 +129,75 @@ namespace Quasar
 
     Layer& Application::PushLayer(Scope<Layer> layer)
     {
-        return m_LayerStack.PushLayer(std::move(layer));
+        if (!m_InMainLoop)
+        {
+            return m_LayerStack.PushLayer(std::move(layer));
+        }
+
+        QUASAR_ENGINE_ASSERT(layer != nullptr, "Cannot push an empty layer");
+        Layer& added = *layer;
+        m_LayerChanges.push_back({.Kind = LayerChange::Type::PushLayer, .Added = std::move(layer)});
+        return added;
     }
 
     Layer& Application::PushOverlay(Scope<Layer> overlay)
     {
-        return m_LayerStack.PushOverlay(std::move(overlay));
+        if (!m_InMainLoop)
+        {
+            return m_LayerStack.PushOverlay(std::move(overlay));
+        }
+
+        QUASAR_ENGINE_ASSERT(overlay != nullptr, "Cannot push an empty overlay");
+        Layer& added = *overlay;
+        m_LayerChanges.push_back({.Kind = LayerChange::Type::PushOverlay, .Added = std::move(overlay)});
+        return added;
     }
 
-    Scope<Layer> Application::PopLayer(Layer& layer)
+    void Application::PopLayer(Layer& layer)
     {
-        return m_LayerStack.PopLayer(layer);
+        if (!m_InMainLoop)
+        {
+            m_LayerStack.PopLayer(layer);
+            return;
+        }
+
+        m_LayerChanges.push_back({.Kind = LayerChange::Type::PopLayer, .Removed = &layer});
     }
 
-    Scope<Layer> Application::PopOverlay(Layer& overlay)
+    void Application::PopOverlay(Layer& overlay)
     {
-        return m_LayerStack.PopOverlay(overlay);
+        if (!m_InMainLoop)
+        {
+            m_LayerStack.PopOverlay(overlay);
+            return;
+        }
+
+        m_LayerChanges.push_back({.Kind = LayerChange::Type::PopOverlay, .Removed = &overlay});
+    }
+
+    void Application::ApplyLayerChanges()
+    {
+        while (!m_LayerChanges.empty())
+        {
+            std::vector<LayerChange> changes = std::exchange(m_LayerChanges, {});
+            for (LayerChange& change : changes)
+            {
+                switch (change.Kind)
+                {
+                    case LayerChange::Type::PushLayer:
+                        m_LayerStack.PushLayer(std::move(change.Added));
+                        break;
+                    case LayerChange::Type::PushOverlay:
+                        m_LayerStack.PushOverlay(std::move(change.Added));
+                        break;
+                    case LayerChange::Type::PopLayer:
+                        m_LayerStack.PopLayer(*change.Removed);
+                        break;
+                    case LayerChange::Type::PopOverlay:
+                        m_LayerStack.PopOverlay(*change.Removed);
+                        break;
+                }
+            }
+        }
     }
 }

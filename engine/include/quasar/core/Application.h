@@ -12,6 +12,7 @@
 #include <quasar/core/Window.h>
 #include <quasar/events/Event.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -63,22 +64,44 @@ namespace Quasar
         ///
         /// The events of the window go to the application first, then to the layers from the top of the stack to
         /// the bottom, until a layer handles them. Closing the window stops the loop.
+        ///
+        /// Layers added or removed during a frame, by a layer or by an event, are added or removed at the end of the
+        /// frame, in the order they were asked for. The layers being updated, rendered or receiving an event never
+        /// change while they are being gone through.
         void Run();
 
         /// @brief Asks the main loop to stop at the end of the current frame.
         void Close();
 
         /// @brief Adds a regular layer above the other regular layers. See LayerStack::PushLayer().
+        ///
+        /// During the main loop, the layer is added and attached at the end of the current frame. Otherwise it is
+        /// added right away.
+        /// @param layer The layer to add. It must not be empty.
+        /// @return The layer, which stays at the same address until it is removed.
         Layer& PushLayer(Scope<Layer> layer);
 
         /// @brief Adds an overlay above every layer. See LayerStack::PushOverlay().
+        ///
+        /// During the main loop, the overlay is added and attached at the end of the current frame. Otherwise it is
+        /// added right away.
+        /// @param overlay The overlay to add. It must not be empty.
+        /// @return The overlay, which stays at the same address until it is removed.
         Layer& PushOverlay(Scope<Layer> overlay);
 
-        /// @brief Removes a regular layer. See LayerStack::PopLayer().
-        Scope<Layer> PopLayer(Layer& layer);
+        /// @brief Detaches, removes and destroys a regular layer. See LayerStack::PopLayer().
+        ///
+        /// During the main loop, this happens at the end of the current frame, so a layer can remove itself.
+        /// Otherwise it happens right away.
+        /// @param layer A regular layer of this application.
+        void PopLayer(Layer& layer);
 
-        /// @brief Removes an overlay. See LayerStack::PopOverlay().
-        Scope<Layer> PopOverlay(Layer& overlay);
+        /// @brief Detaches, removes and destroys an overlay. See LayerStack::PopOverlay().
+        ///
+        /// During the main loop, this happens at the end of the current frame, so an overlay can remove itself.
+        /// Otherwise it happens right away.
+        /// @param overlay An overlay of this application.
+        void PopOverlay(Layer& overlay);
 
         /// @brief Returns the main window.
         Window& GetWindow() { return *m_Window; }
@@ -89,15 +112,33 @@ namespace Quasar
     private:
         Application(ApplicationSpecification specification, Scope<Window> window);
 
+        struct LayerChange
+        {
+            enum class Type : std::uint8_t
+            {
+                PushLayer,
+                PushOverlay,
+                PopLayer,
+                PopOverlay
+            };
+
+            Type Kind{};
+            Scope<Layer> Added{};
+            Layer* Removed = nullptr;
+        };
+
         void OnEvent(Event& event);
+        void ApplyLayerChanges();
 
         ApplicationSpecification m_Specification;
 
         Scope<Window> m_Window;
         LayerStack m_LayerStack;
+        std::vector<LayerChange> m_LayerChanges;
         Timer m_FrameTimer;
         double m_LastFrameTime = 0.0;
         bool m_Running = false;
         bool m_Minimized = false;
+        bool m_InMainLoop = false;
     };
 }
