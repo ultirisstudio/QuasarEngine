@@ -57,7 +57,8 @@ namespace Quasar::Platform
             return *home / ".config";
         }
 
-        QUASAR_ENGINE_ERROR("Cannot find the config folder: XDG_CONFIG_HOME and HOME are not set, and the user has no home folder");
+        QUASAR_ENGINE_ERROR(
+            "Cannot find the config folder: XDG_CONFIG_HOME and HOME are not set, and the user has no home folder");
         return std::nullopt;
     }
 }
