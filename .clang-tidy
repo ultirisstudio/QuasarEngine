@@ -47,6 +47,10 @@ WarningsAsErrors: "*"
 HeaderFilterRegex: "/(engine/include|engine/src|sandbox/src|editor/src|tests/src)/"
 
 CheckOptions:
+  # Only the functions that the GNU C library documents as unsafe with threads. getenv() is safe, as long as no other
+  # thread changes the environment at the same time.
+  concurrency-mt-unsafe.FunctionSet: glibc
+
   # Structs whose members are all public, such as WindowSpecification, are allowed
   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
 
