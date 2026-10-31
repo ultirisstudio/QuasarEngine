@@ -54,7 +54,7 @@ namespace Quasar
 /// used in the same scope, one per line. Because `name` is still compiled in Release, a variable used only as the
 /// name does not cause an unused variable warning.
 #ifdef QUASAR_DEBUG
-#define QUASAR_SCOPED_TIMER(name) ::Quasar::ScopedTimer QUASAR_CONCAT(scopedTimer, __LINE__)(name)
+#define QUASAR_SCOPED_TIMER(name) const ::Quasar::ScopedTimer QUASAR_CONCAT(scopedTimer, __LINE__)(name)
 #else
 #define QUASAR_SCOPED_TIMER(name)                                                                                      \
     do                                                                                                                 \
