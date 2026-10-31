@@ -59,11 +59,6 @@ else()
     )
     add_link_options(-fsanitize=${QUASAR_SANITIZE_FLAGS})
 
-    if("thread" IN_LIST QUASAR_SANITIZERS)
-        add_compile_options(-fno-sanitize=vptr)
-        add_link_options(-fno-sanitize=vptr)
-    endif()
-
     if("address" IN_LIST QUASAR_SANITIZERS)
         add_compile_definitions(_GLIBCXX_SANITIZE_VECTOR)
     endif()

@@ -14,6 +14,8 @@ target_sources(QuasarEngine
         src/core/MemoryLogSink.cpp
         src/io/Path.cpp
         src/core/Input.cpp
+        src/io/UserConfigDirectory.cpp
+        src/platform/SystemDirectories.h
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -41,12 +43,22 @@ target_sources(QuasarEngine
             include/quasar/io/Path.h
             include/quasar/core/Input.h
             include/quasar/core/EntryPoint.h
+            include/quasar/io/UserConfigDirectory.h
 )
 
 add_library(QuasarEntryPoint STATIC src/core/EntryPoint.cpp)
 add_library(Quasar::EntryPoint ALIAS QuasarEntryPoint)
 target_link_libraries(QuasarEntryPoint PUBLIC Quasar::Engine PRIVATE Quasar::CompileOptions)
 set_target_properties(QuasarEntryPoint PROPERTIES FOLDER "Engine")
+
+if(WIN32)
+    target_sources(QuasarEngine PRIVATE src/platform/windows/WindowsSystemDirectories.cpp)
+    target_link_libraries(QuasarEngine PRIVATE shell32 ole32 uuid)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(QuasarEngine PRIVATE src/platform/linux/LinuxSystemDirectories.cpp)
+else()
+    message(FATAL_ERROR "QuasarEngine only supports Windows and Linux.")
+endif()
 
 target_include_directories(QuasarEngine PRIVATE src)
 
