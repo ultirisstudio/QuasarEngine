@@ -31,6 +31,8 @@ namespace Quasar
                     return "X11";
                 case GLFW_PLATFORM_WAYLAND:
                     return "Wayland";
+                case GLFW_PLATFORM_NULL:
+                    return "Null";
                 default:
                     return "unknown";
             }
