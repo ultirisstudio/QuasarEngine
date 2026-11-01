@@ -67,18 +67,10 @@ target_include_directories(QuasarEngine PRIVATE src)
 target_link_libraries(QuasarEngine
     PUBLIC
         glm::glm
-        imgui::imgui
-        imguizmo::imguizmo
         spdlog::spdlog
-        EnTT::EnTT
     PRIVATE
         Quasar::CompileOptions
         glfw
-        glad::glad
-        yaml-cpp::yaml-cpp
-        assimp::assimp
-        stb::image
-        nfd::nfd
 )
 
 target_compile_definitions(QuasarEngine PRIVATE
