@@ -20,10 +20,17 @@ namespace Quasar
 
     LayerStack::~LayerStack()
     {
+        Clear();
+    }
+
+    void LayerStack::Clear()
+    {
         for (Scope<Layer>& layer : std::views::reverse(m_Layers))
         {
             layer->OnDetach();
         }
+        m_Layers.clear();
+        m_OverlayStart = 0;
     }
 
     Layer& LayerStack::PushLayer(Scope<Layer> layer)

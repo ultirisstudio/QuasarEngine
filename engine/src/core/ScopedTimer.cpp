@@ -5,7 +5,7 @@
 
 namespace Quasar
 {
-    ScopedTimer::ScopedTimer(std::string name) : m_Name(std::move(name)), m_Timer() {}
+    ScopedTimer::ScopedTimer(std::string name) : m_Name(std::move(name)) {}
 
     ScopedTimer::~ScopedTimer()
     {

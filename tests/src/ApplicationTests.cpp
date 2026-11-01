@@ -14,9 +14,11 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <filesystem>
 #include <functional>
 #include <string>
 #include <utility>
+#include <system_error>
 #include <vector>
 
 namespace
@@ -35,7 +37,14 @@ namespace
             }
         }
 
-        void OnDetach() override { Record("detach"); }
+        void OnDetach() override
+        {
+            Record("detach");
+            if (DetachAction)
+            {
+                DetachAction();
+            }
+        }
 
         void OnUpdate(Quasar::Timestep /*timestep*/) override
         {
@@ -66,6 +75,7 @@ namespace
         int Updates = 0;
         int CloseAfter = 0;
         std::function<void()> AttachAction;
+        std::function<void()> DetachAction;
         std::function<void(int)> UpdateAction;
         std::function<void(Quasar::Event&)> EventAction;
 
@@ -88,6 +98,28 @@ namespace
         application.PushOverlay(std::move(overlay));
         return added;
     }
+
+    class ScopedCurrentPath
+    {
+    public:
+        ScopedCurrentPath() : m_Path(std::filesystem::current_path()) {}
+
+        ~ScopedCurrentPath()
+        {
+            std::error_code error;
+            std::filesystem::current_path(m_Path, error);
+        }
+
+        ScopedCurrentPath(const ScopedCurrentPath&) = delete;
+        ScopedCurrentPath& operator=(const ScopedCurrentPath&) = delete;
+        ScopedCurrentPath(ScopedCurrentPath&&) = delete;
+        ScopedCurrentPath& operator=(ScopedCurrentPath&&) = delete;
+
+        const std::filesystem::path& GetPath() const { return m_Path; }
+
+    private:
+        std::filesystem::path m_Path;
+    };
 
     std::ptrdiff_t Count(const std::vector<std::string>& calls, const std::string& call)
     {
@@ -341,4 +373,86 @@ TEST_CASE("Input reads the state of the main window")
     CHECK(Quasar::Input::GetMousePosition() == glm::vec2(12.0f, 34.0f));
     CHECK_FALSE(Quasar::Input::IsKeyPressed(Quasar::Key::A));
     CHECK_FALSE(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Left));
+}
+
+TEST_CASE("The working directory becomes the current directory")
+{
+    const TestHelpers::ScopedLog log;
+    const ScopedCurrentPath currentPath;
+    const std::filesystem::path directory = std::filesystem::temp_directory_path() / "quasar_working_directory";
+    std::filesystem::create_directories(directory);
+
+    const Quasar::Scope<Quasar::Application> application =
+        TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
+
+    REQUIRE(application != nullptr);
+    CHECK(std::filesystem::equivalent(std::filesystem::current_path(), directory));
+}
+
+TEST_CASE("No application is created when its working directory does not exist")
+{
+    const TestHelpers::ScopedLog log;
+    const ScopedCurrentPath currentPath;
+    const std::filesystem::path directory = std::filesystem::temp_directory_path() / "quasar_missing_directory";
+    std::filesystem::remove_all(directory);
+
+    const Quasar::Scope<Quasar::Application> application =
+        TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
+
+    CHECK(application == nullptr);
+    CHECK(std::filesystem::current_path() == currentPath.GetPath());
+}
+
+TEST_CASE("Overlays added before the main loop are removed right away")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+
+    ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
+    application->PopOverlay(overlay);
+
+    CHECK(calls == std::vector<std::string>{"Overlay attach", "Overlay detach"});
+}
+
+TEST_CASE("An overlay can remove itself during an update")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    AddLayer(*application, "Layer", calls).CloseAfter = 2;
+    ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
+    overlay.UpdateAction = [&application, &overlay](int /*updates*/) { application->PopOverlay(overlay); };
+    calls.clear();
+
+    application->Run();
+
+    const std::vector<std::string> expected{
+        "Layer update",   "Overlay update", "Layer render", "Overlay render",
+        "Overlay detach", "Layer update",   "Layer render",
+    };
+    CHECK(calls == expected);
+}
+
+TEST_CASE("Layers can still use the application when it is destroyed")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    {
+        const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+        REQUIRE(application != nullptr);
+        ScriptLayer& other = AddLayer(*application, "Other", calls);
+        ScriptLayer& layer = AddLayer(*application, "Layer", calls);
+        layer.DetachAction = [&calls, &other]
+        {
+            Quasar::Application& current = Quasar::Application::Get();
+            current.PopLayer(other);
+            AddLayer(current, "Added", calls);
+        };
+        calls.clear();
+    }
+
+    CHECK(calls == std::vector<std::string>{"Layer detach", "Other detach"});
 }

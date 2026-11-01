@@ -20,7 +20,7 @@ namespace Quasar
     public:
         /// @brief Clock used by the timer, monotonic with nanosecond resolution.
         ///
-        /// `std::chrono::steady_clock` is not used on purpose: it is an alias whose target depends on the
+        /// `std::chrono::high_resolution_clock` is not used on purpose: it is an alias whose target depends on the
         /// standard library, and with libstdc++ it is the system clock, which is not monotonic.
         using Clock = std::chrono::steady_clock;
 

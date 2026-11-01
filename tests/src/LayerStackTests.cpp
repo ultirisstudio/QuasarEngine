@@ -219,6 +219,24 @@ TEST_CASE("Destroying the stack detaches every layer from the top to the bottom"
     CHECK(calls == expected);
 }
 
+TEST_CASE("Clearing the stack detaches every layer and leaves it ready to use")
+{
+    std::vector<std::string> calls;
+    Quasar::LayerStack stack;
+    stack.PushOverlay(MakeLayer("Overlay", calls));
+    stack.PushLayer(MakeLayer("Layer", calls));
+    calls.clear();
+
+    stack.Clear();
+
+    CHECK(calls == std::vector<std::string>{"detach Overlay", "detach Layer"});
+    CHECK(stack.GetSize() == 0);
+
+    stack.PushOverlay(MakeLayer("New overlay", calls));
+    stack.PushLayer(MakeLayer("New layer", calls));
+    CHECK(GetNames(stack) == std::vector<std::string>{"New layer", "New overlay"});
+}
+
 TEST_CASE("Popping a layer that is not in the stack does nothing")
 {
     Quasar::Log::Init();

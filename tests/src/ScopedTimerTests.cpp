@@ -18,7 +18,6 @@ static_assert(!std::is_move_constructible_v<Quasar::ScopedTimer>, "A ScopedTimer
 
 namespace
 {
-    // Captures the engine log messages in a string, with only the message text
     class LogCapture
     {
     public:

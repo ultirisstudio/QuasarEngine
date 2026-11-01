@@ -26,6 +26,10 @@ namespace Quasar
 
     Application::~Application()
     {
+        m_DeferLayerChanges = true;
+        m_LayerStack.Clear();
+        m_LayerChanges.clear();
+
         m_Window->SetEventCallback({});
         s_Instance = nullptr;
     }
@@ -71,7 +75,7 @@ namespace Quasar
     void Application::Run()
     {
         m_Running = true;
-        m_InMainLoop = true;
+        m_DeferLayerChanges = true;
         m_FrameTimer.Reset();
         m_LastFrameTime = 0.0;
 
@@ -99,7 +103,7 @@ namespace Quasar
             ApplyLayerChanges();
         }
 
-        m_InMainLoop = false;
+        m_DeferLayerChanges = false;
         m_Running = false;
     }
 
@@ -129,7 +133,7 @@ namespace Quasar
 
     Layer& Application::PushLayer(Scope<Layer> layer)
     {
-        if (!m_InMainLoop)
+        if (!m_DeferLayerChanges)
         {
             return m_LayerStack.PushLayer(std::move(layer));
         }
@@ -142,7 +146,7 @@ namespace Quasar
 
     Layer& Application::PushOverlay(Scope<Layer> overlay)
     {
-        if (!m_InMainLoop)
+        if (!m_DeferLayerChanges)
         {
             return m_LayerStack.PushOverlay(std::move(overlay));
         }
@@ -155,7 +159,7 @@ namespace Quasar
 
     void Application::PopLayer(Layer& layer)
     {
-        if (!m_InMainLoop)
+        if (!m_DeferLayerChanges)
         {
             m_LayerStack.PopLayer(layer);
             return;
@@ -166,7 +170,7 @@ namespace Quasar
 
     void Application::PopOverlay(Layer& overlay)
     {
-        if (!m_InMainLoop)
+        if (!m_DeferLayerChanges)
         {
             m_LayerStack.PopOverlay(overlay);
             return;

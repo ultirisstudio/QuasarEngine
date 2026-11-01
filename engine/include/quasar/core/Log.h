@@ -7,7 +7,8 @@
 ///
 /// The macros take a format string and its arguments, with the fmt syntax:
 /// `QUASAR_ENGINE_INFO("Loaded {} meshes", count)`. Engine code uses the `QUASAR_ENGINE_` macros, and
-/// application code uses the `QUASAR_` macros. Log::Init() must be called before the first message.
+/// application code uses the `QUASAR_` macros. Messages written before Log::Init() or after Log::Shutdown() go to the
+/// error output.
 
 #include <quasar/core/PlatformDetection.h>
 
@@ -31,16 +32,20 @@ namespace Quasar
         /// @brief Creates the loggers. Calling it again does nothing.
         static void Init();
 
-        /// @brief Destroys the loggers. No message can be written after this call, until Init() is called again.
+        /// @brief Destroys the loggers. Until Init() is called again, messages go to the fallback loggers.
         static void Shutdown();
 
-        /// @brief Returns the logger for engine messages. Init() must have been called.
-        /// @return
-        static spdlog::logger& Engine() { return *s_EngineLogger; }
+        /// @brief Returns the logger for engine messages.
+        ///
+        /// Before Init() or after Shutdown(), it returns a fallback logger that only writes to the error output, so
+        /// that writing a message never crashes.
+        static spdlog::logger& Engine() { return s_EngineLogger ? *s_EngineLogger : GetFallbackEngineLogger(); }
 
-        /// @brief Returns the logger for application messages. Init() must have been called.
-        /// @return
-        static spdlog::logger& App() { return *s_AppLogger; }
+        /// @brief Returns the logger for application messages.
+        ///
+        /// Before Init() or after Shutdown(), it returns a fallback logger that only writes to the error output, so
+        /// that writing a message never crashes.
+        static spdlog::logger& App() { return s_AppLogger ? *s_AppLogger : GetFallbackAppLogger(); }
 
         /// @brief Returns the sink that keeps the most recent messages of both loggers, for the editor console.
         ///
@@ -51,6 +56,9 @@ namespace Quasar
         static constexpr std::size_t MemoryCapacity = 1000;
 
     private:
+        static spdlog::logger& GetFallbackEngineLogger();
+        static spdlog::logger& GetFallbackAppLogger();
+
         static std::shared_ptr<spdlog::logger> s_EngineLogger;
         static std::shared_ptr<spdlog::logger> s_AppLogger;
         static std::shared_ptr<MemoryLogSink> s_MemorySink;
