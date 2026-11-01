@@ -18,7 +18,7 @@ namespace Quasar
         constexpr Timestep() = default;
 
         /// @brief Creates a Timestep of the given number of seconds.
-        /// @param seconds
+        /// @param seconds Duration in seconds.
         constexpr explicit Timestep(float seconds) : m_Seconds(seconds) {}
 
         /// @brief Returns the duration in seconds.

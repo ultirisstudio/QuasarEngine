@@ -37,7 +37,6 @@ namespace Quasar
     {
     public:
         /// @brief Returns true when the engine is built for Windows.
-        /// @return
         static constexpr bool IsWindows()
         {
 #ifdef QUASAR_PLATFORM_WINDOWS
@@ -48,7 +47,6 @@ namespace Quasar
         }
 
         /// @brief Returns true when the engine is built for Linux.
-        /// @return
         static constexpr bool IsLinux()
         {
 #ifdef QUASAR_PLATFORM_LINUX
@@ -59,7 +57,6 @@ namespace Quasar
         }
 
         /// @brief Returns true in a Debug build.
-        /// @return
         static constexpr bool IsDebug()
         {
 #ifdef QUASAR_DEBUG
@@ -70,7 +67,6 @@ namespace Quasar
         }
 
         /// @brief Returns true in a Release build.
-        /// @return
         static constexpr bool IsRelease()
         {
 #ifdef QUASAR_RELEASE

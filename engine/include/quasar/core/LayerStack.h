@@ -67,6 +67,9 @@ namespace Quasar
         /// An event that is already handled is not sent to any layer.
         void OnEvent(Event& event);
 
+        /// @brief Detaches every layer, from the top to the bottom, then removes and destroys them all.
+        void Clear();
+
         /// @brief Returns the number of layers and overlays in the stack.
         std::size_t GetSize() const { return m_Layers.size(); }
 

@@ -139,6 +139,6 @@ namespace Quasar
         double m_LastFrameTime = 0.0;
         bool m_Running = false;
         bool m_Minimized = false;
-        bool m_InMainLoop = false;
+        bool m_DeferLayerChanges = false;
     };
 }

@@ -5,10 +5,23 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace Quasar
 {
+    namespace
+    {
+        spdlog::logger CreateFallbackLogger(std::string name)
+        {
+            spdlog::logger logger(std::move(name), std::make_shared<spdlog::sinks::stderr_color_sink_mt>());
+            logger.set_pattern("%^[%T] %n: %v%$");
+            return logger;
+        }
+    }
+
     std::shared_ptr<spdlog::logger> Log::s_EngineLogger;
     std::shared_ptr<spdlog::logger> Log::s_AppLogger;
     std::shared_ptr<MemoryLogSink> Log::s_MemorySink;
@@ -40,6 +53,18 @@ namespace Quasar
         }
 
         QUASAR_ENGINE_INFO("QuasarEngine v{}", GetVersionString());
+    }
+
+    spdlog::logger& Log::GetFallbackEngineLogger()
+    {
+        static spdlog::logger logger = CreateFallbackLogger("ENGINE");
+        return logger;
+    }
+
+    spdlog::logger& Log::GetFallbackAppLogger()
+    {
+        static spdlog::logger logger = CreateFallbackLogger("APP");
+        return logger;
     }
 
     void Log::Shutdown()

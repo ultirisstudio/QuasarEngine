@@ -75,6 +75,9 @@ TEST_CASE("Bit sets only the requested bit")
     static_assert(Quasar::Bit(1) == 2u);
     static_assert(Quasar::Bit(5) == 32u);
     static_assert(Quasar::Bit(31) == 0x80000000u);
+
+    const std::uint32_t index = 4;
+    CHECK(Quasar::Bit(index) == 16u);
 }
 
 TEST_CASE("A QUASAR_FORCE_INLINE function can be called")
