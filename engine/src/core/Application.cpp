@@ -22,6 +22,12 @@ namespace Quasar
     {
         s_Instance = this;
         m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
+
+        if (m_Specification.Window.GraphicsContext)
+        {
+            m_ImGuiLayer = CreateScope<ImGuiLayer>(*m_Window);
+            m_ImGuiLayer->OnAttach();
+        }
     }
 
     Application::~Application()
@@ -29,6 +35,12 @@ namespace Quasar
         m_DeferLayerChanges = true;
         m_LayerStack.Clear();
         m_LayerChanges.clear();
+
+        if (m_ImGuiLayer)
+        {
+            m_ImGuiLayer->OnDetach();
+            m_ImGuiLayer.reset();
+        }
 
         m_Window->SetEventCallback({});
         s_Instance = nullptr;
@@ -97,6 +109,16 @@ namespace Quasar
                 {
                     layer->OnRender();
                 }
+
+                if (m_ImGuiLayer)
+                {
+                    m_ImGuiLayer->Begin();
+                    for (Scope<Layer>& layer : m_LayerStack)
+                    {
+                        layer->OnImGuiRender();
+                    }
+                    m_ImGuiLayer->End();
+                }
             }
 
             m_Window->Update();
@@ -123,6 +145,10 @@ namespace Quasar
                 return false;
             });
 
+        if (m_ImGuiLayer && !event.IsHandled())
+        {
+            m_ImGuiLayer->OnEvent(event);
+        }
         m_LayerStack.OnEvent(event);
     }
 

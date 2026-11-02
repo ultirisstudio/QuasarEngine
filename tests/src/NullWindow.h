@@ -8,6 +8,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstdlib>
+
 namespace TestHelpers
 {
     class ScopedLog
@@ -43,19 +45,27 @@ namespace TestHelpers
     }
 
 #ifdef QUASAR_PLATFORM_LINUX
-    inline Quasar::Scope<Quasar::Window>
-    CreateNullWindowWithContext(const Quasar::WindowSpecification& specification = {})
+    inline void UseSoftwareOpenGL()
     {
         UseNullPlatform();
         glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+        // The driver draws on the calling thread instead of helper threads, whose locks the thread sanitizer cannot
+        // see, so it reports no false data races
+        // NOLINTNEXTLINE(concurrency-mt-unsafe)
+        setenv("LP_NUM_THREADS", "0", 1);
+    }
+
+    inline Quasar::Scope<Quasar::Window>
+    CreateNullWindowWithContext(const Quasar::WindowSpecification& specification = {})
+    {
+        UseSoftwareOpenGL();
         return Quasar::Window::Create(specification);
     }
 
     inline Quasar::Scope<Quasar::Application>
     CreateNullApplicationWithContext(const Quasar::ApplicationSpecification& specification = {})
     {
-        UseNullPlatform();
-        glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+        UseSoftwareOpenGL();
         return Quasar::Application::Create(specification);
     }
 #endif

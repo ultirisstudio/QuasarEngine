@@ -5,6 +5,8 @@
 #include <quasar/core/Log.h>
 #include <quasar/events/Event.h>
 
+#include <imgui.h>
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -48,6 +50,8 @@ namespace
                 QUASAR_INFO("{}", event);
             }
         }
+
+        void OnImGuiRender() override { ImGui::ShowDemoWindow(); }
 
     private:
         float m_ElapsedSeconds = 0.0f;
