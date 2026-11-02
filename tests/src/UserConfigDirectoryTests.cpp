@@ -1,3 +1,5 @@
+#include "ScopedEnvironmentVariable.h"
+
 #include <quasar/core/Log.h>
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/io/UserConfigDirectory.h>
@@ -30,44 +32,6 @@ TEST_CASE("The user config directory is the same on every call")
 
 namespace
 {
-    class ScopedEnvironmentVariable
-    {
-    public:
-        ScopedEnvironmentVariable(const char* name, const std::optional<std::string>& value) : m_Name(name)
-        {
-            if (const char* previous = std::getenv(name); previous != nullptr)
-            {
-                m_Previous = previous;
-            }
-            Set(value);
-        }
-
-        ~ScopedEnvironmentVariable() { Set(m_Previous); }
-
-        ScopedEnvironmentVariable(const ScopedEnvironmentVariable&) = delete;
-        ScopedEnvironmentVariable& operator=(const ScopedEnvironmentVariable&) = delete;
-        ScopedEnvironmentVariable(ScopedEnvironmentVariable&&) = delete;
-        ScopedEnvironmentVariable& operator=(ScopedEnvironmentVariable&&) = delete;
-
-    private:
-        void Set(const std::optional<std::string>& value) const
-        {
-            if (value)
-            {
-                // NOLINTNEXTLINE(concurrency-mt-unsafe)
-                setenv(m_Name.c_str(), value->c_str(), 1);
-            }
-            else
-            {
-                // NOLINTNEXTLINE(concurrency-mt-unsafe)
-                unsetenv(m_Name.c_str());
-            }
-        }
-
-        std::string m_Name;
-        std::optional<std::string> m_Previous;
-    };
-
     class TemporaryFolder
     {
     public:
@@ -100,7 +64,7 @@ TEST_CASE("On Linux the folder is created in XDG_CONFIG_HOME when it does not ex
 {
     const TemporaryFolder root("quasar_config_xdg");
     const std::filesystem::path configHome = root.GetPath() / "missing" / "config";
-    const ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", configHome.string());
+    const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", configHome.string());
 
     REQUIRE_FALSE(std::filesystem::exists(configHome));
 
@@ -114,8 +78,8 @@ TEST_CASE("On Linux the folder is created in XDG_CONFIG_HOME when it does not ex
 TEST_CASE("On Linux the folder is in ~/.config without XDG_CONFIG_HOME")
 {
     const TemporaryFolder home("quasar_config_home");
-    const ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", std::nullopt);
-    const ScopedEnvironmentVariable homeVariable("HOME", home.GetPath().string());
+    const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", std::nullopt);
+    const TestHelpers::ScopedEnvironmentVariable homeVariable("HOME", home.GetPath().string());
 
     const std::optional<std::filesystem::path> directory = Quasar::GetUserConfigDirectory();
 
@@ -127,8 +91,8 @@ TEST_CASE("On Linux the folder is in ~/.config without XDG_CONFIG_HOME")
 TEST_CASE("On Linux a relative XDG_CONFIG_HOME is ignored")
 {
     const TemporaryFolder home("quasar_config_relative");
-    const ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", "relative/config");
-    const ScopedEnvironmentVariable homeVariable("HOME", home.GetPath().string());
+    const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", "relative/config");
+    const TestHelpers::ScopedEnvironmentVariable homeVariable("HOME", home.GetPath().string());
 
     const std::optional<std::filesystem::path> directory = Quasar::GetUserConfigDirectory();
 
@@ -138,8 +102,8 @@ TEST_CASE("On Linux a relative XDG_CONFIG_HOME is ignored")
 
 TEST_CASE("On Linux the home folder of the user is used without HOME")
 {
-    const ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", std::nullopt);
-    const ScopedEnvironmentVariable homeVariable("HOME", std::nullopt);
+    const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", std::nullopt);
+    const TestHelpers::ScopedEnvironmentVariable homeVariable("HOME", std::nullopt);
 
     const std::optional<std::filesystem::path> directory = Quasar::GetUserConfigDirectory();
 
@@ -155,7 +119,7 @@ TEST_CASE("On Linux no folder is returned when it cannot be created")
     const TemporaryFolder root("quasar_config_file");
     const std::filesystem::path file = root.GetPath() / "file";
     std::ofstream(file) << "not a folder";
-    const ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", file.string());
+    const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", file.string());
 
     CHECK_FALSE(Quasar::GetUserConfigDirectory().has_value());
 

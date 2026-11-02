@@ -40,6 +40,7 @@ extern "C"
                "leak:libgdk-3.so\n"
                "leak:libglib-2.0.so\n"
                "leak:libgobject-2.0.so\n"
-               "leak:libfontconfig.so\n";
+               "leak:libfontconfig.so\n"
+               "leak:_glfwInitEGL\n";
     }
 }
