@@ -19,6 +19,7 @@ target_sources(QuasarEngine
         src/platform/SystemDirectories.h
         src/renderer/OpenGLContext.cpp
         src/renderer/OpenGLContext.h
+        src/core/ImGuiLayer.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -48,6 +49,7 @@ target_sources(QuasarEngine
             include/quasar/core/Input.h
             include/quasar/core/EntryPoint.h
             include/quasar/io/UserConfigDirectory.h
+            include/quasar/core/ImGuiLayer.h
 )
 
 add_library(QuasarEntryPoint STATIC src/core/EntryPoint.cpp)
@@ -70,6 +72,7 @@ target_link_libraries(QuasarEngine
     PUBLIC
         glm::glm
         spdlog::spdlog
+        imgui::imgui
     PRIVATE
         Quasar::CompileOptions
         glfw

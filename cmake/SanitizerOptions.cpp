@@ -41,6 +41,7 @@ extern "C"
                "leak:libglib-2.0.so\n"
                "leak:libgobject-2.0.so\n"
                "leak:libfontconfig.so\n"
-               "leak:_glfwInitEGL\n";
+               "leak:_glfwInitEGL\n"
+               "leak:ImGui_ImplOpenGL3_RenderDrawData\n";
     }
 }
