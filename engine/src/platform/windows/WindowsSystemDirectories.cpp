@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string>
 
 namespace Quasar::Platform
 {
@@ -34,5 +35,27 @@ namespace Quasar::Platform
         }
 
         return std::filesystem::path(text);
+    }
+
+    std::optional<std::filesystem::path> GetExecutableDirectory()
+    {
+        std::wstring buffer(MAX_PATH, L'\0');
+        while (true)
+        {
+            const DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+            if (length == 0)
+            {
+                QUASAR_ENGINE_ERROR("Cannot find the executable: error {}", GetLastError());
+                return std::nullopt;
+            }
+
+            if (length < buffer.size())
+            {
+                buffer.resize(length);
+                return std::filesystem::path(buffer).parent_path();
+            }
+
+            buffer.resize(buffer.size() * 2);
+        }
     }
 }

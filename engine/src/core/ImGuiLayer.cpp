@@ -1,4 +1,5 @@
 #include <quasar/core/ImGuiLayer.h>
+#include <quasar/core/ImGuiTheme.h>
 #include <quasar/core/Log.h>
 #include <quasar/core/Window.h>
 
@@ -21,13 +22,10 @@ namespace Quasar
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-        ImGui::StyleColorsDark();
 
-        ImGuiStyle& style = ImGui::GetStyle();
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-
-        if (!ImGui_ImplGlfw_InitForOpenGL(m_Window->GetNativeWindow(), true))
+        GLFWwindow* nativeWindow = m_Window->GetNativeWindow();
+        const bool platformStarted = ImGui_ImplGlfw_InitForOpenGL(nativeWindow, true);
+        if (!platformStarted)
         {
             QUASAR_ENGINE_ERROR("Cannot start the GLFW backend of ImGui");
         }
@@ -35,6 +33,12 @@ namespace Quasar
         {
             QUASAR_ENGINE_ERROR("Cannot start the OpenGL backend of ImGui");
         }
+
+        io.ConfigDpiScaleFonts = true;
+        io.ConfigDpiScaleViewports = true;
+        const float dpiScale = platformStarted ? ImGui_ImplGlfw_GetContentScaleForWindow(nativeWindow) : 1.0f;
+        ImGuiTheme::ApplyStyle(ImGui::GetStyle(), dpiScale);
+        ImGuiTheme::LoadFont(*io.Fonts, ImGuiTheme::GetFontPath());
 
         if ((io.BackendFlags & ImGuiBackendFlags_PlatformHasViewports) == 0)
         {
