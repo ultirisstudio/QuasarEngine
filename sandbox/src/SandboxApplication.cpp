@@ -1,5 +1,6 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/EntryPoint.h>
+#include <quasar/core/ImGuiLayer.h>
 #include <quasar/core/Input.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/Log.h>
@@ -7,16 +8,18 @@
 
 #include <imgui.h>
 
+#include <cstddef>
+#include <deque>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace
 {
-    class SandboxLayer : public Quasar::Layer
+    class EventTestLayer : public Quasar::Layer
     {
     public:
-        SandboxLayer() : Layer("Sandbox") {}
+        EventTestLayer() : Layer("Event test") {}
 
         void OnAttach() override { QUASAR_INFO("Layer '{}' attached", GetName()); }
 
@@ -29,7 +32,7 @@ namespace
 
             if (m_ElapsedSeconds >= 1.0f)
             {
-                QUASAR_INFO("{} frames in {:.3f} s", m_FrameCount, m_ElapsedSeconds);
+                m_FramesPerSecond = static_cast<float>(m_FrameCount) / m_ElapsedSeconds;
                 m_ElapsedSeconds = 0.0f;
                 m_FrameCount = 0;
             }
@@ -45,22 +48,87 @@ namespace
 
         void OnEvent(Quasar::Event& event) override
         {
-            if (event.GetType() != Quasar::EventType::MouseMoved)
+            if (event.GetType() == Quasar::EventType::MouseMoved && !m_LogMouseMoves)
             {
-                QUASAR_INFO("{}", event);
+                return;
+            }
+
+            std::string text = event.ToString();
+
+            m_RecentEvents.push_back(std::move(text));
+            if (m_RecentEvents.size() > MaxRecentEvents)
+            {
+                m_RecentEvents.pop_front();
             }
         }
 
         void OnImGuiRender() override
         {
             ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
-            ImGui::ShowDemoWindow();
+
+            if (m_ShowDemoWindow)
+            {
+                ImGui::ShowDemoWindow(&m_ShowDemoWindow);
+            }
+
+            DrawEventWindow();
         }
 
     private:
+        static constexpr std::size_t MaxRecentEvents = 200;
+
+        void DrawEventWindow()
+        {
+            ImGui::Begin("Events");
+
+            ImGui::TextUnformatted(fmt::format("{:.0f} frames per second", m_FramesPerSecond).c_str());
+            ImGui::Checkbox("Show the ImGui demo window", &m_ShowDemoWindow);
+            ImGui::Checkbox("Log mouse moves", &m_LogMouseMoves);
+
+            if (Quasar::ImGuiLayer* imGuiLayer = Quasar::Application::Get().GetImGuiLayer(); imGuiLayer != nullptr)
+            {
+                if (ImGui::Checkbox("ImGui keeps the events it uses", &m_ImGuiBlocksEvents))
+                {
+                    imGuiLayer->SetBlockEvents(m_ImGuiBlocksEvents);
+                }
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted("ImGui keeps the keyboard while one of its windows has the focus. Click outside them to type here.");
+            ImGui::PopTextWrapPos();
+            ImGui::PopStyleColor();
+
+            if (ImGui::Button("Clear"))
+            {
+                m_RecentEvents.clear();
+            }
+
+            ImGui::Separator();
+            ImGui::BeginChild("Recent events");
+            for (const std::string& text : m_RecentEvents)
+            {
+                ImGui::TextUnformatted(text.c_str());
+            }
+
+            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            {
+                ImGui::SetScrollHereY(1.0f);
+            }
+            ImGui::EndChild();
+
+            ImGui::End();
+        }
+
         float m_ElapsedSeconds = 0.0f;
         int m_FrameCount = 0;
+        float m_FramesPerSecond = 0.0f;
         bool m_SpaceHeld = false;
+
+        bool m_ShowDemoWindow = true;
+        bool m_LogMouseMoves = false;
+        bool m_ImGuiBlocksEvents = true;
+        std::deque<std::string> m_RecentEvents;
     };
 }
 
@@ -74,7 +142,7 @@ Quasar::Scope<Quasar::Application> Quasar::CreateApplication(std::vector<std::st
     Quasar::Scope<Application> application = Application::Create({.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox"}});
     if (application)
     {
-        application->PushLayer(Quasar::CreateScope<SandboxLayer>());
+        application->PushLayer(Quasar::CreateScope<EventTestLayer>());
     }
 
     return application;
