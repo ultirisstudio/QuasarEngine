@@ -51,7 +51,11 @@ namespace
             }
         }
 
-        void OnImGuiRender() override { ImGui::ShowDemoWindow(); }
+        void OnImGuiRender() override
+        {
+            ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+            ImGui::ShowDemoWindow();
+        }
 
     private:
         float m_ElapsedSeconds = 0.0f;
