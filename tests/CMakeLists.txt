@@ -4,6 +4,7 @@ add_executable(QuasarTests ${QUASAR_TEST_SOURCES})
 
 target_link_libraries(QuasarTests PRIVATE
     Quasar::Engine
+    Quasar::EditorLibrary
     Quasar::CompileOptions
     doctest::doctest_with_main
     glfw

@@ -1,11 +1,23 @@
-#include <quasar/core/Application.h>
-#include <quasar/core/EntryPoint.h>
+#include "EditorApplication.h"
+#include "EditorLayer.h"
 
-#include <string>
 #include <utility>
-#include <vector>
 
-Quasar::Scope<Quasar::Application> Quasar::CreateApplication(std::vector<std::string> arguments)
+namespace Quasar::Editor
 {
-    return Application::Create({.Name = "Editor", .Arguments = std::move(arguments), .Window = {.Title = "Editor"}});
+    ApplicationSpecification GetEditorSpecification(std::vector<std::string> arguments)
+    {
+        return {.Name = "Editor", .Arguments = std::move(arguments), .Window = {.Title = "Quasar Editor", .Width = 1600, .Height = 900}};
+    }
+
+    Scope<Application> CreateEditorApplication(std::vector<std::string> arguments)
+    {
+        Scope<Application> application = Application::Create(GetEditorSpecification(std::move(arguments)));
+        if (application)
+        {
+            application->PushLayer(CreateScope<EditorLayer>());
+        }
+
+        return application;
+    }
 }
