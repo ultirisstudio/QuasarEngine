@@ -13,6 +13,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <string>
 #include <utility>
@@ -70,6 +71,16 @@ namespace
         std::function<void()> ImGuiAction;
     };
 
+    Quasar::Scope<Quasar::Application> CreateImGuiApplication()
+    {
+        Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+        if (application != nullptr && ImGui::GetCurrentContext() != nullptr)
+        {
+            ImGui::GetIO().IniFilename = nullptr;
+        }
+        return application;
+    }
+
     ImGuiTestLayer& AddLayer(Quasar::Application& application, std::string name)
     {
         Quasar::Scope<ImGuiTestLayer> layer = Quasar::CreateScope<ImGuiTestLayer>(std::move(name));
@@ -101,6 +112,16 @@ namespace
         }
     }
 
+    void TypeLetter(Quasar::Application& application, int updates)
+    {
+        if (updates == 3)
+        {
+            TestHelpers::SendKey(application.GetWindow(), GLFW_KEY_A, GLFW_PRESS);
+            TestHelpers::SendCharacter(application.GetWindow(), 'a');
+            TestHelpers::SendKey(application.GetWindow(), GLFW_KEY_A, GLFW_RELEASE);
+        }
+    }
+
     bool Received(const ImGuiTestLayer& layer, const std::string& name)
     {
         return std::ranges::find(layer.Events, name) != layer.Events.end();
@@ -111,7 +132,7 @@ TEST_CASE("ImGui starts with the application and stops with it")
 {
     const TestHelpers::ScopedLog log;
     {
-        const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+        const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
         REQUIRE(application != nullptr);
 
         CHECK(application->GetImGuiLayer() != nullptr);
@@ -124,7 +145,7 @@ TEST_CASE("ImGui starts with the application and stops with it")
 TEST_CASE("Every layer can draw ImGui windows from its ImGui hook")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
     REQUIRE(application != nullptr);
     ImGuiTestLayer& first = AddLayer(*application, "First");
     ImGuiTestLayer& second = AddLayer(*application, "Second");
@@ -153,7 +174,7 @@ TEST_CASE("Every layer can draw ImGui windows from its ImGui hook")
 TEST_CASE("The ImGui demo window can be displayed")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
     REQUIRE(application != nullptr);
     ImGuiTestLayer& layer = AddLayer(*application, "Demo");
     layer.ImGuiAction = [] { ImGui::ShowDemoWindow(); };
@@ -169,7 +190,7 @@ TEST_CASE("The ImGui demo window can be displayed")
 TEST_CASE("ImGui keeps the mouse from the layers while the cursor is over an ImGui window")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
     REQUIRE(application != nullptr);
     ImGuiTestLayer& layer = AddLayer(*application, "Scene");
     layer.ImGuiAction = DrawCornerWindow;
@@ -184,7 +205,7 @@ TEST_CASE("ImGui keeps the mouse from the layers while the cursor is over an ImG
 TEST_CASE("The layers receive the mouse when ImGui does not block events")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
     REQUIRE(application != nullptr);
     REQUIRE(application->GetImGuiLayer() != nullptr);
     application->GetImGuiLayer()->SetBlockEvents(false);
@@ -196,6 +217,95 @@ TEST_CASE("The layers receive the mouse when ImGui does not block events")
 
     CHECK(Received(layer, "MouseButtonPressed"));
     CHECK(Received(layer, "MouseButtonReleased"));
+}
+
+TEST_CASE("ImGui windows can be docked")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    ImGuiTestLayer& layer = AddLayer(*application, "Docking");
+    bool docked = false;
+    layer.ImGuiAction = [&docked]
+    {
+        const ImGuiID dockSpace = ImGui::DockSpaceOverViewport();
+        ImGui::SetNextWindowDockID(dockSpace, ImGuiCond_Always);
+        ImGui::Begin("Docked window");
+        docked = ImGui::IsWindowDocked();
+        ImGui::End();
+    };
+
+    application->Run();
+
+    CHECK(docked);
+}
+
+TEST_CASE("ImGui windows can be dragged outside the main window")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    REQUIRE((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0);
+    ImGuiTestLayer& layer = AddLayer(*application, "Viewports");
+    bool outside = false;
+    int viewports = 0;
+    layer.ImGuiAction = [&outside, &viewports]
+    {
+        const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(
+            ImVec2(mainViewport->Pos.x + mainViewport->Size.x + 20.0f, mainViewport->Pos.y + 20.0f));
+        ImGui::SetNextWindowSize(ImVec2(200.0f, 200.0f));
+        ImGui::Begin("Outside");
+        outside = ImGui::GetWindowViewport() != mainViewport;
+        ImGui::End();
+        viewports = ImGui::GetPlatformIO().Viewports.Size;
+    };
+
+    application->Run();
+
+    CHECK(outside);
+    CHECK(viewports == 2);
+    const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
+    CHECK(std::ranges::none_of(messages, [](const Quasar::LogMessage& message)
+                               { return message.Level >= Quasar::LogLevel::Warning; }));
+}
+
+TEST_CASE("ImGui keeps the keyboard from the layers while a text field has the focus")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    std::array<char, 64> text{};
+    layer.ImGuiAction = [&text]
+    {
+        ImGui::Begin("Text");
+        ImGui::SetKeyboardFocusHere();
+        ImGui::InputText("Name", text.data(), text.size());
+        ImGui::End();
+    };
+    layer.UpdateAction = [&application](int updates) { TypeLetter(*application, updates); };
+
+    application->Run();
+
+    CHECK_FALSE(Received(layer, "KeyPressed"));
+    CHECK_FALSE(Received(layer, "KeyTyped"));
+    CHECK_FALSE(Received(layer, "KeyReleased"));
+}
+
+TEST_CASE("The layers receive the keyboard while ImGui does not use it")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    layer.UpdateAction = [&application](int updates) { TypeLetter(*application, updates); };
+
+    application->Run();
+
+    CHECK(Received(layer, "KeyPressed"));
+    CHECK(Received(layer, "KeyTyped"));
+    CHECK(Received(layer, "KeyReleased"));
 }
 
 #endif

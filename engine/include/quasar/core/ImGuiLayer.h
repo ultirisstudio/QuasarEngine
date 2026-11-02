@@ -18,6 +18,11 @@ namespace Quasar
     /// overlay. Each frame, the application calls Begin(), then Layer::OnImGuiRender() on every layer from the bottom
     /// to the top, then End().
     ///
+    /// Docking and multiple viewports are enabled: ImGui windows can be docked into each other or into a dock space,
+    /// and dragged outside the main window, where each one gets its own platform window. On Wayland, the GLFW backend
+    /// cannot place windows, so the viewports are turned off and ImGui windows stay inside the main window. Docking
+    /// still works.
+    ///
     /// While ImGui uses the mouse or the keyboard, for example when the cursor is over an ImGui window or a text field
     /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.
     class ImGuiLayer final : public Layer
@@ -39,7 +44,9 @@ namespace Quasar
         /// @brief Starts a new ImGui frame. The application calls it before the OnImGuiRender() hooks.
         void Begin();
 
-        /// @brief Draws the ImGui frame in the window. The application calls it after the OnImGuiRender() hooks.
+        /// @brief Draws the ImGui frame in the window, then the ImGui windows outside it.
+        ///
+        /// The application calls it after the OnImGuiRender() hooks.
         void End();
 
         /// @brief Chooses whether the events used by ImGui are kept from the layers below. True by default.

@@ -6,6 +6,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <GLFW/glfw3.h>
+
 namespace Quasar
 {
     ImGuiLayer::ImGuiLayer(Window& window) : Layer("ImGui"), m_Window(&window) {}
@@ -18,7 +20,12 @@ namespace Quasar
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
         ImGui::StyleColorsDark();
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 
         if (!ImGui_ImplGlfw_InitForOpenGL(m_Window->GetNativeWindow(), true))
         {
@@ -27,6 +34,12 @@ namespace Quasar
         if (!ImGui_ImplOpenGL3_Init("#version 450 core"))
         {
             QUASAR_ENGINE_ERROR("Cannot start the OpenGL backend of ImGui");
+        }
+
+        if ((io.BackendFlags & ImGuiBackendFlags_PlatformHasViewports) == 0)
+        {
+            io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+            QUASAR_ENGINE_WARN("ImGui windows cannot leave the main window on this platform");
         }
 
         QUASAR_ENGINE_INFO("Started Dear ImGui {}", ImGui::GetVersion());
@@ -68,5 +81,13 @@ namespace Quasar
     {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0)
+        {
+            GLFWwindow* mainContext = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(mainContext);
+        }
     }
 }
