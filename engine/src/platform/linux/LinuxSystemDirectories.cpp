@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <optional>
+#include <system_error>
 #include <vector>
 
 namespace Quasar::Platform
@@ -60,5 +61,18 @@ namespace Quasar::Platform
         QUASAR_ENGINE_ERROR(
             "Cannot find the config folder: XDG_CONFIG_HOME and HOME are not set, and the user has no home folder");
         return std::nullopt;
+    }
+
+    std::optional<std::filesystem::path> GetExecutableDirectory()
+    {
+        std::error_code error;
+        const std::filesystem::path executable = std::filesystem::read_symlink("/proc/self/exe", error);
+        if (error)
+        {
+            QUASAR_ENGINE_ERROR("Cannot find the executable: {}", error.message());
+            return std::nullopt;
+        }
+
+        return executable.parent_path();
     }
 }

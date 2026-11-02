@@ -20,6 +20,7 @@ target_sources(QuasarEngine
         src/renderer/OpenGLContext.cpp
         src/renderer/OpenGLContext.h
         src/core/ImGuiLayer.cpp
+        src/core/ImGuiTheme.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -50,7 +51,15 @@ target_sources(QuasarEngine
             include/quasar/core/EntryPoint.h
             include/quasar/io/UserConfigDirectory.h
             include/quasar/core/ImGuiLayer.h
+            include/quasar/core/ImGuiTheme.h
 )
+
+add_custom_target(QuasarEngineResources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
+    VERBATIM
+)
+set_target_properties(QuasarEngineResources PROPERTIES FOLDER "Engine")
+add_dependencies(QuasarEngine QuasarEngineResources)
 
 add_library(QuasarEntryPoint STATIC src/core/EntryPoint.cpp)
 add_library(Quasar::EntryPoint ALIAS QuasarEntryPoint)

@@ -18,6 +18,8 @@ namespace Quasar
     /// overlay. Each frame, the application calls Begin(), then Layer::OnImGuiRender() on every layer from the bottom
     /// to the top, then End().
     ///
+    /// The interface uses the engine theme and font, scaled for the monitor. See ImGuiTheme.
+    ///
     /// Docking and multiple viewports are enabled: ImGui windows can be docked into each other or into a dock space,
     /// and dragged outside the main window, where each one gets its own platform window. On Wayland, the GLFW backend
     /// cannot place windows, so the viewports are turned off and ImGui windows stay inside the main window. Docking
