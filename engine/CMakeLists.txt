@@ -17,6 +17,8 @@ target_sources(QuasarEngine
         src/core/Input.cpp
         src/io/UserConfigDirectory.cpp
         src/platform/SystemDirectories.h
+        src/renderer/OpenGLContext.cpp
+        src/renderer/OpenGLContext.h
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -71,6 +73,7 @@ target_link_libraries(QuasarEngine
     PRIVATE
         Quasar::CompileOptions
         glfw
+        glad::glad
 )
 
 target_compile_definitions(QuasarEngine PRIVATE

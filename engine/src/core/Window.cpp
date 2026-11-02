@@ -4,6 +4,8 @@
 #include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
 
+#include <renderer/OpenGLContext.h>
+
 #include <GLFW/glfw3.h>
 
 #include <utility>
@@ -55,6 +57,7 @@ namespace Quasar
 
     Window::~Window()
     {
+        m_Context.reset();
         glfwDestroyWindow(m_Handle);
 
         --s_WindowCount;
@@ -79,12 +82,28 @@ namespace Quasar
             QUASAR_ENGINE_INFO("Window platform: {}", GetPlatformName());
         }
 
+        if (specification.GraphicsContext)
+        {
+            OpenGLContext::SetWindowHints();
+        }
+        else
+        {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        }
+
         GLFWwindow* handle =
             glfwCreateWindow(static_cast<int>(specification.Width), static_cast<int>(specification.Height),
                              specification.Title.c_str(), nullptr, nullptr);
         if (handle == nullptr)
         {
-            QUASAR_ENGINE_ERROR("Cannot create the window '{}'", specification.Title);
+            if (specification.GraphicsContext)
+            {
+                QUASAR_ENGINE_ERROR("Cannot create the window '{}' with an OpenGL 4.5 core context: check that the graphics driver supports OpenGL 4.5", specification.Title);
+            }
+            else
+            {
+                QUASAR_ENGINE_ERROR("Cannot create the window '{}'", specification.Title);
+            }
             if (s_WindowCount == 0)
             {
                 glfwTerminate();
@@ -93,9 +112,19 @@ namespace Quasar
         }
 
         ++s_WindowCount;
-        glfwMakeContextCurrent(handle);
 
         Scope<Window> window(new Window(handle, specification));
+
+        if (specification.GraphicsContext)
+        {
+            window->m_Context = OpenGLContext::Create(handle);
+            if (window->m_Context == nullptr)
+            {
+                QUASAR_ENGINE_ERROR("Cannot create the window '{}': it has no usable OpenGL context", specification.Title);
+                return nullptr;
+            }
+        }
+
         window->SetVSync(specification.VSync);
 
         QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(),
@@ -105,7 +134,10 @@ namespace Quasar
 
     void Window::Update()
     {
-        glfwSwapBuffers(m_Handle);
+        if (m_Context)
+        {
+            m_Context->SwapBuffers();
+        }
         glfwPollEvents();
     }
 
@@ -126,7 +158,10 @@ namespace Quasar
 
     void Window::SetVSync(bool enabled)
     {
-        glfwSwapInterval(enabled ? 1 : 0);
+        if (m_Context)
+        {
+            m_Context->SetVSync(enabled);
+        }
         m_VSync = enabled;
     }
 

@@ -3,6 +3,7 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/Base.h>
 #include <quasar/core/Log.h>
+#include <quasar/core/PlatformDetection.h>
 #include <quasar/core/Window.h>
 
 #include <GLFW/glfw3.h>
@@ -25,21 +26,39 @@ namespace TestHelpers
     {
         glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_NULL);
         glfwInit();
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     }
 
-    inline Quasar::Scope<Quasar::Window> CreateNullWindow(const Quasar::WindowSpecification& specification = {})
+    inline Quasar::Scope<Quasar::Window> CreateNullWindow(Quasar::WindowSpecification specification = {})
     {
         UseNullPlatform();
+        specification.GraphicsContext = false;
+        return Quasar::Window::Create(specification);
+    }
+
+    inline Quasar::Scope<Quasar::Application> CreateNullApplication(Quasar::ApplicationSpecification specification = {})
+    {
+        UseNullPlatform();
+        specification.Window.GraphicsContext = false;
+        return Quasar::Application::Create(specification);
+    }
+
+#ifdef QUASAR_PLATFORM_LINUX
+    inline Quasar::Scope<Quasar::Window>
+    CreateNullWindowWithContext(const Quasar::WindowSpecification& specification = {})
+    {
+        UseNullPlatform();
+        glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
         return Quasar::Window::Create(specification);
     }
 
     inline Quasar::Scope<Quasar::Application>
-    CreateNullApplication(const Quasar::ApplicationSpecification& specification = {})
+    CreateNullApplicationWithContext(const Quasar::ApplicationSpecification& specification = {})
     {
         UseNullPlatform();
+        glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
         return Quasar::Application::Create(specification);
     }
+#endif
 
     inline void SendKey(Quasar::Window& window, int key, int action)
     {

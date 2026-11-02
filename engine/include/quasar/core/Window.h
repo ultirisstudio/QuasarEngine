@@ -17,6 +17,8 @@ struct GLFWwindow;
 
 namespace Quasar
 {
+    class OpenGLContext;
+
     /// @brief Settings used to create a window.
     ///
     /// Only the fields that differ from the defaults need a value: `Window::Create({.Title = "Editor"})`.
@@ -26,6 +28,10 @@ namespace Quasar
         std::uint32_t Width = 1280;         ///< Width of the window when it is created.
         std::uint32_t Height = 720;         ///< Height of the window when it is created.
         bool VSync = true;                  ///< Whether vertical synchronization is enabled when it is created.
+
+        /// Whether the window gets an OpenGL 4.5 core context. A window without one cannot draw anything: it is only
+        /// meant for tests that run without a graphics driver.
+        bool GraphicsContext = true;
     };
 
     /// @brief Application window.
@@ -94,6 +100,7 @@ namespace Quasar
         void SendEvent(Event& event);
 
         GLFWwindow* m_Handle = nullptr;
+        Scope<OpenGLContext> m_Context;
         std::string m_Title;
         bool m_VSync = false;
         EventCallback m_EventCallback;
