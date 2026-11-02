@@ -24,7 +24,9 @@ namespace Quasar::ImGuiTheme
         constexpr ImVec4 Rgb(std::uint32_t hex, float alpha = 1.0f)
         {
             constexpr float maxChannel = 255.0f;
-            return {static_cast<float>((hex >> 16U) & 0xFFU) / maxChannel, static_cast<float>((hex >> 8U) & 0xFFU) / maxChannel, static_cast<float>(hex & 0xFFU) / maxChannel, alpha};
+            return {static_cast<float>((hex >> 16U) & 0xFFU) / maxChannel,
+                    static_cast<float>((hex >> 8U) & 0xFFU) / maxChannel, static_cast<float>(hex & 0xFFU) / maxChannel,
+                    alpha};
         }
 
         constexpr ImVec4 Text = Rgb(0xE6E7EA);
@@ -145,9 +147,12 @@ namespace Quasar::ImGuiTheme
 
         bool HasFontSignature(const std::vector<std::byte>& data)
         {
-            constexpr std::array<std::array<char, 4>, 4> signatures = {{{'\0', '\1', '\0', '\0'}, {'O', 'T', 'T', 'O'}, {'t', 'r', 'u', 'e'}, {'t', 't', 'c', 'f'}}};
+            constexpr std::array<std::array<char, 4>, 4> signatures = {
+                {{'\0', '\1', '\0', '\0'}, {'O', 'T', 'T', 'O'}, {'t', 'r', 'u', 'e'}, {'t', 't', 'c', 'f'}}};
 
-            return data.size() >= 4 && std::ranges::any_of(signatures, [&data](const std::array<char, 4>& signature) { return std::memcmp(data.data(), signature.data(), 4) == 0; });
+            return data.size() >= 4 &&
+                   std::ranges::any_of(signatures, [&data](const std::array<char, 4>& signature)
+                                       { return std::memcmp(data.data(), signature.data(), 4) == 0; });
         }
 
         std::optional<std::vector<std::byte>> ReadFontFile(const std::filesystem::path& file)

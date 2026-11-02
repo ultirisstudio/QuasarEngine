@@ -30,7 +30,8 @@ namespace
     bool HasWarning()
     {
         const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::any_of(messages, [](const Quasar::LogMessage& message) { return message.Level >= Quasar::LogLevel::Warning; });
+        return std::ranges::any_of(messages, [](const Quasar::LogMessage& message)
+                                   { return message.Level >= Quasar::LogLevel::Warning; });
     }
 }
 
