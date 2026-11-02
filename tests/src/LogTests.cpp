@@ -17,8 +17,7 @@ TEST_CASE("The loggers write every level in Debug and from info in Release")
 {
     Quasar::Log::Init();
 
-    CHECK(Quasar::Log::Engine().level() ==
-          (Quasar::PlatformDetection::IsDebug() ? spdlog::level::trace : spdlog::level::info));
+    CHECK(Quasar::Log::Engine().level() == (Quasar::PlatformDetection::IsDebug() ? spdlog::level::trace : spdlog::level::info));
 
     Quasar::Log::Shutdown();
 }

@@ -42,8 +42,7 @@ namespace Quasar
     ///
     /// A standard mouse wheel only gives vertical offsets, of 1 per notch. Touchpads also give horizontal offsets,
     /// with fractional values.
-    class MouseScrolledEvent final
-        : public EventOf<EventType::MouseScrolled, EventCategory::Input | EventCategory::Mouse>
+    class MouseScrolledEvent final : public EventOf<EventType::MouseScrolled, EventCategory::Input | EventCategory::Mouse>
     {
     public:
         /// @brief Creates the event with the scroll offsets.
@@ -64,8 +63,7 @@ namespace Quasar
     };
 
     /// @brief Sent when a mouse button is pressed.
-    class MouseButtonPressedEvent final
-        : public EventOf<EventType::MouseButtonPressed, EventCategory::Input | EventCategory::Mouse>
+    class MouseButtonPressedEvent final : public EventOf<EventType::MouseButtonPressed, EventCategory::Input | EventCategory::Mouse>
     {
     public:
         /// @brief Creates the event for the pressed button.
@@ -82,8 +80,7 @@ namespace Quasar
     };
 
     /// @brief Sent when a mouse button is released.
-    class MouseButtonReleasedEvent final
-        : public EventOf<EventType::MouseButtonReleased, EventCategory::Input | EventCategory::Mouse>
+    class MouseButtonReleasedEvent final : public EventOf<EventType::MouseButtonReleased, EventCategory::Input | EventCategory::Mouse>
     {
     public:
         /// @brief Creates the event for the released button.

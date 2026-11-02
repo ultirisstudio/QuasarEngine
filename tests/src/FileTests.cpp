@@ -18,8 +18,7 @@ namespace
     class TemporaryFile
     {
     public:
-        TemporaryFile(std::string_view name, std::string_view content)
-            : m_Path(std::filesystem::temp_directory_path() / name)
+        TemporaryFile(std::string_view name, std::string_view content) : m_Path(std::filesystem::temp_directory_path() / name)
         {
             std::ofstream stream(m_Path, std::ios::binary);
             stream.write(content.data(), static_cast<std::streamsize>(content.size()));

@@ -55,15 +55,13 @@ namespace TestHelpers
         setenv("LP_NUM_THREADS", "0", 1);
     }
 
-    inline Quasar::Scope<Quasar::Window>
-    CreateNullWindowWithContext(const Quasar::WindowSpecification& specification = {})
+    inline Quasar::Scope<Quasar::Window> CreateNullWindowWithContext(const Quasar::WindowSpecification& specification = {})
     {
         UseSoftwareOpenGL();
         return Quasar::Window::Create(specification);
     }
 
-    inline Quasar::Scope<Quasar::Application>
-    CreateNullApplicationWithContext(const Quasar::ApplicationSpecification& specification = {})
+    inline Quasar::Scope<Quasar::Application> CreateNullApplicationWithContext(const Quasar::ApplicationSpecification& specification = {})
     {
         UseSoftwareOpenGL();
         return Quasar::Application::Create(specification);

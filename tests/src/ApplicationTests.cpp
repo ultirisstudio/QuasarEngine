@@ -154,8 +154,7 @@ TEST_CASE("Layers are updated and rendered from the bottom of the stack to the t
 
     application->Run();
 
-    const std::vector<std::string> expected{"First update", "Second update", "Overlay update",
-                                            "First render", "Second render", "Overlay render"};
+    const std::vector<std::string> expected{"First update", "Second update", "Overlay update", "First render", "Second render", "Overlay render"};
     CHECK(calls == expected);
 }
 
@@ -168,8 +167,7 @@ TEST_CASE("Events reach the top layer first and stop once handled")
     ScriptLayer& bottom = AddLayer(*application, "Bottom", calls);
     ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
     overlay.EventAction = [](Quasar::Event& event) { event.SetHandled(true); };
-    bottom.UpdateAction = [&application](int /*updates*/)
-    { TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_A, GLFW_PRESS); };
+    bottom.UpdateAction = [&application](int /*updates*/) { TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_A, GLFW_PRESS); };
     bottom.CloseAfter = 1;
 
     application->Run();
@@ -240,8 +238,7 @@ TEST_CASE("Only one application can exist at a time")
 TEST_CASE("The application keeps its specification")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application =
-        TestHelpers::CreateNullApplication({.Name = "Game", .Arguments = {"--level", "2"}});
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.Name = "Game", .Arguments = {"--level", "2"}});
     REQUIRE(application != nullptr);
 
     CHECK(application->GetSpecification().Name == "Game");
@@ -283,8 +280,7 @@ TEST_CASE("Layers added during a frame start at the next frame")
     application->Run();
 
     const std::vector<std::string> expected{
-        "A update", "A render",       "B attach", "Overlay attach", "A update",
-        "B update", "Overlay update", "A render", "B render",       "Overlay render",
+        "A update", "A render", "B attach", "Overlay attach", "A update", "B update", "Overlay update", "A render", "B render", "Overlay render",
     };
     CHECK(calls == expected);
 }
@@ -303,8 +299,7 @@ TEST_CASE("A layer can remove itself during an update")
     application->Run();
 
     const std::vector<std::string> expected{
-        "Removed update", "Overlay update", "Removed render", "Overlay render",
-        "Removed detach", "Overlay update", "Overlay render",
+        "Removed update", "Overlay update", "Removed render", "Overlay render", "Removed detach", "Overlay update", "Overlay render",
     };
     CHECK(calls == expected);
 }
@@ -356,8 +351,7 @@ TEST_CASE("Layers added while the changes are applied are added in the same fram
     application->Run();
 
     const std::vector<std::string> expected{
-        "A update",      "A render",     "Parent attach", "Child attach",  "A update",
-        "Parent update", "Child update", "A render",      "Parent render", "Child render",
+        "A update", "A render", "Parent attach", "Child attach", "A update", "Parent update", "Child update", "A render", "Parent render", "Child render",
     };
     CHECK(calls == expected);
 }
@@ -382,8 +376,7 @@ TEST_CASE("The working directory becomes the current directory")
     const std::filesystem::path directory = std::filesystem::temp_directory_path() / "quasar_working_directory";
     std::filesystem::create_directories(directory);
 
-    const Quasar::Scope<Quasar::Application> application =
-        TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
 
     REQUIRE(application != nullptr);
     CHECK(std::filesystem::equivalent(std::filesystem::current_path(), directory));
@@ -396,8 +389,7 @@ TEST_CASE("No application is created when its working directory does not exist")
     const std::filesystem::path directory = std::filesystem::temp_directory_path() / "quasar_missing_directory";
     std::filesystem::remove_all(directory);
 
-    const Quasar::Scope<Quasar::Application> application =
-        TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
 
     CHECK(application == nullptr);
     CHECK(std::filesystem::current_path() == currentPath.GetPath());
@@ -430,8 +422,7 @@ TEST_CASE("An overlay can remove itself during an update")
     application->Run();
 
     const std::vector<std::string> expected{
-        "Layer update",   "Overlay update", "Layer render", "Overlay render",
-        "Overlay detach", "Layer update",   "Layer render",
+        "Layer update", "Overlay update", "Layer render", "Overlay render", "Overlay detach", "Layer update", "Layer render",
     };
     CHECK(calls == expected);
 }

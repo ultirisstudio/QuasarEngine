@@ -33,10 +33,7 @@ namespace Quasar
         bool IsRepeat() const { return m_Repeat; }
 
         /// @brief Returns the event with its key code, for example "KeyPressed: 87 (repeat)".
-        std::string ToString() const override
-        {
-            return fmt::format("{}: {}{}", GetName(), static_cast<std::uint16_t>(m_Key), m_Repeat ? " (repeat)" : "");
-        }
+        std::string ToString() const override { return fmt::format("{}: {}{}", GetName(), static_cast<std::uint16_t>(m_Key), m_Repeat ? " (repeat)" : ""); }
 
     private:
         Key m_Key;
@@ -44,8 +41,7 @@ namespace Quasar
     };
 
     /// @brief Sent when a key is released.
-    class KeyReleasedEvent final
-        : public EventOf<EventType::KeyReleased, EventCategory::Input | EventCategory::Keyboard>
+    class KeyReleasedEvent final : public EventOf<EventType::KeyReleased, EventCategory::Input | EventCategory::Keyboard>
     {
     public:
         /// @brief Creates the event for the released key.
@@ -55,10 +51,7 @@ namespace Quasar
         Key GetKey() const { return m_Key; }
 
         /// @brief Returns the event with its key code, for example "KeyReleased: 87".
-        std::string ToString() const override
-        {
-            return fmt::format("{}: {}", GetName(), static_cast<std::uint16_t>(m_Key));
-        }
+        std::string ToString() const override { return fmt::format("{}: {}", GetName(), static_cast<std::uint16_t>(m_Key)); }
 
     private:
         Key m_Key;

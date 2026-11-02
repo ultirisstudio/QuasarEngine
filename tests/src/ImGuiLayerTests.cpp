@@ -183,8 +183,7 @@ TEST_CASE("The ImGui demo window can be displayed")
 
     CHECK(layer.ImGuiRenders == 3);
     const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-    CHECK(std::ranges::none_of(messages, [](const Quasar::LogMessage& message)
-                               { return message.Level >= Quasar::LogLevel::Error; }));
+    CHECK(std::ranges::none_of(messages, [](const Quasar::LogMessage& message) { return message.Level >= Quasar::LogLevel::Error; }));
 }
 
 TEST_CASE("ImGui keeps the mouse from the layers while the cursor is over an ImGui window")
@@ -252,8 +251,7 @@ TEST_CASE("ImGui windows can be dragged outside the main window")
     layer.ImGuiAction = [&outside, &viewports]
     {
         const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(
-            ImVec2(mainViewport->Pos.x + mainViewport->Size.x + 20.0f, mainViewport->Pos.y + 20.0f));
+        ImGui::SetNextWindowPos(ImVec2(mainViewport->Pos.x + mainViewport->Size.x + 20.0f, mainViewport->Pos.y + 20.0f));
         ImGui::SetNextWindowSize(ImVec2(200.0f, 200.0f));
         ImGui::Begin("Outside");
         outside = ImGui::GetWindowViewport() != mainViewport;
@@ -266,8 +264,7 @@ TEST_CASE("ImGui windows can be dragged outside the main window")
     CHECK(outside);
     CHECK(viewports == 2);
     const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-    CHECK(std::ranges::none_of(messages, [](const Quasar::LogMessage& message)
-                               { return message.Level >= Quasar::LogLevel::Warning; }));
+    CHECK(std::ranges::none_of(messages, [](const Quasar::LogMessage& message) { return message.Level >= Quasar::LogLevel::Warning; }));
 }
 
 TEST_CASE("ImGui keeps the keyboard from the layers while a text field has the focus")

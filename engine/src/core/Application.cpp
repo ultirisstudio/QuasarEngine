@@ -50,8 +50,7 @@ namespace Quasar
     {
         if (s_Instance != nullptr)
         {
-            QUASAR_ENGINE_ERROR("Cannot create the application '{}': an application already exists",
-                                specification.Name);
+            QUASAR_ENGINE_ERROR("Cannot create the application '{}': an application already exists", specification.Name);
             return nullptr;
         }
 
@@ -61,8 +60,8 @@ namespace Quasar
             std::filesystem::current_path(specification.WorkingDirectory, error);
             if (error)
             {
-                QUASAR_ENGINE_ERROR("Cannot create the application '{}': cannot use '{}' as working directory: {}",
-                                    specification.Name, specification.WorkingDirectory, error.message());
+                QUASAR_ENGINE_ERROR("Cannot create the application '{}': cannot use '{}' as working directory: {}", specification.Name,
+                                    specification.WorkingDirectory, error.message());
                 return nullptr;
             }
         }

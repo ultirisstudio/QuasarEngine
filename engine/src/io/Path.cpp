@@ -38,8 +38,7 @@ namespace Quasar
             return std::nullopt;
         }
 
-        const std::filesystem::path relative =
-            absolutePath.lexically_normal().lexically_relative(absoluteRoot.lexically_normal());
+        const std::filesystem::path relative = absolutePath.lexically_normal().lexically_relative(absoluteRoot.lexically_normal());
         if (relative.empty() || *relative.begin() == "..")
         {
             return std::nullopt;

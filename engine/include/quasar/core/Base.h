@@ -72,18 +72,18 @@ namespace Quasar
 ///
 /// In Release, the condition is not evaluated, so it must not have side effects.
 #ifdef QUASAR_DEBUG
-#define QUASAR_ENGINE_ASSERT(condition, ...)                                                                           \
-    do                                                                                                                 \
-    {                                                                                                                  \
-        if (!(condition))                                                                                              \
-        {                                                                                                              \
-            QUASAR_ENGINE_ERROR("Assertion '{}' failed at {}:{}", #condition, __FILE__, __LINE__);                     \
-            if constexpr (sizeof(#__VA_ARGS__) > 1)                                                                    \
-            {                                                                                                          \
-                QUASAR_ENGINE_ERROR("" __VA_ARGS__);                                                                   \
-            }                                                                                                          \
-            QUASAR_DEBUGBREAK();                                                                                       \
-        }                                                                                                              \
+#define QUASAR_ENGINE_ASSERT(condition, ...)                                                                                                                   \
+    do                                                                                                                                                         \
+    {                                                                                                                                                          \
+        if (!(condition))                                                                                                                                      \
+        {                                                                                                                                                      \
+            QUASAR_ENGINE_ERROR("Assertion '{}' failed at {}:{}", #condition, __FILE__, __LINE__);                                                             \
+            if constexpr (sizeof(#__VA_ARGS__) > 1)                                                                                                            \
+            {                                                                                                                                                  \
+                QUASAR_ENGINE_ERROR("" __VA_ARGS__);                                                                                                           \
+            }                                                                                                                                                  \
+            QUASAR_DEBUGBREAK();                                                                                                                               \
+        }                                                                                                                                                      \
     } while (false)
 #else
 #define QUASAR_ENGINE_ASSERT(condition, ...) ((void)[&] { return !(condition); })

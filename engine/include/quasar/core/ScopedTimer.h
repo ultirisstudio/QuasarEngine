@@ -56,12 +56,12 @@ namespace Quasar
 #ifdef QUASAR_DEBUG
 #define QUASAR_SCOPED_TIMER(name) const ::Quasar::ScopedTimer QUASAR_CONCAT(scopedTimer, __LINE__)(name)
 #else
-#define QUASAR_SCOPED_TIMER(name)                                                                                      \
-    do                                                                                                                 \
-    {                                                                                                                  \
-        if constexpr (false)                                                                                           \
-        {                                                                                                              \
-            static_cast<void>(::Quasar::ScopedTimer(name));                                                            \
-        }                                                                                                              \
+#define QUASAR_SCOPED_TIMER(name)                                                                                                                              \
+    do                                                                                                                                                         \
+    {                                                                                                                                                          \
+        if constexpr (false)                                                                                                                                   \
+        {                                                                                                                                                      \
+            static_cast<void>(::Quasar::ScopedTimer(name));                                                                                                    \
+        }                                                                                                                                                      \
     } while (false)
 #endif

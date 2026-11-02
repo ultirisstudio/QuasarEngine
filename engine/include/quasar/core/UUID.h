@@ -74,9 +74,6 @@ namespace std
     template <>
     struct hash<Quasar::UUID>
     {
-        std::size_t operator()(const Quasar::UUID& uuid) const noexcept
-        {
-            return std::hash<std::uint64_t>{}(uuid.GetValue());
-        }
+        std::size_t operator()(const Quasar::UUID& uuid) const noexcept { return std::hash<std::uint64_t>{}(uuid.GetValue()); }
     };
 }
