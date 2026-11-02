@@ -69,7 +69,7 @@ TEST_CASE("The editor application opens its window and runs the editor layer")
         TestHelpers::UseSoftwareOpenGL();
         const Quasar::Scope<Quasar::Application> application = Quasar::Editor::CreateEditorApplication({});
         REQUIRE(application != nullptr);
-        
+
         ImGui::GetIO().IniFilename = nullptr;
         CHECK(application->GetWindow().GetTitle() == "Quasar Editor");
         CHECK(HasMessage("Editor started"));
