@@ -31,8 +31,7 @@ namespace
 TEST_CASE("A window is created with the settings of its specification")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Window> window =
-        TestHelpers::CreateNullWindow({.Title = "Test", .Width = 640, .Height = 480, .VSync = false});
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow({.Title = "Test", .Width = 640, .Height = 480, .VSync = false});
 
     REQUIRE(window != nullptr);
     CHECK(window->GetTitle() == "Test");

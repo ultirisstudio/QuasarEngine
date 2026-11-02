@@ -76,21 +76,21 @@ namespace Quasar
 #define QUASAR_ENGINE_TRACE(...) ::Quasar::Log::Engine().trace(__VA_ARGS__)
 #define QUASAR_TRACE(...) ::Quasar::Log::App().trace(__VA_ARGS__)
 #else
-#define QUASAR_ENGINE_TRACE(...)                                                                                       \
-    do                                                                                                                 \
-    {                                                                                                                  \
-        if constexpr (false)                                                                                           \
-        {                                                                                                              \
-            ::Quasar::Log::Engine().trace(__VA_ARGS__);                                                                \
-        }                                                                                                              \
+#define QUASAR_ENGINE_TRACE(...)                                                                                                                               \
+    do                                                                                                                                                         \
+    {                                                                                                                                                          \
+        if constexpr (false)                                                                                                                                   \
+        {                                                                                                                                                      \
+            ::Quasar::Log::Engine().trace(__VA_ARGS__);                                                                                                        \
+        }                                                                                                                                                      \
     } while (false)
-#define QUASAR_TRACE(...)                                                                                              \
-    do                                                                                                                 \
-    {                                                                                                                  \
-        if constexpr (false)                                                                                           \
-        {                                                                                                              \
-            ::Quasar::Log::App().trace(__VA_ARGS__);                                                                   \
-        }                                                                                                              \
+#define QUASAR_TRACE(...)                                                                                                                                      \
+    do                                                                                                                                                         \
+    {                                                                                                                                                          \
+        if constexpr (false)                                                                                                                                   \
+        {                                                                                                                                                      \
+            ::Quasar::Log::App().trace(__VA_ARGS__);                                                                                                           \
+        }                                                                                                                                                      \
     } while (false)
 #endif
 

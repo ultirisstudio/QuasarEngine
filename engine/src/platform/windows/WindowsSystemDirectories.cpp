@@ -29,8 +29,7 @@ namespace Quasar::Platform
 
         if (FAILED(result))
         {
-            QUASAR_ENGINE_ERROR("Cannot find the application data folder: error {:#010x}",
-                                static_cast<std::uint32_t>(result));
+            QUASAR_ENGINE_ERROR("Cannot find the application data folder: error {:#010x}", static_cast<std::uint32_t>(result));
             return std::nullopt;
         }
 

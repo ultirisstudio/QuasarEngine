@@ -148,8 +148,8 @@ TEST_CASE("A UUID is written as 16 lowercase hexadecimal digits")
 
 TEST_CASE("Converting a UUID to text and back gives the same value")
 {
-    const auto uuids = std::to_array<Quasar::UUID>({Quasar::UUID::Generate(), Quasar::UUID(), Quasar::UUID(1),
-                                                    Quasar::UUID(std::numeric_limits<std::uint64_t>::max())});
+    const auto uuids =
+        std::to_array<Quasar::UUID>({Quasar::UUID::Generate(), Quasar::UUID(), Quasar::UUID(1), Quasar::UUID(std::numeric_limits<std::uint64_t>::max())});
 
     for (const Quasar::UUID uuid : uuids)
     {

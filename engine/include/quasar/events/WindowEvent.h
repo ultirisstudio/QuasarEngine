@@ -55,10 +55,7 @@ namespace Quasar
         bool IsFocused() const { return m_Focused; }
 
         /// @brief Returns the event with the change, for example "WindowFocus: gained".
-        std::string ToString() const override
-        {
-            return fmt::format("{}: {}", GetName(), m_Focused ? "gained" : "lost");
-        }
+        std::string ToString() const override { return fmt::format("{}: {}", GetName(), m_Focused ? "gained" : "lost"); }
 
     private:
         bool m_Focused = false;
@@ -79,10 +76,7 @@ namespace Quasar
         bool IsMinimized() const { return m_Minimized; }
 
         /// @brief Returns the event with the change, for example "WindowMinimize: minimized".
-        std::string ToString() const override
-        {
-            return fmt::format("{}: {}", GetName(), m_Minimized ? "minimized" : "restored");
-        }
+        std::string ToString() const override { return fmt::format("{}: {}", GetName(), m_Minimized ? "minimized" : "restored"); }
 
     private:
         bool m_Minimized = false;

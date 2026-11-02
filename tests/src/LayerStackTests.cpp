@@ -107,8 +107,7 @@ TEST_CASE("Overlays stay above regular layers after any sequence of additions an
     // A fixed seed gives the same sequence on every run, so a failure can be reproduced
     // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp)
     std::mt19937 random(2026);
-    const auto pick = [&random](std::size_t count)
-    { return std::uniform_int_distribution<std::size_t>(0, count - 1)(random); };
+    const auto pick = [&random](std::size_t count) { return std::uniform_int_distribution<std::size_t>(0, count - 1)(random); };
 
     constexpr int steps = 2000;
     for (int step = 0; step < steps; ++step)

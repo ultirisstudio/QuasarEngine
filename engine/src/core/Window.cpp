@@ -48,8 +48,7 @@ namespace Quasar
         }
     }
 
-    Window::Window(GLFWwindow* handle, const WindowSpecification& specification)
-        : m_Handle(handle), m_Title(specification.Title)
+    Window::Window(GLFWwindow* handle, const WindowSpecification& specification) : m_Handle(handle), m_Title(specification.Title)
     {
         glfwSetWindowUserPointer(handle, this);
         SetGlfwCallbacks();
@@ -92,8 +91,7 @@ namespace Quasar
         }
 
         GLFWwindow* handle =
-            glfwCreateWindow(static_cast<int>(specification.Width), static_cast<int>(specification.Height),
-                             specification.Title.c_str(), nullptr, nullptr);
+            glfwCreateWindow(static_cast<int>(specification.Width), static_cast<int>(specification.Height), specification.Title.c_str(), nullptr, nullptr);
         if (handle == nullptr)
         {
             if (specification.GraphicsContext)
@@ -122,16 +120,14 @@ namespace Quasar
             window->m_Context = OpenGLContext::Create(handle);
             if (window->m_Context == nullptr)
             {
-                QUASAR_ENGINE_ERROR("Cannot create the window '{}': it has no usable OpenGL context",
-                                    specification.Title);
+                QUASAR_ENGINE_ERROR("Cannot create the window '{}': it has no usable OpenGL context", specification.Title);
                 return nullptr;
             }
         }
 
         window->SetVSync(specification.VSync);
 
-        QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(),
-                           window->GetHeight());
+        QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(), window->GetHeight());
         return window;
     }
 
@@ -211,8 +207,7 @@ namespace Quasar
                                        [](GLFWwindow* handle, int width, int height)
                                        {
                                            Window& window = GetWindow(handle);
-                                           WindowResizeEvent event(static_cast<std::uint32_t>(width),
-                                                                   static_cast<std::uint32_t>(height));
+                                           WindowResizeEvent event(static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height));
                                            window.SendEvent(event);
                                        });
 

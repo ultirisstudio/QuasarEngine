@@ -39,9 +39,8 @@ namespace Quasar
         const int version = gladLoadGL(glfwGetProcAddress);
         if (version == 0)
         {
-            QUASAR_ENGINE_ERROR(
-                "Cannot load the OpenGL functions. OpenGL {}.{} is required: update the graphics driver",
-                RequiredMajorVersion, RequiredMinorVersion);
+            QUASAR_ENGINE_ERROR("Cannot load the OpenGL functions. OpenGL {}.{} is required: update the graphics driver", RequiredMajorVersion,
+                                RequiredMinorVersion);
             return nullptr;
         }
 
@@ -49,8 +48,7 @@ namespace Quasar
         {
             QUASAR_ENGINE_ERROR("OpenGL {}.{} is required, but the graphics driver only provides OpenGL {}.{}: update "
                                 "the graphics driver",
-                                RequiredMajorVersion, RequiredMinorVersion, GLAD_VERSION_MAJOR(version),
-                                GLAD_VERSION_MINOR(version));
+                                RequiredMajorVersion, RequiredMinorVersion, GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
             return nullptr;
         }
 

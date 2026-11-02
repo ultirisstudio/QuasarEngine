@@ -23,8 +23,7 @@ namespace Quasar::Platform
 
             passwd entry{};
             passwd* found = nullptr;
-            if (getpwuid_r(getuid(), &entry, buffer.data(), buffer.size(), &found) != 0 || found == nullptr ||
-                found->pw_dir == nullptr)
+            if (getpwuid_r(getuid(), &entry, buffer.data(), buffer.size(), &found) != 0 || found == nullptr || found->pw_dir == nullptr)
             {
                 return std::nullopt;
             }
@@ -58,8 +57,7 @@ namespace Quasar::Platform
             return *home / ".config";
         }
 
-        QUASAR_ENGINE_ERROR(
-            "Cannot find the config folder: XDG_CONFIG_HOME and HOME are not set, and the user has no home folder");
+        QUASAR_ENGINE_ERROR("Cannot find the config folder: XDG_CONFIG_HOME and HOME are not set, and the user has no home folder");
         return std::nullopt;
     }
 
