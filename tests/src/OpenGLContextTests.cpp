@@ -37,7 +37,8 @@ namespace
     bool HasMessageContaining(std::string_view text)
     {
         const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::any_of(messages, [text](const Quasar::LogMessage& message) { return message.Text.find(text) != std::string::npos; });
+        return std::ranges::any_of(messages, [text](const Quasar::LogMessage& message)
+                                   { return message.Text.find(text) != std::string::npos; });
     }
 
     class ClosingLayer : public Quasar::Layer

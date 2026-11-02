@@ -98,7 +98,9 @@ namespace Quasar
         {
             if (specification.GraphicsContext)
             {
-                QUASAR_ENGINE_ERROR("Cannot create the window '{}' with an OpenGL 4.5 core context: check that the graphics driver supports OpenGL 4.5", specification.Title);
+                QUASAR_ENGINE_ERROR("Cannot create the window '{}' with an OpenGL 4.5 core context: check that the "
+                                    "graphics driver supports OpenGL 4.5",
+                                    specification.Title);
             }
             else
             {
@@ -120,7 +122,8 @@ namespace Quasar
             window->m_Context = OpenGLContext::Create(handle);
             if (window->m_Context == nullptr)
             {
-                QUASAR_ENGINE_ERROR("Cannot create the window '{}': it has no usable OpenGL context", specification.Title);
+                QUASAR_ENGINE_ERROR("Cannot create the window '{}': it has no usable OpenGL context",
+                                    specification.Title);
                 return nullptr;
             }
         }
