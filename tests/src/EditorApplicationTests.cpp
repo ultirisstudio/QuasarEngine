@@ -54,8 +54,8 @@ namespace
 
     bool HasEditorLayer(const Quasar::Application& application)
     {
-        return std::ranges::any_of(application.GetLayerStack(),
-                                   [](const Quasar::Scope<Quasar::Layer>& layer) { return dynamic_cast<const Quasar::Editor::EditorLayer*>(layer.get()) != nullptr; });
+        return std::ranges::any_of(application.GetLayerStack(), [](const Quasar::Scope<Quasar::Layer>& layer)
+                                   { return dynamic_cast<const Quasar::Editor::EditorLayer*>(layer.get()) != nullptr; });
     }
 }
 
@@ -65,7 +65,7 @@ TEST_CASE("The editor application opens its window and runs the editor layer")
     TestHelpers::UseSoftwareOpenGL();
     const Quasar::Scope<Quasar::Application> application = Quasar::Editor::CreateEditorApplication({});
     REQUIRE(application != nullptr);
-    
+
     ImGui::GetIO().IniFilename = nullptr;
     auto layer = Quasar::CreateScope<ClosingLayer>();
     const ClosingLayer& closing = *layer;
