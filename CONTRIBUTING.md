@@ -100,7 +100,12 @@ Test what the code does, not more and not less:
 - Do not test the standard library or the third-party libraries, for example that a `std::shared_ptr` counts its
   references.
 - The same behavior is tested on Windows and Linux. A test is limited to one platform only for code that only exists
-  on that platform.
+  on that platform, or when it needs a tool that only exists there, such as the options of the Mesa driver on Linux.
+
+Tests that need an OpenGL context create their windows with `TestHelpers::CreateWindowWithContext()` or
+`TestHelpers::CreateApplicationWithContext()`. On Linux, they use the Mesa software driver without a display. On Windows,
+they use hidden windows and the installed driver, and the CI installs the Mesa software driver because its runner has
+no GPU. ImGui windows that a test moves outside the main window can appear on the screen for a moment.
 
 ### Test helpers
 
@@ -109,7 +114,7 @@ The helpers shared by the tests are in `tests/src/`:
 | Header | Content |
 |---|---|
 | `LogHelpers.h` | `ScopedLog`, which starts and stops the loggers for one test, and `HasLogAtLeast()` |
-| `NullWindow.h` | Windows and applications on the null platform of GLFW, and functions that send them input |
+| `NullWindow.h` | Windows and applications on the null platform of GLFW or with an OpenGL context, and functions that send them input |
 | `TestLayers.h` | `ClosingLayer`, which closes the application after a number of frames |
 | `TemporaryFiles.h` | `TemporaryFolder`, `TemporaryFile` and `ScopedCurrentDirectory`, removed or put back at the end of the test |
 | `ScopedEnvironmentVariable.h` | Changes an environment variable during a test (Linux only) |

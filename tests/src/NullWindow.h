@@ -13,10 +13,20 @@
 
 namespace TestHelpers
 {
+    inline void StartGlfw(int platform)
+    {
+        glfwInitHint(GLFW_PLATFORM, platform);
+        glfwInit();
+        if (glfwGetPlatform() != platform)
+        {
+            glfwTerminate();
+            glfwInit();
+        }
+    }
+
     inline void UseNullPlatform()
     {
-        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_NULL);
-        glfwInit();
+        StartGlfw(GLFW_PLATFORM_NULL);
     }
 
     inline Quasar::Scope<Quasar::Window> CreateNullWindow(Quasar::WindowSpecification specification = {})
@@ -33,29 +43,32 @@ namespace TestHelpers
         return Quasar::Application::Create(specification);
     }
 
-#ifdef QUASAR_PLATFORM_LINUX
-    inline void UseSoftwareOpenGL()
+    inline void UseTestOpenGL()
     {
+#ifdef QUASAR_PLATFORM_LINUX
         UseNullPlatform();
         glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
         // The driver draws on the calling thread instead of helper threads, whose locks the thread sanitizer cannot
         // see, so it reports no false data races
         // NOLINTNEXTLINE(concurrency-mt-unsafe)
         setenv("LP_NUM_THREADS", "0", 1);
+#else
+        StartGlfw(GLFW_PLATFORM_WIN32);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+#endif
     }
 
-    inline Quasar::Scope<Quasar::Window> CreateNullWindowWithContext(const Quasar::WindowSpecification& specification = {})
+    inline Quasar::Scope<Quasar::Window> CreateWindowWithContext(const Quasar::WindowSpecification& specification = {})
     {
-        UseSoftwareOpenGL();
+        UseTestOpenGL();
         return Quasar::Window::Create(specification);
     }
 
-    inline Quasar::Scope<Quasar::Application> CreateNullApplicationWithContext(const Quasar::ApplicationSpecification& specification = {})
+    inline Quasar::Scope<Quasar::Application> CreateApplicationWithContext(const Quasar::ApplicationSpecification& specification = {})
     {
-        UseSoftwareOpenGL();
+        UseTestOpenGL();
         return Quasar::Application::Create(specification);
     }
-#endif
 
     inline void SendKey(Quasar::Window& window, int key, int action)
     {

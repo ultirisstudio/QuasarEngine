@@ -61,5 +61,31 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
+      - name: Cache the Mesa software OpenGL driver
+        id: mesa-cache
+        uses: actions/cache@v6
+        with:
+          path: mesa
+          key: mesa-dist-win-26.0.3-release-msvc-x64
+
+      - name: Download the Mesa software OpenGL driver
+        if: steps.mesa-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $version = '26.0.3'
+          Invoke-WebRequest "https://github.com/pal1000/mesa-dist-win/releases/download/$version/mesa3d-$version-release-msvc.7z" -OutFile mesa.7z
+          7z x mesa.7z -omesa-archive -y | Out-Null
+          New-Item -ItemType Directory -Force mesa | Out-Null
+          Copy-Item mesa-archive/x64/*.dll mesa/
+          if (-not (Test-Path mesa/opengl32.dll)) { throw "opengl32.dll is not in the x64 folder of the Mesa archive" }
+
+      - name: Copy the Mesa software OpenGL driver next to the tests
+        shell: pwsh
+        run: |
+          Get-ChildItem build/${{ matrix.preset }}/bin -Directory | ForEach-Object { Copy-Item mesa/*.dll $_.FullName }
+          Get-ChildItem mesa -Name
+
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
+        env:
+          GALLIUM_DRIVER: llvmpipe

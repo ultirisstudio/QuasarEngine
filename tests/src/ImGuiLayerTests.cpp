@@ -5,7 +5,6 @@
 #include <quasar/core/ImGuiLayer.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/MemoryLogSink.h>
-#include <quasar/core/PlatformDetection.h>
 #include <quasar/events/Event.h>
 
 #include <doctest/doctest.h>
@@ -29,9 +28,6 @@ TEST_CASE("An application without an OpenGL context has no ImGui layer")
     CHECK(application->GetImGuiLayer() == nullptr);
     CHECK(ImGui::GetCurrentContext() == nullptr);
 }
-
-// ImGui draws with OpenGL: these tests need the Mesa software driver through EGL, only on Linux
-#ifdef QUASAR_PLATFORM_LINUX
 
 namespace
 {
@@ -74,7 +70,7 @@ namespace
 
     Quasar::Scope<Quasar::Application> CreateImGuiApplication()
     {
-        Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+        Quasar::Scope<Quasar::Application> application = TestHelpers::CreateApplicationWithContext();
         if (application != nullptr && ImGui::GetCurrentContext() != nullptr)
         {
             ImGui::GetIO().IniFilename = nullptr;
@@ -92,7 +88,7 @@ namespace
 
     void DrawCornerWindow()
     {
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->Pos);
         ImGui::SetNextWindowSize(ImVec2(300.0f, 300.0f));
         ImGui::Begin("Corner");
         ImGui::TextUnformatted("Over the corner");
@@ -303,5 +299,3 @@ TEST_CASE("The layers receive the keyboard while ImGui does not use it")
     CHECK(Received(layer, "KeyTyped"));
     CHECK(Received(layer, "KeyReleased"));
 }
-
-#endif
