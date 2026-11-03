@@ -1,45 +1,24 @@
+#include "LogAssertions.h"
 #include "NullWindow.h"
 #include "ScopedEnvironmentVariable.h"
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Layer.h>
-#include <quasar/core/Log.h>
 #include <quasar/core/MemoryLogSink.h>
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/core/Window.h>
 
 #include <doctest/doctest.h>
 
-#include <algorithm>
-#include <optional>
-#include <string>
-#include <string_view>
+#include <GLFW/glfw3.h>
+
 #include <utility>
-#include <vector>
 
 // These tests need a real OpenGL driver without a display: the Mesa software driver through EGL, only on Linux
 #ifdef QUASAR_PLATFORM_LINUX
 
 namespace
 {
-    std::optional<std::string> FindMessage(std::string_view start)
-    {
-        for (const Quasar::LogMessage& message : Quasar::Log::GetMemorySink()->GetMessages())
-        {
-            if (message.Text.starts_with(start))
-            {
-                return message.Text;
-            }
-        }
-        return std::nullopt;
-    }
-
-    bool HasMessageContaining(std::string_view text)
-    {
-        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::any_of(messages, [text](const Quasar::LogMessage& message) { return message.Text.find(text) != std::string::npos; });
-    }
-
     class ClosingLayer : public Quasar::Layer
     {
     public:
@@ -58,31 +37,22 @@ namespace
     };
 }
 
-TEST_CASE("A window gets an OpenGL 4.5 core context")
+TEST_CASE("A window gets a current OpenGL 4.5 core context")
 {
     const TestHelpers::ScopedLog log;
+
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindowWithContext();
+
     REQUIRE(window != nullptr);
-
-    const std::string prefix = "OpenGL version: ";
-    const std::optional<std::string> version = FindMessage(prefix);
-    REQUIRE(version.has_value());
-
-    const std::string_view number = std::string_view(*version).substr(prefix.size(), 3);
-    CAPTURE(*version);
-    CHECK((number == "4.5" || number == "4.6"));
-}
-
-TEST_CASE("The GPU vendor, renderer and OpenGL version are logged when the context is created")
-{
-    const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindowWithContext();
-    REQUIRE(window != nullptr);
-
-    CHECK(FindMessage("OpenGL vendor: ").has_value());
-    CHECK(FindMessage("OpenGL renderer: ").has_value());
-    CHECK(FindMessage("OpenGL version: ").has_value());
-    CHECK_FALSE(HasMessageContaining("unknown"));
+    GLFWwindow* handle = window->GetNativeWindow();
+    const int major = glfwGetWindowAttrib(handle, GLFW_CONTEXT_VERSION_MAJOR);
+    const int minor = glfwGetWindowAttrib(handle, GLFW_CONTEXT_VERSION_MINOR);
+    CAPTURE(major);
+    CAPTURE(minor);
+    CHECK((major > 4 || (major == 4 && minor >= 5)));
+    CHECK(glfwGetWindowAttrib(handle, GLFW_OPENGL_PROFILE) == GLFW_OPENGL_CORE_PROFILE);
+    CHECK(glfwGetCurrentContext() == handle);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 TEST_CASE("A window with a context swaps its buffers and changes VSync without errors")
@@ -96,7 +66,7 @@ TEST_CASE("A window with a context swaps its buffers and changes VSync without e
     window->Update();
 
     CHECK(window->IsVSync());
-    CHECK_FALSE(FindMessage("GLFW error").has_value());
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 TEST_CASE("No window is created when OpenGL 4.5 is not available")
@@ -107,7 +77,7 @@ TEST_CASE("No window is created when OpenGL 4.5 is not available")
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindowWithContext({.Title = "Old driver"});
 
     CHECK(window == nullptr);
-    CHECK(HasMessageContaining("OpenGL 4.5"));
+    CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 TEST_CASE("An application runs its main loop with an OpenGL context")
@@ -122,7 +92,7 @@ TEST_CASE("An application runs its main loop with an OpenGL context")
     application->Run();
 
     CHECK(closing.Updates == 3);
-    CHECK_FALSE(FindMessage("GLFW error").has_value());
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 #endif

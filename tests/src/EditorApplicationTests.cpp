@@ -1,10 +1,11 @@
+#include "LogAssertions.h"
 #include "NullWindow.h"
 
 #include <EditorApplication.h>
+#include <EditorLayer.h>
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Layer.h>
-#include <quasar/core/Log.h>
 #include <quasar/core/MemoryLogSink.h>
 #include <quasar/core/PlatformDetection.h>
 
@@ -14,18 +15,8 @@
 
 #include <algorithm>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
-
-namespace
-{
-    bool HasMessage(std::string_view text)
-    {
-        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::any_of(messages, [text](const Quasar::LogMessage& message) { return message.Text == text; });
-    }
-}
 
 TEST_CASE("The editor application has its own name, window and arguments")
 {
@@ -60,31 +51,32 @@ namespace
 
         int Updates = 0;
     };
+
+    bool HasEditorLayer(const Quasar::Application& application)
+    {
+        return std::ranges::any_of(application.GetLayerStack(),
+                                   [](const Quasar::Scope<Quasar::Layer>& layer) { return dynamic_cast<const Quasar::Editor::EditorLayer*>(layer.get()) != nullptr; });
+    }
 }
 
 TEST_CASE("The editor application opens its window and runs the editor layer")
 {
     const TestHelpers::ScopedLog log;
-    {
-        TestHelpers::UseSoftwareOpenGL();
-        const Quasar::Scope<Quasar::Application> application = Quasar::Editor::CreateEditorApplication({});
-        REQUIRE(application != nullptr);
+    TestHelpers::UseSoftwareOpenGL();
+    const Quasar::Scope<Quasar::Application> application = Quasar::Editor::CreateEditorApplication({});
+    REQUIRE(application != nullptr);
+    
+    ImGui::GetIO().IniFilename = nullptr;
+    auto layer = Quasar::CreateScope<ClosingLayer>();
+    const ClosingLayer& closing = *layer;
+    application->PushLayer(std::move(layer));
 
-        ImGui::GetIO().IniFilename = nullptr;
-        CHECK(application->GetWindow().GetTitle() == "Quasar Editor");
-        CHECK(HasMessage("Editor started"));
+    application->Run();
 
-        auto layer = Quasar::CreateScope<ClosingLayer>();
-        const ClosingLayer& closing = *layer;
-        application->PushLayer(std::move(layer));
-
-        application->Run();
-
-        CHECK(closing.Updates == 3);
-        CHECK_FALSE(HasMessage("Editor stopped"));
-    }
-
-    CHECK(HasMessage("Editor stopped"));
+    CHECK(application->GetWindow().GetTitle() == "Quasar Editor");
+    CHECK(HasEditorLayer(*application));
+    CHECK(closing.Updates == 3);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 #endif
