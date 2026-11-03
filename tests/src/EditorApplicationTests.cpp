@@ -8,7 +8,6 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/MemoryLogSink.h>
-#include <quasar/core/PlatformDetection.h>
 
 #include <doctest/doctest.h>
 
@@ -31,9 +30,6 @@ TEST_CASE("The editor application has its own name, window and arguments")
     CHECK(specification.Arguments == std::vector<std::string>{"--project", "Game"});
 }
 
-// The editor needs an OpenGL context: this test needs the Mesa software driver through EGL, only on Linux
-#ifdef QUASAR_PLATFORM_LINUX
-
 namespace
 {
     bool HasEditorLayer(const Quasar::Application& application)
@@ -46,7 +42,7 @@ namespace
 TEST_CASE("The editor application opens its window and runs the editor layer")
 {
     const TestHelpers::ScopedLog log;
-    TestHelpers::UseSoftwareOpenGL();
+    TestHelpers::UseTestOpenGL();
     const Quasar::Scope<Quasar::Application> application = Quasar::Editor::CreateEditorApplication({});
     REQUIRE(application != nullptr);
 
@@ -62,5 +58,3 @@ TEST_CASE("The editor application opens its window and runs the editor layer")
     CHECK(closing.GetUpdates() == 3);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
-
-#endif

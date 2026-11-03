@@ -14,14 +14,11 @@
 
 #include <utility>
 
-// These tests need a real OpenGL driver without a display: the Mesa software driver through EGL, only on Linux
-#ifdef QUASAR_PLATFORM_LINUX
-
 TEST_CASE("A window gets a current OpenGL 4.5 core context")
 {
     const TestHelpers::ScopedLog log;
 
-    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindowWithContext();
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
 
     REQUIRE(window != nullptr);
     GLFWwindow* handle = window->GetNativeWindow();
@@ -38,7 +35,7 @@ TEST_CASE("A window gets a current OpenGL 4.5 core context")
 TEST_CASE("A window with a context swaps its buffers and changes VSync without errors")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindowWithContext({.VSync = false});
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext({.VSync = false});
     REQUIRE(window != nullptr);
 
     window->Update();
@@ -49,21 +46,23 @@ TEST_CASE("A window with a context swaps its buffers and changes VSync without e
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
+#ifdef QUASAR_PLATFORM_LINUX
 TEST_CASE("No window is created when OpenGL 4.5 is not available")
 {
     const TestHelpers::ScopedLog log;
     const TestHelpers::ScopedEnvironmentVariable version("MESA_GL_VERSION_OVERRIDE", "3.3");
 
-    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindowWithContext({.Title = "Old driver"});
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext({.Title = "Old driver"});
 
     CHECK(window == nullptr);
     CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
+#endif
 
 TEST_CASE("An application runs its main loop with an OpenGL context")
 {
     const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateApplicationWithContext();
     REQUIRE(application != nullptr);
     auto layer = Quasar::CreateScope<TestHelpers::ClosingLayer>();
     const TestHelpers::ClosingLayer& closing = *layer;
@@ -74,5 +73,3 @@ TEST_CASE("An application runs its main loop with an OpenGL context")
     CHECK(closing.GetUpdates() == 3);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
-
-#endif
