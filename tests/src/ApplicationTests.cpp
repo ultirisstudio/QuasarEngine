@@ -245,6 +245,24 @@ TEST_CASE("The application keeps its specification")
     CHECK(application->GetSpecification().Arguments == std::vector<std::string>{"--level", "2"});
 }
 
+TEST_CASE("The layer stack of the application lists its layers from the bottom to the top")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+
+    AddOverlay(*application, "Overlay", calls);
+    AddLayer(*application, "Layer", calls);
+
+    std::vector<std::string> names;
+    for (const Quasar::Scope<Quasar::Layer>& layer : application->GetLayerStack())
+    {
+        names.push_back(layer->GetName());
+    }
+    CHECK(names == std::vector<std::string>{"Layer", "Overlay"});
+}
+
 TEST_CASE("Layers added before the main loop are attached right away")
 {
     const TestHelpers::ScopedLog log;

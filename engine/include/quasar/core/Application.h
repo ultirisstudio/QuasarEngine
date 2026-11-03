@@ -111,6 +111,11 @@ namespace Quasar
         /// @brief Returns the layer that runs ImGui, or nullptr when the window has no OpenGL context.
         ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer.get(); }
 
+        /// @brief Returns the layers and overlays of the application, from the bottom of the stack to the top.
+        ///
+        /// Layers added or removed during a frame only appear in it, or leave it, at the end of the frame.
+        const LayerStack& GetLayerStack() const { return m_LayerStack; }
+
         /// @brief Returns the settings the application was created with, including the command-line arguments.
         const ApplicationSpecification& GetSpecification() const { return m_Specification; }
 
