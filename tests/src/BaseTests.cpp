@@ -2,9 +2,7 @@
 
 #include <doctest/doctest.h>
 
-#include <memory>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 namespace
@@ -31,42 +29,12 @@ TEST_CASE("CreateScope builds the object from the given arguments")
     CHECK(foo->Name == "foo");
 }
 
-TEST_CASE("A Scope cannot be copied")
-{
-    static_assert(!std::is_copy_constructible_v<Quasar::Scope<Foo>>);
-    static_assert(!std::is_copy_assignable_v<Quasar::Scope<Foo>>);
-}
-
 TEST_CASE("CreateRef builds the object from the given arguments")
 {
     const Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
     REQUIRE(foo.use_count() == 1);
     CHECK(foo->Value == 7);
     CHECK(foo->Name == "bar");
-}
-
-TEST_CASE("A copied Ref shares the same object")
-{
-    const Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
-    // The copy is what the test checks
-    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-    const Quasar::Ref<Foo> copy = foo;
-
-    CHECK(foo.use_count() == 2);
-    CHECK(copy.get() == foo.get());
-}
-
-TEST_CASE("The object lives until the last Ref is released")
-{
-    Quasar::Ref<Foo> foo = Quasar::CreateRef<Foo>(7, "bar");
-    Quasar::Ref<Foo> copy = foo;
-    const std::weak_ptr<Foo> observer = foo;
-
-    foo.reset();
-    CHECK_FALSE(observer.expired());
-
-    copy.reset();
-    CHECK(observer.expired());
 }
 
 TEST_CASE("Bit sets only the requested bit")

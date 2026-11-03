@@ -1,3 +1,4 @@
+#include "LogHelpers.h"
 #include "NullWindow.h"
 
 #include <quasar/core/Application.h>
@@ -182,8 +183,7 @@ TEST_CASE("The ImGui demo window can be displayed")
     application->Run();
 
     CHECK(layer.ImGuiRenders == 3);
-    const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-    CHECK(std::ranges::none_of(messages, [](const Quasar::LogMessage& message) { return message.Level >= Quasar::LogLevel::Error; }));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 TEST_CASE("ImGui keeps the mouse from the layers while the cursor is over an ImGui window")
@@ -263,8 +263,7 @@ TEST_CASE("ImGui windows can be dragged outside the main window")
 
     CHECK(outside);
     CHECK(viewports == 2);
-    const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-    CHECK(std::ranges::none_of(messages, [](const Quasar::LogMessage& message) { return message.Level >= Quasar::LogLevel::Warning; }));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
 TEST_CASE("ImGui keeps the keyboard from the layers while a text field has the focus")

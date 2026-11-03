@@ -1,4 +1,5 @@
 #include "NullWindow.h"
+#include "TemporaryFiles.h"
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Input.h>
@@ -17,7 +18,6 @@
 #include <filesystem>
 #include <functional>
 #include <string>
-#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -98,28 +98,6 @@ namespace
         application.PushOverlay(std::move(overlay));
         return added;
     }
-
-    class ScopedCurrentPath
-    {
-    public:
-        ScopedCurrentPath() : m_Path(std::filesystem::current_path()) {}
-
-        ~ScopedCurrentPath()
-        {
-            std::error_code error;
-            std::filesystem::current_path(m_Path, error);
-        }
-
-        ScopedCurrentPath(const ScopedCurrentPath&) = delete;
-        ScopedCurrentPath& operator=(const ScopedCurrentPath&) = delete;
-        ScopedCurrentPath(ScopedCurrentPath&&) = delete;
-        ScopedCurrentPath& operator=(ScopedCurrentPath&&) = delete;
-
-        const std::filesystem::path& GetPath() const { return m_Path; }
-
-    private:
-        std::filesystem::path m_Path;
-    };
 
     std::ptrdiff_t Count(const std::vector<std::string>& calls, const std::string& call)
     {
@@ -390,27 +368,25 @@ TEST_CASE("Input reads the state of the main window")
 TEST_CASE("The working directory becomes the current directory")
 {
     const TestHelpers::ScopedLog log;
-    const ScopedCurrentPath currentPath;
-    const std::filesystem::path directory = std::filesystem::temp_directory_path() / "quasar_working_directory";
-    std::filesystem::create_directories(directory);
+    const TestHelpers::TemporaryFolder directory;
+    const TestHelpers::ScopedCurrentDirectory currentDirectory;
 
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = directory.GetPath()});
 
     REQUIRE(application != nullptr);
-    CHECK(std::filesystem::equivalent(std::filesystem::current_path(), directory));
+    CHECK(std::filesystem::equivalent(std::filesystem::current_path(), directory.GetPath()));
 }
 
 TEST_CASE("No application is created when its working directory does not exist")
 {
     const TestHelpers::ScopedLog log;
-    const ScopedCurrentPath currentPath;
-    const std::filesystem::path directory = std::filesystem::temp_directory_path() / "quasar_missing_directory";
-    std::filesystem::remove_all(directory);
+    const TestHelpers::TemporaryFolder parent;
+    const TestHelpers::ScopedCurrentDirectory currentDirectory;
 
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = directory});
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = parent.GetPath() / "missing"});
 
     CHECK(application == nullptr);
-    CHECK(std::filesystem::current_path() == currentPath.GetPath());
+    CHECK(std::filesystem::current_path() == currentDirectory.GetPath());
 }
 
 TEST_CASE("Overlays added before the main loop are removed right away")

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "LogHelpers.h"
+
 #include <quasar/core/Application.h>
 #include <quasar/core/Base.h>
-#include <quasar/core/Log.h>
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/core/Window.h>
 
@@ -12,18 +13,6 @@
 
 namespace TestHelpers
 {
-    class ScopedLog
-    {
-    public:
-        ScopedLog() { Quasar::Log::Init(); }
-        ~ScopedLog() { Quasar::Log::Shutdown(); }
-
-        ScopedLog(const ScopedLog&) = delete;
-        ScopedLog& operator=(const ScopedLog&) = delete;
-        ScopedLog(ScopedLog&&) = delete;
-        ScopedLog& operator=(ScopedLog&&) = delete;
-    };
-
     inline void UseNullPlatform()
     {
         glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_NULL);

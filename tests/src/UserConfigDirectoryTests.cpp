@@ -1,6 +1,7 @@
+#include "LogHelpers.h"
 #include "ScopedEnvironmentVariable.h"
+#include "TemporaryFiles.h"
 
-#include <quasar/core/Log.h>
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/io/UserConfigDirectory.h>
 
@@ -11,7 +12,6 @@
 #include <fstream>
 #include <optional>
 #include <string>
-#include <system_error>
 
 TEST_CASE("The user config directory is an absolute QuasarEngine folder that exists")
 {
@@ -30,39 +30,9 @@ TEST_CASE("The user config directory is the same on every call")
 
 #ifdef QUASAR_PLATFORM_LINUX
 
-namespace
-{
-    class TemporaryFolder
-    {
-    public:
-        explicit TemporaryFolder(const char* name) : m_Path(std::filesystem::temp_directory_path() / name)
-        {
-            std::error_code error;
-            std::filesystem::remove_all(m_Path, error);
-            std::filesystem::create_directory(m_Path, error);
-        }
-
-        ~TemporaryFolder()
-        {
-            std::error_code error;
-            std::filesystem::remove_all(m_Path, error);
-        }
-
-        TemporaryFolder(const TemporaryFolder&) = delete;
-        TemporaryFolder& operator=(const TemporaryFolder&) = delete;
-        TemporaryFolder(TemporaryFolder&&) = delete;
-        TemporaryFolder& operator=(TemporaryFolder&&) = delete;
-
-        const std::filesystem::path& GetPath() const { return m_Path; }
-
-    private:
-        std::filesystem::path m_Path;
-    };
-}
-
 TEST_CASE("On Linux the folder is created in XDG_CONFIG_HOME when it does not exist yet")
 {
-    const TemporaryFolder root("quasar_config_xdg");
+    const TestHelpers::TemporaryFolder root("quasar_config_xdg");
     const std::filesystem::path configHome = root.GetPath() / "missing" / "config";
     const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", configHome.string());
 
@@ -77,7 +47,7 @@ TEST_CASE("On Linux the folder is created in XDG_CONFIG_HOME when it does not ex
 
 TEST_CASE("On Linux the folder is in ~/.config without XDG_CONFIG_HOME")
 {
-    const TemporaryFolder home("quasar_config_home");
+    const TestHelpers::TemporaryFolder home("quasar_config_home");
     const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", std::nullopt);
     const TestHelpers::ScopedEnvironmentVariable homeVariable("HOME", home.GetPath().string());
 
@@ -90,7 +60,7 @@ TEST_CASE("On Linux the folder is in ~/.config without XDG_CONFIG_HOME")
 
 TEST_CASE("On Linux a relative XDG_CONFIG_HOME is ignored")
 {
-    const TemporaryFolder home("quasar_config_relative");
+    const TestHelpers::TemporaryFolder home("quasar_config_relative");
     const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", "relative/config");
     const TestHelpers::ScopedEnvironmentVariable homeVariable("HOME", home.GetPath().string());
 
@@ -114,16 +84,14 @@ TEST_CASE("On Linux the home folder of the user is used without HOME")
 
 TEST_CASE("On Linux no folder is returned when it cannot be created")
 {
-    Quasar::Log::Init();
+    const TestHelpers::ScopedLog log;
 
-    const TemporaryFolder root("quasar_config_file");
+    const TestHelpers::TemporaryFolder root("quasar_config_file");
     const std::filesystem::path file = root.GetPath() / "file";
     std::ofstream(file) << "not a folder";
     const TestHelpers::ScopedEnvironmentVariable xdg("XDG_CONFIG_HOME", file.string());
 
     CHECK_FALSE(Quasar::GetUserConfigDirectory().has_value());
-
-    Quasar::Log::Shutdown();
 }
 
 #endif

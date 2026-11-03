@@ -1,9 +1,9 @@
-#include "LogAssertions.h"
+#include "LogHelpers.h"
 #include "NullWindow.h"
 #include "ScopedEnvironmentVariable.h"
+#include "TestLayers.h"
 
 #include <quasar/core/Application.h>
-#include <quasar/core/Layer.h>
 #include <quasar/core/MemoryLogSink.h>
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/core/Window.h>
@@ -16,26 +16,6 @@
 
 // These tests need a real OpenGL driver without a display: the Mesa software driver through EGL, only on Linux
 #ifdef QUASAR_PLATFORM_LINUX
-
-namespace
-{
-    class ClosingLayer : public Quasar::Layer
-    {
-    public:
-        ClosingLayer() : Layer("Closing") {}
-
-        void OnUpdate(Quasar::Timestep /*timestep*/) override
-        {
-            ++Updates;
-            if (Updates == 3)
-            {
-                Quasar::Application::Get().Close();
-            }
-        }
-
-        int Updates = 0;
-    };
-}
 
 TEST_CASE("A window gets a current OpenGL 4.5 core context")
 {
@@ -85,13 +65,13 @@ TEST_CASE("An application runs its main loop with an OpenGL context")
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplicationWithContext();
     REQUIRE(application != nullptr);
-    auto layer = Quasar::CreateScope<ClosingLayer>();
-    const ClosingLayer& closing = *layer;
+    auto layer = Quasar::CreateScope<TestHelpers::ClosingLayer>();
+    const TestHelpers::ClosingLayer& closing = *layer;
     application->PushLayer(std::move(layer));
 
     application->Run();
 
-    CHECK(closing.Updates == 3);
+    CHECK(closing.GetUpdates() == 3);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
