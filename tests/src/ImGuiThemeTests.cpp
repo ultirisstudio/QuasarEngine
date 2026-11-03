@@ -1,17 +1,14 @@
-#include "NullWindow.h"
+#include "LogHelpers.h"
+#include "TemporaryFiles.h"
 
 #include <quasar/core/ImGuiTheme.h>
-#include <quasar/core/Log.h>
 #include <quasar/core/MemoryLogSink.h>
-#include <quasar/io/File.h>
 
 #include <doctest/doctest.h>
 
 #include <imgui.h>
 
-#include <algorithm>
 #include <filesystem>
-#include <vector>
 
 namespace
 {
@@ -26,12 +23,6 @@ namespace
         ScopedImGuiContext(ScopedImGuiContext&&) = delete;
         ScopedImGuiContext& operator=(ScopedImGuiContext&&) = delete;
     };
-
-    bool HasWarning()
-    {
-        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::any_of(messages, [](const Quasar::LogMessage& message) { return message.Level >= Quasar::LogLevel::Warning; });
-    }
 }
 
 TEST_CASE("The engine font is copied next to the executable")
@@ -54,7 +45,7 @@ TEST_CASE("The engine font is loaded as the default ImGui font")
 
     REQUIRE(atlas.Fonts.Size == 1);
     CHECK(atlas.Fonts[0]->LegacySize == Quasar::ImGuiTheme::FontSize);
-    CHECK_FALSE(HasWarning());
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
 TEST_CASE("A missing font is replaced by the font embedded in ImGui")
@@ -62,13 +53,13 @@ TEST_CASE("A missing font is replaced by the font embedded in ImGui")
     const TestHelpers::ScopedLog log;
     const ScopedImGuiContext context;
     ImFontAtlas& atlas = *ImGui::GetIO().Fonts;
-    const std::filesystem::path missing = std::filesystem::temp_directory_path() / "quasar_missing_font.ttf";
-    std::filesystem::remove(missing);
+    const TestHelpers::TemporaryFolder folder;
+    const std::filesystem::path missing = folder.GetPath() / "missing.ttf";
 
     CHECK_FALSE(Quasar::ImGuiTheme::LoadFont(atlas, missing));
 
     CHECK(atlas.Fonts.Size == 1);
-    CHECK(HasWarning());
+    CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
 TEST_CASE("A file that is not a font is replaced by the font embedded in ImGui")
@@ -76,14 +67,12 @@ TEST_CASE("A file that is not a font is replaced by the font embedded in ImGui")
     const TestHelpers::ScopedLog log;
     const ScopedImGuiContext context;
     ImFontAtlas& atlas = *ImGui::GetIO().Fonts;
-    const std::filesystem::path text = std::filesystem::temp_directory_path() / "quasar_not_a_font.ttf";
-    REQUIRE(Quasar::WriteTextFile(text, "This is not a font"));
+    const TestHelpers::TemporaryFile text("not_a_font.ttf", "This is not a font");
 
-    CHECK_FALSE(Quasar::ImGuiTheme::LoadFont(atlas, text));
+    CHECK_FALSE(Quasar::ImGuiTheme::LoadFont(atlas, text.GetPath()));
 
     CHECK(atlas.Fonts.Size == 1);
-    CHECK(HasWarning());
-    std::filesystem::remove(text);
+    CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
 TEST_CASE("The theme scales the spacing and the text with the DPI scale")

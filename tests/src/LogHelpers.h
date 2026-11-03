@@ -9,6 +9,18 @@
 
 namespace TestHelpers
 {
+    class ScopedLog
+    {
+    public:
+        ScopedLog() { Quasar::Log::Init(); }
+        ~ScopedLog() { Quasar::Log::Shutdown(); }
+
+        ScopedLog(const ScopedLog&) = delete;
+        ScopedLog& operator=(const ScopedLog&) = delete;
+        ScopedLog(ScopedLog&&) = delete;
+        ScopedLog& operator=(ScopedLog&&) = delete;
+    };
+
     inline bool HasLogAtLeast(Quasar::LogLevel level)
     {
         const std::shared_ptr<Quasar::MemoryLogSink> sink = Quasar::Log::GetMemorySink();

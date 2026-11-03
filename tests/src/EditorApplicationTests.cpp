@@ -1,5 +1,6 @@
-#include "LogAssertions.h"
+#include "LogHelpers.h"
 #include "NullWindow.h"
+#include "TestLayers.h"
 
 #include <EditorApplication.h>
 #include <EditorLayer.h>
@@ -35,23 +36,6 @@ TEST_CASE("The editor application has its own name, window and arguments")
 
 namespace
 {
-    class ClosingLayer : public Quasar::Layer
-    {
-    public:
-        ClosingLayer() : Layer("Closing") {}
-
-        void OnUpdate(Quasar::Timestep /*timestep*/) override
-        {
-            ++Updates;
-            if (Updates == 3)
-            {
-                Quasar::Application::Get().Close();
-            }
-        }
-
-        int Updates = 0;
-    };
-
     bool HasEditorLayer(const Quasar::Application& application)
     {
         return std::ranges::any_of(application.GetLayerStack(), [](const Quasar::Scope<Quasar::Layer>& layer)
@@ -67,15 +51,15 @@ TEST_CASE("The editor application opens its window and runs the editor layer")
     REQUIRE(application != nullptr);
 
     ImGui::GetIO().IniFilename = nullptr;
-    auto layer = Quasar::CreateScope<ClosingLayer>();
-    const ClosingLayer& closing = *layer;
+    auto layer = Quasar::CreateScope<TestHelpers::ClosingLayer>();
+    const TestHelpers::ClosingLayer& closing = *layer;
     application->PushLayer(std::move(layer));
 
     application->Run();
 
     CHECK(application->GetWindow().GetTitle() == "Quasar Editor");
     CHECK(HasEditorLayer(*application));
-    CHECK(closing.Updates == 3);
+    CHECK(closing.GetUpdates() == 3);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 

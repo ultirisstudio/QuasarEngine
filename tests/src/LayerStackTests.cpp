@@ -1,5 +1,6 @@
+#include "LogHelpers.h"
+
 #include <quasar/core/LayerStack.h>
-#include <quasar/core/Log.h>
 #include <quasar/events/WindowEvent.h>
 
 #include <doctest/doctest.h>
@@ -238,7 +239,7 @@ TEST_CASE("Clearing the stack detaches every layer and leaves it ready to use")
 
 TEST_CASE("Popping a layer that is not in the stack does nothing")
 {
-    Quasar::Log::Init();
+    const TestHelpers::ScopedLog log;
 
     std::vector<std::string> calls;
     Quasar::LayerStack stack;
@@ -250,8 +251,6 @@ TEST_CASE("Popping a layer that is not in the stack does nothing")
     CHECK(stack.PopLayer(overlay) == nullptr);
     CHECK(stack.GetSize() == 2);
     CHECK(calls.empty());
-
-    Quasar::Log::Shutdown();
 }
 
 TEST_CASE("Events go from the top layer down and stop once handled")
