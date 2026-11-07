@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,13 @@ namespace Quasar
     /// @brief Settings used to create the application.
     struct ApplicationSpecification
     {
-        std::string Name = "QuasarEngine"; ///< Name of the application, used in the logs.
+        /// Name of the studio that makes the application. It is the parent folder of the user data folder, so use the
+        /// same one for all the applications of a studio. See GetUserDataDirectory().
+        std::string Organization = "Ultiris Studio";
+
+        /// Name of the application, used in the logs and as the name of its user data folder. Never change it once the
+        /// application is released, or its users lose their files. See GetUserDataDirectory().
+        std::string Name = "Quasar Engine";
 
         /// Directory used as the current directory, so that relative paths start from it. A relative directory starts
         /// from the directory the program was started from. Empty keeps the current directory.
@@ -126,6 +133,15 @@ namespace Quasar
 
         /// @brief Returns the settings the application was created with, including the command-line arguments.
         const ApplicationSpecification& GetSpecification() const { return m_Specification; }
+
+        /// @brief Returns the folder where the application stores the files of the current user, such as its settings
+        /// or its saved games. The folder is created if it does not exist yet.
+        ///
+        /// The folder is named after the organization and the name of the application. See
+        /// Quasar::GetUserDataDirectory() for where it is placed.
+        /// @return The absolute path of the folder, or no value if a name is not valid or if the folder cannot be found
+        /// or created. The reason is logged as an engine error.
+        std::optional<std::filesystem::path> GetUserDataDirectory() const;
 
     private:
         Application(ApplicationSpecification specification, Scope<Window> window);

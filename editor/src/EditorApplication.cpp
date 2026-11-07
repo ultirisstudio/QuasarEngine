@@ -7,7 +7,7 @@ namespace Quasar::Editor
 {
     ApplicationSpecification GetEditorSpecification(std::vector<std::string> arguments)
     {
-        return {.Name = "Editor", .Arguments = std::move(arguments), .Window = {.Title = "Quasar Editor", .Width = 1600, .Height = 900}};
+        return {.Name = "Quasar Editor", .Arguments = std::move(arguments), .Window = {.Title = "Quasar Editor", .Width = 1600, .Height = 900}};
     }
 
     Scope<Application> CreateEditorApplication(std::vector<std::string> arguments)

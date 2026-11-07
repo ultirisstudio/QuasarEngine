@@ -15,8 +15,9 @@ target_sources(QuasarEngine
         src/core/MemoryLogSink.cpp
         src/io/Path.cpp
         src/core/Input.cpp
-        src/io/UserConfigDirectory.cpp
-        src/platform/SystemDirectories.h
+        src/io/UserDataDirectory.cpp
+        src/io/ExecutableDirectory.h
+        src/io/ExecutableDirectory.cpp
         src/renderer/OpenGLContext.cpp
         src/renderer/OpenGLContext.h
         src/core/ImGuiLayer.cpp
@@ -50,7 +51,7 @@ target_sources(QuasarEngine
             include/quasar/io/Path.h
             include/quasar/core/Input.h
             include/quasar/core/EntryPoint.h
-            include/quasar/io/UserConfigDirectory.h
+            include/quasar/io/UserDataDirectory.h
             include/quasar/core/ImGuiLayer.h
             include/quasar/core/ImGuiTheme.h
             include/quasar/core/GamepadCodes.h
@@ -70,12 +71,7 @@ add_library(Quasar::EntryPoint ALIAS QuasarEntryPoint)
 target_link_libraries(QuasarEntryPoint PUBLIC Quasar::Engine PRIVATE Quasar::CompileOptions)
 set_target_properties(QuasarEntryPoint PROPERTIES FOLDER "Engine")
 
-if(WIN32)
-    target_sources(QuasarEngine PRIVATE src/platform/windows/WindowsSystemDirectories.cpp)
-    target_link_libraries(QuasarEngine PRIVATE shell32 ole32 uuid)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(QuasarEngine PRIVATE src/platform/linux/LinuxSystemDirectories.cpp)
-else()
+if(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(FATAL_ERROR "QuasarEngine only supports Windows and Linux.")
 endif()
 
@@ -89,6 +85,7 @@ target_link_libraries(QuasarEngine
     PRIVATE
         Quasar::CompileOptions
         glfw
+        SDL3::SDL3
         glad::glad
 )
 

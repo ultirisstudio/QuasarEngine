@@ -26,11 +26,12 @@ https://ultirisstudio.github.io/QuasarEngine/.
 - Git
 - CMake 3.28 or later
 - On Windows: Visual Studio 2022 or later, with the "Desktop development with C++" workload
-- On Linux: Ninja and the development packages used by GLFW, OpenGL and the file dialogs. On Ubuntu:
+- On Linux: Ninja and the development packages used by GLFW, SDL3, OpenGL and the file dialogs. On Ubuntu:
 
 ```sh
   sudo apt install ninja-build pkg-config libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-      libwayland-dev libxkbcommon-dev wayland-protocols libgl1-mesa-dev libgtk-3-dev
+      libxext-dev libxfixes-dev libxss-dev libxtst-dev libwayland-dev libxkbcommon-dev wayland-protocols \
+      libdecor-0-dev libegl-dev libudev-dev libdbus-1-dev libgl1-mesa-dev libgtk-3-dev
 ```
 
 ## Build
