@@ -16,17 +16,22 @@ namespace Quasar
     /// @brief Type of an event. Each event class has exactly one type.
     enum class EventType : std::uint8_t
     {
-        WindowClose,         ///< The user asked to close the window.
-        WindowResize,        ///< The size of the window changed.
-        WindowFocus,         ///< The window gained or lost the focus.
-        WindowMinimize,      ///< The window was minimized or restored.
-        KeyPressed,          ///< A key was pressed, or is repeating while held down.
-        KeyReleased,         ///< A key was released.
-        KeyTyped,            ///< A character was typed, for text input.
-        MouseButtonPressed,  ///< A mouse button was pressed.
-        MouseButtonReleased, ///< A mouse button was released.
-        MouseMoved,          ///< The cursor moved.
-        MouseScrolled        ///< The mouse wheel or the touchpad scrolled.
+        WindowClose,           ///< The user asked to close the window.
+        WindowResize,          ///< The size of the window changed.
+        WindowFocus,           ///< The window gained or lost the focus.
+        WindowMinimize,        ///< The window was minimized or restored.
+        KeyPressed,            ///< A key was pressed, or is repeating while held down.
+        KeyReleased,           ///< A key was released.
+        KeyTyped,              ///< A character was typed, for text input.
+        MouseButtonPressed,    ///< A mouse button was pressed.
+        MouseButtonReleased,   ///< A mouse button was released.
+        MouseMoved,            ///< The cursor moved.
+        MouseScrolled,         ///< The mouse wheel or the touchpad scrolled.
+        GamepadConnected,      ///< A gamepad was connected.
+        GamepadDisconnected,   ///< A gamepad was disconnected.
+        GamepadButtonPressed,  ///< A button of a gamepad was pressed.
+        GamepadButtonReleased, ///< A button of a gamepad was released.
+        GamepadAxisMoved       ///< A stick or a trigger of a gamepad moved.
     };
 
     /// @brief Categories of an event. An event can belong to several categories, combined with the `|` operator.
@@ -34,9 +39,10 @@ namespace Quasar
     {
         None = 0,          ///< No category.
         Window = Bit(0),   ///< Events about the window.
-        Input = Bit(1),    ///< Events from an input device, keyboard or mouse.
+        Input = Bit(1),    ///< Events from an input device: keyboard, mouse, or gamepad buttons and axes.
         Keyboard = Bit(2), ///< Events from the keyboard.
-        Mouse = Bit(3)     ///< Events from the mouse.
+        Mouse = Bit(3),    ///< Events from the mouse.
+        Gamepad = Bit(4)   ///< Events from the gamepads, including their connection and disconnection.
     };
 
     /// @brief Combines two sets of categories.
@@ -80,6 +86,16 @@ namespace Quasar
                 return "MouseMoved";
             case EventType::MouseScrolled:
                 return "MouseScrolled";
+            case EventType::GamepadConnected:
+                return "GamepadConnected";
+            case EventType::GamepadDisconnected:
+                return "GamepadDisconnected";
+            case EventType::GamepadButtonPressed:
+                return "GamepadButtonPressed";
+            case EventType::GamepadButtonReleased:
+                return "GamepadButtonReleased";
+            case EventType::GamepadAxisMoved:
+                return "GamepadAxisMoved";
         }
         return "Unknown";
     }

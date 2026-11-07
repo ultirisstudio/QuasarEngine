@@ -121,6 +121,7 @@ namespace Quasar
             }
 
             m_Window->Update();
+            m_Gamepads.Update([this](Event& event) { OnEvent(event); });
             ApplyLayerChanges();
         }
 

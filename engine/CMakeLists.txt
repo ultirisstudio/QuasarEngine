@@ -21,6 +21,7 @@ target_sources(QuasarEngine
         src/renderer/OpenGLContext.h
         src/core/ImGuiLayer.cpp
         src/core/ImGuiTheme.cpp
+        src/core/Gamepads.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -52,6 +53,9 @@ target_sources(QuasarEngine
             include/quasar/io/UserConfigDirectory.h
             include/quasar/core/ImGuiLayer.h
             include/quasar/core/ImGuiTheme.h
+            include/quasar/core/GamepadCodes.h
+            include/quasar/core/Gamepads.h
+            include/quasar/events/GamepadEvent.h
 )
 
 add_custom_target(QuasarEngineResources

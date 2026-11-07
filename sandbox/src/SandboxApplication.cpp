@@ -1,5 +1,7 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/EntryPoint.h>
+#include <quasar/core/GamepadCodes.h>
+#include <quasar/core/Gamepads.h>
 #include <quasar/core/ImGuiLayer.h>
 #include <quasar/core/Input.h>
 #include <quasar/core/Layer.h>
@@ -53,6 +55,11 @@ namespace
                 return;
             }
 
+            if (event.GetType() == Quasar::EventType::GamepadAxisMoved && !m_LogGamepadAxes)
+            {
+                return;
+            }
+
             std::string text = event.ToString();
 
             m_RecentEvents.push_back(std::move(text));
@@ -77,6 +84,34 @@ namespace
     private:
         static constexpr std::size_t MaxRecentEvents = 200;
 
+        static void DrawGamepads()
+        {
+            const Quasar::Gamepads& gamepads = Quasar::Application::Get().GetGamepads();
+            bool anyConnected = false;
+            for (std::size_t index = 0; index < Quasar::MaxGamepads; ++index)
+            {
+                const auto gamepad = static_cast<Quasar::GamepadId>(index);
+                if (!gamepads.IsConnected(gamepad))
+                {
+                    continue;
+                }
+
+                anyConnected = true;
+                ImGui::TextUnformatted(fmt::format("Gamepad {}: {}", index, gamepads.GetName(gamepad)).c_str());
+                ImGui::TextUnformatted(
+                    fmt::format("  Left stick {:+.2f}, {:+.2f}  Right stick {:+.2f}, {:+.2f}  Triggers {:.2f}, {:.2f}",
+                                gamepads.GetAxis(gamepad, Quasar::GamepadAxis::LeftX), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::LeftY),
+                                gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightX), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightY),
+                                gamepads.GetAxis(gamepad, Quasar::GamepadAxis::LeftTrigger), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightTrigger))
+                        .c_str());
+            }
+
+            if (!anyConnected)
+            {
+                ImGui::TextUnformatted("No gamepad connected");
+            }
+        }
+
         void DrawEventWindow()
         {
             ImGui::Begin("Events");
@@ -84,6 +119,7 @@ namespace
             ImGui::TextUnformatted(fmt::format("{:.0f} frames per second", m_FramesPerSecond).c_str());
             ImGui::Checkbox("Show the ImGui demo window", &m_ShowDemoWindow);
             ImGui::Checkbox("Log mouse moves", &m_LogMouseMoves);
+            ImGui::Checkbox("Log gamepad axes", &m_LogGamepadAxes);
 
             if (Quasar::ImGuiLayer* imGuiLayer = Quasar::Application::Get().GetImGuiLayer(); imGuiLayer != nullptr)
             {
@@ -98,6 +134,8 @@ namespace
             ImGui::TextUnformatted("ImGui keeps the keyboard while one of its windows has the focus. Click outside them to type here.");
             ImGui::PopTextWrapPos();
             ImGui::PopStyleColor();
+
+            DrawGamepads();
 
             if (ImGui::Button("Clear"))
             {
@@ -127,6 +165,7 @@ namespace
 
         bool m_ShowDemoWindow = true;
         bool m_LogMouseMoves = false;
+        bool m_LogGamepadAxes = false;
         bool m_ImGuiBlocksEvents = true;
         std::deque<std::string> m_RecentEvents;
     };
