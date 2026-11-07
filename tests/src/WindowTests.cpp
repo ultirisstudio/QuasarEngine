@@ -119,10 +119,8 @@ TEST_CASE("The keyboard events of SDL send key events")
     window->Update();
 
     const std::vector<std::string> expected{
-        Quasar::KeyPressedEvent(Quasar::Key::A).ToString(),
-        Quasar::KeyPressedEvent(Quasar::Key::A, true).ToString(),
-        Quasar::KeyReleasedEvent(Quasar::Key::A).ToString(),
-        Quasar::KeyTypedEvent(U'q').ToString(),
+        Quasar::KeyPressedEvent(Quasar::Key::A).ToString(),  Quasar::KeyPressedEvent(Quasar::Key::A, true).ToString(),
+        Quasar::KeyReleasedEvent(Quasar::Key::A).ToString(), Quasar::KeyTypedEvent(U'q').ToString(),
         Quasar::KeyTypedEvent(U'\u00E9').ToString(),
     };
     CHECK(events == expected);

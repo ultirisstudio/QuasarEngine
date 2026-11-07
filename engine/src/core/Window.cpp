@@ -98,7 +98,8 @@ namespace Quasar
             OpenGLContext::SetAttributes();
         }
 
-        SDL_Window* handle = SDL_CreateWindow(specification.Title.c_str(), static_cast<int>(specification.Width), static_cast<int>(specification.Height), flags);
+        SDL_Window* handle =
+            SDL_CreateWindow(specification.Title.c_str(), static_cast<int>(specification.Width), static_cast<int>(specification.Height), flags);
         if (handle == nullptr)
         {
             QUASAR_ENGINE_ERROR("Cannot create the window '{}': {}", specification.Title, SDL_GetError());

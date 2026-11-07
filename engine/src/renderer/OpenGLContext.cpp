@@ -45,7 +45,8 @@ namespace Quasar
         SDL_GLContext context = SDL_GL_CreateContext(window);
         if (context == nullptr)
         {
-            QUASAR_ENGINE_ERROR("Cannot create an OpenGL {}.{} core context: {}. Update the graphics driver", RequiredMajorVersion, RequiredMinorVersion, SDL_GetError());
+            QUASAR_ENGINE_ERROR("Cannot create an OpenGL {}.{} core context: {}. Update the graphics driver", RequiredMajorVersion, RequiredMinorVersion,
+                                SDL_GetError());
             return nullptr;
         }
 
@@ -54,13 +55,15 @@ namespace Quasar
         const int version = gladLoadGL(SDL_GL_GetProcAddress);
         if (version == 0)
         {
-            QUASAR_ENGINE_ERROR("Cannot load the OpenGL functions. OpenGL {}.{} is required: update the graphics driver", RequiredMajorVersion, RequiredMinorVersion);
+            QUASAR_ENGINE_ERROR("Cannot load the OpenGL functions. OpenGL {}.{} is required: update the graphics driver", RequiredMajorVersion,
+                                RequiredMinorVersion);
             return nullptr;
         }
 
         if (GLAD_GL_VERSION_4_5 == 0)
         {
-            QUASAR_ENGINE_ERROR("OpenGL {}.{} is required, but the graphics driver only provides OpenGL {}.{}: update the graphics driver", RequiredMajorVersion, RequiredMinorVersion, GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+            QUASAR_ENGINE_ERROR("OpenGL {}.{} is required, but the graphics driver only provides OpenGL {}.{}: update the graphics driver",
+                                RequiredMajorVersion, RequiredMinorVersion, GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
             return nullptr;
         }
 
