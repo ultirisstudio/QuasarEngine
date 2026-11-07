@@ -10,7 +10,8 @@
 
 #include <doctest/doctest.h>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_video.h>
+#include <glad/gl.h>
 
 #include <utility>
 
@@ -21,14 +22,18 @@ TEST_CASE("A window gets a current OpenGL 4.5 core context")
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
 
     REQUIRE(window != nullptr);
-    GLFWwindow* handle = window->GetNativeWindow();
-    const int major = glfwGetWindowAttrib(handle, GLFW_CONTEXT_VERSION_MAJOR);
-    const int minor = glfwGetWindowAttrib(handle, GLFW_CONTEXT_VERSION_MINOR);
+    GLint major = 0;
+    GLint minor = 0;
+    GLint profile = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &major);
+    glGetIntegerv(GL_MINOR_VERSION, &minor);
+    glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profile);
     CAPTURE(major);
     CAPTURE(minor);
     CHECK((major > 4 || (major == 4 && minor >= 5)));
-    CHECK(glfwGetWindowAttrib(handle, GLFW_OPENGL_PROFILE) == GLFW_OPENGL_CORE_PROFILE);
-    CHECK(glfwGetCurrentContext() == handle);
+    CHECK((profile & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
+    CHECK(SDL_GL_GetCurrentWindow() == window->GetNativeWindow());
+    CHECK(SDL_GL_GetCurrentContext() == window->GetNativeContext());
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 

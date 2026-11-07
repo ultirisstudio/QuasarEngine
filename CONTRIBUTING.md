@@ -108,10 +108,13 @@ Test what the code does, not more and not less:
 - The same behavior is tested on Windows and Linux. A test is limited to one platform only for code that only exists
   on that platform, or when it needs a tool that only exists there, such as the options of the Mesa driver on Linux.
 
+The tests create hidden windows with SDL, and send them input by putting SDL events in the queue, as the system does.
+On Linux, they use the X11 driver of SDL, which supports the ImGui windows that leave the main window, so they need an
+X server. On a computer without a desktop, run them with `xvfb-run -a ctest --preset <preset>`, from the `xvfb` package.
 Tests that need an OpenGL context create their windows with `TestHelpers::CreateWindowWithContext()` or
-`TestHelpers::CreateApplicationWithContext()`. On Linux, they use the Mesa software driver without a display. On Windows,
-they use hidden windows and the installed driver, and the CI installs the Mesa software driver because its runner has
-no GPU. ImGui windows that a test moves outside the main window can appear on the screen for a moment.
+`TestHelpers::CreateApplicationWithContext()`, and use the installed driver. The CI installs the Mesa software driver,
+because its runners have no GPU. The window of the editor and the ImGui windows that a test moves outside the main window
+can appear on the screen for a moment.
 
 ### Test helpers
 
@@ -120,7 +123,7 @@ The helpers shared by the tests are in `tests/src/`:
 | Header | Content |
 |---|---|
 | `LogHelpers.h` | `ScopedLog`, which starts and stops the loggers for one test, and `HasLogAtLeast()` |
-| `NullWindow.h` | Windows and applications on the null platform of GLFW or with an OpenGL context, and functions that send them input. The applications read no gamepads |
+| `NullWindow.h` | Hidden windows and applications, with or without an OpenGL context, and functions that send them SDL events. The applications read no gamepads |
 | `TestLayers.h` | `ClosingLayer`, which closes the application after a number of frames |
 | `TemporaryFiles.h` | `TemporaryFolder`, `TemporaryFile` and `ScopedCurrentDirectory`, removed or put back at the end of the test |
 | `ScopedEnvironmentVariable.h` | Changes an environment variable during a test (Linux only) |

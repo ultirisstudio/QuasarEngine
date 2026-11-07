@@ -6,108 +6,103 @@
 
 #include <renderer/OpenGLContext.h>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_keyboard.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_properties.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_version.h>
+#include <SDL3/SDL_video.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <string>
 #include <utility>
 
 namespace Quasar
 {
     namespace
     {
-        // GLFW is started with the first window and stopped with the last one
+        constexpr const char* WindowProperty = "Quasar.Window";
+
+        constexpr SDL_Keycode FirstPrintedKey = 0x21;
+        constexpr SDL_Keycode DeleteKey = 0x7F;
+
+        // The video support of SDL is started with the first window and stopped with the last one
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
         std::uint32_t s_WindowCount = 0;
 
-        void OnGlfwError(int code, const char* description)
+        Window* FindWindow(const SDL_Event& event)
         {
-            QUASAR_ENGINE_ERROR("GLFW error {}: {}", code, description);
-        }
-
-        const char* GetPlatformName()
-        {
-            switch (glfwGetPlatform())
+            SDL_Window* handle = SDL_GetWindowFromEvent(&event);
+            if (handle == nullptr)
             {
-                case GLFW_PLATFORM_WIN32:
-                    return "Win32";
-                case GLFW_PLATFORM_X11:
-                    return "X11";
-                case GLFW_PLATFORM_WAYLAND:
-                    return "Wayland";
-                case GLFW_PLATFORM_NULL:
-                    return "Null";
-                default:
-                    return "unknown";
+                return nullptr;
             }
+            return static_cast<Window*>(SDL_GetPointerProperty(SDL_GetWindowProperties(handle), WindowProperty, nullptr));
         }
 
-        Window& GetWindow(GLFWwindow* handle)
+        std::uint32_t ButtonMask(MouseButton button)
         {
-            auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
-            QUASAR_ENGINE_ASSERT(window != nullptr, "GLFW window has no user pointer");
-            return *window;
+            const auto index = static_cast<std::uint32_t>(button);
+            return index >= 1 && index <= 32 ? SDL_BUTTON_MASK(index) : 0;
         }
     }
 
-    Window::Window(GLFWwindow* handle, const WindowSpecification& specification) : m_Handle(handle), m_Title(specification.Title)
+    Window::Window(SDL_Window* handle, const WindowSpecification& specification) : m_Handle(handle), m_Title(specification.Title)
     {
-        glfwSetWindowUserPointer(handle, this);
-        SetGlfwCallbacks();
+        SDL_SetPointerProperty(SDL_GetWindowProperties(handle), WindowProperty, this);
+
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSizeInPixels(handle, &width, &height);
+        m_Width = static_cast<std::uint32_t>(width);
+        m_Height = static_cast<std::uint32_t>(height);
     }
 
     Window::~Window()
     {
         m_Context.reset();
-        glfwDestroyWindow(m_Handle);
+        SDL_DestroyWindow(m_Handle);
 
         --s_WindowCount;
-        if (s_WindowCount == 0)
-        {
-            glfwTerminate();
-        }
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
     }
 
     Scope<Window> Window::Create(const WindowSpecification& specification)
     {
+        if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
+        {
+            QUASAR_ENGINE_ERROR("Cannot create the window '{}': the video support of SDL cannot start: {}", specification.Title, SDL_GetError());
+            return nullptr;
+        }
+
         if (s_WindowCount == 0)
         {
-            glfwSetErrorCallback(OnGlfwError);
-            if (glfwInit() == GLFW_FALSE)
-            {
-                QUASAR_ENGINE_ERROR("Cannot create the window '{}': GLFW cannot be initialized", specification.Title);
-                return nullptr;
-            }
-
-            QUASAR_ENGINE_TRACE("GLFW {}", glfwGetVersionString());
-            QUASAR_ENGINE_INFO("Window platform: {}", GetPlatformName());
+            const int version = SDL_GetVersion();
+            QUASAR_ENGINE_TRACE("SDL {}.{}.{}", SDL_VERSIONNUM_MAJOR(version), SDL_VERSIONNUM_MINOR(version), SDL_VERSIONNUM_MICRO(version));
+            QUASAR_ENGINE_INFO("Video driver: {}", SDL_GetCurrentVideoDriver());
         }
 
+        SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        if (!specification.Visible)
+        {
+            flags |= SDL_WINDOW_HIDDEN;
+        }
         if (specification.GraphicsContext)
         {
-            OpenGLContext::SetWindowHints();
-        }
-        else
-        {
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            flags |= SDL_WINDOW_OPENGL;
+            OpenGLContext::SetAttributes();
         }
 
-        GLFWwindow* handle =
-            glfwCreateWindow(static_cast<int>(specification.Width), static_cast<int>(specification.Height), specification.Title.c_str(), nullptr, nullptr);
+        SDL_Window* handle = SDL_CreateWindow(specification.Title.c_str(), static_cast<int>(specification.Width), static_cast<int>(specification.Height), flags);
         if (handle == nullptr)
         {
-            if (specification.GraphicsContext)
-            {
-                QUASAR_ENGINE_ERROR("Cannot create the window '{}' with an OpenGL 4.5 core context: check that the "
-                                    "graphics driver supports OpenGL 4.5",
-                                    specification.Title);
-            }
-            else
-            {
-                QUASAR_ENGINE_ERROR("Cannot create the window '{}'", specification.Title);
-            }
-            if (s_WindowCount == 0)
-            {
-                glfwTerminate();
-            }
+            QUASAR_ENGINE_ERROR("Cannot create the window '{}': {}", specification.Title, SDL_GetError());
+            SDL_QuitSubSystem(SDL_INIT_VIDEO);
             return nullptr;
         }
 
@@ -126,6 +121,7 @@ namespace Quasar
         }
 
         window->SetVSync(specification.VSync);
+        SDL_StartTextInput(handle);
 
         QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(), window->GetHeight());
         return window;
@@ -137,7 +133,25 @@ namespace Quasar
         {
             m_Context->SwapBuffers();
         }
-        glfwPollEvents();
+
+        if (!SDL_TextInputActive(m_Handle))
+        {
+            SDL_StartTextInput(m_Handle);
+        }
+
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            if (m_NativeEventCallback)
+            {
+                m_NativeEventCallback(event);
+            }
+
+            if (Window* window = FindWindow(event); window != nullptr)
+            {
+                window->ProcessEvent(event);
+            }
+        }
     }
 
     void Window::SetEventCallback(EventCallback callback)
@@ -145,14 +159,19 @@ namespace Quasar
         m_EventCallback = std::move(callback);
     }
 
+    void Window::SetNativeEventCallback(NativeEventCallback callback)
+    {
+        m_NativeEventCallback = std::move(callback);
+    }
+
     bool Window::ShouldClose() const
     {
-        return glfwWindowShouldClose(m_Handle) == GLFW_TRUE;
+        return m_ShouldClose;
     }
 
     void Window::Close()
     {
-        glfwSetWindowShouldClose(m_Handle, GLFW_TRUE);
+        m_ShouldClose = true;
     }
 
     void Window::SetVSync(bool enabled)
@@ -171,16 +190,12 @@ namespace Quasar
 
     std::uint32_t Window::GetWidth() const
     {
-        int width = 0;
-        glfwGetFramebufferSize(m_Handle, &width, nullptr);
-        return static_cast<std::uint32_t>(width);
+        return m_Width;
     }
 
     std::uint32_t Window::GetHeight() const
     {
-        int height = 0;
-        glfwGetFramebufferSize(m_Handle, nullptr, &height);
-        return static_cast<std::uint32_t>(height);
+        return m_Height;
     }
 
     const std::string& Window::GetTitle() const
@@ -188,133 +203,165 @@ namespace Quasar
         return m_Title;
     }
 
-    GLFWwindow* Window::GetNativeWindow() const
+    bool Window::IsKeyDown(Key key) const
+    {
+        const auto index = static_cast<std::size_t>(key);
+        return index < KeyCount && m_KeysDown.test(index);
+    }
+
+    bool Window::IsMouseButtonDown(MouseButton button) const
+    {
+        return (m_MouseButtonsDown & ButtonMask(button)) != 0;
+    }
+
+    glm::vec2 Window::GetMousePosition() const
+    {
+        return m_MousePosition;
+    }
+
+    SDL_Window* Window::GetNativeWindow() const
     {
         return m_Handle;
     }
 
-    // Not static on purpose: GLFW must be started, which an existing window guarantees
+    SDL_GLContextState* Window::GetNativeContext() const
+    {
+        return m_Context ? m_Context->GetNativeContext() : nullptr;
+    }
+
+    // Not static on purpose: the video support of SDL must be started, which an existing window guarantees
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     std::string Window::GetKeyName(Key key) const
     {
-        const char* name = glfwGetKeyName(static_cast<int>(key), 0);
-        return name != nullptr ? std::string(name) : std::string();
+        const SDL_Keycode keycode = SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(key), SDL_KMOD_NONE, false);
+        if ((keycode & SDLK_SCANCODE_MASK) != 0 || keycode < FirstPrintedKey || keycode == DeleteKey)
+        {
+            return {};
+        }
+
+        std::array<char, 5> text{};
+        SDL_UCS4ToUTF8(keycode, text.data());
+        return {text.data()};
     }
 
-    void Window::SetGlfwCallbacks()
+    void Window::ProcessEvent(const SDL_Event& event)
     {
-        glfwSetFramebufferSizeCallback(m_Handle,
-                                       [](GLFWwindow* handle, int width, int height)
-                                       {
-                                           Window& window = GetWindow(handle);
-                                           WindowResizeEvent event(static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height));
-                                           window.SendEvent(event);
-                                       });
+        switch (event.type)
+        {
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            {
+                m_ShouldClose = true;
+                WindowCloseEvent closeEvent;
+                SendEvent(closeEvent);
+                break;
+            }
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+            {
+                m_Width = static_cast<std::uint32_t>(event.window.data1);
+                m_Height = static_cast<std::uint32_t>(event.window.data2);
+                WindowResizeEvent resizeEvent(m_Width, m_Height);
+                SendEvent(resizeEvent);
+                break;
+            }
+            case SDL_EVENT_WINDOW_FOCUS_GAINED:
+            case SDL_EVENT_WINDOW_FOCUS_LOST:
+            {
+                WindowFocusEvent focusEvent(event.type == SDL_EVENT_WINDOW_FOCUS_GAINED);
+                SendEvent(focusEvent);
+                break;
+            }
+            case SDL_EVENT_WINDOW_MINIMIZED:
+            {
+                if (!m_Minimized)
+                {
+                    m_Minimized = true;
+                    WindowMinimizeEvent minimizeEvent(true);
+                    SendEvent(minimizeEvent);
+                }
+                break;
+            }
+            case SDL_EVENT_WINDOW_RESTORED:
+            case SDL_EVENT_WINDOW_MAXIMIZED:
+            {
+                if (m_Minimized)
+                {
+                    m_Minimized = false;
+                    WindowMinimizeEvent minimizeEvent(false);
+                    SendEvent(minimizeEvent);
+                }
+                break;
+            }
+            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_KEY_UP:
+            {
+                const auto index = static_cast<std::size_t>(event.key.scancode);
+                if (event.key.scancode == SDL_SCANCODE_UNKNOWN || index >= KeyCount)
+                {
+                    break;
+                }
 
-        glfwSetWindowCloseCallback(m_Handle,
-                                   [](GLFWwindow* handle)
-                                   {
-                                       Window& window = GetWindow(handle);
-                                       WindowCloseEvent event;
-                                       window.SendEvent(event);
-                                   });
-
-        glfwSetWindowFocusCallback(m_Handle,
-                                   [](GLFWwindow* handle, int focused)
-                                   {
-                                       Window& window = GetWindow(handle);
-                                       WindowFocusEvent event(focused == GLFW_TRUE);
-                                       window.SendEvent(event);
-                                   });
-
-        glfwSetWindowIconifyCallback(m_Handle,
-                                     [](GLFWwindow* handle, int iconified)
-                                     {
-                                         Window& window = GetWindow(handle);
-                                         WindowMinimizeEvent event(iconified == GLFW_TRUE);
-                                         window.SendEvent(event);
-                                     });
-
-        glfwSetKeyCallback(m_Handle,
-                           [](GLFWwindow* handle, int key, int, int action, int)
-                           {
-                               if (key == GLFW_KEY_UNKNOWN)
-                               {
-                                   return;
-                               }
-
-                               Window& window = GetWindow(handle);
-                               switch (action)
-                               {
-                                   case GLFW_PRESS:
-                                   {
-                                       KeyPressedEvent event(static_cast<Key>(key), false);
-                                       window.SendEvent(event);
-                                       break;
-                                   }
-                                   case GLFW_RELEASE:
-                                   {
-                                       KeyReleasedEvent event(static_cast<Key>(key));
-                                       window.SendEvent(event);
-                                       break;
-                                   }
-                                   case GLFW_REPEAT:
-                                   {
-                                       KeyPressedEvent event(static_cast<Key>(key), true);
-                                       window.SendEvent(event);
-                                       break;
-                                   }
-                                   default:
-                                       break;
-                               }
-                           });
-
-        glfwSetCharCallback(m_Handle,
-                            [](GLFWwindow* handle, unsigned int codePoint)
-                            {
-                                Window& window = GetWindow(handle);
-                                KeyTypedEvent event(static_cast<char32_t>(codePoint));
-                                window.SendEvent(event);
-                            });
-
-        glfwSetCursorPosCallback(m_Handle,
-                                 [](GLFWwindow* handle, double x, double y)
-                                 {
-                                     Window& window = GetWindow(handle);
-                                     MouseMovedEvent event(static_cast<float>(x), static_cast<float>(y));
-                                     window.SendEvent(event);
-                                 });
-
-        glfwSetScrollCallback(m_Handle,
-                              [](GLFWwindow* handle, double xOffset, double yOffset)
-                              {
-                                  Window& window = GetWindow(handle);
-                                  MouseScrolledEvent event(static_cast<float>(xOffset), static_cast<float>(yOffset));
-                                  window.SendEvent(event);
-                              });
-
-        glfwSetMouseButtonCallback(m_Handle,
-                                   [](GLFWwindow* handle, int button, int action, int)
-                                   {
-                                       Window& window = GetWindow(handle);
-                                       switch (action)
-                                       {
-                                           case GLFW_PRESS:
-                                           {
-                                               MouseButtonPressedEvent event(static_cast<MouseButton>(button));
-                                               window.SendEvent(event);
-                                               break;
-                                           }
-                                           case GLFW_RELEASE:
-                                           {
-                                               MouseButtonReleasedEvent event(static_cast<MouseButton>(button));
-                                               window.SendEvent(event);
-                                               break;
-                                           }
-                                           default:
-                                               break;
-                                       }
-                                   });
+                const auto key = static_cast<Key>(event.key.scancode);
+                if (event.type == SDL_EVENT_KEY_DOWN)
+                {
+                    m_KeysDown.set(index);
+                    KeyPressedEvent keyEvent(key, event.key.repeat);
+                    SendEvent(keyEvent);
+                }
+                else
+                {
+                    m_KeysDown.reset(index);
+                    KeyReleasedEvent keyEvent(key);
+                    SendEvent(keyEvent);
+                }
+                break;
+            }
+            case SDL_EVENT_TEXT_INPUT:
+            {
+                const char* text = event.text.text;
+                std::size_t length = SDL_strlen(text);
+                while (length > 0)
+                {
+                    const Uint32 codePoint = SDL_StepUTF8(&text, &length);
+                    KeyTypedEvent typedEvent(static_cast<char32_t>(codePoint));
+                    SendEvent(typedEvent);
+                }
+                break;
+            }
+            case SDL_EVENT_MOUSE_MOTION:
+            {
+                m_MousePosition = {event.motion.x, event.motion.y};
+                MouseMovedEvent movedEvent(event.motion.x, event.motion.y);
+                SendEvent(movedEvent);
+                break;
+            }
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+            {
+                const auto button = static_cast<MouseButton>(event.button.button);
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+                {
+                    m_MouseButtonsDown |= ButtonMask(button);
+                    MouseButtonPressedEvent buttonEvent(button);
+                    SendEvent(buttonEvent);
+                }
+                else
+                {
+                    m_MouseButtonsDown &= ~ButtonMask(button);
+                    MouseButtonReleasedEvent buttonEvent(button);
+                    SendEvent(buttonEvent);
+                }
+                break;
+            }
+            case SDL_EVENT_MOUSE_WHEEL:
+            {
+                const float direction = event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1.0f : 1.0f;
+                MouseScrolledEvent scrolledEvent(event.wheel.x * direction, event.wheel.y * direction);
+                SendEvent(scrolledEvent);
+                break;
+            }
+            default:
+                break;
+        }
     }
 
     void Window::SendEvent(Event& event)

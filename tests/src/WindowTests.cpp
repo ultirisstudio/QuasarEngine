@@ -7,9 +7,8 @@
 #include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
 
+#include <SDL3/SDL_scancode.h>
 #include <doctest/doctest.h>
-
-#include <GLFW/glfw3.h>
 
 #include <algorithm>
 #include <string>
@@ -78,7 +77,8 @@ TEST_CASE("Resizing a window sends a resize event with the new size")
     std::vector<std::string> events;
     RecordEvents(*window, events);
 
-    glfwSetWindowSize(window->GetNativeWindow(), 800, 600);
+    TestHelpers::SendResize(*window, 800, 600);
+    window->Update();
 
     CHECK(Contains(events, Quasar::WindowResizeEvent(800, 600)));
     CHECK(window->GetWidth() == 800);
@@ -93,15 +93,17 @@ TEST_CASE("Minimizing and restoring a window sends minimize events")
     std::vector<std::string> events;
     RecordEvents(*window, events);
 
-    glfwIconifyWindow(window->GetNativeWindow());
+    TestHelpers::SendMinimize(*window);
+    window->Update();
     REQUIRE(Contains(events, Quasar::WindowMinimizeEvent(true)));
     CHECK_FALSE(Contains(events, Quasar::WindowMinimizeEvent(false)));
 
-    glfwRestoreWindow(window->GetNativeWindow());
+    TestHelpers::SendRestore(*window);
+    window->Update();
     CHECK(Contains(events, Quasar::WindowMinimizeEvent(false)));
 }
 
-TEST_CASE("The keyboard callbacks send key events")
+TEST_CASE("The keyboard events of SDL send key events")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
@@ -109,22 +111,24 @@ TEST_CASE("The keyboard callbacks send key events")
     std::vector<std::string> events;
     RecordEvents(*window, events);
 
-    TestHelpers::SendKey(*window, GLFW_KEY_A, GLFW_PRESS);
-    TestHelpers::SendKey(*window, GLFW_KEY_A, GLFW_REPEAT);
-    TestHelpers::SendKey(*window, GLFW_KEY_A, GLFW_RELEASE);
-    TestHelpers::SendKey(*window, GLFW_KEY_UNKNOWN, GLFW_PRESS);
-    TestHelpers::SendCharacter(*window, U'q');
+    TestHelpers::SendKey(*window, Quasar::Key::A, true);
+    TestHelpers::SendKey(*window, Quasar::Key::A, true, true);
+    TestHelpers::SendKey(*window, Quasar::Key::A, false);
+    TestHelpers::SendKey(*window, static_cast<Quasar::Key>(SDL_SCANCODE_UNKNOWN), true);
+    TestHelpers::SendText(*window, "q\xC3\xA9");
+    window->Update();
 
     const std::vector<std::string> expected{
         Quasar::KeyPressedEvent(Quasar::Key::A).ToString(),
         Quasar::KeyPressedEvent(Quasar::Key::A, true).ToString(),
         Quasar::KeyReleasedEvent(Quasar::Key::A).ToString(),
         Quasar::KeyTypedEvent(U'q').ToString(),
+        Quasar::KeyTypedEvent(U'\u00E9').ToString(),
     };
     CHECK(events == expected);
 }
 
-TEST_CASE("The mouse callbacks send mouse events")
+TEST_CASE("The mouse events of SDL send mouse events")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
@@ -132,10 +136,11 @@ TEST_CASE("The mouse callbacks send mouse events")
     std::vector<std::string> events;
     RecordEvents(*window, events);
 
-    TestHelpers::SendMouseButton(*window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS);
-    TestHelpers::SendMouseButton(*window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE);
-    TestHelpers::SendCursorPosition(*window, 12.5, 34.0);
-    TestHelpers::SendScroll(*window, 0.0, -1.0);
+    TestHelpers::SendMouseButton(*window, Quasar::MouseButton::Left, true);
+    TestHelpers::SendMouseButton(*window, Quasar::MouseButton::Left, false);
+    TestHelpers::SendMouseMotion(*window, 12.5f, 34.0f);
+    TestHelpers::SendScroll(*window, 0.0f, -1.0f);
+    window->Update();
 
     const std::vector<std::string> expected{
         Quasar::MouseButtonPressedEvent(Quasar::MouseButton::Left).ToString(),
@@ -146,7 +151,7 @@ TEST_CASE("The mouse callbacks send mouse events")
     CHECK(events == expected);
 }
 
-TEST_CASE("The focus and close callbacks send window events")
+TEST_CASE("The focus and close events of SDL send window events")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
@@ -157,6 +162,7 @@ TEST_CASE("The focus and close callbacks send window events")
     TestHelpers::SendFocus(*window, false);
     TestHelpers::SendFocus(*window, true);
     TestHelpers::SendCloseRequest(*window);
+    window->Update();
 
     const std::vector<std::string> expected{
         Quasar::WindowFocusEvent(false).ToString(),
@@ -164,6 +170,7 @@ TEST_CASE("The focus and close callbacks send window events")
         Quasar::WindowCloseEvent().ToString(),
     };
     CHECK(events == expected);
+    CHECK(window->ShouldClose());
 }
 
 TEST_CASE("A window without an event callback ignores its events")
@@ -175,7 +182,8 @@ TEST_CASE("A window without an event callback ignores its events")
     RecordEvents(*window, events);
 
     window->SetEventCallback({});
-    TestHelpers::SendKey(*window, GLFW_KEY_A, GLFW_PRESS);
+    TestHelpers::SendKey(*window, Quasar::Key::A, true);
+    window->Update();
 
     CHECK(events.empty());
 }

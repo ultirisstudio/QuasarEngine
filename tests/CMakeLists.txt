@@ -7,13 +7,12 @@ target_link_libraries(QuasarTests PRIVATE
     Quasar::EditorLibrary
     Quasar::CompileOptions
     doctest::doctest_with_main
-    glfw
     SDL3::SDL3
+    glad::glad
 )
 
 target_compile_definitions(QuasarTests PRIVATE
     QUASAR_TEST_EXPECTED_VERSION="${PROJECT_VERSION}"
-    GLFW_INCLUDE_NONE
 )
 
 set_target_properties(QuasarTests PROPERTIES FOLDER "Tests")

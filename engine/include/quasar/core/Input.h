@@ -30,10 +30,10 @@ namespace Quasar::Input
     /// @brief Returns true if the mouse button is held down.
     bool IsMouseButtonPressed(MouseButton button);
 
-    /// @brief Returns the position of the cursor, in screen coordinates, from the top-left corner of the drawing
-    /// area.
+    /// @brief Returns the position of the cursor, from the top-left corner of the drawing area.
     ///
-    /// Like MouseMovedEvent, the position is not in pixels on a scaled display.
+    /// The position is in the same unit as MouseMovedEvent: pixels on Windows and X11, and points on Wayland and
+    /// macOS, where a scaled display has more pixels than points.
     glm::vec2 GetMousePosition();
 
     /// @brief Returns true if a gamepad is connected with this id. See Gamepads.
