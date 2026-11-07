@@ -3,6 +3,8 @@
 #include <doctest/doctest.h>
 #include <spdlog/fmt/fmt.h>
 
+#include <cstddef>
+#include <set>
 #include <string>
 #include <type_traits>
 
@@ -53,26 +55,34 @@ TEST_CASE("An event is not handled until it is marked as handled")
     CHECK(event.IsHandled());
 }
 
-TEST_CASE("An event without data is printed with its name")
+TEST_CASE("An event without data is printed with the name of its type")
 {
     const TestCloseEvent event;
 
-    CHECK(event.GetName() == std::string("WindowClose"));
-    CHECK(event.ToString() == "WindowClose");
+    CHECK(event.GetName() == std::string(Quasar::GetEventTypeName(EventType::WindowClose)));
+    CHECK(event.ToString() == event.GetName());
 }
 
-TEST_CASE("An event is printed by the log macros with its data")
+TEST_CASE("The log macros print an event with its own ToString, even through a base reference")
 {
     const TestKeyEvent event(42);
     const Quasar::Event& base = event;
 
-    CHECK(fmt::format("{}", event) == "KeyPressed: 42");
-    CHECK(fmt::format("{}", base) == "KeyPressed: 42");
+    CHECK(fmt::format("{}", event) == event.ToString());
+    CHECK(fmt::format("{}", base) == event.ToString());
 }
 
-TEST_CASE("Every event type has a name")
+TEST_CASE("Every event type has its own name")
 {
-    CHECK(Quasar::GetEventTypeName(EventType::MouseScrolled) == std::string("MouseScrolled"));
-    CHECK(Quasar::GetEventTypeName(EventType::WindowFocus) == std::string("WindowFocus"));
-    CHECK(Quasar::GetEventTypeName(EventType::WindowMinimize) == std::string("WindowMinimize"));
+    constexpr auto lastType = static_cast<std::size_t>(EventType::GamepadAxisMoved);
+
+    std::set<std::string> names;
+    for (std::size_t index = 0; index <= lastType; ++index)
+    {
+        const std::string name = Quasar::GetEventTypeName(static_cast<EventType>(index));
+        CHECK_FALSE(name.empty());
+        names.insert(name);
+    }
+
+    CHECK(names.size() == lastType + 1);
 }

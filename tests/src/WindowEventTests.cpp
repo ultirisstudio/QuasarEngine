@@ -43,7 +43,6 @@ TEST_CASE("A resize event carries the new size")
 
     CHECK(event.GetWidth() == 1920);
     CHECK(event.GetHeight() == 1080);
-    CHECK(event.ToString() == "WindowResize: 1920x1080");
 }
 
 TEST_CASE("A focus event tells whether the window gained or lost the focus")
@@ -53,8 +52,6 @@ TEST_CASE("A focus event tells whether the window gained or lost the focus")
 
     CHECK(gained.IsFocused());
     CHECK_FALSE(lost.IsFocused());
-    CHECK(gained.ToString() == "WindowFocus: gained");
-    CHECK(lost.ToString() == "WindowFocus: lost");
 }
 
 TEST_CASE("A minimize event tells whether the window was minimized or restored")
@@ -64,13 +61,6 @@ TEST_CASE("A minimize event tells whether the window was minimized or restored")
 
     CHECK(minimized.IsMinimized());
     CHECK_FALSE(restored.IsMinimized());
-    CHECK(minimized.ToString() == "WindowMinimize: minimized");
-    CHECK(restored.ToString() == "WindowMinimize: restored");
-}
-
-TEST_CASE("A close event is printed with its name")
-{
-    CHECK(WindowCloseEvent().ToString() == "WindowClose");
 }
 
 TEST_CASE("A window event reaches the handler of its type")

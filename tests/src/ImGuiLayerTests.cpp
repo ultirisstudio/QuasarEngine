@@ -58,12 +58,12 @@ namespace
             }
         }
 
-        void OnEvent(Quasar::Event& event) override { Events.emplace_back(event.GetName()); }
+        void OnEvent(Quasar::Event& event) override { Events.push_back(event.GetType()); }
 
         int Updates = 0;
         int ImGuiRenders = 0;
         int CloseAfter = 3;
-        std::vector<std::string> Events;
+        std::vector<Quasar::EventType> Events;
         std::function<void(int)> UpdateAction;
         std::function<void()> ImGuiAction;
     };
@@ -119,9 +119,9 @@ namespace
         }
     }
 
-    bool Received(const ImGuiTestLayer& layer, const std::string& name)
+    bool Received(const ImGuiTestLayer& layer, Quasar::EventType type)
     {
-        return std::ranges::find(layer.Events, name) != layer.Events.end();
+        return std::ranges::find(layer.Events, type) != layer.Events.end();
     }
 }
 
@@ -193,8 +193,8 @@ TEST_CASE("ImGui keeps the mouse from the layers while the cursor is over an ImG
 
     application->Run();
 
-    CHECK_FALSE(Received(layer, "MouseButtonPressed"));
-    CHECK_FALSE(Received(layer, "MouseButtonReleased"));
+    CHECK_FALSE(Received(layer, Quasar::EventType::MouseButtonPressed));
+    CHECK_FALSE(Received(layer, Quasar::EventType::MouseButtonReleased));
 }
 
 TEST_CASE("The layers receive the mouse when ImGui does not block events")
@@ -210,8 +210,8 @@ TEST_CASE("The layers receive the mouse when ImGui does not block events")
 
     application->Run();
 
-    CHECK(Received(layer, "MouseButtonPressed"));
-    CHECK(Received(layer, "MouseButtonReleased"));
+    CHECK(Received(layer, Quasar::EventType::MouseButtonPressed));
+    CHECK(Received(layer, Quasar::EventType::MouseButtonReleased));
 }
 
 TEST_CASE("ImGui windows can be docked")
@@ -280,9 +280,9 @@ TEST_CASE("ImGui keeps the keyboard from the layers while a text field has the f
 
     application->Run();
 
-    CHECK_FALSE(Received(layer, "KeyPressed"));
-    CHECK_FALSE(Received(layer, "KeyTyped"));
-    CHECK_FALSE(Received(layer, "KeyReleased"));
+    CHECK_FALSE(Received(layer, Quasar::EventType::KeyPressed));
+    CHECK_FALSE(Received(layer, Quasar::EventType::KeyTyped));
+    CHECK_FALSE(Received(layer, Quasar::EventType::KeyReleased));
 }
 
 TEST_CASE("The layers receive the keyboard while ImGui does not use it")
@@ -295,7 +295,7 @@ TEST_CASE("The layers receive the keyboard while ImGui does not use it")
 
     application->Run();
 
-    CHECK(Received(layer, "KeyPressed"));
-    CHECK(Received(layer, "KeyTyped"));
-    CHECK(Received(layer, "KeyReleased"));
+    CHECK(Received(layer, Quasar::EventType::KeyPressed));
+    CHECK(Received(layer, Quasar::EventType::KeyTyped));
+    CHECK(Received(layer, Quasar::EventType::KeyReleased));
 }

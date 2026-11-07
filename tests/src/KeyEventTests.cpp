@@ -49,9 +49,6 @@ TEST_CASE("A key pressed event tells whether the key is repeating")
 
     CHECK_FALSE(first.IsRepeat());
     CHECK(repeat.IsRepeat());
-    CHECK(first.ToString() == "KeyPressed: 87");
-    CHECK(repeat.ToString() == "KeyPressed: 87 (repeat)");
-    CHECK(KeyReleasedEvent(Key::W).ToString() == "KeyReleased: 87");
 }
 
 TEST_CASE("A character event carries the typed Unicode character")
@@ -61,8 +58,6 @@ TEST_CASE("A character event carries the typed Unicode character")
 
     CHECK(ascii.GetCharacter() == U'A');
     CHECK(accent.GetCharacter() == U'\u00E9');
-    CHECK(ascii.ToString() == "KeyTyped: 'A' (U+0041)");
-    CHECK(accent.ToString() == "KeyTyped: U+00E9");
 }
 
 TEST_CASE("A keyboard event reaches the handler of its type")

@@ -62,7 +62,7 @@ TEST_CASE("Windows can be destroyed and created again")
     REQUIRE(second != nullptr);
 
     first.reset();
-    CHECK(second->GetWidth() == 1280);
+    CHECK(second->GetWidth() == Quasar::WindowSpecification{}.Width);
 
     second.reset();
     const Quasar::Scope<Quasar::Window> third = TestHelpers::CreateNullWindow({.Title = "Third"});

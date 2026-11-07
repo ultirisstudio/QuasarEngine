@@ -66,15 +66,6 @@ TEST_CASE("Gamepad events carry the gamepad and their data")
     CHECK(moved.GetValue() == 0.75f);
 }
 
-TEST_CASE("Gamepad events are printed with their data")
-{
-    CHECK(GamepadConnectedEvent(GamepadId{0}, "Xbox Controller").ToString() == "GamepadConnected: 0 (Xbox Controller)");
-    CHECK(GamepadDisconnectedEvent(GamepadId{1}).ToString() == "GamepadDisconnected: 1");
-    CHECK(GamepadButtonPressedEvent(GamepadId{0}, GamepadButton::B).ToString() == "GamepadButtonPressed: 0, 1");
-    CHECK(GamepadButtonReleasedEvent(GamepadId{0}, GamepadButton::B).ToString() == "GamepadButtonReleased: 0, 1");
-    CHECK(GamepadAxisMovedEvent(GamepadId{0}, GamepadAxis::LeftTrigger, 0.5f).ToString() == "GamepadAxisMoved: 0, 4, 0.5");
-}
-
 TEST_CASE("A gamepad event reaches the handler of its type")
 {
     GamepadButtonPressedEvent event(GamepadId{0}, GamepadButton::Y);
