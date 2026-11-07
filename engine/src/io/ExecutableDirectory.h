@@ -3,9 +3,7 @@
 #include <filesystem>
 #include <optional>
 
-namespace Quasar::Platform
+namespace Quasar
 {
-    std::optional<std::filesystem::path> GetSystemConfigDirectory();
-
     std::optional<std::filesystem::path> GetExecutableDirectory();
 }

@@ -2,9 +2,12 @@
 #include <quasar/core/Log.h>
 #include <quasar/events/EventDispatcher.h>
 #include <quasar/events/WindowEvent.h>
+#include <quasar/io/UserDataDirectory.h>
 
 #include <spdlog/fmt/std.h>
 
+#include <filesystem>
+#include <optional>
 #include <system_error>
 #include <utility>
 
@@ -81,6 +84,11 @@ namespace Quasar
     {
         QUASAR_ENGINE_ASSERT(s_Instance != nullptr, "No application exists");
         return *s_Instance;
+    }
+
+    std::optional<std::filesystem::path> Application::GetUserDataDirectory() const
+    {
+        return Quasar::GetUserDataDirectory(m_Specification.Organization, m_Specification.Name);
     }
 
     void Application::Run()

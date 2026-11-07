@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -226,6 +227,19 @@ TEST_CASE("The application keeps its specification")
 
     CHECK(application->GetSpecification().Name == "Game");
     CHECK(application->GetSpecification().Arguments == std::vector<std::string>{"--level", "2"});
+}
+
+TEST_CASE("The user data directory of the application is named after its organization and its name")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.Organization = "Quasar Engine", .Name = "Quasar Engine Tests"});
+    REQUIRE(application != nullptr);
+
+    const std::optional<std::filesystem::path> directory = application->GetUserDataDirectory();
+
+    REQUIRE(directory.has_value());
+    CHECK(directory->filename() == "Quasar Engine Tests");
+    CHECK(directory->parent_path().filename() == "Quasar Engine");
 }
 
 TEST_CASE("The layer stack of the application lists its layers from the bottom to the top")

@@ -72,16 +72,18 @@ jobs:
           path: build/${{ matrix.preset }}
           key: ${{ steps.cache-key.outputs.key }}
 
-      # Build tools, the runtime libraries of the Clang sanitizers, the development packages needed by GLFW (X11 and
-      # Wayland), OpenGL and nativefiledialog-extended (GTK3), plus the Mesa software driver and its EGL library, which
-      # give the tests a real OpenGL 4.5 context without a display
+      # Build tools, the runtime libraries of the Clang sanitizers, the development packages needed by GLFW and SDL3
+      # (X11, Wayland, udev and D-Bus), OpenGL and nativefiledialog-extended (GTK3), plus the Mesa software driver and its
+      # EGL library, which give the tests a real OpenGL 4.5 context without a display
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build pkg-config libclang-rt-18-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-            libwayland-dev libxkbcommon-dev wayland-protocols \
+            libxext-dev libxfixes-dev libxss-dev libxtst-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev libegl-dev \
+            libudev-dev libdbus-1-dev \
             libgl1-mesa-dev libegl-mesa0 libgl1-mesa-dri \
             libgtk-3-dev
 

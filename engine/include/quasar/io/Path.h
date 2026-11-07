@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace Quasar
 {
@@ -31,4 +32,12 @@ namespace Quasar
     /// @return The normalized relative path, for example `Assets/cube.obj`, `.` for the root itself, or no value if
     /// the path is not inside the root.
     std::optional<std::string> MakeRelativePath(const std::filesystem::path& path, const std::filesystem::path& root);
+
+    /// @brief Creates a path from UTF-8 text, such as the paths given by SDL or read from engine files.
+    ///
+    /// On Windows, `std::filesystem::path` reads narrow text in the code page of the system, not in UTF-8, so a path
+    /// with characters outside this code page would be wrong. This function reads the text as UTF-8 on every platform.
+    /// @param text The path, in UTF-8.
+    /// @return The path.
+    std::filesystem::path PathFromUtf8(std::string_view text);
 }

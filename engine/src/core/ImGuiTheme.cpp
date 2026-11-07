@@ -2,7 +2,7 @@
 #include <quasar/core/Log.h>
 #include <quasar/io/File.h>
 
-#include <platform/SystemDirectories.h>
+#include <io/ExecutableDirectory.h>
 
 #include <spdlog/fmt/std.h>
 
@@ -193,7 +193,7 @@ namespace Quasar::ImGuiTheme
 
     std::filesystem::path GetFontPath()
     {
-        const std::optional<std::filesystem::path> directory = Platform::GetExecutableDirectory();
+        const std::optional<std::filesystem::path> directory = GetExecutableDirectory();
         if (!directory)
         {
             return {};

@@ -46,4 +46,11 @@ namespace Quasar
 
         return NormalizePath(relative);
     }
+
+    std::filesystem::path PathFromUtf8(std::string_view text)
+    {
+        std::u8string utf8(text.size(), u8'\0');
+        std::ranges::transform(text, utf8.begin(), [](char character) { return static_cast<char8_t>(character); });
+        return {utf8};
+    }
 }

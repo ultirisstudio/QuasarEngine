@@ -78,3 +78,11 @@ TEST_CASE("A path outside the root folder gives no relative path")
     CHECK_FALSE(Quasar::MakeRelativePath(temp / "Other" / "cube.obj", temp / "QuasarProject").has_value());
     CHECK_FALSE(Quasar::MakeRelativePath(temp / "QuasarProjectOld" / "a.obj", temp / "QuasarProject").has_value());
 }
+
+TEST_CASE("A path is read as UTF-8 on every platform")
+{
+    const std::filesystem::path path = Quasar::PathFromUtf8("Projects/\xE6\x97\xA5\xE6\x9C\xAC/sc\xC3\xA8ne.txt");
+
+    CHECK(path == std::filesystem::path(u8"Projects/\u65E5\u672C/sc\u00E8ne.txt"));
+    CHECK(path.filename() == std::filesystem::path(u8"sc\u00E8ne.txt"));
+}

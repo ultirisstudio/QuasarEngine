@@ -25,14 +25,16 @@ jobs:
           submodules: recursive
 
       # clang-tidy, plus what CMake needs to configure the project: build tools and the development packages of
-      # GLFW (X11 and Wayland), OpenGL and nativefiledialog-extended (GTK3)
+      # GLFW and SDL3 (X11, Wayland, udev and D-Bus), OpenGL and nativefiledialog-extended (GTK3)
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             clang-tidy-18 ninja-build pkg-config \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-            libwayland-dev libxkbcommon-dev wayland-protocols \
+            libxext-dev libxfixes-dev libxss-dev libxtst-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev libegl-dev \
+            libudev-dev libdbus-1-dev \
             libgl1-mesa-dev \
             libgtk-3-dev
 
