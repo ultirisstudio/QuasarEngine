@@ -30,4 +30,19 @@ namespace Quasar::Input
         glfwGetCursorPos(GetMainWindow(), &x, &y);
         return {static_cast<float>(x), static_cast<float>(y)};
     }
+
+    bool IsGamepadConnected(GamepadId gamepad)
+    {
+        return Application::Get().GetGamepads().IsConnected(gamepad);
+    }
+
+    bool IsGamepadButtonPressed(GamepadId gamepad, GamepadButton button)
+    {
+        return Application::Get().GetGamepads().IsButtonPressed(gamepad, button);
+    }
+
+    float GetGamepadAxis(GamepadId gamepad, GamepadAxis axis)
+    {
+        return Application::Get().GetGamepads().GetAxis(gamepad, axis);
+    }
 }

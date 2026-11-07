@@ -6,6 +6,7 @@
 /// \date 2026-10-24
 
 #include <quasar/core/Base.h>
+#include <quasar/core/Gamepads.h>
 #include <quasar/core/ImGuiLayer.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/LayerStack.h>
@@ -60,12 +61,13 @@ namespace Quasar
         ///
         /// Each frame, the loop computes the time elapsed since the previous frame, updates every layer, renders
         /// every layer, lets every layer draw its ImGui windows with Layer::OnImGuiRender(), then shows the image and
-        /// processes the messages of the operating system. Layers are updated and rendered from the bottom of the
-        /// stack to the top. While the window is minimized, or while its drawing area is empty, the layers are still
-        /// updated but not rendered.
+        /// processes the messages of the operating system and reads the gamepads. Layers are updated and rendered from
+        /// the bottom of the stack to the top. While the window is minimized, or while its drawing area is empty, the
+        /// layers are still updated but not rendered.
         ///
-        /// The events of the window go to the application first, then to the ImGui layer, then to the layers from
-        /// the top of the stack to the bottom, until one of them handles them. Closing the window stops the loop.
+        /// The events of the window and of the gamepads go to the application first, then to the ImGui layer, then to
+        /// the layers from the top of the stack to the bottom, until one of them handles them. Closing the window stops
+        /// the loop.
         ///
         /// Layers added or removed during a frame, by a layer or by an event, are added or removed at the end of the
         /// frame, in the order they were asked for. The layers being updated, rendered or receiving an event never
@@ -108,6 +110,12 @@ namespace Quasar
         /// @brief Returns the main window.
         Window& GetWindow() { return *m_Window; }
 
+        /// @brief Returns the gamepads, read once per frame by the main loop.
+        Gamepads& GetGamepads() { return m_Gamepads; }
+
+        /// @brief Returns the gamepads, read once per frame by the main loop.
+        const Gamepads& GetGamepads() const { return m_Gamepads; }
+
         /// @brief Returns the layer that runs ImGui, or nullptr when the window has no OpenGL context.
         ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer.get(); }
 
@@ -143,6 +151,7 @@ namespace Quasar
         ApplicationSpecification m_Specification;
 
         Scope<Window> m_Window;
+        Gamepads m_Gamepads;
         LayerStack m_LayerStack;
         Scope<ImGuiLayer> m_ImGuiLayer;
         std::vector<LayerChange> m_LayerChanges;

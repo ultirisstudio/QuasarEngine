@@ -1,23 +1,25 @@
 #pragma once
 
 /// \file
-/// \brief Functions that read the current state of the keyboard and the mouse.
+/// \brief Functions that read the current state of the keyboard, the mouse and the gamepads.
 /// \author Kurogenshi
 /// \date 2026-10-25
 
+#include <quasar/core/GamepadCodes.h>
 #include <quasar/core/KeyCodes.h>
 #include <quasar/core/MouseCodes.h>
 
 #include <glm/vec2.hpp>
 
-/// @brief Functions that read the current state of the keyboard and the mouse, as an alternative to events.
+/// @brief Functions that read the current state of the keyboard, the mouse and the gamepads, as an alternative to
+/// events.
 ///
 /// Use them for continuous actions, like moving a camera while a key is held down:
 /// `if (Input::IsKeyPressed(Key::W)) { MoveForward(timestep); }`. Use events for single actions, like a click or a
 /// shortcut, so that no press is missed between two frames.
 ///
-/// The functions read the main window of the application, so an Application must exist. The state is the one known
-/// at the last call to Window::Update(), which processes the messages of the operating system once per frame.
+/// The functions read the main window and the gamepads of the application, so an Application must exist. The state is
+/// the one known at the end of the last frame, when the messages of the operating system and the gamepads are read.
 namespace Quasar::Input
 {
     /// @brief Returns true if the key is held down.
@@ -33,4 +35,16 @@ namespace Quasar::Input
     ///
     /// Like MouseMovedEvent, the position is not in pixels on a scaled display.
     glm::vec2 GetMousePosition();
+
+    /// @brief Returns true if a gamepad is connected with this id. See Gamepads.
+    bool IsGamepadConnected(GamepadId gamepad);
+
+    /// @brief Returns true if the button of the gamepad is held down. False when the gamepad is not connected.
+    bool IsGamepadButtonPressed(GamepadId gamepad, GamepadButton button);
+
+    /// @brief Returns the value of an axis of the gamepad, after the dead zones. 0 when the gamepad is not connected.
+    ///
+    /// Stick axes go from -1 to 1, -1 being left or up. Triggers go from 0, at rest, to 1, fully pressed. See
+    /// GamepadSettings for the dead zones.
+    float GetGamepadAxis(GamepadId gamepad, GamepadAxis axis);
 }
