@@ -103,6 +103,11 @@ namespace
     {
         return std::ranges::count(calls, call);
     }
+
+    std::string EventCall(const std::string& layer, Quasar::EventType type)
+    {
+        return layer + " event " + Quasar::GetEventTypeName(type);
+    }
 }
 
 TEST_CASE("The application runs its layers until it is closed")
@@ -150,8 +155,8 @@ TEST_CASE("Events reach the top layer first and stop once handled")
 
     application->Run();
 
-    CHECK(Count(calls, "Overlay event KeyPressed") == 1);
-    CHECK(Count(calls, "Bottom event KeyPressed") == 0);
+    CHECK(Count(calls, EventCall("Overlay", Quasar::EventType::KeyPressed)) == 1);
+    CHECK(Count(calls, EventCall("Bottom", Quasar::EventType::KeyPressed)) == 0);
 }
 
 TEST_CASE("A close request of the window stops the main loop")
@@ -172,7 +177,7 @@ TEST_CASE("A close request of the window stops the main loop")
     application->Run();
 
     CHECK(layer.Updates == 2);
-    CHECK(Count(calls, "A event WindowClose") == 0);
+    CHECK(Count(calls, EventCall("A", Quasar::EventType::WindowClose)) == 0);
 }
 
 TEST_CASE("While the window is minimized the layers are updated but not rendered")
@@ -320,7 +325,7 @@ TEST_CASE("A layer can remove itself when it receives an event")
 
     application->Run();
 
-    CHECK(Count(calls, "Removed event KeyPressed") == 1);
+    CHECK(Count(calls, EventCall("Removed", Quasar::EventType::KeyPressed)) == 1);
     CHECK(Count(calls, "Removed detach") == 1);
     CHECK(Count(calls, "Removed update") == 1);
     CHECK(Count(calls, "Overlay update") == 2);

@@ -7,7 +7,9 @@
 #include <spdlog/sinks/ostream_sink.h>
 
 #include <chrono>
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -41,6 +43,28 @@ namespace
     private:
         std::ostringstream m_Stream;
     };
+
+    std::optional<double> ReadDuration(const std::string& text, const std::string& name)
+    {
+        const std::size_t namePosition = text.find(name);
+        if (namePosition == std::string::npos)
+        {
+            return std::nullopt;
+        }
+
+        const std::size_t numberPosition = text.find_first_of("0123456789", namePosition + name.size());
+        if (numberPosition == std::string::npos)
+        {
+            return std::nullopt;
+        }
+
+        return std::stod(text.substr(numberPosition));
+    }
+
+    bool Contains(const std::string& text, const std::string& part)
+    {
+        return text.find(part) != std::string::npos;
+    }
 }
 
 TEST_CASE("A ScopedTimer logs nothing before its scope ends")
@@ -60,8 +84,7 @@ TEST_CASE("A ScopedTimer logs the name chosen by the caller when its scope ends"
         const Quasar::ScopedTimer timer("Loading");
     }
 
-    CHECK(capture.GetText().starts_with("Loading took "));
-    CHECK(capture.GetText().find(" ms") != std::string::npos);
+    CHECK(ReadDuration(capture.GetText(), "Loading").has_value());
 }
 
 TEST_CASE("A ScopedTimer measures at least the time spent in its scope")
@@ -73,10 +96,9 @@ TEST_CASE("A ScopedTimer measures at least the time spent in its scope")
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    const std::string text = capture.GetText();
-    const std::string prefix = "Sleep took ";
-    REQUIRE(text.starts_with(prefix));
-    CHECK(std::stod(text.substr(prefix.size())) >= 20.0);
+    const std::optional<double> milliseconds = ReadDuration(capture.GetText(), "Sleep");
+    REQUIRE(milliseconds.has_value());
+    CHECK(*milliseconds >= 20.0);
 }
 
 TEST_CASE("QUASAR_SCOPED_TIMER logs the name when its scope ends only in Debug")
@@ -89,7 +111,7 @@ TEST_CASE("QUASAR_SCOPED_TIMER logs the name when its scope ends only in Debug")
 
     if (Quasar::PlatformDetection::IsDebug())
     {
-        CHECK(capture.GetText().starts_with("Loading took "));
+        CHECK(Contains(capture.GetText(), "Loading"));
     }
     else
     {
@@ -107,10 +129,8 @@ TEST_CASE("Several QUASAR_SCOPED_TIMER can be used in the same scope")
     }
 
     const std::string text = capture.GetText();
-    const bool firstLogged = text.find("First took ") != std::string::npos;
-    const bool secondLogged = text.find("Second took ") != std::string::npos;
-    CHECK(firstLogged == Quasar::PlatformDetection::IsDebug());
-    CHECK(secondLogged == Quasar::PlatformDetection::IsDebug());
+    CHECK(Contains(text, "First") == Quasar::PlatformDetection::IsDebug());
+    CHECK(Contains(text, "Second") == Quasar::PlatformDetection::IsDebug());
 }
 
 TEST_CASE("A name used only by QUASAR_SCOPED_TIMER compiles in every build type")

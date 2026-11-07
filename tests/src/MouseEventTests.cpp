@@ -45,7 +45,6 @@ TEST_CASE("A move event carries the cursor position")
 
     CHECK(event.GetX() == 640.0f);
     CHECK(event.GetY() == 360.5f);
-    CHECK(event.ToString() == "MouseMoved: 640, 360.5");
 }
 
 TEST_CASE("A scroll event carries the scroll offsets")
@@ -54,7 +53,6 @@ TEST_CASE("A scroll event carries the scroll offsets")
 
     CHECK(event.GetXOffset() == -0.5f);
     CHECK(event.GetYOffset() == 1.0f);
-    CHECK(event.ToString() == "MouseScrolled: -0.5, 1");
 }
 
 TEST_CASE("Button events carry the mouse button code")
@@ -64,8 +62,6 @@ TEST_CASE("Button events carry the mouse button code")
 
     CHECK(pressed.GetButton() == MouseButton::Right);
     CHECK(released.GetButton() == MouseButton::Middle);
-    CHECK(pressed.ToString() == "MouseButtonPressed: 1");
-    CHECK(released.ToString() == "MouseButtonReleased: 2");
 }
 
 TEST_CASE("A mouse event reaches the handler of its type")

@@ -146,9 +146,9 @@ TEST_CASE("The engine loggers write to the memory sink")
 
     const std::vector<LogMessage> messages = sink->GetMessages();
     REQUIRE(messages.size() == 2);
-    CHECK(messages[0].LoggerName == "ENGINE");
+    CHECK(messages[0].LoggerName == Quasar::Log::Engine().name());
     CHECK(messages[0].Text == "Engine warning");
-    CHECK(messages[1].LoggerName == "APP");
+    CHECK(messages[1].LoggerName == Quasar::Log::App().name());
     CHECK(messages[1].Level == LogLevel::Error);
     CHECK(sink->GetCapacity() == Quasar::Log::MemoryCapacity);
 

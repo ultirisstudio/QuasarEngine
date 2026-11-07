@@ -18,14 +18,10 @@
 #include <utility>
 #include <vector>
 
-TEST_CASE("The editor application has its own name, window and arguments")
+TEST_CASE("The editor application has an OpenGL context and keeps its arguments")
 {
     const Quasar::ApplicationSpecification specification = Quasar::Editor::GetEditorSpecification({"--project", "Game"});
 
-    CHECK(specification.Name == "Editor");
-    CHECK(specification.Window.Title == "Quasar Editor");
-    CHECK(specification.Window.Width == 1600);
-    CHECK(specification.Window.Height == 900);
     CHECK(specification.Window.GraphicsContext);
     CHECK(specification.Arguments == std::vector<std::string>{"--project", "Game"});
 }
@@ -53,7 +49,6 @@ TEST_CASE("The editor application opens its window and runs the editor layer")
 
     application->Run();
 
-    CHECK(application->GetWindow().GetTitle() == "Quasar Editor");
     CHECK(HasEditorLayer(*application));
     CHECK(closing.GetUpdates() == 3);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));

@@ -31,7 +31,6 @@ TEST_CASE("The engine font is copied next to the executable")
 
     const std::filesystem::path font = Quasar::ImGuiTheme::GetFontPath();
 
-    CHECK(font.filename() == "Inter-Regular.ttf");
     CHECK(std::filesystem::is_regular_file(font));
 }
 

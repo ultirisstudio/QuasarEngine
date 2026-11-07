@@ -139,12 +139,15 @@ namespace
 
     constexpr GamepadId First{0};
     constexpr GamepadId Second{1};
+
+    constexpr Quasar::GamepadSettings TestSettings{.StickDeadZone = 0.15f, .TriggerDeadZone = 0.05f, .AxisEventThreshold = 0.01f};
 }
 
 TEST_CASE("A connected gamepad sends a connected event and no event for the buttons already held down")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First, "Xbox Controller");
     fake.SetButton(First, GamepadButton::A, true);
 
@@ -160,6 +163,7 @@ TEST_CASE("Pressing and releasing a button sends one event each")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First);
     Update(gamepads);
 
@@ -199,6 +203,7 @@ TEST_CASE("A stick inside its dead zone reads as zero and sends no event")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First);
     Update(gamepads);
 
@@ -214,6 +219,7 @@ TEST_CASE("The dead zone of a stick is a circle, so a diagonal stays a diagonal"
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First);
     Update(gamepads);
 
@@ -235,6 +241,7 @@ TEST_CASE("A stick pushed to the end reads as 1")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First);
     Update(gamepads);
 
@@ -249,6 +256,7 @@ TEST_CASE("A trigger reads from 0 at rest to 1 when fully pressed")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First);
     Update(gamepads);
     CHECK(gamepads.GetAxis(First, GamepadAxis::LeftTrigger) == 0.0f);
@@ -267,6 +275,7 @@ TEST_CASE("Small axis changes send no event, but returning to rest does")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First);
     Update(gamepads);
     fake.SetAxis(First, GamepadAxis::LeftX, 0.6f);
@@ -287,6 +296,7 @@ TEST_CASE("The dead zones can be changed in the settings")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     gamepads.GetSettings().StickDeadZone = 0.0f;
     fake.Connect(First);
     fake.SetAxis(First, GamepadAxis::LeftX, 0.1f);
@@ -300,6 +310,7 @@ TEST_CASE("Each gamepad sends the events of its own id")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     fake.Connect(First);
     fake.Connect(Second);
     CHECK(Update(gamepads) == std::vector<RecordedEvent>{Connected(First), Connected(Second)});
@@ -315,6 +326,7 @@ TEST_CASE("A gamepad id that cannot exist is never connected")
 {
     FakeGamepads fake;
     Quasar::Gamepads gamepads(fake.GetReader());
+    gamepads.GetSettings() = TestSettings;
     const auto outOfRange = static_cast<GamepadId>(Quasar::MaxGamepads);
 
     Update(gamepads);

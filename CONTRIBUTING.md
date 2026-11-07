@@ -94,9 +94,15 @@ Test what the code does, not more and not less:
 
 - Check results and behavior: return values, state, the events sent, the order of the calls. A test fails only when
   the behavior changes.
+- Do not check values that can change without breaking anything: titles, names and sizes of windows and
+  applications, file names of resources, the text of `ToString()` and of log messages, and default settings such as
+  dead zones. Set them in the test, read them from the code, or compare two of them, for example
+  `event.ToString() == event.GetName()` or `WindowSpecification{}.Width`. A test must fail only when something can go
+  wrong for the user, never because a name was changed.
 - Do not read the text of log messages to check something else. Check the level of the messages instead, with
-  `TestHelpers::HasLogAtLeast()`: "no error was logged", "a warning was logged". The text of a message can be checked
-  only when writing it is the job of the tested code, as for `ScopedTimer`.
+  `TestHelpers::HasLogAtLeast()`: "no error was logged", "a warning was logged". When writing a message is the job of
+  the tested code, as for `ScopedTimer`, check only the data it must contain, such as a name or a duration, not its
+  wording.
 - Do not test the standard library or the third-party libraries, for example that a `std::shared_ptr` counts its
   references.
 - The same behavior is tested on Windows and Linux. A test is limited to one platform only for code that only exists
