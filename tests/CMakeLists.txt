@@ -8,6 +8,7 @@ target_link_libraries(QuasarTests PRIVATE
     Quasar::CompileOptions
     doctest::doctest_with_main
     glfw
+    SDL3::SDL3
 )
 
 target_compile_definitions(QuasarTests PRIVATE

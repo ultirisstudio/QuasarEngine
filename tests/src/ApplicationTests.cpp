@@ -1,3 +1,4 @@
+#include "LogHelpers.h"
 #include "NullWindow.h"
 #include "TemporaryFiles.h"
 
@@ -5,6 +6,7 @@
 #include <quasar/core/Input.h>
 #include <quasar/core/KeyCodes.h>
 #include <quasar/core/Layer.h>
+#include <quasar/core/MemoryLogSink.h>
 #include <quasar/core/MouseCodes.h>
 #include <quasar/events/Event.h>
 
@@ -343,6 +345,53 @@ TEST_CASE("A layer can remove itself when it receives an event")
     CHECK(Count(calls, "Removed detach") == 1);
     CHECK(Count(calls, "Removed update") == 1);
     CHECK(Count(calls, "Overlay update") == 2);
+}
+
+TEST_CASE("A layer removed twice in the same frame is removed once")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    ScriptLayer& removed = AddLayer(*application, "Removed", calls);
+    ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
+    removed.EventAction = [&application, &removed](Quasar::Event& /*event*/) { application->PopLayer(removed); };
+    overlay.UpdateAction = [&application](int updates)
+    {
+        if (updates == 1)
+        {
+            TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_A, GLFW_PRESS);
+            TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_B, GLFW_PRESS);
+        }
+    };
+    overlay.CloseAfter = 2;
+
+    application->Run();
+
+    CHECK(Count(calls, EventCall("Removed", Quasar::EventType::KeyPressed)) == 2);
+    CHECK(Count(calls, "Removed detach") == 1);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("An overlay removed twice in the same frame is removed once")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    ScriptLayer& layer = AddLayer(*application, "Layer", calls);
+    ScriptLayer& removed = AddOverlay(*application, "Removed", calls);
+    removed.UpdateAction = [&application, &removed](int /*updates*/)
+    {
+        application->PopOverlay(removed);
+        application->PopOverlay(removed);
+    };
+    layer.CloseAfter = 2;
+
+    application->Run();
+
+    CHECK(Count(calls, "Removed detach") == 1);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
 TEST_CASE("Layers added while the changes are applied are added in the same frame")

@@ -6,6 +6,7 @@
 
 #include <spdlog/fmt/std.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <optional>
 #include <system_error>
@@ -199,7 +200,10 @@ namespace Quasar
             return;
         }
 
-        m_LayerChanges.push_back({.Kind = LayerChange::Type::PopLayer, .Removed = &layer});
+        if (!IsRemovalPending(layer))
+        {
+            m_LayerChanges.push_back({.Kind = LayerChange::Type::PopLayer, .Removed = &layer});
+        }
     }
 
     void Application::PopOverlay(Layer& overlay)
@@ -210,7 +214,15 @@ namespace Quasar
             return;
         }
 
-        m_LayerChanges.push_back({.Kind = LayerChange::Type::PopOverlay, .Removed = &overlay});
+        if (!IsRemovalPending(overlay))
+        {
+            m_LayerChanges.push_back({.Kind = LayerChange::Type::PopOverlay, .Removed = &overlay});
+        }
+    }
+
+    bool Application::IsRemovalPending(const Layer& layer) const
+    {
+        return std::ranges::any_of(m_LayerChanges, [&layer](const LayerChange& change) { return change.Removed == &layer; });
     }
 
     void Application::ApplyLayerChanges()

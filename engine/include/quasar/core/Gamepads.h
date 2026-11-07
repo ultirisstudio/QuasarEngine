@@ -32,8 +32,11 @@ namespace Quasar
     struct GamepadReading
     {
         std::string Name;   ///< Name of the gamepad, for example "Xbox Controller".
-        GamepadState State; ///< Raw state: the stick axes go from -1 to 1, and the triggers too, -1 being at rest.
+        GamepadState State; ///< Raw state: the stick axes go from -1 to 1, and the triggers from 0, at rest, to 1.
     };
+
+    /// @brief What is read from every gamepad id at once: a reading for each connected gamepad, no value for the others.
+    using GamepadReadings = std::array<std::optional<GamepadReading>, MaxGamepads>;
 
     /// @brief Settings that filter the axes of the gamepads.
     struct GamepadSettings
@@ -54,22 +57,24 @@ namespace Quasar
     /// @brief The gamepads connected to the computer, up to MaxGamepads.
     ///
     /// The application owns one and calls Update() once per frame, after the window processed the messages of the
-    /// operating system. GLFW sends no events for the buttons and axes of a gamepad: Update() reads their state,
-    /// compares it with the previous frame, and sends an event for each change. The connection and disconnection of
-    /// a gamepad are also found by Update().
+    /// operating system. Update() reads the state of every gamepad with SDL, compares it with the previous frame, and
+    /// sends an event for each change. The connection and disconnection of a gamepad are also found by Update().
     ///
-    /// Only devices that GLFW knows as gamepads are listed, so that the buttons and axes are at the same place on
-    /// every gamepad. GLFW includes the mappings of the SDL_GameControllerDB project.
+    /// Only devices that SDL knows as gamepads are listed, so that the buttons and axes are at the same place on every
+    /// gamepad. SDL has its own drivers for many gamepads, such as the Steam Controller and the PlayStation and Switch
+    /// controllers, and the mappings of the SDL_GameControllerDB project for the others.
     class Gamepads
     {
     public:
         /// @brief Function that receives the events of the gamepads.
         using EventCallback = std::function<void(Event&)>;
 
-        /// @brief Function that reads a gamepad: the reading, or no value when no gamepad has this id.
-        using Reader = std::function<std::optional<GamepadReading>(GamepadId)>;
+        /// @brief Function that reads every gamepad id once per Update().
+        using Reader = std::function<GamepadReadings()>;
 
-        /// @brief Creates the gamepads, read with GLFW. GLFW must be started before the first call to Update().
+        /// @brief Creates the gamepads, read with SDL. The gamepad support of SDL is started here and stopped when the
+        /// gamepads are destroyed or when another reader is set. If it cannot start, the reason is logged as an engine
+        /// error and no gamepad is ever connected.
         Gamepads();
 
         /// @brief Creates the gamepads, read with another function, for example by the tests.
@@ -123,7 +128,7 @@ namespace Quasar
         };
 
         const Slot* FindConnected(GamepadId gamepad) const;
-        void UpdateSlot(GamepadId gamepad, Slot& slot, const EventCallback& send);
+        void UpdateSlot(GamepadId gamepad, const std::optional<GamepadReading>& reading, Slot& slot, const EventCallback& send);
 
         Reader m_Reader;
         GamepadSettings m_Settings;

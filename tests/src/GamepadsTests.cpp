@@ -6,11 +6,16 @@
 #include <quasar/core/Gamepads.h>
 #include <quasar/core/Input.h>
 #include <quasar/core/Layer.h>
+#include <quasar/core/MemoryLogSink.h>
 #include <quasar/events/EventDispatcher.h>
 #include <quasar/events/GamepadEvent.h>
 
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_joystick.h>
+#include <SDL3/SDL_stdinc.h>
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <map>
 #include <optional>
@@ -25,44 +30,10 @@ using Quasar::GamepadId;
 
 namespace
 {
-    class FakeGamepads
-    {
-    public:
-        Quasar::Gamepads::Reader GetReader()
-        {
-            return [this](GamepadId gamepad) -> std::optional<Quasar::GamepadReading>
-            {
-                const auto found = m_Readings.find(gamepad);
-                if (found == m_Readings.end())
-                {
-                    return std::nullopt;
-                }
-                return found->second;
-            };
-        }
+    constexpr GamepadId First{0};
+    constexpr GamepadId Second{1};
 
-        void Connect(GamepadId gamepad, std::string name = "Test gamepad")
-        {
-            Quasar::GamepadReading reading;
-            reading.Name = std::move(name);
-            // Like GLFW, the raw value of a trigger at rest is -1
-            reading.State.Axes.at(static_cast<std::size_t>(GamepadAxis::LeftTrigger)) = -1.0f;
-            reading.State.Axes.at(static_cast<std::size_t>(GamepadAxis::RightTrigger)) = -1.0f;
-            m_Readings[gamepad] = reading;
-        }
-
-        void Disconnect(GamepadId gamepad) { m_Readings.erase(gamepad); }
-
-        void SetButton(GamepadId gamepad, GamepadButton button, bool pressed)
-        {
-            m_Readings.at(gamepad).State.Buttons.at(static_cast<std::size_t>(button)) = pressed;
-        }
-
-        void SetAxis(GamepadId gamepad, GamepadAxis axis, float raw) { m_Readings.at(gamepad).State.Axes.at(static_cast<std::size_t>(axis)) = raw; }
-
-    private:
-        std::map<GamepadId, Quasar::GamepadReading> m_Readings;
-    };
+    constexpr Quasar::GamepadSettings TestSettings{.StickDeadZone = 0.15f, .TriggerDeadZone = 0.05f, .AxisEventThreshold = 0.01f};
 
     struct RecordedEvent
     {
@@ -74,48 +45,6 @@ namespace
 
         bool operator==(const RecordedEvent&) const = default;
     };
-
-    void Record(Quasar::Event& event, std::vector<RecordedEvent>& events)
-    {
-        Quasar::EventDispatcher dispatcher(event);
-        dispatcher.Dispatch<Quasar::GamepadConnectedEvent>(
-            [&events](const Quasar::GamepadConnectedEvent& connected)
-            {
-                events.push_back({.Type = EventType::GamepadConnected, .Gamepad = connected.GetGamepad()});
-                return false;
-            });
-        dispatcher.Dispatch<Quasar::GamepadDisconnectedEvent>(
-            [&events](const Quasar::GamepadDisconnectedEvent& disconnected)
-            {
-                events.push_back({.Type = EventType::GamepadDisconnected, .Gamepad = disconnected.GetGamepad()});
-                return false;
-            });
-        dispatcher.Dispatch<Quasar::GamepadButtonPressedEvent>(
-            [&events](const Quasar::GamepadButtonPressedEvent& pressed)
-            {
-                events.push_back({.Type = EventType::GamepadButtonPressed, .Gamepad = pressed.GetGamepad(), .Button = pressed.GetButton()});
-                return false;
-            });
-        dispatcher.Dispatch<Quasar::GamepadButtonReleasedEvent>(
-            [&events](const Quasar::GamepadButtonReleasedEvent& released)
-            {
-                events.push_back({.Type = EventType::GamepadButtonReleased, .Gamepad = released.GetGamepad(), .Button = released.GetButton()});
-                return false;
-            });
-        dispatcher.Dispatch<Quasar::GamepadAxisMovedEvent>(
-            [&events](const Quasar::GamepadAxisMovedEvent& moved)
-            {
-                events.push_back({.Type = EventType::GamepadAxisMoved, .Gamepad = moved.GetGamepad(), .Axis = moved.GetAxis(), .Value = moved.GetValue()});
-                return false;
-            });
-    }
-
-    std::vector<RecordedEvent> Update(Quasar::Gamepads& gamepads)
-    {
-        std::vector<RecordedEvent> events;
-        gamepads.Update([&events](Quasar::Event& event) { Record(event, events); });
-        return events;
-    }
 
     RecordedEvent Connected(GamepadId gamepad)
     {
@@ -137,207 +66,91 @@ namespace
         return {.Type = EventType::GamepadButtonReleased, .Gamepad = gamepad, .Button = button};
     }
 
-    constexpr GamepadId First{0};
-    constexpr GamepadId Second{1};
+    void Record(Quasar::Event& event, std::vector<RecordedEvent>& events)
+    {
+        Quasar::EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<Quasar::GamepadConnectedEvent>(
+            [&events](const Quasar::GamepadConnectedEvent& connected)
+            {
+                events.push_back(Connected(connected.GetGamepad()));
+                return false;
+            });
+        dispatcher.Dispatch<Quasar::GamepadDisconnectedEvent>(
+            [&events](const Quasar::GamepadDisconnectedEvent& disconnected)
+            {
+                events.push_back(Disconnected(disconnected.GetGamepad()));
+                return false;
+            });
+        dispatcher.Dispatch<Quasar::GamepadButtonPressedEvent>(
+            [&events](const Quasar::GamepadButtonPressedEvent& pressed)
+            {
+                events.push_back(Pressed(pressed.GetGamepad(), pressed.GetButton()));
+                return false;
+            });
+        dispatcher.Dispatch<Quasar::GamepadButtonReleasedEvent>(
+            [&events](const Quasar::GamepadButtonReleasedEvent& released)
+            {
+                events.push_back(Released(released.GetGamepad(), released.GetButton()));
+                return false;
+            });
+        dispatcher.Dispatch<Quasar::GamepadAxisMovedEvent>(
+            [&events](const Quasar::GamepadAxisMovedEvent& moved)
+            {
+                events.push_back({.Type = EventType::GamepadAxisMoved, .Gamepad = moved.GetGamepad(), .Axis = moved.GetAxis(), .Value = moved.GetValue()});
+                return false;
+            });
+    }
 
-    constexpr Quasar::GamepadSettings TestSettings{.StickDeadZone = 0.15f, .TriggerDeadZone = 0.05f, .AxisEventThreshold = 0.01f};
-}
+    std::vector<RecordedEvent> Update(Quasar::Gamepads& gamepads)
+    {
+        std::vector<RecordedEvent> events;
+        gamepads.Update([&events](Quasar::Event& event) { Record(event, events); });
+        return events;
+    }
 
-TEST_CASE("A connected gamepad sends a connected event and no event for the buttons already held down")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First, "Xbox Controller");
-    fake.SetButton(First, GamepadButton::A, true);
+    class FakeGamepads
+    {
+    public:
+        Quasar::Gamepads::Reader GetReader()
+        {
+            return [this]
+            {
+                Quasar::GamepadReadings readings{};
+                for (const auto& [gamepad, reading] : m_Readings)
+                {
+                    readings.at(static_cast<std::size_t>(gamepad)) = reading;
+                }
+                return readings;
+            };
+        }
 
-    const std::vector<RecordedEvent> events = Update(gamepads);
+        void Connect(GamepadId gamepad, std::string name = "Test gamepad")
+        {
+            Quasar::GamepadReading reading;
+            reading.Name = std::move(name);
+            m_Readings[gamepad] = reading;
+        }
 
-    CHECK(events == std::vector<RecordedEvent>{Connected(First)});
-    CHECK(gamepads.IsConnected(First));
-    CHECK(gamepads.GetName(First) == "Xbox Controller");
-    CHECK(gamepads.IsButtonPressed(First, GamepadButton::A));
-}
+        void Disconnect(GamepadId gamepad) { m_Readings.erase(gamepad); }
 
-TEST_CASE("Pressing and releasing a button sends one event each")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First);
-    Update(gamepads);
+        void SetButton(GamepadId gamepad, GamepadButton button, bool pressed)
+        {
+            m_Readings.at(gamepad).State.Buttons.at(static_cast<std::size_t>(button)) = pressed;
+        }
 
-    fake.SetButton(First, GamepadButton::X, true);
-    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Pressed(First, GamepadButton::X)});
-    CHECK(gamepads.IsButtonPressed(First, GamepadButton::X));
+        void SetAxis(GamepadId gamepad, GamepadAxis axis, float raw) { m_Readings.at(gamepad).State.Axes.at(static_cast<std::size_t>(axis)) = raw; }
 
-    CHECK(Update(gamepads).empty());
+    private:
+        std::map<GamepadId, Quasar::GamepadReading> m_Readings;
+    };
 
-    fake.SetButton(First, GamepadButton::X, false);
-    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Released(First, GamepadButton::X)});
-    CHECK_FALSE(gamepads.IsButtonPressed(First, GamepadButton::X));
-}
+    Quasar::Gamepads CreateGamepads(FakeGamepads& fake)
+    {
+        Quasar::Gamepads gamepads(fake.GetReader());
+        gamepads.GetSettings() = TestSettings;
+        return gamepads;
+    }
 
-TEST_CASE("A disconnected gamepad releases its buttons before it sends a disconnected event")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    fake.Connect(First);
-    Update(gamepads);
-    fake.SetButton(First, GamepadButton::A, true);
-    fake.SetButton(First, GamepadButton::DPadUp, true);
-    Update(gamepads);
-
-    fake.Disconnect(First);
-    const std::vector<RecordedEvent> events = Update(gamepads);
-
-    const std::vector<RecordedEvent> expected{Released(First, GamepadButton::A), Released(First, GamepadButton::DPadUp), Disconnected(First)};
-    CHECK(events == expected);
-    CHECK_FALSE(gamepads.IsConnected(First));
-    CHECK_FALSE(gamepads.IsButtonPressed(First, GamepadButton::A));
-    CHECK(gamepads.GetName(First).empty());
-    CHECK(Update(gamepads).empty());
-}
-
-TEST_CASE("A stick inside its dead zone reads as zero and sends no event")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First);
-    Update(gamepads);
-
-    fake.SetAxis(First, GamepadAxis::LeftX, 0.1f);
-    fake.SetAxis(First, GamepadAxis::LeftY, -0.05f);
-
-    CHECK(Update(gamepads).empty());
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) == 0.0f);
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftY) == 0.0f);
-}
-
-TEST_CASE("The dead zone of a stick is a circle, so a diagonal stays a diagonal")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First);
-    Update(gamepads);
-
-    fake.SetAxis(First, GamepadAxis::RightX, 0.5f);
-    fake.SetAxis(First, GamepadAxis::RightY, 0.5f);
-    const std::vector<RecordedEvent> events = Update(gamepads);
-
-    const float x = gamepads.GetAxis(First, GamepadAxis::RightX);
-    const float y = gamepads.GetAxis(First, GamepadAxis::RightY);
-    CHECK(x == y);
-    // The distance 0.707 past the dead zone of 0.15 is scaled to (0.707 - 0.15) / 0.85, shared by both axes
-    CHECK(x == doctest::Approx(0.4635).epsilon(0.001));
-    REQUIRE(events.size() == 2);
-    CHECK(events[0].Axis == GamepadAxis::RightX);
-    CHECK(events[1].Axis == GamepadAxis::RightY);
-}
-
-TEST_CASE("A stick pushed to the end reads as 1")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First);
-    Update(gamepads);
-
-    fake.SetAxis(First, GamepadAxis::LeftX, -1.0f);
-    Update(gamepads);
-
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) == -1.0f);
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftY) == 0.0f);
-}
-
-TEST_CASE("A trigger reads from 0 at rest to 1 when fully pressed")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First);
-    Update(gamepads);
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftTrigger) == 0.0f);
-
-    fake.SetAxis(First, GamepadAxis::LeftTrigger, 0.0f);
-    Update(gamepads);
-    // Halfway is 0.5 on 0..1, then scaled past the dead zone of 0.05
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftTrigger) == doctest::Approx(0.4737).epsilon(0.001));
-
-    fake.SetAxis(First, GamepadAxis::LeftTrigger, 1.0f);
-    Update(gamepads);
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftTrigger) == 1.0f);
-}
-
-TEST_CASE("Small axis changes send no event, but returning to rest does")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First);
-    Update(gamepads);
-    fake.SetAxis(First, GamepadAxis::LeftX, 0.6f);
-    REQUIRE(Update(gamepads).size() == 1);
-
-    fake.SetAxis(First, GamepadAxis::LeftX, 0.603f);
-    CHECK(Update(gamepads).empty());
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) > 0.0f);
-
-    fake.SetAxis(First, GamepadAxis::LeftX, 0.0f);
-    const std::vector<RecordedEvent> events = Update(gamepads);
-    REQUIRE(events.size() == 1);
-    CHECK(events[0].Type == EventType::GamepadAxisMoved);
-    CHECK(events[0].Value == 0.0f);
-}
-
-TEST_CASE("The dead zones can be changed in the settings")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    gamepads.GetSettings().StickDeadZone = 0.0f;
-    fake.Connect(First);
-    fake.SetAxis(First, GamepadAxis::LeftX, 0.1f);
-
-    Update(gamepads);
-
-    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) == doctest::Approx(0.1));
-}
-
-TEST_CASE("Each gamepad sends the events of its own id")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    fake.Connect(First);
-    fake.Connect(Second);
-    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Connected(First), Connected(Second)});
-
-    fake.SetButton(Second, GamepadButton::B, true);
-
-    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Pressed(Second, GamepadButton::B)});
-    CHECK_FALSE(gamepads.IsButtonPressed(First, GamepadButton::B));
-    CHECK(gamepads.IsButtonPressed(Second, GamepadButton::B));
-}
-
-TEST_CASE("A gamepad id that cannot exist is never connected")
-{
-    FakeGamepads fake;
-    Quasar::Gamepads gamepads(fake.GetReader());
-    gamepads.GetSettings() = TestSettings;
-    const auto outOfRange = static_cast<GamepadId>(Quasar::MaxGamepads);
-
-    Update(gamepads);
-
-    CHECK_FALSE(gamepads.IsConnected(outOfRange));
-    CHECK_FALSE(gamepads.IsButtonPressed(outOfRange, GamepadButton::A));
-    CHECK(gamepads.GetAxis(outOfRange, GamepadAxis::LeftX) == 0.0f);
-}
-
-namespace
-{
     class GamepadLayer : public Quasar::Layer
     {
     public:
@@ -371,6 +184,266 @@ namespace
         bool m_ConnectedInSecondFrame = false;
         bool m_APressedInSecondFrame = false;
     };
+
+    constexpr const char* VirtualGamepadName = "Quasar virtual gamepad";
+
+    class VirtualGamepad
+    {
+    public:
+        VirtualGamepad()
+        {
+            if (!SDL_InitSubSystem(SDL_INIT_JOYSTICK))
+            {
+                return;
+            }
+            m_Started = true;
+
+            SDL_VirtualJoystickDesc description{};
+            SDL_INIT_INTERFACE(&description);
+            description.type = SDL_JOYSTICK_TYPE_GAMEPAD;
+            description.naxes = static_cast<Uint16>(Quasar::GamepadAxisCount);
+            description.nbuttons = static_cast<Uint16>(Quasar::GamepadButtonCount);
+            description.name = VirtualGamepadName;
+
+            m_Id = SDL_AttachVirtualJoystick(&description);
+            m_Joystick = SDL_OpenJoystick(m_Id);
+        }
+
+        ~VirtualGamepad()
+        {
+            Unplug();
+            if (m_Started)
+            {
+                SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
+            }
+        }
+
+        VirtualGamepad(const VirtualGamepad&) = delete;
+        VirtualGamepad& operator=(const VirtualGamepad&) = delete;
+        VirtualGamepad(VirtualGamepad&&) = delete;
+        VirtualGamepad& operator=(VirtualGamepad&&) = delete;
+
+        bool IsPlugged() const { return m_Id != 0 && m_Joystick != nullptr; }
+
+        void SetButton(GamepadButton button, bool pressed) { SDL_SetJoystickVirtualButton(m_Joystick, static_cast<int>(button), pressed); }
+
+        void SetAxis(GamepadAxis axis, Sint16 value) { SDL_SetJoystickVirtualAxis(m_Joystick, static_cast<int>(axis), value); }
+
+        void Unplug()
+        {
+            if (m_Joystick != nullptr)
+            {
+                SDL_CloseJoystick(m_Joystick);
+                m_Joystick = nullptr;
+            }
+            if (m_Id != 0)
+            {
+                SDL_DetachVirtualJoystick(m_Id);
+                m_Id = 0;
+            }
+        }
+
+    private:
+        bool m_Started = false;
+        SDL_JoystickID m_Id = 0;
+        SDL_Joystick* m_Joystick = nullptr;
+    };
+
+    std::optional<GamepadId> FindVirtualGamepad(const Quasar::Gamepads& gamepads)
+    {
+        for (std::size_t index = 0; index < Quasar::MaxGamepads; ++index)
+        {
+            const auto gamepad = static_cast<GamepadId>(index);
+            if (gamepads.IsConnected(gamepad) && gamepads.GetName(gamepad) == VirtualGamepadName)
+            {
+                return gamepad;
+            }
+        }
+        return std::nullopt;
+    }
+}
+
+TEST_CASE("A connected gamepad sends a connected event and no event for the buttons already held down")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First, "Xbox Controller");
+    fake.SetButton(First, GamepadButton::A, true);
+
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    CHECK(events == std::vector<RecordedEvent>{Connected(First)});
+    CHECK(gamepads.IsConnected(First));
+    CHECK(gamepads.GetName(First) == "Xbox Controller");
+    CHECK(gamepads.IsButtonPressed(First, GamepadButton::A));
+}
+
+TEST_CASE("A disconnected gamepad releases its buttons before it sends a disconnected event")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    Update(gamepads);
+    fake.SetButton(First, GamepadButton::A, true);
+    fake.SetButton(First, GamepadButton::DPadUp, true);
+    Update(gamepads);
+
+    fake.Disconnect(First);
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    const std::vector<RecordedEvent> expected{Released(First, GamepadButton::A), Released(First, GamepadButton::DPadUp), Disconnected(First)};
+    CHECK(events == expected);
+    CHECK_FALSE(gamepads.IsConnected(First));
+    CHECK_FALSE(gamepads.IsButtonPressed(First, GamepadButton::A));
+    CHECK(gamepads.GetName(First).empty());
+    CHECK(Update(gamepads).empty());
+}
+
+TEST_CASE("Each gamepad sends the events of its own id")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    fake.Connect(Second);
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Connected(First), Connected(Second)});
+
+    fake.SetButton(Second, GamepadButton::B, true);
+
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Pressed(Second, GamepadButton::B)});
+    CHECK_FALSE(gamepads.IsButtonPressed(First, GamepadButton::B));
+    CHECK(gamepads.IsButtonPressed(Second, GamepadButton::B));
+}
+
+TEST_CASE("A gamepad id that cannot exist is never connected")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    const auto outOfRange = static_cast<GamepadId>(Quasar::MaxGamepads);
+
+    Update(gamepads);
+
+    CHECK_FALSE(gamepads.IsConnected(outOfRange));
+    CHECK_FALSE(gamepads.IsButtonPressed(outOfRange, GamepadButton::A));
+    CHECK(gamepads.GetAxis(outOfRange, GamepadAxis::LeftX) == 0.0f);
+}
+
+TEST_CASE("Pressing and releasing a button sends one event each")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    Update(gamepads);
+
+    fake.SetButton(First, GamepadButton::X, true);
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Pressed(First, GamepadButton::X)});
+    CHECK(gamepads.IsButtonPressed(First, GamepadButton::X));
+
+    CHECK(Update(gamepads).empty());
+
+    fake.SetButton(First, GamepadButton::X, false);
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Released(First, GamepadButton::X)});
+    CHECK_FALSE(gamepads.IsButtonPressed(First, GamepadButton::X));
+}
+
+TEST_CASE("A stick inside its dead zone reads as zero and sends no event")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    Update(gamepads);
+
+    fake.SetAxis(First, GamepadAxis::LeftX, 0.1f);
+    fake.SetAxis(First, GamepadAxis::LeftY, -0.05f);
+
+    CHECK(Update(gamepads).empty());
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) == 0.0f);
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftY) == 0.0f);
+}
+
+TEST_CASE("The dead zone of a stick is a circle, so a diagonal stays a diagonal")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    Update(gamepads);
+
+    fake.SetAxis(First, GamepadAxis::RightX, 0.5f);
+    fake.SetAxis(First, GamepadAxis::RightY, 0.5f);
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    const float x = gamepads.GetAxis(First, GamepadAxis::RightX);
+    const float y = gamepads.GetAxis(First, GamepadAxis::RightY);
+    CHECK(x == y);
+    // The distance 0.707 past the dead zone of 0.15 is scaled to (0.707 - 0.15) / 0.85, shared by both axes
+    CHECK(x == doctest::Approx(0.4635).epsilon(0.001));
+    REQUIRE(events.size() == 2);
+    CHECK(events[0].Axis == GamepadAxis::RightX);
+    CHECK(events[1].Axis == GamepadAxis::RightY);
+}
+
+TEST_CASE("A stick pushed to the end reads as 1")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    Update(gamepads);
+
+    fake.SetAxis(First, GamepadAxis::LeftX, -1.0f);
+    Update(gamepads);
+
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) == -1.0f);
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftY) == 0.0f);
+}
+
+TEST_CASE("A trigger reads from 0 at rest to 1 when fully pressed")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    Update(gamepads);
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftTrigger) == 0.0f);
+
+    fake.SetAxis(First, GamepadAxis::LeftTrigger, 0.5f);
+    Update(gamepads);
+    // Halfway is 0.5, then scaled past the dead zone of 0.05
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftTrigger) == doctest::Approx(0.4737).epsilon(0.001));
+
+    fake.SetAxis(First, GamepadAxis::LeftTrigger, 1.0f);
+    Update(gamepads);
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftTrigger) == 1.0f);
+}
+
+TEST_CASE("Small axis changes send no event, but returning to rest does")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    Update(gamepads);
+    fake.SetAxis(First, GamepadAxis::LeftX, 0.6f);
+    REQUIRE(Update(gamepads).size() == 1);
+
+    fake.SetAxis(First, GamepadAxis::LeftX, 0.603f);
+    CHECK(Update(gamepads).empty());
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) > 0.0f);
+
+    fake.SetAxis(First, GamepadAxis::LeftX, 0.0f);
+    const std::vector<RecordedEvent> events = Update(gamepads);
+    REQUIRE(events.size() == 1);
+    CHECK(events[0].Type == EventType::GamepadAxisMoved);
+    CHECK(events[0].Value == 0.0f);
+}
+
+TEST_CASE("The dead zones can be changed in the settings")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    gamepads.GetSettings().StickDeadZone = 0.0f;
+    fake.Connect(First);
+    fake.SetAxis(First, GamepadAxis::LeftX, 0.1f);
+
+    Update(gamepads);
+
+    CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) == doctest::Approx(0.1));
 }
 
 TEST_CASE("The application reads the gamepads each frame and sends their events to the layers")
@@ -392,4 +465,84 @@ TEST_CASE("The application reads the gamepads each frame and sends their events 
     CHECK(gamepadLayer.WasAPressedInSecondFrame());
     CHECK(gamepadLayer.GetEvents() == std::vector<RecordedEvent>{Connected(First), Pressed(First, GamepadButton::B)});
     CHECK(Quasar::Input::IsGamepadButtonPressed(First, GamepadButton::B));
+}
+
+TEST_CASE("A gamepad read with SDL is connected with its name")
+{
+    const TestHelpers::ScopedLog log;
+    Quasar::Gamepads gamepads;
+    const VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+    CHECK(std::ranges::count(events, Connected(*gamepad)) == 1);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The buttons and axes of a gamepad read with SDL are at their place and in their range")
+{
+    Quasar::Gamepads gamepads;
+    gamepads.GetSettings() = {.StickDeadZone = 0.0f, .TriggerDeadZone = 0.0f, .AxisEventThreshold = 0.0f};
+    VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+    CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::LeftTrigger) == 0.0f);
+
+    virtualGamepad.SetButton(GamepadButton::LeftBumper, true);
+    virtualGamepad.SetButton(GamepadButton::DPadLeft, true);
+    virtualGamepad.SetAxis(GamepadAxis::LeftY, SDL_JOYSTICK_AXIS_MIN);
+    virtualGamepad.SetAxis(GamepadAxis::RightX, SDL_JOYSTICK_AXIS_MAX);
+    virtualGamepad.SetAxis(GamepadAxis::RightTrigger, SDL_JOYSTICK_AXIS_MAX);
+    Update(gamepads);
+
+    CHECK(gamepads.IsButtonPressed(*gamepad, GamepadButton::LeftBumper));
+    CHECK(gamepads.IsButtonPressed(*gamepad, GamepadButton::DPadLeft));
+    CHECK_FALSE(gamepads.IsButtonPressed(*gamepad, GamepadButton::A));
+    CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::LeftY) == -1.0f);
+    CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::RightX) == 1.0f);
+    CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::RightTrigger) == 1.0f);
+    CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::LeftTrigger) == 0.0f);
+}
+
+TEST_CASE("A gamepad read with SDL releases its buttons and is disconnected when it is unplugged")
+{
+    Quasar::Gamepads gamepads;
+    VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+    virtualGamepad.SetButton(GamepadButton::Y, true);
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+
+    virtualGamepad.Unplug();
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    CHECK_FALSE(gamepads.IsConnected(*gamepad));
+    CHECK(events == std::vector<RecordedEvent>{Released(*gamepad, GamepadButton::Y), Disconnected(*gamepad)});
+}
+
+TEST_CASE("A gamepad read with SDL never takes the id of a gamepad unplugged in the same frame")
+{
+    Quasar::Gamepads gamepads;
+    VirtualGamepad first;
+    REQUIRE(first.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> firstId = FindVirtualGamepad(gamepads);
+    REQUIRE(firstId.has_value());
+
+    first.Unplug();
+    const VirtualGamepad second;
+    REQUIRE(second.IsPlugged());
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    const std::optional<GamepadId> secondId = FindVirtualGamepad(gamepads);
+    REQUIRE(secondId.has_value());
+    CHECK(*secondId != *firstId);
+    CHECK(std::ranges::count(events, Disconnected(*firstId)) == 1);
+    CHECK(std::ranges::count(events, Connected(*secondId)) == 1);
 }

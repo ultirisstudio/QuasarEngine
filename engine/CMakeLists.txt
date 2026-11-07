@@ -23,6 +23,8 @@ target_sources(QuasarEngine
         src/core/ImGuiLayer.cpp
         src/core/ImGuiTheme.cpp
         src/core/Gamepads.cpp
+        src/core/SdlGamepadReader.h
+        src/core/SdlGamepadReader.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
