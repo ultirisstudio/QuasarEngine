@@ -1,7 +1,7 @@
 #pragma once
 
 /// \file
-/// \brief Codes of the gamepads, of their buttons and of their axes, independent from GLFW.
+/// \brief Codes of the gamepads, of their buttons and of their axes, independent from SDL.
 /// \author Kurogenshi
 /// \date 2026-11-06
 
@@ -21,7 +21,8 @@ namespace Quasar
 
     /// @brief Identifies a connected gamepad, from 0 to MaxGamepads - 1. Written as `GamepadId{0}` for the first one.
     ///
-    /// A gamepad keeps its id while it stays connected. The values are the same as the GLFW joystick ids.
+    /// A gamepad keeps its id while it stays connected. A new gamepad takes the lowest free id, from the next frame
+    /// after the gamepad that had it was disconnected.
     enum class GamepadId : std::uint8_t
     {
     };
@@ -29,27 +30,29 @@ namespace Quasar
     /// @brief Button of a gamepad, at the position of the buttons of an Xbox controller.
     ///
     /// The same position is used on every gamepad: GamepadButton::A is the bottom face button, which is Cross on a
-    /// PlayStation controller. The values are the same as the GLFW gamepad button tokens.
+    /// PlayStation controller. The values are the same as the SDL gamepad buttons, so an SDL button converts with
+    /// `static_cast<GamepadButton>(button)`.
     enum class GamepadButton : std::uint8_t
     {
-        A = 0,           ///< Bottom face button: A on Xbox, Cross on PlayStation.
-        B = 1,           ///< Right face button: B on Xbox, Circle on PlayStation.
-        X = 2,           ///< Left face button: X on Xbox, Square on PlayStation.
-        Y = 3,           ///< Top face button: Y on Xbox, Triangle on PlayStation.
-        LeftBumper = 4,  ///< Left shoulder button.
-        RightBumper = 5, ///< Right shoulder button.
-        Back = 6,        ///< Back or View button, Share on PlayStation.
-        Start = 7,       ///< Start or Menu button, Options on PlayStation.
-        Guide = 8,       ///< Central button with the logo of the controller.
-        LeftThumb = 9,   ///< Press on the left stick.
-        RightThumb = 10, ///< Press on the right stick.
-        DPadUp = 11,     ///< Up on the directional pad.
-        DPadRight = 12,  ///< Right on the directional pad.
-        DPadDown = 13,   ///< Down on the directional pad.
-        DPadLeft = 14    ///< Left on the directional pad.
+        A = 0,            ///< Bottom face button: A on Xbox, Cross on PlayStation.
+        B = 1,            ///< Right face button: B on Xbox, Circle on PlayStation.
+        X = 2,            ///< Left face button: X on Xbox, Square on PlayStation.
+        Y = 3,            ///< Top face button: Y on Xbox, Triangle on PlayStation.
+        Back = 4,         ///< Back or View button, Share on PlayStation.
+        Guide = 5,        ///< Central button with the logo of the controller.
+        Start = 6,        ///< Start or Menu button, Options on PlayStation.
+        LeftThumb = 7,    ///< Press on the left stick.
+        RightThumb = 8,   ///< Press on the right stick.
+        LeftBumper = 9,   ///< Left shoulder button.
+        RightBumper = 10, ///< Right shoulder button.
+        DPadUp = 11,      ///< Up on the directional pad.
+        DPadDown = 12,    ///< Down on the directional pad.
+        DPadLeft = 13,    ///< Left on the directional pad.
+        DPadRight = 14    ///< Right on the directional pad.
     };
 
-    /// @brief Axis of a gamepad. The values are the same as the GLFW gamepad axis tokens.
+    /// @brief Axis of a gamepad. The values are the same as the SDL gamepad axes, so an SDL axis converts with
+    /// `static_cast<GamepadAxis>(axis)`.
     ///
     /// The stick axes go from -1 to 1: -1 is left on the X axes and up on the Y axes. The triggers go from 0, at rest,
     /// to 1, fully pressed.

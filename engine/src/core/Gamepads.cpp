@@ -1,11 +1,12 @@
 #include <quasar/core/Gamepads.h>
 #include <quasar/events/GamepadEvent.h>
 
-#include <GLFW/glfw3.h>
+#include <core/SdlGamepadReader.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -20,23 +21,6 @@ namespace Quasar
         constexpr auto RightY = static_cast<std::size_t>(GamepadAxis::RightY);
         constexpr auto LeftTrigger = static_cast<std::size_t>(GamepadAxis::LeftTrigger);
         constexpr auto RightTrigger = static_cast<std::size_t>(GamepadAxis::RightTrigger);
-
-        std::optional<GamepadReading> ReadGlfwGamepad(GamepadId gamepad)
-        {
-            const int id = static_cast<int>(gamepad);
-            GLFWgamepadstate glfwState{};
-            if (glfwGetGamepadState(id, &glfwState) == GLFW_FALSE)
-            {
-                return std::nullopt;
-            }
-
-            GamepadReading reading;
-            const char* name = glfwGetGamepadName(id);
-            reading.Name = name != nullptr ? name : "";
-            std::ranges::transform(glfwState.buttons, reading.State.Buttons.begin(), [](unsigned char button) { return button == GLFW_PRESS; });
-            std::ranges::copy(glfwState.axes, reading.State.Axes.begin());
-            return reading;
-        }
 
         // Applies a circular dead zone to the two axes of a stick, then scales the values past it to start from 0
         void FilterStick(float& x, float& y, float deadZone)
@@ -54,10 +38,10 @@ namespace Quasar
             y = std::clamp(y / length * scaled, -1.0f, 1.0f);
         }
 
-        // Moves a trigger from -1..1 to 0..1, then applies its dead zone
+        // Applies the dead zone of a trigger, then scales the values past it to start from 0
         float FilterTrigger(float raw, float deadZone)
         {
-            const float value = std::clamp((raw + 1.0f) * 0.5f, 0.0f, 1.0f);
+            const float value = std::clamp(raw, 0.0f, 1.0f);
             if (value <= deadZone)
             {
                 return 0.0f;
@@ -87,7 +71,11 @@ namespace Quasar
         }
     }
 
-    Gamepads::Gamepads() : m_Reader(ReadGlfwGamepad) {}
+    Gamepads::Gamepads()
+    {
+        const std::shared_ptr<SdlGamepadReader> reader = std::make_shared<SdlGamepadReader>();
+        m_Reader = [reader] { return reader->Read(); };
+    }
 
     Gamepads::Gamepads(Reader reader) : m_Reader(std::move(reader)) {}
 
@@ -98,16 +86,15 @@ namespace Quasar
 
     void Gamepads::Update(const EventCallback& send)
     {
+        const GamepadReadings readings = m_Reader ? m_Reader() : GamepadReadings{};
         for (std::size_t index = 0; index < MaxGamepads; ++index)
         {
-            UpdateSlot(static_cast<GamepadId>(index), m_Slots.at(index), send);
+            UpdateSlot(static_cast<GamepadId>(index), readings.at(index), m_Slots.at(index), send);
         }
     }
 
-    void Gamepads::UpdateSlot(GamepadId gamepad, Slot& slot, const EventCallback& send)
+    void Gamepads::UpdateSlot(GamepadId gamepad, const std::optional<GamepadReading>& reading, Slot& slot, const EventCallback& send)
     {
-        const std::optional<GamepadReading> reading = m_Reader ? m_Reader(gamepad) : std::nullopt;
-
         if (!reading)
         {
             if (!slot.Connected)

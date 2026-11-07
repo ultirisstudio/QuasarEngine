@@ -103,14 +103,14 @@ namespace Quasar
         /// @brief Detaches, removes and destroys a regular layer. See LayerStack::PopLayer().
         ///
         /// During the main loop, this happens at the end of the current frame, so a layer can remove itself.
-        /// Otherwise it happens right away.
+        /// Otherwise it happens right away. Removing the same layer again in the same frame does nothing.
         /// @param layer A regular layer of this application.
         void PopLayer(Layer& layer);
 
         /// @brief Detaches, removes and destroys an overlay. See LayerStack::PopOverlay().
         ///
         /// During the main loop, this happens at the end of the current frame, so an overlay can remove itself.
-        /// Otherwise it happens right away.
+        /// Otherwise it happens right away. Removing the same overlay again in the same frame does nothing.
         /// @param overlay An overlay of this application.
         void PopOverlay(Layer& overlay);
 
@@ -163,6 +163,7 @@ namespace Quasar
 
         void OnEvent(Event& event);
         void ApplyLayerChanges();
+        bool IsRemovalPending(const Layer& layer) const;
 
         ApplicationSpecification m_Specification;
 

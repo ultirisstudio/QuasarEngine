@@ -120,7 +120,7 @@ The helpers shared by the tests are in `tests/src/`:
 | Header | Content |
 |---|---|
 | `LogHelpers.h` | `ScopedLog`, which starts and stops the loggers for one test, and `HasLogAtLeast()` |
-| `NullWindow.h` | Windows and applications on the null platform of GLFW or with an OpenGL context, and functions that send them input |
+| `NullWindow.h` | Windows and applications on the null platform of GLFW or with an OpenGL context, and functions that send them input. The applications read no gamepads |
 | `TestLayers.h` | `ClosingLayer`, which closes the application after a number of frames |
 | `TemporaryFiles.h` | `TemporaryFolder`, `TemporaryFile` and `ScopedCurrentDirectory`, removed or put back at the end of the test |
 | `ScopedEnvironmentVariable.h` | Changes an environment variable during a test (Linux only) |

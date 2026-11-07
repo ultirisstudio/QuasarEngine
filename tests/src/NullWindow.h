@@ -36,11 +36,20 @@ namespace TestHelpers
         return Quasar::Window::Create(specification);
     }
 
+    inline Quasar::Scope<Quasar::Application> WithoutGamepads(Quasar::Scope<Quasar::Application> application)
+    {
+        if (application)
+        {
+            application->GetGamepads().SetReader({});
+        }
+        return application;
+    }
+
     inline Quasar::Scope<Quasar::Application> CreateNullApplication(Quasar::ApplicationSpecification specification = {})
     {
         UseNullPlatform();
         specification.Window.GraphicsContext = false;
-        return Quasar::Application::Create(specification);
+        return WithoutGamepads(Quasar::Application::Create(specification));
     }
 
     inline void UseTestOpenGL()
@@ -67,7 +76,7 @@ namespace TestHelpers
     inline Quasar::Scope<Quasar::Application> CreateApplicationWithContext(const Quasar::ApplicationSpecification& specification = {})
     {
         UseTestOpenGL();
-        return Quasar::Application::Create(specification);
+        return WithoutGamepads(Quasar::Application::Create(specification));
     }
 
     inline void SendKey(Quasar::Window& window, int key, int action)
