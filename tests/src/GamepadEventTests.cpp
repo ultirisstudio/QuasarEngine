@@ -2,6 +2,7 @@
 #include <quasar/events/GamepadEvent.h>
 
 #include <doctest/doctest.h>
+#include <glm/vec2.hpp>
 
 #include <array>
 
@@ -14,7 +15,15 @@ using Quasar::GamepadButtonPressedEvent;
 using Quasar::GamepadButtonReleasedEvent;
 using Quasar::GamepadConnectedEvent;
 using Quasar::GamepadDisconnectedEvent;
+using Quasar::GamepadFingerDownEvent;
+using Quasar::GamepadFingerMovedEvent;
+using Quasar::GamepadFingerUpEvent;
 using Quasar::GamepadId;
+
+namespace
+{
+    constexpr glm::vec2 Center{0.5f, 0.5f};
+}
 
 TEST_CASE("Gamepad events have their own type")
 {
@@ -23,17 +32,24 @@ TEST_CASE("Gamepad events have their own type")
     CHECK(GamepadButtonPressedEvent(GamepadId{0}, GamepadButton::A).GetType() == EventType::GamepadButtonPressed);
     CHECK(GamepadButtonReleasedEvent(GamepadId{0}, GamepadButton::A).GetType() == EventType::GamepadButtonReleased);
     CHECK(GamepadAxisMovedEvent(GamepadId{0}, GamepadAxis::LeftX, 0.5f).GetType() == EventType::GamepadAxisMoved);
+    CHECK(GamepadFingerDownEvent(GamepadId{0}, 0, 0, Center, 1.0f).GetType() == EventType::GamepadFingerDown);
+    CHECK(GamepadFingerMovedEvent(GamepadId{0}, 0, 0, Center, 1.0f).GetType() == EventType::GamepadFingerMoved);
+    CHECK(GamepadFingerUpEvent(GamepadId{0}, 0, 0, Center, 0.0f).GetType() == EventType::GamepadFingerUp);
 }
 
-TEST_CASE("All gamepad events are in the gamepad category and only buttons and axes are input")
+TEST_CASE("All gamepad events are in the gamepad category and only buttons, axes and fingers are input")
 {
     const GamepadConnectedEvent connected(GamepadId{0}, "Pad");
     const GamepadDisconnectedEvent disconnected(GamepadId{0});
     const GamepadButtonPressedEvent pressed(GamepadId{0}, GamepadButton::A);
     const GamepadButtonReleasedEvent released(GamepadId{0}, GamepadButton::A);
     const GamepadAxisMovedEvent moved(GamepadId{0}, GamepadAxis::LeftX, 0.5f);
+    const GamepadFingerDownEvent fingerDown(GamepadId{0}, 0, 0, Center, 1.0f);
+    const GamepadFingerMovedEvent fingerMoved(GamepadId{0}, 0, 0, Center, 1.0f);
+    const GamepadFingerUpEvent fingerUp(GamepadId{0}, 0, 0, Center, 0.0f);
 
-    for (const Quasar::Event* event : std::to_array<const Quasar::Event*>({&connected, &disconnected, &pressed, &released, &moved}))
+    for (const Quasar::Event* event :
+         std::to_array<const Quasar::Event*>({&connected, &disconnected, &pressed, &released, &moved, &fingerDown, &fingerMoved, &fingerUp}))
     {
         CHECK(event->IsInCategory(EventCategory::Gamepad));
         CHECK_FALSE(event->IsInCategory(EventCategory::Keyboard));
@@ -45,6 +61,9 @@ TEST_CASE("All gamepad events are in the gamepad category and only buttons and a
     CHECK(pressed.IsInCategory(EventCategory::Input));
     CHECK(released.IsInCategory(EventCategory::Input));
     CHECK(moved.IsInCategory(EventCategory::Input));
+    CHECK(fingerDown.IsInCategory(EventCategory::Input));
+    CHECK(fingerMoved.IsInCategory(EventCategory::Input));
+    CHECK(fingerUp.IsInCategory(EventCategory::Input));
 }
 
 TEST_CASE("Gamepad events carry the gamepad and their data")
@@ -64,6 +83,17 @@ TEST_CASE("Gamepad events carry the gamepad and their data")
     CHECK(moved.GetGamepad() == GamepadId{4});
     CHECK(moved.GetAxis() == GamepadAxis::RightTrigger);
     CHECK(moved.GetValue() == 0.75f);
+}
+
+TEST_CASE("Gamepad finger events carry the gamepad, the touchpad, the finger, the position and the pressure")
+{
+    const GamepadFingerMovedEvent moved(GamepadId{2}, 1, 0, glm::vec2{0.25f, 0.75f}, 0.5f);
+
+    CHECK(moved.GetGamepad() == GamepadId{2});
+    CHECK(moved.GetTouchpad() == 1);
+    CHECK(moved.GetFinger() == 0);
+    CHECK(moved.GetPosition() == glm::vec2{0.25f, 0.75f});
+    CHECK(moved.GetPressure() == 0.5f);
 }
 
 TEST_CASE("A gamepad event reaches the handler of its type")

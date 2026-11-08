@@ -1,15 +1,17 @@
 #pragma once
 
 /// \file
-/// \brief Events sent by the gamepads: connection, disconnection, buttons and axes.
+/// \brief Events sent by the gamepads: connection, disconnection, buttons, axes and touchpads.
 /// \author Kurogenshi
 /// \date 2026-11-06
 
 #include <quasar/core/GamepadCodes.h>
 #include <quasar/events/Event.h>
 
+#include <glm/vec2.hpp>
 #include <spdlog/fmt/fmt.h>
 
+#include <cstddef>
 #include <string>
 #include <utility>
 
@@ -132,5 +134,76 @@ namespace Quasar
         GamepadId m_Gamepad{};
         GamepadAxis m_Axis{};
         float m_Value = 0.0f;
+    };
+
+    /// @brief Base class of the events of a finger on a touchpad of a gamepad, which gives them their data.
+    ///
+    /// The finger events are GamepadFingerDownEvent, GamepadFingerMovedEvent and GamepadFingerUpEvent.
+    template <EventType Type>
+    class GamepadFingerEventOf : public EventOf<Type, EventCategory::Input | EventCategory::Gamepad>
+    {
+    public:
+        /// @brief Creates the event for a finger on a touchpad.
+        /// @param gamepad The id of the gamepad.
+        /// @param touchpad The index of the touchpad on the gamepad.
+        /// @param finger The index of the finger on the touchpad.
+        /// @param position The position of the finger, from 0 to 1 on each axis, from the top-left corner of the touchpad.
+        /// @param pressure The pressure of the finger, from 0 to 1.
+        GamepadFingerEventOf(GamepadId gamepad, std::size_t touchpad, std::size_t finger, glm::vec2 position, float pressure)
+            : m_Gamepad(gamepad), m_Touchpad(touchpad), m_Finger(finger), m_Position(position), m_Pressure(pressure)
+        {
+        }
+
+        /// @brief Returns the id of the gamepad.
+        GamepadId GetGamepad() const { return m_Gamepad; }
+
+        /// @brief Returns the index of the touchpad on the gamepad.
+        std::size_t GetTouchpad() const { return m_Touchpad; }
+
+        /// @brief Returns the index of the finger on the touchpad.
+        std::size_t GetFinger() const { return m_Finger; }
+
+        /// @brief Returns the position of the finger, from 0 to 1 on each axis, from the top-left corner of the touchpad.
+        glm::vec2 GetPosition() const { return m_Position; }
+
+        /// @brief Returns the pressure of the finger, from 0 to 1.
+        float GetPressure() const { return m_Pressure; }
+
+        /// @brief Returns the event with the id, the touchpad, the finger, the position and the pressure, for example
+        /// "GamepadFingerMoved: 0, 1, 0, 0.5, 0.25, 1".
+        std::string ToString() const override
+        {
+            return fmt::format("{}: {}, {}, {}, {}, {}, {}", this->GetName(), static_cast<unsigned>(m_Gamepad), m_Touchpad, m_Finger, m_Position.x,
+                               m_Position.y, m_Pressure);
+        }
+
+    private:
+        GamepadId m_Gamepad{};
+        std::size_t m_Touchpad = 0;
+        std::size_t m_Finger = 0;
+        glm::vec2 m_Position{0.0f, 0.0f};
+        float m_Pressure = 0.0f;
+    };
+
+    /// @brief Sent when a finger touches a touchpad of a gamepad.
+    class GamepadFingerDownEvent final : public GamepadFingerEventOf<EventType::GamepadFingerDown>
+    {
+    public:
+        using GamepadFingerEventOf::GamepadFingerEventOf;
+    };
+
+    /// @brief Sent when a finger moves on a touchpad of a gamepad, or presses it harder or softer.
+    class GamepadFingerMovedEvent final : public GamepadFingerEventOf<EventType::GamepadFingerMoved>
+    {
+    public:
+        using GamepadFingerEventOf::GamepadFingerEventOf;
+    };
+
+    /// @brief Sent when a finger leaves a touchpad of a gamepad, at the last position where it was down, with a
+    /// pressure of 0.
+    class GamepadFingerUpEvent final : public GamepadFingerEventOf<EventType::GamepadFingerUp>
+    {
+    public:
+        using GamepadFingerEventOf::GamepadFingerEventOf;
     };
 }

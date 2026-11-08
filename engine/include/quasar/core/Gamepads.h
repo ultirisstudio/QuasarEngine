@@ -9,19 +9,42 @@
 #include <quasar/core/GamepadCodes.h>
 #include <quasar/events/Event.h>
 
+#include <glm/vec2.hpp>
+
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <functional>
 #include <optional>
 #include <string>
 
 namespace Quasar
 {
-    /// @brief State of the buttons and axes of a gamepad.
+    /// @brief A finger on a touchpad of a gamepad.
+    struct GamepadFinger
+    {
+        bool Down = false;              ///< True while the finger touches the touchpad.
+        glm::vec2 Position{0.0f, 0.0f}; ///< Position from 0 to 1 on each axis, from the top-left corner of the touchpad.
+        float Pressure = 0.0f;          ///< Pressure from 0 to 1, or 0 when the finger is not down.
+
+        /// \cond
+        bool operator==(const GamepadFinger&) const = default;
+        /// \endcond
+    };
+
+    /// @brief The fingers of a touchpad of a gamepad, indexed from 0. A touchpad that follows fewer fingers than
+    /// MaxGamepadTouchpadFingers never has the others down.
+    struct GamepadTouchpad
+    {
+        std::array<GamepadFinger, MaxGamepadTouchpadFingers> Fingers{}; ///< State of each finger.
+    };
+
+    /// @brief State of the buttons, axes and touchpads of a gamepad.
     struct GamepadState
     {
-        std::array<bool, GamepadButtonCount> Buttons{}; ///< True for each button held down, indexed by GamepadButton.
-        std::array<float, GamepadAxisCount> Axes{};     ///< Value of each axis, indexed by GamepadAxis.
+        std::array<bool, GamepadButtonCount> Buttons{};               ///< True for each button held down, indexed by GamepadButton.
+        std::array<float, GamepadAxisCount> Axes{};                   ///< Value of each axis, indexed by GamepadAxis.
+        std::array<GamepadTouchpad, MaxGamepadTouchpads> Touchpads{}; ///< State of each touchpad, indexed from 0.
 
         /// @brief Returns true if the button is held down.
         bool IsPressed(GamepadButton button) const { return Buttons.at(static_cast<std::size_t>(button)); }
@@ -35,6 +58,7 @@ namespace Quasar
     {
         std::string Name;                        ///< Name of the gamepad, for example "Xbox Controller".
         GamepadType Type = GamepadType::Unknown; ///< Kind of gamepad.
+        std::size_t TouchpadCount = 0;           ///< Number of touchpads of the gamepad, up to MaxGamepadTouchpads.
         GamepadState State;                      ///< Raw state: the stick axes go from -1 to 1, and the triggers from 0, at rest, to 1.
     };
 
@@ -97,6 +121,10 @@ namespace Quasar
     /// operating system. Update() reads the state of every gamepad with SDL, compares it with the previous frame, and
     /// sends an event for each change. The connection and disconnection of a gamepad are also found by Update().
     ///
+    /// Some gamepads have touchpads, like the PlayStation 4 and 5 controllers and the new Steam Controller. Their
+    /// fingers are read like the buttons: GetTouchpadFinger() gives their state, and the finger events give their
+    /// changes.
+    ///
     /// Only devices that SDL knows as gamepads are listed, so that the buttons and axes are at the same place on every
     /// gamepad. SDL has its own drivers for many gamepads, such as the Steam Controller and the PlayStation and Switch
     /// controllers, and the mappings of the SDL_GameControllerDB project for the others.
@@ -118,11 +146,14 @@ namespace Quasar
         /// @brief Reads every gamepad, keeps its new state, and sends the events of the changes since the last call.
         ///
         /// For each gamepad, in this order:
-        /// - a gamepad that is connected sends GamepadConnectedEvent. The buttons already held down send no event.
-        /// - a gamepad that is disconnected sends GamepadButtonReleasedEvent for each button still held down, then
-        ///   GamepadDisconnectedEvent.
+        /// - a gamepad that is connected sends GamepadConnectedEvent. The buttons already held down and the fingers
+        ///   already down send no event.
+        /// - a gamepad that is disconnected sends GamepadButtonReleasedEvent for each button still held down,
+        ///   GamepadFingerUpEvent for each finger still down, then GamepadDisconnectedEvent.
         /// - each button pressed or released sends GamepadButtonPressedEvent or GamepadButtonReleasedEvent.
         /// - each axis that moved enough sends GamepadAxisMovedEvent. See GamepadSettings::AxisEventThreshold.
+        /// - each finger that touches a touchpad, moves on it or leaves it sends GamepadFingerDownEvent,
+        ///   GamepadFingerMovedEvent or GamepadFingerUpEvent.
         ///
         /// The state is updated before the events are sent, so the functions of this class give the new state.
         /// @param send The function that receives the events.
@@ -147,6 +178,17 @@ namespace Quasar
         /// differ slightly from the last GamepadAxisMovedEvent. See GamepadSettings::AxisEventThreshold.
         float GetAxis(GamepadId gamepad, GamepadAxis axis) const;
 
+        /// @brief Returns the number of touchpads of the gamepad, or 0 if no gamepad is connected with this id.
+        std::size_t GetTouchpadCount(GamepadId gamepad) const;
+
+        /// @brief Returns a finger on a touchpad of the gamepad.
+        /// @param gamepad The id of the gamepad.
+        /// @param touchpad The index of the touchpad, from 0 to GetTouchpadCount() - 1.
+        /// @param finger The index of the finger, from 0 to MaxGamepadTouchpadFingers - 1.
+        /// @return The finger. It is not down if the gamepad is not connected, or if the touchpad or the finger does
+        /// not exist.
+        GamepadFinger GetTouchpadFinger(GamepadId gamepad, std::size_t touchpad, std::size_t finger) const;
+
         /// @brief Returns the settings of the dead zones and of the events, which can be changed at any time.
         GamepadSettings& GetSettings() { return m_Settings; }
 
@@ -167,6 +209,7 @@ namespace Quasar
             bool Connected = false;
             std::string Name;
             GamepadType Type = GamepadType::Unknown;
+            std::size_t TouchpadCount = 0;
             GamepadState Current;
             GamepadState Reported;
         };

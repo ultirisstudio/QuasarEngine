@@ -6,10 +6,13 @@
 /// \date 2026-10-25
 
 #include <quasar/core/GamepadCodes.h>
+#include <quasar/core/Gamepads.h>
 #include <quasar/core/KeyCodes.h>
 #include <quasar/core/MouseCodes.h>
 
 #include <glm/vec2.hpp>
+
+#include <cstddef>
 
 /// @brief Functions that read the current state of the keyboard, the mouse and the gamepads, as an alternative to
 /// events.
@@ -47,4 +50,9 @@ namespace Quasar::Input
     /// Stick axes go from -1 to 1, -1 being left or up. Triggers go from 0, at rest, to 1, fully pressed. See
     /// GamepadSettings for the dead zones.
     float GetGamepadAxis(GamepadId gamepad, GamepadAxis axis);
+
+    /// @brief Returns a finger on a touchpad of the gamepad. See Gamepads::GetTouchpadFinger().
+    ///
+    /// The finger is not down when the gamepad is not connected, or when the touchpad or the finger does not exist.
+    GamepadFinger GetGamepadTouchpadFinger(GamepadId gamepad, std::size_t touchpad, std::size_t finger);
 }
