@@ -1,6 +1,6 @@
 #include "EditorLayer.h"
 
-#include <quasar/core/Log.h>
+#include <quasar/log/Log.h>
 
 namespace Quasar::Editor
 {

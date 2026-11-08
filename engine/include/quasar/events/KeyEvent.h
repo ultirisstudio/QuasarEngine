@@ -5,8 +5,8 @@
 /// \author Kurogenshi
 /// \date 2026-10-23
 
-#include <quasar/core/KeyCodes.h>
 #include <quasar/events/Event.h>
+#include <quasar/input/KeyCodes.h>
 
 #include <spdlog/fmt/fmt.h>
 

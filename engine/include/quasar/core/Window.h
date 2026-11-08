@@ -6,9 +6,9 @@
 /// \date 2026-10-23
 
 #include <quasar/core/Base.h>
-#include <quasar/core/KeyCodes.h>
-#include <quasar/core/MouseCodes.h>
 #include <quasar/events/Event.h>
+#include <quasar/input/KeyCodes.h>
+#include <quasar/input/MouseCodes.h>
 
 #include <glm/vec2.hpp>
 

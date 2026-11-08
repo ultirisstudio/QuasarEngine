@@ -1,12 +1,12 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/EntryPoint.h>
-#include <quasar/core/GamepadCodes.h>
-#include <quasar/core/Gamepads.h>
-#include <quasar/core/ImGuiLayer.h>
-#include <quasar/core/Input.h>
 #include <quasar/core/Layer.h>
-#include <quasar/core/Log.h>
 #include <quasar/events/Event.h>
+#include <quasar/imgui/ImGuiLayer.h>
+#include <quasar/input/GamepadCodes.h>
+#include <quasar/input/Gamepads.h>
+#include <quasar/input/Input.h>
+#include <quasar/log/Log.h>
 
 #include <imgui.h>
 

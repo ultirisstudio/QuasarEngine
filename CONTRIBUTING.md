@@ -58,10 +58,24 @@ and format the files you change with `clang-format -i <file>` or with format on 
 
 - All engine code is in the `Quasar` namespace.
 - Types and functions use PascalCase. Members start with `m_`, static members with `s_`.
-- Public headers go in `engine/include/quasar/`, source files in `engine/src/`. Include engine headers with
-  `#include <quasar/...>`.
+- Public headers go in `engine/include/quasar/`, source files in `engine/src/`, in the folder of their area (see
+  below). Include engine headers with `#include <quasar/...>`, and private headers of `engine/src/` with their folder,
+  for example `#include <renderer/OpenGLContext.h>`.
 - New engine files must be added to `target_sources` in `engine/CMakeLists.txt`.
 - Errors are reported with `std::optional` or `bool`, and a `QUASAR_ENGINE_ERROR` message. Do not throw exceptions.
+
+The engine is split in folders, with the same names in `engine/include/quasar/` and `engine/src/`:
+
+| Folder | Content |
+|---|---|
+| `core` | The application, its layers and its window, the entry point, and the base macros and types |
+| `events` | The events and their dispatcher |
+| `imgui` | The ImGui layer and its theme |
+| `input` | The keyboard, the mouse and the gamepads, with their codes and the `Input` functions |
+| `io` | Files, paths and the folders of the application |
+| `log` | The engine and application loggers |
+| `renderer` | The OpenGL context, only in `engine/src/` for now |
+| `time` | Timers and the duration of a frame |
 
 ## Static analysis
 
@@ -82,8 +96,9 @@ Application* s_Instance = nullptr;
 
 ## Tests
 
-Tests use [doctest](https://github.com/doctest/doctest) and live in `tests/src/`, one file per class, for example
-`UUIDTests.cpp`. New files in this folder are found automatically after the next CMake configure.
+Tests use [doctest](https://github.com/doctest/doctest) and live in `tests/src/`, one file per class, in the folder of
+the engine area that they test, for example `tests/src/core/UUIDTests.cpp`. The tests of the editor are in
+`tests/src/editor/`. New files are found automatically after the next CMake configure.
 
 Each `TEST_CASE` becomes its own CTest test, so its name must not contain a comma or `*`. Write it as a short
 sentence: `TEST_CASE("A default UUID is invalid")`.
@@ -118,7 +133,8 @@ can appear on the screen for a moment.
 
 ### Test helpers
 
-The helpers shared by the tests are in `tests/src/`:
+The helpers shared by the tests are in `tests/src/helpers/`, and are included with their folder, for example
+`#include "helpers/NullWindow.h"`:
 
 | Header | Content |
 |---|---|

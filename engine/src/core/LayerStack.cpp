@@ -1,5 +1,5 @@
 #include <quasar/core/LayerStack.h>
-#include <quasar/core/Log.h>
+#include <quasar/log/Log.h>
 
 #include <algorithm>
 #include <iterator>

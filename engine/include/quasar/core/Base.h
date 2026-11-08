@@ -9,8 +9,8 @@
 #include <memory>
 #include <utility>
 
-#include <quasar/core/Log.h>
 #include <quasar/core/PlatformDetection.h>
+#include <quasar/log/Log.h>
 
 #ifdef QUASAR_PLATFORM_LINUX
 #include <csignal>

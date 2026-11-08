@@ -6,13 +6,13 @@
 /// \date 2026-10-24
 
 #include <quasar/core/Base.h>
-#include <quasar/core/Gamepads.h>
-#include <quasar/core/ImGuiLayer.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/LayerStack.h>
-#include <quasar/core/Timer.h>
 #include <quasar/core/Window.h>
 #include <quasar/events/Event.h>
+#include <quasar/imgui/ImGuiLayer.h>
+#include <quasar/input/Gamepads.h>
+#include <quasar/time/Timer.h>
 
 #include <cstdint>
 #include <filesystem>

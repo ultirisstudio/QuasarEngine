@@ -1,8 +1,8 @@
 #include <quasar/core/Application.h>
-#include <quasar/core/Log.h>
 #include <quasar/events/EventDispatcher.h>
 #include <quasar/events/WindowEvent.h>
 #include <quasar/io/UserDataDirectory.h>
+#include <quasar/log/Log.h>
 
 #include <spdlog/fmt/std.h>
 
