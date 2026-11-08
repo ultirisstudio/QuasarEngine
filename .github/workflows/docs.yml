@@ -15,6 +15,7 @@ concurrency:
 
 env:
   DOXYGEN_VERSION: 1.18.0
+  GCOVR_VERSION: 8.8
 
 jobs:
   check:
@@ -73,16 +74,103 @@ jobs:
           badge tests "unit tests" "$tests"
           cat build/docs/html/badges/*.json
 
-      - name: Upload the site
+      - name: Upload the documentation
         if: github.ref == 'refs/heads/master'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
+          name: documentation
           path: build/docs/html
 
+  coverage:
+    name: Measure the test coverage
+    runs-on: ubuntu-24.04
+    env:
+      PRESET: linux-gcc-coverage
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Compute the cache key
+        id: cache-key
+        run: |
+          hash=$(git ls-files -s -- external CMakeLists.txt CMakePresets.json cmake | git hash-object --stdin)
+          echo "key=build-$PRESET-$ImageOS-$ImageVersion-$hash" >> "$GITHUB_OUTPUT"
+
+      - name: Reset third-party timestamps
+        run: find external -type f -exec touch -d '2000-01-01 00:00:00' {} +
+
+      - name: Cache the build folder
+        uses: actions/cache@v6
+        with:
+          path: build/${{ env.PRESET }}
+          key: ${{ steps.cache-key.outputs.key }}
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config \
+            libx11-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxext-dev libxfixes-dev libxss-dev libxtst-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev libegl-dev \
+            libudev-dev libdbus-1-dev \
+            libgl1-mesa-dev libglx-mesa0 libgl1-mesa-dri xvfb
+          pipx install gcovr==$GCOVR_VERSION
+          gcovr --version
+
+      - name: Configure
+        run: cmake --preset $PRESET
+
+      - name: Build
+        run: cmake --build --preset $PRESET
+
+      - name: Remove the counters of the previous run
+        run: find build/$PRESET -name '*.gcda' -delete
+
+      - name: Test
+        run: xvfb-run -a ctest --preset $PRESET
+
+      - name: Generate the coverage report
+        run: |
+          mkdir -p build/coverage/coverage build/coverage/badges
+          gcovr --html-nested build/coverage/coverage/index.html --html-title "QuasarEngine coverage" \
+            --json-summary build/coverage/summary.json --print-summary
+
+      - name: Compute the coverage badges
+        shell: python
+        run: |
+          import json
+          import os
+
+          summary = json.load(open("build/coverage/summary.json"))
+          table = ["| Coverage | Covered | Total | Percent |", "|---|---|---|---|"]
+          for kind, label in (("line", "lines"), ("function", "functions"), ("branch", "branches")):
+              percent = summary[f"{kind}_percent"]
+              color = "brightgreen" if percent >= 90 else "yellow" if percent >= 75 else "red"
+              badge = {"schemaVersion": 1, "label": f"{kind} coverage", "message": f"{percent:.1f}%", "color": color}
+              with open(f"build/coverage/badges/coverage-{label}.json", "w") as file:
+                  json.dump(badge, file)
+              table.append(f"| {label.capitalize()} | {summary[f'{kind}_covered']} | {summary[f'{kind}_total']} | {percent:.1f}% |")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as file:
+              file.write("\n".join(table) + "\n\nThe detailed report is in the coverage artifact of this run.\n")
+          print("\n".join(table))
+
+      - name: Upload the coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            build/coverage/coverage
+            build/coverage/badges
+
+  # The site gathers the documentation, its badges, the coverage report and the coverage badges
   publish:
     name: Publish documentation
     if: github.ref == 'refs/heads/master'
-    needs: check
+    needs: [check, coverage]
     runs-on: ubuntu-24.04
     permissions:
       pages: write
@@ -91,6 +179,23 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Download the documentation
+        uses: actions/download-artifact@v8
+        with:
+          name: documentation
+          path: site
+
+      - name: Download the coverage report
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage
+          path: site
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

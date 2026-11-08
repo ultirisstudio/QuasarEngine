@@ -102,6 +102,12 @@
       "displayName": "Linux Debug with TSan and UBSan (Clang)",
       "inherits": "linux-clang-base",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "QUASAR_SANITIZERS": "thread;undefined" }
+    },
+    {
+      "name": "linux-gcc-coverage",
+      "displayName": "Linux Debug with code coverage (GCC)",
+      "inherits": "linux-gcc-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "QUASAR_COVERAGE": "ON" }
     }
   ],
   "buildPresets": [
@@ -125,7 +131,8 @@
     { "name": "linux-gcc-asan",      "inherits": "linux-build-base",   "configurePreset": "linux-gcc-asan" },
     { "name": "linux-gcc-tsan",      "inherits": "linux-build-base",   "configurePreset": "linux-gcc-tsan" },
     { "name": "linux-clang-asan",    "inherits": "linux-build-base",   "configurePreset": "linux-clang-asan" },
-    { "name": "linux-clang-tsan",    "inherits": "linux-build-base",   "configurePreset": "linux-clang-tsan" }
+    { "name": "linux-clang-tsan",    "inherits": "linux-build-base",   "configurePreset": "linux-clang-tsan" },
+    { "name": "linux-gcc-coverage",  "inherits": "linux-build-base",   "configurePreset": "linux-gcc-coverage" }
   ],
   "testPresets": [
     {
@@ -156,6 +163,7 @@
     { "name": "linux-gcc-asan",      "inherits": "linux-test-base",   "configurePreset": "linux-gcc-asan" },
     { "name": "linux-gcc-tsan",      "inherits": "linux-test-base",   "configurePreset": "linux-gcc-tsan" },
     { "name": "linux-clang-asan",    "inherits": "linux-test-base",   "configurePreset": "linux-clang-asan" },
-    { "name": "linux-clang-tsan",    "inherits": "linux-test-base",   "configurePreset": "linux-clang-tsan" }
+    { "name": "linux-clang-tsan",    "inherits": "linux-test-base",   "configurePreset": "linux-clang-tsan" },
+    { "name": "linux-gcc-coverage",  "inherits": "linux-test-base",   "configurePreset": "linux-gcc-coverage" }
   ]
 }
