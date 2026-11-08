@@ -40,6 +40,7 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
 
 include(cmake/CompilerOptions.cmake)
 include(cmake/Sanitizers.cmake)
+include(cmake/Coverage.cmake)
 
 option(QUASAR_BUILD_TESTS "Build the unit tests" ON)
 
@@ -72,6 +73,9 @@ message(STATUS "  Compiler ............ ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COM
 message(STATUS "  Warnings as errors .. ${QUASAR_WARNINGS_AS_ERRORS}")
 if(QUASAR_SANITIZERS)
     message(STATUS "  Sanitizers .......... ${QUASAR_SANITIZERS}")
+endif()
+if(QUASAR_COVERAGE)
+    message(STATUS "  Coverage ............ ON")
 endif()
 message(STATUS "  Unit tests .......... ${QUASAR_BUILD_TESTS}")
 if(NOT QUASAR_MULTI_CONFIG)
