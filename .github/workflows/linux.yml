@@ -73,8 +73,8 @@ jobs:
           key: ${{ steps.cache-key.outputs.key }}
 
       # Build tools, the runtime libraries of the Clang sanitizers, the development packages needed by SDL3 (X11,
-      # Wayland, udev and D-Bus), OpenGL and nativefiledialog-extended (GTK3), plus an X server without a screen and the
-      # Mesa software driver, which give the tests real windows and a real OpenGL 4.5 context
+      # Wayland, udev and D-Bus) and OpenGL, plus an X server without a screen and the Mesa software driver, which give
+      # the tests real windows and a real OpenGL 4.5 context
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -84,8 +84,7 @@ jobs:
             libxext-dev libxfixes-dev libxss-dev libxtst-dev \
             libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev libegl-dev \
             libudev-dev libdbus-1-dev \
-            libgl1-mesa-dev libglx-mesa0 libgl1-mesa-dri xvfb \
-            libgtk-3-dev
+            libgl1-mesa-dev libglx-mesa0 libgl1-mesa-dri xvfb
 
       - name: Show tool versions
         run: |
