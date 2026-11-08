@@ -12,18 +12,20 @@ struct SDL_Gamepad;
 
 namespace Quasar
 {
-    class SdlGamepadReader
+    class SdlGamepadBackend final : public GamepadBackend
     {
     public:
-        SdlGamepadReader();
-        ~SdlGamepadReader();
+        SdlGamepadBackend();
+        ~SdlGamepadBackend() override;
 
-        SdlGamepadReader(const SdlGamepadReader&) = delete;
-        SdlGamepadReader& operator=(const SdlGamepadReader&) = delete;
-        SdlGamepadReader(SdlGamepadReader&&) = delete;
-        SdlGamepadReader& operator=(SdlGamepadReader&&) = delete;
+        SdlGamepadBackend(const SdlGamepadBackend&) = delete;
+        SdlGamepadBackend& operator=(const SdlGamepadBackend&) = delete;
+        SdlGamepadBackend(SdlGamepadBackend&&) = delete;
+        SdlGamepadBackend& operator=(SdlGamepadBackend&&) = delete;
 
-        GamepadReadings Read();
+        GamepadReadings Read() override;
+
+        bool Rumble(GamepadId gamepad, const GamepadRumble& rumble) override;
 
     private:
         void CloseDisconnected(std::array<bool, MaxGamepads>& freedNow);

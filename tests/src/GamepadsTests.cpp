@@ -16,10 +16,12 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <map>
 #include <optional>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -27,6 +29,7 @@ using Quasar::EventType;
 using Quasar::GamepadAxis;
 using Quasar::GamepadButton;
 using Quasar::GamepadId;
+using Quasar::GamepadType;
 
 namespace
 {
@@ -108,26 +111,22 @@ namespace
         return events;
     }
 
+    struct RecordedRumble
+    {
+        GamepadId Gamepad{};
+        Quasar::GamepadRumble Rumble;
+    };
+
     class FakeGamepads
     {
     public:
-        Quasar::Gamepads::Reader GetReader()
-        {
-            return [this]
-            {
-                Quasar::GamepadReadings readings{};
-                for (const auto& [gamepad, reading] : m_Readings)
-                {
-                    readings.at(static_cast<std::size_t>(gamepad)) = reading;
-                }
-                return readings;
-            };
-        }
+        Quasar::Scope<Quasar::GamepadBackend> CreateBackend() { return Quasar::CreateScope<Backend>(*this); }
 
-        void Connect(GamepadId gamepad, std::string name = "Test gamepad")
+        void Connect(GamepadId gamepad, std::string name = "Test gamepad", GamepadType type = GamepadType::Standard)
         {
             Quasar::GamepadReading reading;
             reading.Name = std::move(name);
+            reading.Type = type;
             m_Readings[gamepad] = reading;
         }
 
@@ -140,13 +139,44 @@ namespace
 
         void SetAxis(GamepadId gamepad, GamepadAxis axis, float raw) { m_Readings.at(gamepad).State.Axes.at(static_cast<std::size_t>(axis)) = raw; }
 
+        void SetCanRumble(bool canRumble) { m_CanRumble = canRumble; }
+
+        const std::vector<RecordedRumble>& GetRumbles() const { return m_Rumbles; }
+
     private:
+        class Backend final : public Quasar::GamepadBackend
+        {
+        public:
+            explicit Backend(FakeGamepads& fake) : m_Fake(&fake) {}
+
+            Quasar::GamepadReadings Read() override
+            {
+                Quasar::GamepadReadings readings{};
+                for (const auto& [gamepad, reading] : m_Fake->m_Readings)
+                {
+                    readings.at(static_cast<std::size_t>(gamepad)) = reading;
+                }
+                return readings;
+            }
+
+            bool Rumble(GamepadId gamepad, const Quasar::GamepadRumble& rumble) override
+            {
+                m_Fake->m_Rumbles.push_back({.Gamepad = gamepad, .Rumble = rumble});
+                return m_Fake->m_CanRumble;
+            }
+
+        private:
+            FakeGamepads* m_Fake;
+        };
+
         std::map<GamepadId, Quasar::GamepadReading> m_Readings;
+        std::vector<RecordedRumble> m_Rumbles;
+        bool m_CanRumble = true;
     };
 
     Quasar::Gamepads CreateGamepads(FakeGamepads& fake)
     {
-        Quasar::Gamepads gamepads(fake.GetReader());
+        Quasar::Gamepads gamepads(fake.CreateBackend());
         gamepads.GetSettings() = TestSettings;
         return gamepads;
     }
@@ -187,10 +217,18 @@ namespace
 
     constexpr const char* VirtualGamepadName = "Quasar virtual gamepad";
 
+    struct MotorStrengths
+    {
+        Uint16 Low = 0;
+        Uint16 High = 0;
+
+        bool operator==(const MotorStrengths&) const = default;
+    };
+
     class VirtualGamepad
     {
     public:
-        VirtualGamepad()
+        explicit VirtualGamepad(Uint16 vendor = 0, Uint16 product = 0)
         {
             if (!SDL_InitSubSystem(SDL_INIT_JOYSTICK))
             {
@@ -204,6 +242,14 @@ namespace
             description.naxes = static_cast<Uint16>(Quasar::GamepadAxisCount);
             description.nbuttons = static_cast<Uint16>(Quasar::GamepadButtonCount);
             description.name = VirtualGamepadName;
+            description.vendor_id = vendor;
+            description.product_id = product;
+            description.userdata = this;
+            description.Rumble = [](void* userdata, Uint16 low, Uint16 high)
+            {
+                static_cast<VirtualGamepad*>(userdata)->m_Rumbles.push_back({.Low = low, .High = high});
+                return true;
+            };
 
             m_Id = SDL_AttachVirtualJoystick(&description);
             m_Joystick = SDL_OpenJoystick(m_Id);
@@ -229,6 +275,8 @@ namespace
 
         void SetAxis(GamepadAxis axis, Sint16 value) { SDL_SetJoystickVirtualAxis(m_Joystick, static_cast<int>(axis), value); }
 
+        const std::vector<MotorStrengths>& GetRumbles() const { return m_Rumbles; }
+
         void Unplug()
         {
             if (m_Joystick != nullptr)
@@ -247,6 +295,7 @@ namespace
         bool m_Started = false;
         SDL_JoystickID m_Id = 0;
         SDL_Joystick* m_Joystick = nullptr;
+        std::vector<MotorStrengths> m_Rumbles;
     };
 
     std::optional<GamepadId> FindVirtualGamepad(const Quasar::Gamepads& gamepads)
@@ -446,6 +495,60 @@ TEST_CASE("The dead zones can be changed in the settings")
     CHECK(gamepads.GetAxis(First, GamepadAxis::LeftX) == doctest::Approx(0.1));
 }
 
+TEST_CASE("A connected gamepad keeps its type until it is disconnected")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First, "DualSense", GamepadType::PlayStation5);
+    Update(gamepads);
+
+    CHECK(gamepads.GetType(First) == GamepadType::PlayStation5);
+
+    fake.Disconnect(First);
+    Update(gamepads);
+
+    CHECK(gamepads.GetType(First) == GamepadType::Unknown);
+}
+
+TEST_CASE("A rumble only reaches a connected gamepad")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    const Quasar::GamepadRumble rumble{.LowFrequency = 0.25f, .HighFrequency = 0.75f, .Duration = std::chrono::milliseconds(500)};
+
+    CHECK_FALSE(gamepads.Rumble(First, rumble));
+    CHECK(fake.GetRumbles().empty());
+
+    fake.Connect(First);
+    Update(gamepads);
+
+    CHECK(gamepads.Rumble(First, rumble));
+    CHECK_FALSE(gamepads.Rumble(Second, rumble));
+    REQUIRE(fake.GetRumbles().size() == 1);
+    CHECK(fake.GetRumbles()[0].Gamepad == First);
+    CHECK(fake.GetRumbles()[0].Rumble.LowFrequency == 0.25f);
+    CHECK(fake.GetRumbles()[0].Rumble.HighFrequency == 0.75f);
+    CHECK(fake.GetRumbles()[0].Rumble.Duration == std::chrono::milliseconds(500));
+}
+
+TEST_CASE("A rumble fails on a gamepad that cannot rumble and without a backend")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    fake.SetCanRumble(false);
+    Update(gamepads);
+    const Quasar::GamepadRumble rumble{.LowFrequency = 1.0f, .HighFrequency = 1.0f, .Duration = std::chrono::milliseconds(100)};
+
+    CHECK_FALSE(gamepads.Rumble(First, rumble));
+
+    gamepads.SetBackend(nullptr);
+    Update(gamepads);
+
+    CHECK_FALSE(gamepads.IsConnected(First));
+    CHECK_FALSE(gamepads.Rumble(First, rumble));
+}
+
 TEST_CASE("The application reads the gamepads each frame and sends their events to the layers")
 {
     const TestHelpers::ScopedLog log;
@@ -454,7 +557,7 @@ TEST_CASE("The application reads the gamepads each frame and sends their events 
     FakeGamepads fake;
     fake.Connect(First);
     fake.SetButton(First, GamepadButton::A, true);
-    application->GetGamepads().SetReader(fake.GetReader());
+    application->GetGamepads().SetBackend(fake.CreateBackend());
     auto layer = Quasar::CreateScope<GamepadLayer>(fake);
     const GamepadLayer& gamepadLayer = *layer;
     application->PushLayer(std::move(layer));
@@ -545,4 +648,53 @@ TEST_CASE("A gamepad read with SDL never takes the id of a gamepad unplugged in 
     CHECK(*secondId != *firstId);
     CHECK(std::ranges::count(events, Disconnected(*firstId)) == 1);
     CHECK(std::ranges::count(events, Connected(*secondId)) == 1);
+}
+
+TEST_CASE("The type of a gamepad read with SDL comes from its maker and its model")
+{
+    constexpr Uint16 sony = 0x054C;
+    constexpr Uint16 dualSense = 0x0CE6;
+    Quasar::Gamepads gamepads;
+    const VirtualGamepad virtualGamepad(sony, dualSense);
+    REQUIRE(virtualGamepad.IsPlugged());
+
+    Update(gamepads);
+
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+    CHECK(gamepads.GetType(*gamepad) == GamepadType::PlayStation5);
+}
+
+TEST_CASE("A rumble of a gamepad read with SDL reaches its motors with the right strength")
+{
+    Quasar::Gamepads gamepads;
+    const VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+
+    CHECK(gamepads.Rumble(*gamepad, {.LowFrequency = 1.0f, .HighFrequency = 0.5f, .Duration = std::chrono::milliseconds(1000)}));
+    CHECK(gamepads.Rumble(*gamepad, {.LowFrequency = -1.0f, .HighFrequency = 2.0f, .Duration = std::chrono::milliseconds(1000)}));
+    CHECK(gamepads.Rumble(*gamepad, {.LowFrequency = 1.0f, .HighFrequency = 1.0f, .Duration = std::chrono::milliseconds(0)}));
+
+    const std::vector<MotorStrengths> expected{{.Low = 65535, .High = 32768}, {.Low = 0, .High = 65535}, {.Low = 0, .High = 0}};
+    CHECK(virtualGamepad.GetRumbles() == expected);
+}
+
+TEST_CASE("A rumble of a gamepad read with SDL stops after its duration")
+{
+    Quasar::Gamepads gamepads;
+    const VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+
+    REQUIRE(gamepads.Rumble(*gamepad, {.LowFrequency = 1.0f, .HighFrequency = 1.0f, .Duration = std::chrono::milliseconds(1)}));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    Update(gamepads);
+
+    REQUIRE_FALSE(virtualGamepad.GetRumbles().empty());
+    CHECK(virtualGamepad.GetRumbles().back() == MotorStrengths{});
 }

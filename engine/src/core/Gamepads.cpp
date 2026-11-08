@@ -1,7 +1,7 @@
 #include <quasar/core/Gamepads.h>
 #include <quasar/events/GamepadEvent.h>
 
-#include <core/SdlGamepadReader.h>
+#include <core/SdlGamepadBackend.h>
 
 #include <algorithm>
 #include <cmath>
@@ -22,7 +22,6 @@ namespace Quasar
         constexpr auto LeftTrigger = static_cast<std::size_t>(GamepadAxis::LeftTrigger);
         constexpr auto RightTrigger = static_cast<std::size_t>(GamepadAxis::RightTrigger);
 
-        // Applies a circular dead zone to the two axes of a stick, then scales the values past it to start from 0
         void FilterStick(float& x, float& y, float deadZone)
         {
             const float length = std::hypot(x, y);
@@ -38,7 +37,6 @@ namespace Quasar
             y = std::clamp(y / length * scaled, -1.0f, 1.0f);
         }
 
-        // Applies the dead zone of a trigger, then scales the values past it to start from 0
         float FilterTrigger(float raw, float deadZone)
         {
             const float value = std::clamp(raw, 0.0f, 1.0f);
@@ -59,7 +57,6 @@ namespace Quasar
             return state;
         }
 
-        // A change is sent when it is large enough, or when the axis reaches its rest position or the end of its range
         bool ShouldReportAxis(float reported, float current, float threshold)
         {
             if (current == reported)
@@ -71,22 +68,18 @@ namespace Quasar
         }
     }
 
-    Gamepads::Gamepads()
-    {
-        const std::shared_ptr<SdlGamepadReader> reader = std::make_shared<SdlGamepadReader>();
-        m_Reader = [reader] { return reader->Read(); };
-    }
+    Gamepads::Gamepads() : m_Backend(CreateScope<SdlGamepadBackend>()) {}
 
-    Gamepads::Gamepads(Reader reader) : m_Reader(std::move(reader)) {}
+    Gamepads::Gamepads(Scope<GamepadBackend> backend) : m_Backend(std::move(backend)) {}
 
-    void Gamepads::SetReader(Reader reader)
+    void Gamepads::SetBackend(Scope<GamepadBackend> backend)
     {
-        m_Reader = std::move(reader);
+        m_Backend = std::move(backend);
     }
 
     void Gamepads::Update(const EventCallback& send)
     {
-        const GamepadReadings readings = m_Reader ? m_Reader() : GamepadReadings{};
+        const GamepadReadings readings = m_Backend ? m_Backend->Read() : GamepadReadings{};
         for (std::size_t index = 0; index < MaxGamepads; ++index)
         {
             UpdateSlot(static_cast<GamepadId>(index), readings.at(index), m_Slots.at(index), send);
@@ -102,7 +95,6 @@ namespace Quasar
                 return;
             }
 
-            // The buttons held down are released first, so that nothing stays pressed after the gamepad is gone
             const GamepadState held = slot.Reported;
             slot.Current = GamepadState{};
             slot.Reported = GamepadState{};
@@ -125,13 +117,12 @@ namespace Quasar
 
         if (!slot.Connected)
         {
-            slot = Slot{.Connected = true, .Name = reading->Name, .Current = current, .Reported = current};
+            slot = Slot{.Connected = true, .Name = reading->Name, .Type = reading->Type, .Current = current, .Reported = current};
             GamepadConnectedEvent event(gamepad, slot.Name);
             send(event);
             return;
         }
 
-        // The new state is kept before the events are sent, so that the receivers read it
         const GamepadState previous = slot.Reported;
         slot.Current = current;
         slot.Reported.Buttons = current.Buttons;
@@ -191,6 +182,17 @@ namespace Quasar
         static const std::string empty;
         const Slot* slot = FindConnected(gamepad);
         return slot != nullptr ? slot->Name : empty;
+    }
+
+    GamepadType Gamepads::GetType(GamepadId gamepad) const
+    {
+        const Slot* slot = FindConnected(gamepad);
+        return slot != nullptr ? slot->Type : GamepadType::Unknown;
+    }
+
+    bool Gamepads::Rumble(GamepadId gamepad, const GamepadRumble& rumble)
+    {
+        return m_Backend != nullptr && IsConnected(gamepad) && m_Backend->Rumble(gamepad, rumble);
     }
 
     bool Gamepads::IsButtonPressed(GamepadId gamepad, GamepadButton button) const

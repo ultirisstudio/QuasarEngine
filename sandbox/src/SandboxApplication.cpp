@@ -10,6 +10,7 @@
 
 #include <imgui.h>
 
+#include <chrono>
 #include <cstddef>
 #include <deque>
 #include <string>
@@ -18,6 +19,40 @@
 
 namespace
 {
+    const char* GetTypeName(Quasar::GamepadType type)
+    {
+        switch (type)
+        {
+            case Quasar::GamepadType::Standard:
+                return "standard";
+            case Quasar::GamepadType::Xbox360:
+                return "Xbox 360";
+            case Quasar::GamepadType::XboxOne:
+                return "Xbox One";
+            case Quasar::GamepadType::PlayStation3:
+                return "PlayStation 3";
+            case Quasar::GamepadType::PlayStation4:
+                return "PlayStation 4";
+            case Quasar::GamepadType::PlayStation5:
+                return "PlayStation 5";
+            case Quasar::GamepadType::SwitchPro:
+                return "Switch Pro";
+            case Quasar::GamepadType::JoyConLeft:
+                return "left Joy-Con";
+            case Quasar::GamepadType::JoyConRight:
+                return "right Joy-Con";
+            case Quasar::GamepadType::JoyConPair:
+                return "pair of Joy-Cons";
+            case Quasar::GamepadType::GameCube:
+                return "GameCube";
+            case Quasar::GamepadType::SteamController:
+                return "Steam Controller";
+            case Quasar::GamepadType::Unknown:
+                break;
+        }
+        return "unknown";
+    }
+
     class EventTestLayer : public Quasar::Layer
     {
     public:
@@ -84,9 +119,9 @@ namespace
     private:
         static constexpr std::size_t MaxRecentEvents = 200;
 
-        static void DrawGamepads()
+        void DrawGamepads()
         {
-            const Quasar::Gamepads& gamepads = Quasar::Application::Get().GetGamepads();
+            Quasar::Gamepads& gamepads = Quasar::Application::Get().GetGamepads();
             bool anyConnected = false;
             for (std::size_t index = 0; index < Quasar::MaxGamepads; ++index)
             {
@@ -97,13 +132,35 @@ namespace
                 }
 
                 anyConnected = true;
-                ImGui::TextUnformatted(fmt::format("Gamepad {}: {}", index, gamepads.GetName(gamepad)).c_str());
+                ImGui::TextUnformatted(fmt::format("Gamepad {}: {} ({})", index, gamepads.GetName(gamepad), GetTypeName(gamepads.GetType(gamepad))).c_str());
                 ImGui::TextUnformatted(
                     fmt::format("  Left stick {:+.2f}, {:+.2f}  Right stick {:+.2f}, {:+.2f}  Triggers {:.2f}, {:.2f}",
                                 gamepads.GetAxis(gamepad, Quasar::GamepadAxis::LeftX), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::LeftY),
                                 gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightX), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightY),
                                 gamepads.GetAxis(gamepad, Quasar::GamepadAxis::LeftTrigger), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightTrigger))
                         .c_str());
+
+                ImGui::PushID(static_cast<int>(index));
+                if (ImGui::Button("Light rumble"))
+                {
+                    m_RumbleResult = gamepads.Rumble(gamepad, {.LowFrequency = 0.25f, .HighFrequency = 0.25f, .Duration = std::chrono::milliseconds(300)});
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Strong rumble"))
+                {
+                    m_RumbleResult = gamepads.Rumble(gamepad, {.LowFrequency = 1.0f, .HighFrequency = 1.0f, .Duration = std::chrono::milliseconds(1000)});
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Stop"))
+                {
+                    m_RumbleResult = gamepads.Rumble(gamepad, {});
+                }
+                ImGui::PopID();
+            }
+
+            if (!m_RumbleResult)
+            {
+                ImGui::TextUnformatted("The last gamepad asked to rumble cannot rumble");
             }
 
             if (!anyConnected)
@@ -168,6 +225,7 @@ namespace
         bool m_LogGamepadAxes = false;
         bool m_ImGuiBlocksEvents = true;
         std::deque<std::string> m_RecentEvents;
+        bool m_RumbleResult = true;
     };
 }
 

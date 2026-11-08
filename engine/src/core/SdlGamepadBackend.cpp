@@ -1,4 +1,4 @@
-#include <core/SdlGamepadReader.h>
+#include <core/SdlGamepadBackend.h>
 
 #include <quasar/core/Log.h>
 
@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <span>
@@ -22,6 +24,14 @@ namespace Quasar
         // SDL gives the stick axes from -32768 to 32767, and the triggers from 0 to 32767
         constexpr float AxisRange = 32767.0f;
 
+        // SDL takes the strength of a rumble motor from 0 to 65535
+        constexpr float RumbleRange = 65535.0f;
+
+        Uint16 ToRumbleStrength(float strength)
+        {
+            return static_cast<Uint16>(std::lround(std::clamp(strength, 0.0f, 1.0f) * RumbleRange));
+        }
+
         struct SdlFree
         {
             void operator()(SDL_JoystickID* ids) const { SDL_free(ids); }
@@ -32,6 +42,7 @@ namespace Quasar
             GamepadReading reading;
             const char* name = SDL_GetGamepadName(gamepad);
             reading.Name = name != nullptr ? name : "";
+            reading.Type = static_cast<GamepadType>(SDL_GetGamepadType(gamepad));
 
             for (std::size_t button = 0; button < GamepadButtonCount; ++button)
             {
@@ -46,7 +57,7 @@ namespace Quasar
         }
     }
 
-    SdlGamepadReader::SdlGamepadReader()
+    SdlGamepadBackend::SdlGamepadBackend()
     {
         if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
         {
@@ -59,7 +70,7 @@ namespace Quasar
         SDL_SetGamepadEventsEnabled(false);
     }
 
-    SdlGamepadReader::~SdlGamepadReader()
+    SdlGamepadBackend::~SdlGamepadBackend()
     {
         for (SDL_Gamepad*& gamepad : m_Gamepads)
         {
@@ -76,7 +87,7 @@ namespace Quasar
         }
     }
 
-    GamepadReadings SdlGamepadReader::Read()
+    GamepadReadings SdlGamepadBackend::Read()
     {
         GamepadReadings readings{};
         if (!m_Started)
@@ -100,7 +111,22 @@ namespace Quasar
         return readings;
     }
 
-    void SdlGamepadReader::CloseDisconnected(std::array<bool, MaxGamepads>& freedNow)
+    bool SdlGamepadBackend::Rumble(GamepadId gamepad, const GamepadRumble& rumble)
+    {
+        const auto index = static_cast<std::size_t>(gamepad);
+        if (index >= MaxGamepads || m_Gamepads.at(index) == nullptr)
+        {
+            return false;
+        }
+
+        const bool stop = rumble.Duration.count() <= 0;
+        const Uint16 low = stop ? 0 : ToRumbleStrength(rumble.LowFrequency);
+        const Uint16 high = stop ? 0 : ToRumbleStrength(rumble.HighFrequency);
+        const auto duration = static_cast<Uint32>(std::min<std::chrono::milliseconds::rep>(rumble.Duration.count(), SDL_MAX_UINT32));
+        return SDL_RumbleGamepad(m_Gamepads.at(index), low, high, duration);
+    }
+
+    void SdlGamepadBackend::CloseDisconnected(std::array<bool, MaxGamepads>& freedNow)
     {
         for (std::size_t index = 0; index < MaxGamepads; ++index)
         {
@@ -114,7 +140,7 @@ namespace Quasar
         }
     }
 
-    void SdlGamepadReader::OpenConnected(const std::array<bool, MaxGamepads>& freedNow)
+    void SdlGamepadBackend::OpenConnected(const std::array<bool, MaxGamepads>& freedNow)
     {
         int count = 0;
         const std::unique_ptr<SDL_JoystickID, SdlFree> ids(SDL_GetGamepads(&count));
