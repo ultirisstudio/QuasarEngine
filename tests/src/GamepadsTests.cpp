@@ -14,8 +14,10 @@
 #include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_stdinc.h>
 #include <doctest/doctest.h>
+#include <glm/vec2.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <map>
@@ -28,6 +30,7 @@
 using Quasar::EventType;
 using Quasar::GamepadAxis;
 using Quasar::GamepadButton;
+using Quasar::GamepadFinger;
 using Quasar::GamepadId;
 using Quasar::GamepadType;
 
@@ -45,6 +48,10 @@ namespace
         GamepadButton Button{};
         GamepadAxis Axis{};
         float Value = 0.0f;
+        std::size_t Touchpad = 0;
+        std::size_t Finger = 0;
+        glm::vec2 Position{0.0f, 0.0f};
+        float Pressure = 0.0f;
 
         bool operator==(const RecordedEvent&) const = default;
     };
@@ -67,6 +74,37 @@ namespace
     RecordedEvent Released(GamepadId gamepad, GamepadButton button)
     {
         return {.Type = EventType::GamepadButtonReleased, .Gamepad = gamepad, .Button = button};
+    }
+
+    RecordedEvent FingerDown(GamepadId gamepad, std::size_t touchpad, std::size_t finger, glm::vec2 position, float pressure)
+    {
+        return {.Type = EventType::GamepadFingerDown, .Gamepad = gamepad, .Touchpad = touchpad, .Finger = finger, .Position = position, .Pressure = pressure};
+    }
+
+    RecordedEvent FingerMoved(GamepadId gamepad, std::size_t touchpad, std::size_t finger, glm::vec2 position, float pressure)
+    {
+        return {.Type = EventType::GamepadFingerMoved, .Gamepad = gamepad, .Touchpad = touchpad, .Finger = finger, .Position = position, .Pressure = pressure};
+    }
+
+    RecordedEvent FingerUp(GamepadId gamepad, std::size_t touchpad, std::size_t finger, glm::vec2 position)
+    {
+        return {.Type = EventType::GamepadFingerUp, .Gamepad = gamepad, .Touchpad = touchpad, .Finger = finger, .Position = position};
+    }
+
+    template <typename FingerEvent>
+    void RecordFinger(Quasar::EventDispatcher& dispatcher, std::vector<RecordedEvent>& events)
+    {
+        dispatcher.Dispatch<FingerEvent>(
+            [&events](const FingerEvent& finger)
+            {
+                events.push_back({.Type = FingerEvent::GetStaticType(),
+                                  .Gamepad = finger.GetGamepad(),
+                                  .Touchpad = finger.GetTouchpad(),
+                                  .Finger = finger.GetFinger(),
+                                  .Position = finger.GetPosition(),
+                                  .Pressure = finger.GetPressure()});
+                return false;
+            });
     }
 
     void Record(Quasar::Event& event, std::vector<RecordedEvent>& events)
@@ -102,6 +140,9 @@ namespace
                 events.push_back({.Type = EventType::GamepadAxisMoved, .Gamepad = moved.GetGamepad(), .Axis = moved.GetAxis(), .Value = moved.GetValue()});
                 return false;
             });
+        RecordFinger<Quasar::GamepadFingerDownEvent>(dispatcher, events);
+        RecordFinger<Quasar::GamepadFingerMovedEvent>(dispatcher, events);
+        RecordFinger<Quasar::GamepadFingerUpEvent>(dispatcher, events);
     }
 
     std::vector<RecordedEvent> Update(Quasar::Gamepads& gamepads)
@@ -138,6 +179,13 @@ namespace
         }
 
         void SetAxis(GamepadId gamepad, GamepadAxis axis, float raw) { m_Readings.at(gamepad).State.Axes.at(static_cast<std::size_t>(axis)) = raw; }
+
+        void SetTouchpadCount(GamepadId gamepad, std::size_t count) { m_Readings.at(gamepad).TouchpadCount = count; }
+
+        void SetFinger(GamepadId gamepad, std::size_t touchpad, std::size_t finger, const GamepadFinger& state)
+        {
+            m_Readings.at(gamepad).State.Touchpads.at(touchpad).Fingers.at(finger) = state;
+        }
 
         void SetCanRumble(bool canRumble) { m_CanRumble = canRumble; }
 
@@ -216,6 +264,7 @@ namespace
     };
 
     constexpr const char* VirtualGamepadName = "Quasar virtual gamepad";
+    constexpr std::size_t VirtualTouchpadCount = 2;
 
     struct MotorStrengths
     {
@@ -236,11 +285,18 @@ namespace
             }
             m_Started = true;
 
+            for (SDL_VirtualJoystickTouchpadDesc& touchpad : m_Touchpads)
+            {
+                touchpad.nfingers = static_cast<Uint16>(Quasar::MaxGamepadTouchpadFingers);
+            }
+
             SDL_VirtualJoystickDesc description{};
             SDL_INIT_INTERFACE(&description);
             description.type = SDL_JOYSTICK_TYPE_GAMEPAD;
             description.naxes = static_cast<Uint16>(Quasar::GamepadAxisCount);
             description.nbuttons = static_cast<Uint16>(Quasar::GamepadButtonCount);
+            description.ntouchpads = static_cast<Uint16>(m_Touchpads.size());
+            description.touchpads = m_Touchpads.data();
             description.name = VirtualGamepadName;
             description.vendor_id = vendor;
             description.product_id = product;
@@ -275,6 +331,11 @@ namespace
 
         void SetAxis(GamepadAxis axis, Sint16 value) { SDL_SetJoystickVirtualAxis(m_Joystick, static_cast<int>(axis), value); }
 
+        void SetFinger(int touchpad, int finger, const GamepadFinger& state)
+        {
+            SDL_SetJoystickVirtualTouchpad(m_Joystick, touchpad, finger, state.Down, state.Position.x, state.Position.y, state.Pressure);
+        }
+
         const std::vector<MotorStrengths>& GetRumbles() const { return m_Rumbles; }
 
         void Unplug()
@@ -293,6 +354,7 @@ namespace
 
     private:
         bool m_Started = false;
+        std::array<SDL_VirtualJoystickTouchpadDesc, VirtualTouchpadCount> m_Touchpads{};
         SDL_JoystickID m_Id = 0;
         SDL_Joystick* m_Joystick = nullptr;
         std::vector<MotorStrengths> m_Rumbles;
@@ -549,6 +611,95 @@ TEST_CASE("A rumble fails on a gamepad that cannot rumble and without a backend"
     CHECK_FALSE(gamepads.Rumble(First, rumble));
 }
 
+TEST_CASE("A finger on a touchpad sends a down event, a moved event for each change, and an up event where it left")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    fake.SetTouchpadCount(First, 2);
+    Update(gamepads);
+    CHECK(gamepads.GetTouchpadCount(First) == 2);
+
+    const GamepadFinger touching{.Down = true, .Position = {0.25f, 0.5f}, .Pressure = 0.5f};
+    fake.SetFinger(First, 1, 0, touching);
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{FingerDown(First, 1, 0, {0.25f, 0.5f}, 0.5f)});
+    CHECK(gamepads.GetTouchpadFinger(First, 1, 0) == touching);
+    CHECK(Update(gamepads).empty());
+
+    fake.SetFinger(First, 1, 0, {.Down = true, .Position = {0.75f, 0.5f}, .Pressure = 0.5f});
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{FingerMoved(First, 1, 0, {0.75f, 0.5f}, 0.5f)});
+
+    fake.SetFinger(First, 1, 0, {.Down = true, .Position = {0.75f, 0.5f}, .Pressure = 1.0f});
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{FingerMoved(First, 1, 0, {0.75f, 0.5f}, 1.0f)});
+
+    fake.SetFinger(First, 1, 0, {});
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{FingerUp(First, 1, 0, {0.75f, 0.5f})});
+    CHECK_FALSE(gamepads.GetTouchpadFinger(First, 1, 0).Down);
+}
+
+TEST_CASE("Each finger on a touchpad sends the events of its own index")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    fake.SetTouchpadCount(First, 1);
+    Update(gamepads);
+
+    fake.SetFinger(First, 0, 0, {.Down = true, .Position = {0.1f, 0.1f}, .Pressure = 1.0f});
+    fake.SetFinger(First, 0, 1, {.Down = true, .Position = {0.9f, 0.9f}, .Pressure = 1.0f});
+
+    const std::vector<RecordedEvent> expected{FingerDown(First, 0, 0, {0.1f, 0.1f}, 1.0f), FingerDown(First, 0, 1, {0.9f, 0.9f}, 1.0f)};
+    CHECK(Update(gamepads) == expected);
+}
+
+TEST_CASE("A finger already on a touchpad when the gamepad is connected sends no event")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    fake.SetTouchpadCount(First, 1);
+    fake.SetFinger(First, 0, 0, {.Down = true, .Position = {0.5f, 0.5f}, .Pressure = 1.0f});
+
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{Connected(First)});
+    CHECK(gamepads.GetTouchpadFinger(First, 0, 0).Down);
+}
+
+TEST_CASE("A disconnected gamepad lifts its fingers after it releases its buttons")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    fake.SetTouchpadCount(First, 1);
+    Update(gamepads);
+    fake.SetButton(First, GamepadButton::Touchpad, true);
+    fake.SetFinger(First, 0, 0, {.Down = true, .Position = {0.5f, 0.25f}, .Pressure = 1.0f});
+    Update(gamepads);
+
+    fake.Disconnect(First);
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    const std::vector<RecordedEvent> expected{Released(First, GamepadButton::Touchpad), FingerUp(First, 0, 0, {0.5f, 0.25f}), Disconnected(First)};
+    CHECK(events == expected);
+    CHECK(gamepads.GetTouchpadCount(First) == 0);
+    CHECK_FALSE(gamepads.GetTouchpadFinger(First, 0, 0).Down);
+}
+
+TEST_CASE("A touchpad or a finger that the gamepad does not have is never down")
+{
+    FakeGamepads fake;
+    Quasar::Gamepads gamepads = CreateGamepads(fake);
+    fake.Connect(First);
+    fake.SetTouchpadCount(First, 1);
+    Update(gamepads);
+
+    fake.SetFinger(First, 1, 0, {.Down = true, .Position = {0.5f, 0.5f}, .Pressure = 1.0f});
+
+    CHECK(Update(gamepads).empty());
+    CHECK_FALSE(gamepads.GetTouchpadFinger(First, 1, 0).Down);
+    CHECK_FALSE(gamepads.GetTouchpadFinger(First, 0, Quasar::MaxGamepadTouchpadFingers).Down);
+    CHECK_FALSE(gamepads.GetTouchpadFinger(First, Quasar::MaxGamepadTouchpads, 0).Down);
+}
+
 TEST_CASE("The application reads the gamepads each frame and sends their events to the layers")
 {
     const TestHelpers::ScopedLog log;
@@ -557,6 +708,8 @@ TEST_CASE("The application reads the gamepads each frame and sends their events 
     FakeGamepads fake;
     fake.Connect(First);
     fake.SetButton(First, GamepadButton::A, true);
+    fake.SetTouchpadCount(First, 1);
+    fake.SetFinger(First, 0, 0, {.Down = true, .Position = {0.5f, 0.5f}, .Pressure = 1.0f});
     application->GetGamepads().SetBackend(fake.CreateBackend());
     auto layer = Quasar::CreateScope<GamepadLayer>(fake);
     const GamepadLayer& gamepadLayer = *layer;
@@ -568,6 +721,7 @@ TEST_CASE("The application reads the gamepads each frame and sends their events 
     CHECK(gamepadLayer.WasAPressedInSecondFrame());
     CHECK(gamepadLayer.GetEvents() == std::vector<RecordedEvent>{Connected(First), Pressed(First, GamepadButton::B)});
     CHECK(Quasar::Input::IsGamepadButtonPressed(First, GamepadButton::B));
+    CHECK(Quasar::Input::GetGamepadTouchpadFinger(First, 0, 0).Down);
 }
 
 TEST_CASE("A gamepad read with SDL is connected with its name")
@@ -610,6 +764,47 @@ TEST_CASE("The buttons and axes of a gamepad read with SDL are at their place an
     CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::RightX) == 1.0f);
     CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::RightTrigger) == 1.0f);
     CHECK(gamepads.GetAxis(*gamepad, GamepadAxis::LeftTrigger) == 0.0f);
+}
+
+TEST_CASE("The extra buttons of a gamepad read with SDL are at their place")
+{
+    Quasar::Gamepads gamepads;
+    VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+
+    virtualGamepad.SetButton(GamepadButton::RightPaddle1, true);
+    virtualGamepad.SetButton(GamepadButton::Touchpad, true);
+    virtualGamepad.SetButton(GamepadButton::Misc6, true);
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    const std::vector<RecordedEvent> expected{Pressed(*gamepad, GamepadButton::RightPaddle1), Pressed(*gamepad, GamepadButton::Touchpad),
+                                              Pressed(*gamepad, GamepadButton::Misc6)};
+    CHECK(events == expected);
+    CHECK_FALSE(gamepads.IsButtonPressed(*gamepad, GamepadButton::Misc1));
+    CHECK_FALSE(gamepads.IsButtonPressed(*gamepad, GamepadButton::LeftPaddle1));
+}
+
+TEST_CASE("The fingers on the touchpads of a gamepad read with SDL are at their place")
+{
+    Quasar::Gamepads gamepads;
+    VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+    CHECK(gamepads.GetTouchpadCount(*gamepad) == VirtualTouchpadCount);
+
+    const GamepadFinger touching{.Down = true, .Position = {0.25f, 0.75f}, .Pressure = 0.5f};
+    virtualGamepad.SetFinger(1, 1, touching);
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{FingerDown(*gamepad, 1, 1, {0.25f, 0.75f}, 0.5f)});
+    CHECK(gamepads.GetTouchpadFinger(*gamepad, 1, 1) == touching);
+    CHECK_FALSE(gamepads.GetTouchpadFinger(*gamepad, 0, 0).Down);
+
+    virtualGamepad.SetFinger(1, 1, {});
+    CHECK(Update(gamepads) == std::vector<RecordedEvent>{FingerUp(*gamepad, 1, 1, {0.25f, 0.75f})});
 }
 
 TEST_CASE("A gamepad read with SDL releases its buttons and is disconnected when it is unplugged")

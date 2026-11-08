@@ -53,6 +53,33 @@ namespace
         return "unknown";
     }
 
+    std::string GetHeldButtons(const Quasar::Gamepads& gamepads, Quasar::GamepadId gamepad)
+    {
+        std::string text;
+        for (std::size_t button = 0; button < Quasar::GamepadButtonCount; ++button)
+        {
+            if (gamepads.IsButtonPressed(gamepad, static_cast<Quasar::GamepadButton>(button)))
+            {
+                text += text.empty() ? fmt::format("{}", button) : fmt::format(", {}", button);
+            }
+        }
+        return text.empty() ? "none" : text;
+    }
+
+    std::string GetTouchpadText(const Quasar::Gamepads& gamepads, Quasar::GamepadId gamepad, std::size_t touchpad)
+    {
+        std::string text;
+        for (std::size_t finger = 0; finger < Quasar::MaxGamepadTouchpadFingers; ++finger)
+        {
+            const Quasar::GamepadFinger state = gamepads.GetTouchpadFinger(gamepad, touchpad, finger);
+            if (state.Down)
+            {
+                text += fmt::format("  finger {} at {:.2f}, {:.2f}, pressure {:.2f}", finger, state.Position.x, state.Position.y, state.Pressure);
+            }
+        }
+        return text.empty() ? "  no finger" : text;
+    }
+
     class EventTestLayer : public Quasar::Layer
     {
     public:
@@ -91,6 +118,11 @@ namespace
             }
 
             if (event.GetType() == Quasar::EventType::GamepadAxisMoved && !m_LogGamepadAxes)
+            {
+                return;
+            }
+
+            if (event.GetType() == Quasar::EventType::GamepadFingerMoved && !m_LogGamepadFingerMoves)
             {
                 return;
             }
@@ -139,6 +171,11 @@ namespace
                                 gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightX), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightY),
                                 gamepads.GetAxis(gamepad, Quasar::GamepadAxis::LeftTrigger), gamepads.GetAxis(gamepad, Quasar::GamepadAxis::RightTrigger))
                         .c_str());
+                ImGui::TextUnformatted(fmt::format("  Buttons held: {}", GetHeldButtons(gamepads, gamepad)).c_str());
+                for (std::size_t touchpad = 0; touchpad < gamepads.GetTouchpadCount(gamepad); ++touchpad)
+                {
+                    ImGui::TextUnformatted(fmt::format("  Touchpad {}:{}", touchpad, GetTouchpadText(gamepads, gamepad, touchpad)).c_str());
+                }
 
                 ImGui::PushID(static_cast<int>(index));
                 if (ImGui::Button("Light rumble"))
@@ -177,6 +214,7 @@ namespace
             ImGui::Checkbox("Show the ImGui demo window", &m_ShowDemoWindow);
             ImGui::Checkbox("Log mouse moves", &m_LogMouseMoves);
             ImGui::Checkbox("Log gamepad axes", &m_LogGamepadAxes);
+            ImGui::Checkbox("Log gamepad finger moves", &m_LogGamepadFingerMoves);
 
             if (Quasar::ImGuiLayer* imGuiLayer = Quasar::Application::Get().GetImGuiLayer(); imGuiLayer != nullptr)
             {
@@ -223,6 +261,7 @@ namespace
         bool m_ShowDemoWindow = true;
         bool m_LogMouseMoves = false;
         bool m_LogGamepadAxes = false;
+        bool m_LogGamepadFingerMoves = false;
         bool m_ImGuiBlocksEvents = true;
         std::deque<std::string> m_RecentEvents;
         bool m_RumbleResult = true;

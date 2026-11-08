@@ -37,6 +37,33 @@ namespace Quasar
             void operator()(SDL_JoystickID* ids) const { SDL_free(ids); }
         };
 
+        // SDL gives the positions and the pressures from 0 to 1, but they are clamped again in case a driver goes past
+        void ReadTouchpads(SDL_Gamepad* gamepad, GamepadReading& reading)
+        {
+            const int touchpads = std::clamp(SDL_GetNumGamepadTouchpads(gamepad), 0, static_cast<int>(MaxGamepadTouchpads));
+            reading.TouchpadCount = static_cast<std::size_t>(touchpads);
+            for (int touchpad = 0; touchpad < touchpads; ++touchpad)
+            {
+                const int fingers = std::clamp(SDL_GetNumGamepadTouchpadFingers(gamepad, touchpad), 0, static_cast<int>(MaxGamepadTouchpadFingers));
+                for (int finger = 0; finger < fingers; ++finger)
+                {
+                    bool down = false;
+                    float x = 0.0f;
+                    float y = 0.0f;
+                    float pressure = 0.0f;
+                    if (!SDL_GetGamepadTouchpadFinger(gamepad, touchpad, finger, &down, &x, &y, &pressure) || !down)
+                    {
+                        continue;
+                    }
+
+                    GamepadFinger& state = reading.State.Touchpads.at(static_cast<std::size_t>(touchpad)).Fingers.at(static_cast<std::size_t>(finger));
+                    state.Down = true;
+                    state.Position = {std::clamp(x, 0.0f, 1.0f), std::clamp(y, 0.0f, 1.0f)};
+                    state.Pressure = std::clamp(pressure, 0.0f, 1.0f);
+                }
+            }
+        }
+
         GamepadReading ReadGamepad(SDL_Gamepad* gamepad)
         {
             GamepadReading reading;
@@ -53,6 +80,8 @@ namespace Quasar
                 const float value = static_cast<float>(SDL_GetGamepadAxis(gamepad, static_cast<SDL_GamepadAxis>(axis))) / AxisRange;
                 reading.State.Axes.at(axis) = std::clamp(value, -1.0f, 1.0f);
             }
+
+            ReadTouchpads(gamepad, reading);
             return reading;
         }
     }

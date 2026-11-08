@@ -34,4 +34,9 @@ namespace Quasar::Input
     {
         return Application::Get().GetGamepads().GetAxis(gamepad, axis);
     }
+
+    GamepadFinger GetGamepadTouchpadFinger(GamepadId gamepad, std::size_t touchpad, std::size_t finger)
+    {
+        return Application::Get().GetGamepads().GetTouchpadFinger(gamepad, touchpad, finger);
+    }
 }

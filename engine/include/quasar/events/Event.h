@@ -31,7 +31,10 @@ namespace Quasar
         GamepadDisconnected,   ///< A gamepad was disconnected.
         GamepadButtonPressed,  ///< A button of a gamepad was pressed.
         GamepadButtonReleased, ///< A button of a gamepad was released.
-        GamepadAxisMoved       ///< A stick or a trigger of a gamepad moved.
+        GamepadAxisMoved,      ///< A stick or a trigger of a gamepad moved.
+        GamepadFingerDown,     ///< A finger touched a touchpad of a gamepad.
+        GamepadFingerMoved,    ///< A finger moved on a touchpad of a gamepad.
+        GamepadFingerUp        ///< A finger left a touchpad of a gamepad.
     };
 
     /// @brief Categories of an event. An event can belong to several categories, combined with the `|` operator.
@@ -39,7 +42,7 @@ namespace Quasar
     {
         None = 0,          ///< No category.
         Window = Bit(0),   ///< Events about the window.
-        Input = Bit(1),    ///< Events from an input device: keyboard, mouse, or gamepad buttons and axes.
+        Input = Bit(1),    ///< Events from an input device: keyboard, mouse, or gamepad buttons, axes and touchpads.
         Keyboard = Bit(2), ///< Events from the keyboard.
         Mouse = Bit(3),    ///< Events from the mouse.
         Gamepad = Bit(4)   ///< Events from the gamepads, including their connection and disconnection.
@@ -96,6 +99,12 @@ namespace Quasar
                 return "GamepadButtonReleased";
             case EventType::GamepadAxisMoved:
                 return "GamepadAxisMoved";
+            case EventType::GamepadFingerDown:
+                return "GamepadFingerDown";
+            case EventType::GamepadFingerMoved:
+                return "GamepadFingerMoved";
+            case EventType::GamepadFingerUp:
+                return "GamepadFingerUp";
         }
         return "Unknown";
     }
