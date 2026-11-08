@@ -3,13 +3,14 @@
 
 #include <quasar/core/Application.h>
 #include <quasar/core/ImGuiLayer.h>
+#include <quasar/core/KeyCodes.h>
 #include <quasar/core/Layer.h>
 #include <quasar/core/MemoryLogSink.h>
+#include <quasar/core/MouseCodes.h>
 #include <quasar/events/Event.h>
 
 #include <doctest/doctest.h>
 
-#include <GLFW/glfw3.h>
 #include <imgui.h>
 
 #include <algorithm>
@@ -99,13 +100,12 @@ namespace
     {
         if (updates == 1)
         {
-            glfwSetCursorPos(application.GetWindow().GetNativeWindow(), 100.0, 100.0);
-            TestHelpers::SendCursorPosition(application.GetWindow(), 100.0, 100.0);
+            TestHelpers::SendMouseMotion(application.GetWindow(), 100.0f, 100.0f);
         }
         if (updates == 3)
         {
-            TestHelpers::SendMouseButton(application.GetWindow(), GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS);
-            TestHelpers::SendMouseButton(application.GetWindow(), GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE);
+            TestHelpers::SendMouseButton(application.GetWindow(), Quasar::MouseButton::Left, true);
+            TestHelpers::SendMouseButton(application.GetWindow(), Quasar::MouseButton::Left, false);
         }
     }
 
@@ -113,9 +113,9 @@ namespace
     {
         if (updates == 3)
         {
-            TestHelpers::SendKey(application.GetWindow(), GLFW_KEY_A, GLFW_PRESS);
-            TestHelpers::SendCharacter(application.GetWindow(), 'a');
-            TestHelpers::SendKey(application.GetWindow(), GLFW_KEY_A, GLFW_RELEASE);
+            TestHelpers::SendKey(application.GetWindow(), Quasar::Key::A, true);
+            TestHelpers::SendText(application.GetWindow(), "a");
+            TestHelpers::SendKey(application.GetWindow(), Quasar::Key::A, false);
         }
     }
 

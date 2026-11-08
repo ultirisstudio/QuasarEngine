@@ -2,7 +2,8 @@
 
 #include <glad/gl.h>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_video.h>
 
 #include <quasar/core/Log.h>
 
@@ -22,21 +23,36 @@ namespace Quasar
         }
     }
 
-    OpenGLContext::OpenGLContext(GLFWwindow* window) : m_Window(window) {}
+    OpenGLContext::OpenGLContext(SDL_Window* window, SDL_GLContextState* context) : m_Window(window), m_Context(context) {}
 
-    void OpenGLContext::SetWindowHints()
+    OpenGLContext::~OpenGLContext()
     {
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, RequiredMajorVersion);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, RequiredMinorVersion);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        SDL_GL_DestroyContext(m_Context);
     }
 
-    Scope<OpenGLContext> OpenGLContext::Create(GLFWwindow* window)
+    void OpenGLContext::SetAttributes()
     {
-        glfwMakeContextCurrent(window);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, RequiredMajorVersion);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, RequiredMinorVersion);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    }
 
-        const int version = gladLoadGL(glfwGetProcAddress);
+    Scope<OpenGLContext> OpenGLContext::Create(SDL_Window* window)
+    {
+        SDL_GLContext context = SDL_GL_CreateContext(window);
+        if (context == nullptr)
+        {
+            QUASAR_ENGINE_ERROR("Cannot create an OpenGL {}.{} core context: {}. Update the graphics driver", RequiredMajorVersion, RequiredMinorVersion,
+                                SDL_GetError());
+            return nullptr;
+        }
+
+        Scope<OpenGLContext> created(new OpenGLContext(window, context));
+
+        const int version = gladLoadGL(SDL_GL_GetProcAddress);
         if (version == 0)
         {
             QUASAR_ENGINE_ERROR("Cannot load the OpenGL functions. OpenGL {}.{} is required: update the graphics driver", RequiredMajorVersion,
@@ -46,8 +62,7 @@ namespace Quasar
 
         if (GLAD_GL_VERSION_4_5 == 0)
         {
-            QUASAR_ENGINE_ERROR("OpenGL {}.{} is required, but the graphics driver only provides OpenGL {}.{}: update "
-                                "the graphics driver",
+            QUASAR_ENGINE_ERROR("OpenGL {}.{} is required, but the graphics driver only provides OpenGL {}.{}: update the graphics driver",
                                 RequiredMajorVersion, RequiredMinorVersion, GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
             return nullptr;
         }
@@ -56,17 +71,17 @@ namespace Quasar
         QUASAR_ENGINE_INFO("OpenGL renderer: {}", GetString(GL_RENDERER));
         QUASAR_ENGINE_INFO("OpenGL version: {}", GetString(GL_VERSION));
 
-        return Scope<OpenGLContext>(new OpenGLContext(window));
+        return created;
     }
 
     void OpenGLContext::SwapBuffers()
     {
-        glfwSwapBuffers(m_Window);
+        SDL_GL_SwapWindow(m_Window);
     }
 
     void OpenGLContext::SetVSync(bool enabled)
     {
-        glfwMakeContextCurrent(m_Window);
-        glfwSwapInterval(enabled ? 1 : 0);
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        SDL_GL_SetSwapInterval(enabled ? 1 : 0);
     }
 }

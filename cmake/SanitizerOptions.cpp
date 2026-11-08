@@ -28,6 +28,7 @@ extern "C"
     const char* __lsan_default_suppressions()
     {
         return "leak:libX11.so\n"
+               "leak:X11_VideoInit\n"
                "leak:libxcb.so\n"
                "leak:libwayland-client.so\n"
                "leak:libdbus-1.so\n"
@@ -41,7 +42,6 @@ extern "C"
                "leak:libglib-2.0.so\n"
                "leak:libgobject-2.0.so\n"
                "leak:libfontconfig.so\n"
-               "leak:_glfwInitEGL\n"
                "leak:ImGui_ImplOpenGL3_RenderDrawData\n";
     }
 }

@@ -8,11 +8,11 @@
 #include <quasar/core/Layer.h>
 #include <quasar/core/MemoryLogSink.h>
 #include <quasar/core/MouseCodes.h>
+#include <quasar/core/Window.h>
 #include <quasar/events/Event.h>
 
 #include <doctest/doctest.h>
 
-#include <GLFW/glfw3.h>
 #include <glm/vec2.hpp>
 
 #include <algorithm>
@@ -153,7 +153,7 @@ TEST_CASE("Events reach the top layer first and stop once handled")
     ScriptLayer& bottom = AddLayer(*application, "Bottom", calls);
     ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
     overlay.EventAction = [](Quasar::Event& event) { event.SetHandled(true); };
-    bottom.UpdateAction = [&application](int /*updates*/) { TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_A, GLFW_PRESS); };
+    bottom.UpdateAction = [&application](int /*updates*/) { TestHelpers::SendKey(application->GetWindow(), Quasar::Key::A, true); };
     bottom.CloseAfter = 1;
 
     application->Run();
@@ -194,11 +194,11 @@ TEST_CASE("While the window is minimized the layers are updated but not rendered
     {
         if (updates == 1)
         {
-            glfwIconifyWindow(application->GetWindow().GetNativeWindow());
+            TestHelpers::SendMinimize(application->GetWindow());
         }
         if (updates == 3)
         {
-            glfwRestoreWindow(application->GetWindow().GetNativeWindow());
+            TestHelpers::SendRestore(application->GetWindow());
         }
     };
     layer.CloseAfter = 5;
@@ -334,7 +334,7 @@ TEST_CASE("A layer can remove itself when it receives an event")
     {
         if (updates == 1)
         {
-            TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_A, GLFW_PRESS);
+            TestHelpers::SendKey(application->GetWindow(), Quasar::Key::A, true);
         }
     };
     overlay.CloseAfter = 2;
@@ -360,8 +360,8 @@ TEST_CASE("A layer removed twice in the same frame is removed once")
     {
         if (updates == 1)
         {
-            TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_A, GLFW_PRESS);
-            TestHelpers::SendKey(application->GetWindow(), GLFW_KEY_B, GLFW_PRESS);
+            TestHelpers::SendKey(application->GetWindow(), Quasar::Key::A, true);
+            TestHelpers::SendKey(application->GetWindow(), Quasar::Key::B, true);
         }
     };
     overlay.CloseAfter = 2;
@@ -426,9 +426,22 @@ TEST_CASE("Input reads the state of the main window")
     const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
     REQUIRE(application != nullptr);
 
-    glfwSetCursorPos(application->GetWindow().GetNativeWindow(), 12.0, 34.0);
+    Quasar::Window& window = application->GetWindow();
+    TestHelpers::SendMouseMotion(window, 12.0f, 34.0f);
+    TestHelpers::SendKey(window, Quasar::Key::A, true);
+    TestHelpers::SendMouseButton(window, Quasar::MouseButton::Left, true);
+    window.Update();
 
     CHECK(Quasar::Input::GetMousePosition() == glm::vec2(12.0f, 34.0f));
+    CHECK(Quasar::Input::IsKeyPressed(Quasar::Key::A));
+    CHECK_FALSE(Quasar::Input::IsKeyPressed(Quasar::Key::B));
+    CHECK(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Left));
+    CHECK_FALSE(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Right));
+
+    TestHelpers::SendKey(window, Quasar::Key::A, false);
+    TestHelpers::SendMouseButton(window, Quasar::MouseButton::Left, false);
+    window.Update();
+
     CHECK_FALSE(Quasar::Input::IsKeyPressed(Quasar::Key::A));
     CHECK_FALSE(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Left));
 }

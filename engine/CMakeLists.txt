@@ -86,13 +86,11 @@ target_link_libraries(QuasarEngine
         imgui::imgui
     PRIVATE
         Quasar::CompileOptions
-        glfw
         SDL3::SDL3
         glad::glad
 )
 
 target_compile_definitions(QuasarEngine PRIVATE
-    GLFW_INCLUDE_NONE
     QUASAR_VERSION="${PROJECT_VERSION}"
 )
 

@@ -2,30 +2,34 @@
 
 #include <quasar/core/Base.h>
 
-struct GLFWwindow;
+struct SDL_Window;
+struct SDL_GLContextState;
 
 namespace Quasar
 {
     class OpenGLContext
     {
     public:
-        static void SetWindowHints();
+        static void SetAttributes();
 
-        static Scope<OpenGLContext> Create(GLFWwindow* window);
+        static Scope<OpenGLContext> Create(SDL_Window* window);
 
         OpenGLContext(const OpenGLContext&) = delete;
         OpenGLContext& operator=(const OpenGLContext&) = delete;
         OpenGLContext(OpenGLContext&&) = delete;
         OpenGLContext& operator=(OpenGLContext&&) = delete;
-        ~OpenGLContext() = default;
+        ~OpenGLContext();
 
         void SwapBuffers();
 
         void SetVSync(bool enabled);
 
-    private:
-        explicit OpenGLContext(GLFWwindow* window);
+        SDL_GLContextState* GetNativeContext() const { return m_Context; }
 
-        GLFWwindow* m_Window = nullptr;
+    private:
+        OpenGLContext(SDL_Window* window, SDL_GLContextState* context);
+
+        SDL_Window* m_Window = nullptr;
+        SDL_GLContextState* m_Context = nullptr;
     };
 }

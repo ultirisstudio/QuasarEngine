@@ -4,10 +4,11 @@
 #include <quasar/core/Window.h>
 
 #include <imgui.h>
-#include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl3.h>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_video.h>
 
 namespace Quasar
 {
@@ -23,12 +24,13 @@ namespace Quasar
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        GLFWwindow* nativeWindow = m_Window->GetNativeWindow();
-        const bool platformStarted = ImGui_ImplGlfw_InitForOpenGL(nativeWindow, true);
+        SDL_Window* nativeWindow = m_Window->GetNativeWindow();
+        const bool platformStarted = ImGui_ImplSDL3_InitForOpenGL(nativeWindow, m_Window->GetNativeContext());
         if (!platformStarted)
         {
-            QUASAR_ENGINE_ERROR("Cannot start the GLFW backend of ImGui");
+            QUASAR_ENGINE_ERROR("Cannot start the SDL backend of ImGui");
         }
+        m_Window->SetNativeEventCallback([](const SDL_Event& event) { ImGui_ImplSDL3_ProcessEvent(&event); });
         if (!ImGui_ImplOpenGL3_Init("#version 450 core"))
         {
             QUASAR_ENGINE_ERROR("Cannot start the OpenGL backend of ImGui");
@@ -36,7 +38,7 @@ namespace Quasar
 
         io.ConfigDpiScaleFonts = true;
         io.ConfigDpiScaleViewports = true;
-        const float dpiScale = platformStarted ? ImGui_ImplGlfw_GetContentScaleForWindow(nativeWindow) : 1.0f;
+        const float dpiScale = SDL_GetWindowDisplayScale(nativeWindow);
         ImGuiTheme::ApplyStyle(ImGui::GetStyle(), dpiScale);
         ImGuiTheme::LoadFont(*io.Fonts, ImGuiTheme::GetFontPath());
 
@@ -51,8 +53,9 @@ namespace Quasar
 
     void ImGuiLayer::OnDetach()
     {
+        m_Window->SetNativeEventCallback({});
         ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
     }
 
@@ -75,7 +78,7 @@ namespace Quasar
     void ImGuiLayer::Begin()
     {
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
     }
 
@@ -87,10 +90,11 @@ namespace Quasar
 
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0)
         {
-            GLFWwindow* mainContext = glfwGetCurrentContext();
+            SDL_Window* mainWindow = SDL_GL_GetCurrentWindow();
+            SDL_GLContext mainContext = SDL_GL_GetCurrentContext();
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
-            glfwMakeContextCurrent(mainContext);
+            SDL_GL_MakeCurrent(mainWindow, mainContext);
         }
     }
 }

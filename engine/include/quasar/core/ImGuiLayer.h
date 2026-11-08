@@ -12,7 +12,7 @@ namespace Quasar
 {
     class Window;
 
-    /// @brief Overlay that starts Dear ImGui with its GLFW and OpenGL backends, and wraps each frame.
+    /// @brief Overlay that starts Dear ImGui with its SDL and OpenGL backends, and wraps each frame.
     ///
     /// The application creates it when its window has an OpenGL context, and keeps it above every other layer and
     /// overlay. Each frame, the application calls Begin(), then Layer::OnImGuiRender() on every layer from the bottom
@@ -21,9 +21,8 @@ namespace Quasar
     /// The interface uses the engine theme and font, scaled for the monitor. See ImGuiTheme.
     ///
     /// Docking and multiple viewports are enabled: ImGui windows can be docked into each other or into a dock space,
-    /// and dragged outside the main window, where each one gets its own platform window. On Wayland, the GLFW backend
-    /// cannot place windows, so the viewports are turned off and ImGui windows stay inside the main window. Docking
-    /// still works.
+    /// and dragged outside the main window, where each one gets its own platform window. On Wayland, SDL cannot place
+    /// windows, so the viewports are turned off and ImGui windows stay inside the main window. Docking still works.
     ///
     /// While ImGui uses the mouse or the keyboard, for example when the cursor is over an ImGui window or a text field
     /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.
@@ -34,7 +33,7 @@ namespace Quasar
         /// @param window The window where ImGui draws and reads its input. It must outlive the layer.
         explicit ImGuiLayer(Window& window);
 
-        /// @brief Starts ImGui and its GLFW and OpenGL backends.
+        /// @brief Starts ImGui and its SDL and OpenGL backends, and gives ImGui the SDL events of the window.
         void OnAttach() override;
 
         /// @brief Stops the backends, then ImGui.

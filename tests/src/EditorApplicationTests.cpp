@@ -38,7 +38,7 @@ namespace
 TEST_CASE("The editor application opens its window and runs the editor layer")
 {
     const TestHelpers::ScopedLog log;
-    TestHelpers::UseTestOpenGL();
+    TestHelpers::UseTestVideoDriver();
     const Quasar::Scope<Quasar::Application> application = Quasar::Editor::CreateEditorApplication({});
     REQUIRE(application != nullptr);
 

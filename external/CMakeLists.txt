@@ -8,14 +8,6 @@ set(DOCTEST_WITH_MAIN_IN_STATIC_LIB  ON  CACHE BOOL "" FORCE)
 set(DOCTEST_NO_INSTALL               ON  CACHE BOOL "" FORCE)
 add_subdirectory(doctest EXCLUDE_FROM_ALL)
 
-# GLFW: window and input library
-set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(GLFW_INSTALL        OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_WAYLAND  OFF CACHE BOOL "" FORCE)
-add_subdirectory(glfw EXCLUDE_FROM_ALL)
-
 # SDL3: windows, OpenGL contexts, events, input and gamepads
 set(SDL_SHARED       OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC       ON  CACHE BOOL "" FORCE)
