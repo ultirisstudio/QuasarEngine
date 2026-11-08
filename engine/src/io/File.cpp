@@ -1,5 +1,5 @@
-#include <quasar/core/Log.h>
 #include <quasar/io/File.h>
+#include <quasar/log/Log.h>
 
 #include <spdlog/fmt/std.h>
 

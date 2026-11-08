@@ -1,4 +1,4 @@
-#include "quasar/Version.h"
+#include <quasar/Version.h>
 
 namespace Quasar
 {

@@ -5,8 +5,8 @@
 /// \author Kurogenshi
 /// \date 2026-11-06
 
-#include <quasar/core/GamepadCodes.h>
 #include <quasar/events/Event.h>
+#include <quasar/input/GamepadCodes.h>
 
 #include <glm/vec2.hpp>
 #include <spdlog/fmt/fmt.h>

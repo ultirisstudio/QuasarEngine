@@ -1,11 +1,11 @@
-#include "renderer/OpenGLContext.h"
+#include <renderer/OpenGLContext.h>
 
 #include <glad/gl.h>
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_video.h>
 
-#include <quasar/core/Log.h>
+#include <quasar/log/Log.h>
 
 namespace Quasar
 {

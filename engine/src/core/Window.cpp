@@ -1,8 +1,8 @@
-#include <quasar/core/Log.h>
 #include <quasar/core/Window.h>
 #include <quasar/events/KeyEvent.h>
 #include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
+#include <quasar/log/Log.h>
 
 #include <renderer/OpenGLContext.h>
 

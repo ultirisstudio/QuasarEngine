@@ -1,5 +1,5 @@
 #include <quasar/core/EntryPoint.h>
-#include <quasar/core/Log.h>
+#include <quasar/log/Log.h>
 
 #include <cstddef>
 #include <span>

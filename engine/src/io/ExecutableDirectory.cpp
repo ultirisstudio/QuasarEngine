@@ -1,7 +1,7 @@
 #include <io/ExecutableDirectory.h>
 
-#include <quasar/core/Log.h>
 #include <quasar/io/Path.h>
+#include <quasar/log/Log.h>
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_filesystem.h>

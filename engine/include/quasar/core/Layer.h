@@ -5,8 +5,8 @@
 /// \author Kurogenshi
 /// \date 2026-10-24
 
-#include <quasar/core/Timestep.h>
 #include <quasar/events/Event.h>
+#include <quasar/time/Timestep.h>
 
 #include <string>
 #include <utility>
