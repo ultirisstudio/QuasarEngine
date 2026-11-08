@@ -6,7 +6,7 @@
 /// \date 2026-10-25
 
 #include <quasar/input/GamepadCodes.h>
-#include <quasar/input/Gamepads.h>
+#include <quasar/input/GamepadState.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
 
