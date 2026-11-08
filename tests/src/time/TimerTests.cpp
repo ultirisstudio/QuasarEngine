@@ -45,6 +45,6 @@ TEST_CASE("Seconds and milliseconds give the same duration")
     const double seconds = timer.ElapsedSeconds();
     const double milliseconds = timer.ElapsedMilliseconds();
 
-    CHECK(milliseconds >= seconds * 1000.0);
+    CHECK(milliseconds >= doctest::Approx(seconds * 1000.0));
     CHECK(milliseconds - seconds * 1000.0 < 100.0);
 }
