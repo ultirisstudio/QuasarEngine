@@ -27,6 +27,26 @@ namespace Quasar
     {
     };
 
+    /// @brief Kind of gamepad, for example to show the names or the icons of its buttons.
+    ///
+    /// The values are the same as the SDL gamepad types, so an SDL type converts with `static_cast<GamepadType>(type)`.
+    enum class GamepadType : std::uint8_t
+    {
+        Unknown = 0,         ///< The kind of gamepad is not known.
+        Standard = 1,        ///< A gamepad with the buttons of an Xbox controller, from another maker.
+        Xbox360 = 2,         ///< Xbox 360 controller.
+        XboxOne = 3,         ///< Xbox One or Xbox Series controller.
+        PlayStation3 = 4,    ///< PlayStation 3 controller.
+        PlayStation4 = 5,    ///< PlayStation 4 controller, DualShock 4.
+        PlayStation5 = 6,    ///< PlayStation 5 controller, DualSense.
+        SwitchPro = 7,       ///< Nintendo Switch Pro controller.
+        JoyConLeft = 8,      ///< Left Joy-Con of the Nintendo Switch, held on its own.
+        JoyConRight = 9,     ///< Right Joy-Con of the Nintendo Switch, held on its own.
+        JoyConPair = 10,     ///< Both Joy-Cons of the Nintendo Switch, used as one gamepad.
+        GameCube = 11,       ///< Nintendo GameCube controller.
+        SteamController = 12 ///< Steam Controller.
+    };
+
     /// @brief Button of a gamepad, at the position of the buttons of an Xbox controller.
     ///
     /// The same position is used on every gamepad: GamepadButton::A is the bottom face button, which is Cross on a

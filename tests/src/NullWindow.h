@@ -67,7 +67,7 @@ namespace TestHelpers
         Quasar::Scope<Quasar::Application> application = Quasar::Application::Create(specification);
         if (application)
         {
-            application->GetGamepads().SetReader({});
+            application->GetGamepads().SetBackend(nullptr);
         }
         DiscardPendingEvents();
         return application;
