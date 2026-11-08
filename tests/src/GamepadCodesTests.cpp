@@ -23,7 +23,7 @@ namespace
     static_assert(GamepadButton::DPadDown == static_cast<GamepadButton>(SDL_GAMEPAD_BUTTON_DPAD_DOWN));
     static_assert(GamepadButton::DPadLeft == static_cast<GamepadButton>(SDL_GAMEPAD_BUTTON_DPAD_LEFT));
     static_assert(GamepadButton::DPadRight == static_cast<GamepadButton>(SDL_GAMEPAD_BUTTON_DPAD_RIGHT));
-    
+
     static_assert(Quasar::GamepadButtonCount == SDL_GAMEPAD_BUTTON_DPAD_RIGHT + 1);
 
     static_assert(GamepadAxis::LeftX == static_cast<GamepadAxis>(SDL_GAMEPAD_AXIS_LEFTX));
@@ -47,6 +47,6 @@ namespace
     static_assert(GamepadType::JoyConPair == static_cast<GamepadType>(SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR));
     static_assert(GamepadType::GameCube == static_cast<GamepadType>(SDL_GAMEPAD_TYPE_GAMECUBE));
     static_assert(GamepadType::SteamController == static_cast<GamepadType>(SDL_GAMEPAD_TYPE_STEAM));
-    
+
     static_assert(static_cast<int>(GamepadType::SteamController) + 1 == SDL_GAMEPAD_TYPE_COUNT);
 }
