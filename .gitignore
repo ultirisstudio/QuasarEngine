@@ -16,8 +16,10 @@ CMakeSettings.json
 *.vcxproj
 *.vcxproj.filters
 
-# Visual Studio Code
-.vscode/
+# Visual Studio Code: only the shared settings are kept
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # CLion
 .idea/
