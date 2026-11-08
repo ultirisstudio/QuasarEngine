@@ -28,7 +28,7 @@ namespace Quasar
     /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.
     class ImGuiLayer final : public Layer
     {
-    public: /// @brief Overlay that starts Dear ImGui with its GLFW and OpenGL backe
+    public:
         /// @brief Creates the layer for a window that has an OpenGL context. ImGui starts when the layer is attached.
         /// @param window The window where ImGui draws and reads its input. It must outlive the layer.
         explicit ImGuiLayer(Window& window);

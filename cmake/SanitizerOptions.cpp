@@ -28,6 +28,7 @@ extern "C"
     const char* __lsan_default_suppressions()
     {
         return "leak:libX11.so\n"
+               "leak:X11_VideoInit\n"
                "leak:libxcb.so\n"
                "leak:libwayland-client.so\n"
                "leak:libdbus-1.so\n"
