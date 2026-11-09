@@ -64,6 +64,31 @@ namespace Quasar
             }
         }
 
+        constexpr std::array<SDL_GamepadButton, GamepadTouchSensorCount> SteamTouchSensorButtons{SDL_GAMEPAD_BUTTON_MISC3, SDL_GAMEPAD_BUTTON_MISC4,
+                                                                                                 SDL_GAMEPAD_BUTTON_MISC5, SDL_GAMEPAD_BUTTON_MISC6};
+
+        bool HasSteamTouchSensors(SDL_Gamepad* gamepad)
+        {
+            return SDL_GetGamepadType(gamepad) == SDL_GAMEPAD_TYPE_STEAM;
+        }
+
+        bool IsSteamTouchSensor(SDL_Gamepad* gamepad, SDL_GamepadButton button)
+        {
+            return HasSteamTouchSensors(gamepad) && std::ranges::find(SteamTouchSensorButtons, button) != SteamTouchSensorButtons.end();
+        }
+
+        void ReadTouchSensors(SDL_Gamepad* gamepad, GamepadReading& reading)
+        {
+            if (!HasSteamTouchSensors(gamepad))
+            {
+                return;
+            }
+            for (std::size_t sensor = 0; sensor < GamepadTouchSensorCount; ++sensor)
+            {
+                reading.State.TouchSensors.at(sensor) = SDL_GetGamepadButton(gamepad, SteamTouchSensorButtons.at(sensor));
+            }
+        }
+
         GamepadReading ReadGamepad(SDL_Gamepad* gamepad)
         {
             GamepadReading reading;
@@ -71,9 +96,10 @@ namespace Quasar
             reading.Name = name != nullptr ? name : "";
             reading.Type = static_cast<GamepadType>(SDL_GetGamepadType(gamepad));
 
-            for (std::size_t button = 0; button < GamepadButtonCount; ++button)
+            for (std::size_t index = 0; index < GamepadButtonCount; ++index)
             {
-                reading.State.Buttons.at(button) = SDL_GetGamepadButton(gamepad, static_cast<SDL_GamepadButton>(button));
+                const auto button = static_cast<SDL_GamepadButton>(index);
+                reading.State.Buttons.at(index) = !IsSteamTouchSensor(gamepad, button) && SDL_GetGamepadButton(gamepad, button);
             }
             for (std::size_t axis = 0; axis < GamepadAxisCount; ++axis)
             {
@@ -82,6 +108,7 @@ namespace Quasar
             }
 
             ReadTouchpads(gamepad, reading);
+            ReadTouchSensors(gamepad, reading);
             return reading;
         }
     }

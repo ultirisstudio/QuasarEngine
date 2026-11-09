@@ -46,7 +46,9 @@ target_sources(QuasarEngine
             include/quasar/events/WindowEvent.h
             include/quasar/imgui/ImGuiLayer.h
             include/quasar/imgui/ImGuiTheme.h
+            include/quasar/input/GamepadBackend.h
             include/quasar/input/GamepadCodes.h
+            include/quasar/input/GamepadState.h
             include/quasar/input/Gamepads.h
             include/quasar/input/Input.h
             include/quasar/input/KeyCodes.h

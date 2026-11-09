@@ -7,12 +7,12 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/events/Event.h>
+#include <quasar/input/GamepadBackend.h>
 #include <quasar/input/GamepadCodes.h>
 
-#include <glm/vec2.hpp>
+#include <quasar/input/GamepadState.h>
 
 #include <array>
-#include <chrono>
 #include <cstddef>
 #include <functional>
 #include <optional>
@@ -20,85 +20,6 @@
 
 namespace Quasar
 {
-    /// @brief A finger on a touchpad of a gamepad.
-    struct GamepadFinger
-    {
-        bool Down = false;              ///< True while the finger touches the touchpad.
-        glm::vec2 Position{0.0f, 0.0f}; ///< Position from 0 to 1 on each axis, from the top-left corner of the touchpad.
-        float Pressure = 0.0f;          ///< Pressure from 0 to 1, or 0 when the finger is not down.
-
-        /// \cond
-        bool operator==(const GamepadFinger&) const = default;
-        /// \endcond
-    };
-
-    /// @brief The fingers of a touchpad of a gamepad, indexed from 0. A touchpad that follows fewer fingers than
-    /// MaxGamepadTouchpadFingers never has the others down.
-    struct GamepadTouchpad
-    {
-        std::array<GamepadFinger, MaxGamepadTouchpadFingers> Fingers{}; ///< State of each finger.
-    };
-
-    /// @brief State of the buttons, axes and touchpads of a gamepad.
-    struct GamepadState
-    {
-        std::array<bool, GamepadButtonCount> Buttons{};               ///< True for each button held down, indexed by GamepadButton.
-        std::array<float, GamepadAxisCount> Axes{};                   ///< Value of each axis, indexed by GamepadAxis.
-        std::array<GamepadTouchpad, MaxGamepadTouchpads> Touchpads{}; ///< State of each touchpad, indexed from 0.
-
-        /// @brief Returns true if the button is held down.
-        bool IsPressed(GamepadButton button) const { return Buttons.at(static_cast<std::size_t>(button)); }
-
-        /// @brief Returns the value of the axis.
-        float GetAxis(GamepadAxis axis) const { return Axes.at(static_cast<std::size_t>(axis)); }
-    };
-
-    /// @brief What is read from a connected gamepad, before the dead zones are applied.
-    struct GamepadReading
-    {
-        std::string Name;                        ///< Name of the gamepad, for example "Xbox Controller".
-        GamepadType Type = GamepadType::Unknown; ///< Kind of gamepad.
-        std::size_t TouchpadCount = 0;           ///< Number of touchpads of the gamepad, up to MaxGamepadTouchpads.
-        GamepadState State;                      ///< Raw state: the stick axes go from -1 to 1, and the triggers from 0, at rest, to 1.
-    };
-
-    /// @brief What is read from every gamepad id at once: a reading for each connected gamepad, no value for the others.
-    using GamepadReadings = std::array<std::optional<GamepadReading>, MaxGamepads>;
-
-    /// @brief A vibration of the two motors of a gamepad.
-    ///
-    /// A new rumble replaces the one that is running. A rumble with a duration of 0, or with both strengths at 0, stops
-    /// the motors.
-    struct GamepadRumble
-    {
-        float LowFrequency = 0.0f;             ///< Strength of the low frequency motor, usually the left one, from 0 to 1.
-        float HighFrequency = 0.0f;            ///< Strength of the high frequency motor, usually the right one, from 0 to 1.
-        std::chrono::milliseconds Duration{0}; ///< How long the motors run. SDL stops them after 65 seconds at most.
-    };
-
-    /// @brief Where the gamepads are read from, and where their rumble is sent.
-    ///
-    /// The engine reads the gamepads with SDL. The tests use their own backend to simulate gamepads.
-    class GamepadBackend
-    {
-    public:
-        GamepadBackend() = default;
-        virtual ~GamepadBackend() = default;
-
-        GamepadBackend(const GamepadBackend&) = delete;
-        GamepadBackend& operator=(const GamepadBackend&) = delete;
-        GamepadBackend(GamepadBackend&&) = delete;
-        GamepadBackend& operator=(GamepadBackend&&) = delete;
-
-        /// @brief Reads every gamepad id. Called once per Gamepads::Update().
-        /// @return A reading for each connected gamepad, no value for the others.
-        virtual GamepadReadings Read() = 0;
-
-        /// @brief Starts or stops the rumble of a connected gamepad.
-        /// @return False if the gamepad cannot rumble.
-        virtual bool Rumble(GamepadId gamepad, const GamepadRumble& rumble) = 0;
-    };
-
     /// @brief Settings that filter the axes of the gamepads.
     struct GamepadSettings
     {
@@ -128,6 +49,13 @@ namespace Quasar
     /// Only devices that SDL knows as gamepads are listed, so that the buttons and axes are at the same place on every
     /// gamepad. SDL has its own drivers for many gamepads, such as the Steam Controller and the PlayStation and Switch
     /// controllers, and the mappings of the SDL_GameControllerDB project for the others.
+    ///
+    /// A game launched by Steam does not see the physical gamepads: Steam Input replaces each of them with a virtual
+    /// Xbox controller, whose buttons and axes are the ones the player chose in Steam. The touchpads and the buttons from
+    /// GamepadButton::Misc1 are then not available, and GetType() still gives the kind of the physical gamepad. A Steam
+    /// Controller always goes through Steam Input, even when it is disabled for the game. While Steam runs, it also
+    /// turns a Steam Controller into a keyboard and a mouse for the programs it did not launch, so a game started
+    /// outside Steam receives key and mouse events from it too.
     class Gamepads
     {
     public:
@@ -178,6 +106,12 @@ namespace Quasar
         /// differ slightly from the last GamepadAxisMovedEvent. See GamepadSettings::AxisEventThreshold.
         float GetAxis(GamepadId gamepad, GamepadAxis axis) const;
 
+        /// @brief Returns true if the touch sensor of the gamepad is touched. False when the gamepad is not connected or
+        /// has no such sensor.
+        ///
+        /// The touch sensors send no event: they change each time the gamepad is held, put down or moved in the hands.
+        bool IsTouched(GamepadId gamepad, GamepadTouchSensor sensor) const;
+
         /// @brief Returns the number of touchpads of the gamepad, or 0 if no gamepad is connected with this id.
         std::size_t GetTouchpadCount(GamepadId gamepad) const;
 
@@ -210,12 +144,14 @@ namespace Quasar
             std::string Name;
             GamepadType Type = GamepadType::Unknown;
             std::size_t TouchpadCount = 0;
-            GamepadState Current;
-            GamepadState Reported;
+            GamepadState State;
+            std::array<float, GamepadAxisCount> ReportedAxes{};
         };
 
         const Slot* FindConnected(GamepadId gamepad) const;
         void UpdateSlot(GamepadId gamepad, const std::optional<GamepadReading>& reading, Slot& slot, const EventCallback& send);
+        static void Connect(GamepadId gamepad, const GamepadReading& reading, const GamepadState& state, Slot& slot, const EventCallback& send);
+        static void Disconnect(GamepadId gamepad, Slot& slot, const EventCallback& send);
 
         Scope<GamepadBackend> m_Backend;
         GamepadSettings m_Settings;

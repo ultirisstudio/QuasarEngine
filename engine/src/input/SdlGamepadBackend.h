@@ -1,7 +1,7 @@
 #pragma once
 
+#include <quasar/input/GamepadBackend.h>
 #include <quasar/input/GamepadCodes.h>
-#include <quasar/input/Gamepads.h>
 
 #include <SDL3/SDL_joystick.h>
 

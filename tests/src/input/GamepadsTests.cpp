@@ -5,7 +5,9 @@
 #include <quasar/core/Layer.h>
 #include <quasar/events/EventDispatcher.h>
 #include <quasar/events/GamepadEvent.h>
+#include <quasar/input/GamepadBackend.h>
 #include <quasar/input/GamepadCodes.h>
+#include <quasar/input/GamepadState.h>
 #include <quasar/input/Gamepads.h>
 #include <quasar/input/Input.h>
 #include <quasar/log/MemoryLogSink.h>
@@ -32,6 +34,7 @@ using Quasar::GamepadAxis;
 using Quasar::GamepadButton;
 using Quasar::GamepadFinger;
 using Quasar::GamepadId;
+using Quasar::GamepadTouchSensor;
 using Quasar::GamepadType;
 
 namespace
@@ -785,6 +788,53 @@ TEST_CASE("The extra buttons of a gamepad read with SDL are at their place")
     CHECK(events == expected);
     CHECK_FALSE(gamepads.IsButtonPressed(*gamepad, GamepadButton::Misc1));
     CHECK_FALSE(gamepads.IsButtonPressed(*gamepad, GamepadButton::LeftPaddle1));
+}
+
+TEST_CASE("The touch sensors of a Steam controller read with SDL are touch sensors and not buttons")
+{
+    constexpr Uint16 valve = 0x28DE;
+    constexpr Uint16 steamController = 0x1302;
+    Quasar::Gamepads gamepads;
+    VirtualGamepad virtualGamepad(valve, steamController);
+    REQUIRE(virtualGamepad.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+    REQUIRE(gamepads.GetType(*gamepad) == GamepadType::SteamController);
+
+    virtualGamepad.SetButton(GamepadButton::Misc1, true);
+    virtualGamepad.SetButton(GamepadButton::Misc3, true);
+    virtualGamepad.SetButton(GamepadButton::Misc6, true);
+    const std::vector<RecordedEvent> events = Update(gamepads);
+
+    CHECK(events == std::vector<RecordedEvent>{Pressed(*gamepad, GamepadButton::Misc1)});
+    CHECK_FALSE(gamepads.IsButtonPressed(*gamepad, GamepadButton::Misc3));
+    CHECK_FALSE(gamepads.IsButtonPressed(*gamepad, GamepadButton::Misc6));
+    CHECK(gamepads.IsTouched(*gamepad, GamepadTouchSensor::LeftStick));
+    CHECK(gamepads.IsTouched(*gamepad, GamepadTouchSensor::RightGrip));
+    CHECK_FALSE(gamepads.IsTouched(*gamepad, GamepadTouchSensor::RightStick));
+    CHECK_FALSE(gamepads.IsTouched(*gamepad, GamepadTouchSensor::LeftGrip));
+
+    virtualGamepad.SetButton(GamepadButton::Misc3, false);
+    Update(gamepads);
+
+    CHECK_FALSE(gamepads.IsTouched(*gamepad, GamepadTouchSensor::LeftStick));
+}
+
+TEST_CASE("A gamepad that is not a Steam controller has no touch sensor")
+{
+    Quasar::Gamepads gamepads;
+    VirtualGamepad virtualGamepad;
+    REQUIRE(virtualGamepad.IsPlugged());
+    Update(gamepads);
+    const std::optional<GamepadId> gamepad = FindVirtualGamepad(gamepads);
+    REQUIRE(gamepad.has_value());
+
+    virtualGamepad.SetButton(GamepadButton::Misc3, true);
+    Update(gamepads);
+
+    CHECK(gamepads.IsButtonPressed(*gamepad, GamepadButton::Misc3));
+    CHECK_FALSE(gamepads.IsTouched(*gamepad, GamepadTouchSensor::LeftStick));
 }
 
 TEST_CASE("The fingers on the touchpads of a gamepad read with SDL are at their place")

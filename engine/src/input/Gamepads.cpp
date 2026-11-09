@@ -4,6 +4,7 @@
 #include <input/SdlGamepadBackend.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <memory>
@@ -57,6 +58,49 @@ namespace Quasar
             return state;
         }
 
+        bool ShouldReportAxis(float reported, float current, float threshold)
+        {
+            if (current == reported)
+            {
+                return false;
+            }
+            const bool reachedLimit = current == 0.0f || std::abs(current) == 1.0f;
+            return reachedLimit || std::abs(current - reported) >= threshold;
+        }
+
+        void SendButtonChanges(GamepadId gamepad, const GamepadState& previous, const GamepadState& current, const Gamepads::EventCallback& send)
+        {
+            for (std::size_t index = 0; index < GamepadButtonCount; ++index)
+            {
+                const auto button = static_cast<GamepadButton>(index);
+                if (current.IsPressed(button) && !previous.IsPressed(button))
+                {
+                    GamepadButtonPressedEvent event(gamepad, button);
+                    send(event);
+                }
+                else if (previous.IsPressed(button) && !current.IsPressed(button))
+                {
+                    GamepadButtonReleasedEvent event(gamepad, button);
+                    send(event);
+                }
+            }
+        }
+
+        void SendAxisChanges(GamepadId gamepad, const GamepadState& current, std::array<float, GamepadAxisCount>& reported, float threshold,
+                             const Gamepads::EventCallback& send)
+        {
+            for (std::size_t index = 0; index < GamepadAxisCount; ++index)
+            {
+                const auto axis = static_cast<GamepadAxis>(index);
+                if (ShouldReportAxis(reported.at(index), current.GetAxis(axis), threshold))
+                {
+                    reported.at(index) = current.GetAxis(axis);
+                    GamepadAxisMovedEvent event(gamepad, axis, reported.at(index));
+                    send(event);
+                }
+            }
+        }
+
         void SendFingerChanges(GamepadId gamepad, std::size_t touchpadCount, const GamepadState& previous, const GamepadState& current,
                                const Gamepads::EventCallback& send)
         {
@@ -84,16 +128,6 @@ namespace Quasar
                 }
             }
         }
-
-        bool ShouldReportAxis(float reported, float current, float threshold)
-        {
-            if (current == reported)
-            {
-                return false;
-            }
-            const bool reachedLimit = current == 0.0f || std::abs(current) == 1.0f;
-            return reachedLimit || std::abs(current - reported) >= threshold;
-        }
     }
 
     Gamepads::Gamepads() : m_Backend(CreateScope<SdlGamepadBackend>()) {}
@@ -118,84 +152,49 @@ namespace Quasar
     {
         if (!reading)
         {
-            if (!slot.Connected)
+            if (slot.Connected)
             {
-                return;
+                Disconnect(gamepad, slot, send);
             }
-
-            const GamepadState held = slot.Reported;
-            slot.Current = GamepadState{};
-            slot.Reported = GamepadState{};
-            for (std::size_t button = 0; button < GamepadButtonCount; ++button)
-            {
-                if (held.Buttons.at(button))
-                {
-                    GamepadButtonReleasedEvent event(gamepad, static_cast<GamepadButton>(button));
-                    send(event);
-                }
-            }
-            SendFingerChanges(gamepad, slot.TouchpadCount, held, GamepadState{}, send);
-
-            slot = Slot{};
-            GamepadDisconnectedEvent event(gamepad);
-            send(event);
             return;
         }
 
         const GamepadState current = Filter(reading->State, m_Settings);
-
         if (!slot.Connected)
         {
-            slot = Slot{.Connected = true,
-                        .Name = reading->Name,
-                        .Type = reading->Type,
-                        .TouchpadCount = std::min(reading->TouchpadCount, MaxGamepadTouchpads),
-                        .Current = current,
-                        .Reported = current};
-            GamepadConnectedEvent event(gamepad, slot.Name);
-            send(event);
+            Connect(gamepad, *reading, current, slot, send);
             return;
         }
 
-        const GamepadState previous = slot.Reported;
-        slot.Current = current;
-        slot.Reported.Buttons = current.Buttons;
-        slot.Reported.Touchpads = current.Touchpads;
-        for (std::size_t axis = 0; axis < GamepadAxisCount; ++axis)
-        {
-            if (ShouldReportAxis(previous.Axes.at(axis), current.Axes.at(axis), m_Settings.AxisEventThreshold))
-            {
-                slot.Reported.Axes.at(axis) = current.Axes.at(axis);
-            }
-        }
-
-        for (std::size_t button = 0; button < GamepadButtonCount; ++button)
-        {
-            const bool pressed = current.Buttons.at(button);
-            if (pressed == previous.Buttons.at(button))
-            {
-                continue;
-            }
-            if (pressed)
-            {
-                GamepadButtonPressedEvent event(gamepad, static_cast<GamepadButton>(button));
-                send(event);
-            }
-            else
-            {
-                GamepadButtonReleasedEvent event(gamepad, static_cast<GamepadButton>(button));
-                send(event);
-            }
-        }
-        for (std::size_t axis = 0; axis < GamepadAxisCount; ++axis)
-        {
-            if (slot.Reported.Axes.at(axis) != previous.Axes.at(axis))
-            {
-                GamepadAxisMovedEvent event(gamepad, static_cast<GamepadAxis>(axis), slot.Reported.Axes.at(axis));
-                send(event);
-            }
-        }
+        const GamepadState previous = slot.State;
+        slot.State = current;
+        SendButtonChanges(gamepad, previous, current, send);
+        SendAxisChanges(gamepad, current, slot.ReportedAxes, m_Settings.AxisEventThreshold, send);
         SendFingerChanges(gamepad, slot.TouchpadCount, previous, current, send);
+    }
+
+    void Gamepads::Connect(GamepadId gamepad, const GamepadReading& reading, const GamepadState& state, Slot& slot, const EventCallback& send)
+    {
+        slot = Slot{.Connected = true,
+                    .Name = reading.Name,
+                    .Type = reading.Type,
+                    .TouchpadCount = std::min(reading.TouchpadCount, MaxGamepadTouchpads),
+                    .State = state,
+                    .ReportedAxes = state.Axes};
+        GamepadConnectedEvent event(gamepad, slot.Name);
+        send(event);
+    }
+
+    void Gamepads::Disconnect(GamepadId gamepad, Slot& slot, const EventCallback& send)
+    {
+        const GamepadState held = slot.State;
+        const std::size_t touchpadCount = slot.TouchpadCount;
+        slot = Slot{};
+
+        SendButtonChanges(gamepad, held, GamepadState{}, send);
+        SendFingerChanges(gamepad, touchpadCount, held, GamepadState{}, send);
+        GamepadDisconnectedEvent event(gamepad);
+        send(event);
     }
 
     const Gamepads::Slot* Gamepads::FindConnected(GamepadId gamepad) const
@@ -234,13 +233,19 @@ namespace Quasar
     bool Gamepads::IsButtonPressed(GamepadId gamepad, GamepadButton button) const
     {
         const Slot* slot = FindConnected(gamepad);
-        return slot != nullptr && slot->Current.IsPressed(button);
+        return slot != nullptr && slot->State.IsPressed(button);
     }
 
     float Gamepads::GetAxis(GamepadId gamepad, GamepadAxis axis) const
     {
         const Slot* slot = FindConnected(gamepad);
-        return slot != nullptr ? slot->Current.GetAxis(axis) : 0.0f;
+        return slot != nullptr ? slot->State.GetAxis(axis) : 0.0f;
+    }
+
+    bool Gamepads::IsTouched(GamepadId gamepad, GamepadTouchSensor sensor) const
+    {
+        const Slot* slot = FindConnected(gamepad);
+        return slot != nullptr && slot->State.IsTouched(sensor);
     }
 
     std::size_t Gamepads::GetTouchpadCount(GamepadId gamepad) const
@@ -256,6 +261,6 @@ namespace Quasar
         {
             return {};
         }
-        return slot->Current.Touchpads.at(touchpad).Fingers.at(finger);
+        return slot->State.Touchpads.at(touchpad).Fingers.at(finger);
     }
 }

@@ -1,4 +1,5 @@
 #include <quasar/core/Application.h>
+#include <quasar/input/Gamepads.h>
 #include <quasar/input/Input.h>
 
 #include <quasar/core/Window.h>

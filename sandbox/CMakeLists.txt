@@ -1,6 +1,8 @@
 add_executable(QuasarSandbox)
 
 target_sources(QuasarSandbox PRIVATE
+    src/GamepadPanel.cpp
+    src/GamepadPanel.h
     src/SandboxApplication.cpp
 )
 

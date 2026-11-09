@@ -19,6 +19,9 @@ namespace Quasar
     /// @brief Number of axes of a gamepad.
     inline constexpr std::size_t GamepadAxisCount = 6;
 
+    /// @brief Number of touch sensors that a gamepad can have.
+    inline constexpr std::size_t GamepadTouchSensorCount = 4;
+
     /// @brief Number of touchpads that a gamepad can have. A gamepad with more touchpads only gives the first ones.
     inline constexpr std::size_t MaxGamepadTouchpads = 2;
 
@@ -60,7 +63,9 @@ namespace Quasar
     /// PlayStation controller. The values are the same as the SDL gamepad buttons, so an SDL button converts with
     /// `static_cast<GamepadButton>(button)`.
     ///
-    /// The buttons from Misc1 are only on some gamepads. On the other gamepads, they are never pressed.
+    /// The buttons from Misc1 are only on some gamepads. On the other gamepads, they are never pressed. On the Steam
+    /// controllers, SDL gives the touch sensors of the sticks and of the grips as Misc3 to Misc6. The engine reads them as
+    /// GamepadTouchSensor instead, so these buttons are never pressed on these gamepads.
     enum class GamepadButton : std::uint8_t
     {
         A = 0,             ///< Bottom face button: A on Xbox, Cross on PlayStation.
@@ -104,5 +109,15 @@ namespace Quasar
         RightY = 3,      ///< Vertical axis of the right stick.
         LeftTrigger = 4, ///< Left trigger.
         RightTrigger = 5 ///< Right trigger.
+    };
+
+    /// @brief Sensor that feels a thumb or a hand without a press. Only the Steam controllers have them: the Steam
+    /// Controller, the Steam Deck and the HORI Steam controller, which has no grip sensors.
+    enum class GamepadTouchSensor : std::uint8_t
+    {
+        LeftStick = 0,  ///< A thumb rests on the left stick.
+        RightStick = 1, ///< A thumb rests on the right stick.
+        LeftGrip = 2,   ///< The left hand holds the back of the gamepad.
+        RightGrip = 3   ///< The right hand holds the back of the gamepad.
     };
 }
