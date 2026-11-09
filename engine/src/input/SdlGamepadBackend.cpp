@@ -64,7 +64,8 @@ namespace Quasar
             }
         }
 
-        constexpr std::array<SDL_GamepadButton, GamepadTouchSensorCount> SteamTouchSensorButtons{SDL_GAMEPAD_BUTTON_MISC3, SDL_GAMEPAD_BUTTON_MISC4, SDL_GAMEPAD_BUTTON_MISC5, SDL_GAMEPAD_BUTTON_MISC6};
+        constexpr std::array<SDL_GamepadButton, GamepadTouchSensorCount> SteamTouchSensorButtons{SDL_GAMEPAD_BUTTON_MISC3, SDL_GAMEPAD_BUTTON_MISC4,
+                                                                                                 SDL_GAMEPAD_BUTTON_MISC5, SDL_GAMEPAD_BUTTON_MISC6};
 
         bool HasSteamTouchSensors(SDL_Gamepad* gamepad)
         {
