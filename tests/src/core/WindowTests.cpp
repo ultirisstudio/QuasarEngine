@@ -97,7 +97,7 @@ TEST_CASE("Resizing a window sends a resize event with the new size")
     CHECK(window->GetHeight() == 600);
 }
 
-TEST_CASE("Minimizing and restoring a window sends minimize events")
+TEST_CASE("Minimizing and restoring a window sends one minimize event each time its state changes")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
@@ -105,14 +105,18 @@ TEST_CASE("Minimizing and restoring a window sends minimize events")
     std::vector<std::string> events;
     RecordEvents(*window, events);
 
+    TestHelpers::SendRestore(*window);
     TestHelpers::SendMinimize(*window);
-    window->Update();
-    REQUIRE(Contains(events, Quasar::WindowMinimizeEvent(true)));
-    CHECK_FALSE(Contains(events, Quasar::WindowMinimizeEvent(false)));
-
+    TestHelpers::SendMinimize(*window);
+    TestHelpers::SendRestore(*window);
     TestHelpers::SendRestore(*window);
     window->Update();
-    CHECK(Contains(events, Quasar::WindowMinimizeEvent(false)));
+
+    const std::vector<std::string> expected{
+        Quasar::WindowMinimizeEvent(true).ToString(),
+        Quasar::WindowMinimizeEvent(false).ToString(),
+    };
+    CHECK(events == expected);
 }
 
 TEST_CASE("The keyboard events of SDL send key events")
@@ -127,6 +131,7 @@ TEST_CASE("The keyboard events of SDL send key events")
     TestHelpers::SendKey(*window, Quasar::Key::A, true, true);
     TestHelpers::SendKey(*window, Quasar::Key::A, false);
     TestHelpers::SendKey(*window, static_cast<Quasar::Key>(SDL_SCANCODE_UNKNOWN), true);
+    TestHelpers::SendKey(*window, static_cast<Quasar::Key>(Quasar::KeyCount), true);
     TestHelpers::SendText(*window, "q\xC3\xA9");
     window->Update();
 
@@ -149,6 +154,17 @@ TEST_CASE("A window starts the text input again when something else stops it")
     window->Update();
 
     CHECK(SDL_TextInputActive(window->GetNativeWindow()));
+}
+
+TEST_CASE("A key or a mouse button outside their codes is never down")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+
+    CHECK_FALSE(window->IsKeyDown(static_cast<Quasar::Key>(Quasar::KeyCount)));
+    CHECK_FALSE(window->IsMouseButtonDown(static_cast<Quasar::MouseButton>(0)));
+    CHECK_FALSE(window->IsMouseButtonDown(static_cast<Quasar::MouseButton>(33)));
 }
 
 TEST_CASE("A key that prints a character is named with this character")
@@ -190,6 +206,7 @@ TEST_CASE("The mouse events of SDL send mouse events")
     TestHelpers::SendMouseButton(*window, Quasar::MouseButton::Left, false);
     TestHelpers::SendMouseMotion(*window, 12.5f, 34.0f);
     TestHelpers::SendScroll(*window, 0.0f, -1.0f);
+    TestHelpers::SendScroll(*window, 2.0f, -1.0f, true);
     window->Update();
 
     const std::vector<std::string> expected{
@@ -197,6 +214,7 @@ TEST_CASE("The mouse events of SDL send mouse events")
         Quasar::MouseButtonReleasedEvent(Quasar::MouseButton::Left).ToString(),
         Quasar::MouseMovedEvent(12.5f, 34.0f).ToString(),
         Quasar::MouseScrolledEvent(0.0f, -1.0f).ToString(),
+        Quasar::MouseScrolledEvent(-2.0f, 1.0f).ToString(),
     };
     CHECK(events == expected);
 }

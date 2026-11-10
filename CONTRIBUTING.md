@@ -150,20 +150,25 @@ The helpers shared by the tests are in `tests/src/helpers/`, and are included wi
 
 ### Coverage
 
-The coverage tells which code the unit tests run: the lines, the functions, and the branches of each condition, such
-as both sides of an `if`. It shows where tests are missing, not whether the tests are good: a line can run in a test
-that checks nothing about it.
+The coverage tells which code the unit tests run: the lines, the functions, and the conditions, where each part of a
+condition such as `a && b` must be seen both true and false. It shows where tests are missing, not whether the tests
+are good: a line can run in a test that checks nothing about it.
 
-The "Measure the test coverage" job of the Documentation workflow measures it on Linux with GCC, for the code of
-`engine/` and `editor/`. The summary of each run shows the three percentages, and the detailed report, line by line, is
+The "Measure the test coverage" job of the Documentation workflow measures it on Linux with GCC 14, for the code of
+`engine/` and `editor/`. GCC 14 measures the conditions of the source code, while the branches that GCC counts also
+include the ones that the compiler adds, such as the initialization of a `static` variable, so the badge shows the
+conditions. The summary of each run shows the three percentages, and the detailed report, line by line, is
 in the `coverage` artifact of the run. The report of `master` is published at
 https://ultirisstudio.github.io/QuasarEngine/coverage/, next to the badges of the README.
 
 The entry points of the programs, `engine/src/core/EntryPoint.cpp` and `editor/src/main.cpp`, are not measured: only
 the programs run them, never the tests. A line of a template counts as run when one of its instances runs it, so an
-instance that only the sandbox uses does not lower the coverage of the engine.
+instance that only the sandbox uses does not lower the coverage of the engine. The conditions of
+`QUASAR_ENGINE_ASSERT` are not measured either, because a test cannot make an assertion fail, nor the ones that GCC
+puts on a closing brace, which come from the cleanup that it adds and not from the code.
 
-To measure it locally on Linux, install [gcovr](https://gcovr.com) (`pipx install gcovr`), then run from the
+To measure it locally on Linux, install GCC 14 (`sudo apt install g++-14`) and [gcovr](https://gcovr.com)
+(`pipx install gcovr`), then run from the
 repository root. The `ninja` and first `find` commands remove the files left by a source file that was moved or deleted,
 because gcovr fails on them:
 

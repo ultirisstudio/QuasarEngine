@@ -183,6 +183,56 @@ TEST_CASE("A close request of the window stops the main loop")
     CHECK(Count(calls, EventCall("A", Quasar::EventType::WindowClose)) == 0);
 }
 
+TEST_CASE("Closing the window stops the main loop")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    ScriptLayer& layer = AddLayer(*application, "A", calls);
+    layer.UpdateAction = [&application](int updates)
+    {
+        if (updates == 2)
+        {
+            application->GetWindow().Close();
+        }
+    };
+
+    application->Run();
+
+    CHECK(layer.Updates == 2);
+}
+
+TEST_CASE("While the window has no area the layers are updated but not rendered")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    ScriptLayer& layer = AddLayer(*application, "A", calls);
+    layer.UpdateAction = [&application](int updates)
+    {
+        if (updates == 1)
+        {
+            TestHelpers::SendResize(application->GetWindow(), 0, 600);
+        }
+        if (updates == 2)
+        {
+            TestHelpers::SendResize(application->GetWindow(), 800, 0);
+        }
+        if (updates == 3)
+        {
+            TestHelpers::SendResize(application->GetWindow(), 800, 600);
+        }
+    };
+    layer.CloseAfter = 5;
+
+    application->Run();
+
+    CHECK(Count(calls, "A update") == 5);
+    CHECK(Count(calls, "A render") == 3);
+}
+
 TEST_CASE("While the window is minimized the layers are updated but not rendered")
 {
     const TestHelpers::ScopedLog log;

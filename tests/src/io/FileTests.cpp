@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -90,6 +91,20 @@ TEST_CASE("Writing a file creates its missing parent directories")
     const std::optional<std::string> text = Quasar::ReadTextFile(path);
     REQUIRE(text.has_value());
     CHECK(*text == "line 1\r\nline 2\n");
+}
+
+TEST_CASE("A file name without a folder is written in the current directory")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder folder;
+    const TestHelpers::ScopedCurrentDirectory currentDirectory;
+    std::filesystem::current_path(folder.GetPath());
+
+    REQUIRE(Quasar::WriteTextFile("file.txt", "content"));
+
+    const std::optional<std::string> text = Quasar::ReadTextFile(folder.GetPath() / "file.txt");
+    REQUIRE(text.has_value());
+    CHECK(*text == "content");
 }
 
 TEST_CASE("WriteBinaryFile writes every byte including zero bytes")
