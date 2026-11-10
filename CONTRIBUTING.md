@@ -159,6 +159,10 @@ The "Measure the test coverage" job of the Documentation workflow measures it on
 in the `coverage` artifact of the run. The report of `master` is published at
 https://ultirisstudio.github.io/QuasarEngine/coverage/, next to the badges of the README.
 
+The entry points of the programs, `engine/src/core/EntryPoint.cpp` and `editor/src/main.cpp`, are not measured: only
+the programs run them, never the tests. A line of a template counts as run when one of its instances runs it, so an
+instance that only the sandbox uses does not lower the coverage of the engine.
+
 To measure it locally on Linux, install [gcovr](https://gcovr.com) (`pipx install gcovr`), then run from the
 repository root. The `ninja` and first `find` commands remove the files left by a source file that was moved or deleted,
 because gcovr fails on them:

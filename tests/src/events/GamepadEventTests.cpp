@@ -5,6 +5,9 @@
 #include <glm/vec2.hpp>
 
 #include <array>
+#include <set>
+#include <string>
+#include <vector>
 
 using Quasar::EventCategory;
 using Quasar::EventType;
@@ -94,6 +97,38 @@ TEST_CASE("Gamepad finger events carry the gamepad, the touchpad, the finger, th
     CHECK(moved.GetFinger() == 0);
     CHECK(moved.GetPosition() == glm::vec2{0.25f, 0.75f});
     CHECK(moved.GetPressure() == 0.5f);
+}
+
+TEST_CASE("Gamepad events are printed differently when their type or their data differ")
+{
+    const std::vector<std::string> texts{
+        GamepadConnectedEvent(GamepadId{0}, "Pad").ToString(),
+        GamepadConnectedEvent(GamepadId{1}, "Pad").ToString(),
+        GamepadConnectedEvent(GamepadId{0}, "Other pad").ToString(),
+        GamepadDisconnectedEvent(GamepadId{0}).ToString(),
+        GamepadDisconnectedEvent(GamepadId{1}).ToString(),
+        GamepadButtonPressedEvent(GamepadId{0}, GamepadButton::A).ToString(),
+        GamepadButtonPressedEvent(GamepadId{1}, GamepadButton::A).ToString(),
+        GamepadButtonPressedEvent(GamepadId{0}, GamepadButton::B).ToString(),
+        GamepadButtonReleasedEvent(GamepadId{0}, GamepadButton::A).ToString(),
+        GamepadButtonReleasedEvent(GamepadId{1}, GamepadButton::A).ToString(),
+        GamepadButtonReleasedEvent(GamepadId{0}, GamepadButton::B).ToString(),
+        GamepadAxisMovedEvent(GamepadId{0}, GamepadAxis::LeftX, 0.5f).ToString(),
+        GamepadAxisMovedEvent(GamepadId{1}, GamepadAxis::LeftX, 0.5f).ToString(),
+        GamepadAxisMovedEvent(GamepadId{0}, GamepadAxis::LeftY, 0.5f).ToString(),
+        GamepadAxisMovedEvent(GamepadId{0}, GamepadAxis::LeftX, 0.25f).ToString(),
+        GamepadFingerDownEvent(GamepadId{0}, 0, 0, Center, 1.0f).ToString(),
+        GamepadFingerUpEvent(GamepadId{0}, 0, 0, Center, 1.0f).ToString(),
+        GamepadFingerMovedEvent(GamepadId{0}, 0, 0, Center, 1.0f).ToString(),
+        GamepadFingerMovedEvent(GamepadId{1}, 0, 0, Center, 1.0f).ToString(),
+        GamepadFingerMovedEvent(GamepadId{0}, 1, 0, Center, 1.0f).ToString(),
+        GamepadFingerMovedEvent(GamepadId{0}, 0, 1, Center, 1.0f).ToString(),
+        GamepadFingerMovedEvent(GamepadId{0}, 0, 0, glm::vec2{0.25f, 0.5f}, 1.0f).ToString(),
+        GamepadFingerMovedEvent(GamepadId{0}, 0, 0, glm::vec2{0.5f, 0.25f}, 1.0f).ToString(),
+        GamepadFingerMovedEvent(GamepadId{0}, 0, 0, Center, 0.5f).ToString(),
+    };
+
+    CHECK(std::set<std::string>(texts.begin(), texts.end()).size() == texts.size());
 }
 
 TEST_CASE("A gamepad event reaches the handler of its type")

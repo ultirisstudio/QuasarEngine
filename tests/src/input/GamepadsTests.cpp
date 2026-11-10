@@ -711,6 +711,7 @@ TEST_CASE("The application reads the gamepads each frame and sends their events 
     FakeGamepads fake;
     fake.Connect(First);
     fake.SetButton(First, GamepadButton::A, true);
+    fake.SetAxis(First, GamepadAxis::LeftTrigger, 1.0f);
     fake.SetTouchpadCount(First, 1);
     fake.SetFinger(First, 0, 0, {.Down = true, .Position = {0.5f, 0.5f}, .Pressure = 1.0f});
     application->GetGamepads().SetBackend(fake.CreateBackend());
@@ -724,6 +725,7 @@ TEST_CASE("The application reads the gamepads each frame and sends their events 
     CHECK(gamepadLayer.WasAPressedInSecondFrame());
     CHECK(gamepadLayer.GetEvents() == std::vector<RecordedEvent>{Connected(First), Pressed(First, GamepadButton::B)});
     CHECK(Quasar::Input::IsGamepadButtonPressed(First, GamepadButton::B));
+    CHECK(Quasar::Input::GetGamepadAxis(First, GamepadAxis::LeftTrigger) == 1.0f);
     CHECK(Quasar::Input::GetGamepadTouchpadFinger(First, 0, 0).Down);
 }
 
@@ -893,6 +895,31 @@ TEST_CASE("A gamepad read with SDL never takes the id of a gamepad unplugged in 
     CHECK(*secondId != *firstId);
     CHECK(std::ranges::count(events, Disconnected(*firstId)) == 1);
     CHECK(std::ranges::count(events, Connected(*secondId)) == 1);
+}
+
+TEST_CASE("A gamepad read with SDL waits for a free id when all the ids are taken")
+{
+    Quasar::Gamepads gamepads;
+    std::vector<Quasar::Scope<VirtualGamepad>> virtualGamepads;
+    for (std::size_t index = 0; index <= Quasar::MaxGamepads; ++index)
+    {
+        virtualGamepads.push_back(Quasar::CreateScope<VirtualGamepad>());
+        REQUIRE(virtualGamepads.back()->IsPlugged());
+    }
+    Update(gamepads);
+    const std::optional<GamepadId> firstId = FindVirtualGamepad(gamepads);
+    REQUIRE(firstId.has_value());
+
+    virtualGamepads.front()->Unplug();
+    const std::vector<RecordedEvent> unplugEvents = Update(gamepads);
+    const std::vector<RecordedEvent> nextEvents = Update(gamepads);
+
+    CHECK(std::ranges::count(unplugEvents, Disconnected(*firstId)) == 1);
+    CHECK(std::ranges::count(nextEvents, Connected(*firstId)) == 1);
+    for (std::size_t index = 0; index < Quasar::MaxGamepads; ++index)
+    {
+        CHECK(gamepads.IsConnected(static_cast<GamepadId>(index)));
+    }
 }
 
 TEST_CASE("The type of a gamepad read with SDL comes from its maker and its model")
