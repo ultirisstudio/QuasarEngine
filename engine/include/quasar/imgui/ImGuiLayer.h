@@ -5,16 +5,19 @@
 /// \author Kurogenshi
 /// \date 2026-11-02
 
+#include <quasar/core/Base.h>
 #include <quasar/core/Layer.h>
 #include <quasar/events/Event.h>
 
 namespace Quasar
 {
     class Window;
+    class ImGuiBackend;
 
-    /// @brief Overlay that starts Dear ImGui with its SDL and OpenGL backends, and wraps each frame.
+    /// @brief Overlay that starts Dear ImGui with the backends of the window, and wraps each frame.
     ///
-    /// The application creates it when its window has an OpenGL context, and keeps it above every other layer and
+    /// The backends are the SDL backend of ImGui and the one of the graphics API of the window, for example OpenGL. The
+    /// application creates the layer when its window has a graphics context, and keeps it above every other layer and
     /// overlay. Each frame, the application calls Begin(), then Layer::OnImGuiRender() on every layer from the bottom
     /// to the top, then End().
     ///
@@ -29,11 +32,18 @@ namespace Quasar
     class ImGuiLayer final : public Layer
     {
     public:
-        /// @brief Creates the layer for a window that has an OpenGL context. ImGui starts when the layer is attached.
+        /// @brief Creates the layer for a window that has a graphics context. ImGui starts when the layer is attached.
         /// @param window The window where ImGui draws and reads its input. It must outlive the layer.
         explicit ImGuiLayer(Window& window);
 
-        /// @brief Starts ImGui and its SDL and OpenGL backends, and gives ImGui the SDL events of the window.
+        ~ImGuiLayer() override;
+
+        ImGuiLayer(const ImGuiLayer&) = delete;
+        ImGuiLayer& operator=(const ImGuiLayer&) = delete;
+        ImGuiLayer(ImGuiLayer&&) = delete;
+        ImGuiLayer& operator=(ImGuiLayer&&) = delete;
+
+        /// @brief Starts ImGui and its backends, and gives ImGui the SDL events of the window.
         void OnAttach() override;
 
         /// @brief Stops the backends, then ImGui.
@@ -57,6 +67,7 @@ namespace Quasar
 
     private:
         Window* m_Window = nullptr;
+        Scope<ImGuiBackend> m_Backend;
         bool m_BlockEvents = true;
     };
 }

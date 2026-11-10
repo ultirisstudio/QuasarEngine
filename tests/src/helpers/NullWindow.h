@@ -8,6 +8,7 @@
 #include <quasar/core/Window.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
+#include <quasar/renderer/GraphicsAPI.h>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_hints.h>
@@ -51,7 +52,7 @@ namespace TestHelpers
 
     inline Quasar::Scope<Quasar::Window> CreateNullWindow(Quasar::WindowSpecification specification = {})
     {
-        specification.GraphicsContext = false;
+        specification.Graphics = Quasar::GraphicsAPI::None;
         return CreateTestWindow(specification);
     }
 
@@ -75,7 +76,7 @@ namespace TestHelpers
 
     inline Quasar::Scope<Quasar::Application> CreateNullApplication(Quasar::ApplicationSpecification specification = {})
     {
-        specification.Window.GraphicsContext = false;
+        specification.Window.Graphics = Quasar::GraphicsAPI::None;
         return CreateTestApplication(specification);
     }
 

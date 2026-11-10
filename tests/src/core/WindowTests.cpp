@@ -6,6 +6,7 @@
 #include <quasar/events/WindowEvent.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
+#include <quasar/renderer/GraphicsAPI.h>
 
 #include <SDL3/SDL_scancode.h>
 #include <doctest/doctest.h>
@@ -25,6 +26,15 @@ namespace
     {
         return std::ranges::find(events, event.ToString()) != events.end();
     }
+}
+
+TEST_CASE("A window without a graphics API has no graphics context")
+{
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+
+    CHECK(window->GetGraphicsAPI() == Quasar::GraphicsAPI::None);
+    CHECK(window->GetGraphicsContext() == nullptr);
 }
 
 TEST_CASE("A window is created with the settings of its specification")

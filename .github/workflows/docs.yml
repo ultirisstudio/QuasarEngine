@@ -126,8 +126,11 @@ jobs:
       - name: Build
         run: cmake --build --preset $PRESET
 
-      - name: Remove the counters of the previous run
-        run: find build/$PRESET -name '*.gcda' -delete
+      - name: Remove the files of the previous run
+        run: |
+          ninja -C build/$PRESET -t cleandead
+          find build/$PRESET -name '*.gcno' -exec sh -c 'for file; do [ -e "${file%.gcno}.o" ] || rm "$file"; done' sh {} +
+          find build/$PRESET -name '*.gcda' -delete
 
       - name: Test
         run: xvfb-run -a ctest --preset $PRESET

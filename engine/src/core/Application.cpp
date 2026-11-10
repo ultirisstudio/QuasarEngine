@@ -3,6 +3,7 @@
 #include <quasar/events/WindowEvent.h>
 #include <quasar/io/UserDataDirectory.h>
 #include <quasar/log/Log.h>
+#include <quasar/renderer/GraphicsAPI.h>
 
 #include <spdlog/fmt/std.h>
 
@@ -27,7 +28,7 @@ namespace Quasar
         s_Instance = this;
         m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
 
-        if (m_Specification.Window.GraphicsContext)
+        if (m_Window->GetGraphicsAPI() != GraphicsAPI::None)
         {
             m_ImGuiLayer = CreateScope<ImGuiLayer>(*m_Window);
             m_ImGuiLayer->OnAttach();

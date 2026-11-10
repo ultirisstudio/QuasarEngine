@@ -4,7 +4,7 @@
 #include <quasar/events/WindowEvent.h>
 #include <quasar/log/Log.h>
 
-#include <renderer/OpenGLContext.h>
+#include <renderer/GraphicsContextFactory.h>
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
@@ -92,11 +92,7 @@ namespace Quasar
         {
             flags |= SDL_WINDOW_HIDDEN;
         }
-        if (specification.GraphicsContext)
-        {
-            flags |= SDL_WINDOW_OPENGL;
-            OpenGLContext::SetAttributes();
-        }
+        flags |= PrepareGraphicsWindow(specification.Graphics);
 
         SDL_Window* handle =
             SDL_CreateWindow(specification.Title.c_str(), static_cast<int>(specification.Width), static_cast<int>(specification.Height), flags);
@@ -111,12 +107,12 @@ namespace Quasar
 
         Scope<Window> window(new Window(handle, specification));
 
-        if (specification.GraphicsContext)
+        if (specification.Graphics != GraphicsAPI::None)
         {
-            window->m_Context = OpenGLContext::Create(handle);
+            window->m_Context = CreateGraphicsContext(specification.Graphics, handle);
             if (window->m_Context == nullptr)
             {
-                QUASAR_ENGINE_ERROR("Cannot create the window '{}': it has no usable OpenGL context", specification.Title);
+                QUASAR_ENGINE_ERROR("Cannot create the window '{}': it has no usable graphics context", specification.Title);
                 return nullptr;
             }
         }
@@ -225,9 +221,14 @@ namespace Quasar
         return m_Handle;
     }
 
-    SDL_GLContextState* Window::GetNativeContext() const
+    GraphicsAPI Window::GetGraphicsAPI() const
     {
-        return m_Context ? m_Context->GetNativeContext() : nullptr;
+        return m_Context ? m_Context->GetAPI() : GraphicsAPI::None;
+    }
+
+    GraphicsContext* Window::GetGraphicsContext() const
+    {
+        return m_Context.get();
     }
 
     // Not static on purpose: the video support of SDL must be started, which an existing window guarantees

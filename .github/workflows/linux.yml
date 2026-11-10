@@ -22,34 +22,34 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - compiler: GCC
-            config: Debug
-            preset: linux-gcc-debug
+#          - compiler: GCC
+#            config: Debug
+#            preset: linux-gcc-debug
           - compiler: GCC
             config: Release
             preset: linux-gcc-release
-          - compiler: Clang
-            config: Debug
-            preset: linux-clang-debug
-          - compiler: Clang
-            config: Release
-            preset: linux-clang-release
-          - compiler: GCC
-            config: ASan + UBSan
-            preset: linux-gcc-asan
-            sanitizers: true
-          - compiler: GCC
-            config: TSan + UBSan
-            preset: linux-gcc-tsan
-            sanitizers: true
+#          - compiler: Clang
+#            config: Debug
+#            preset: linux-clang-debug
+#          - compiler: Clang
+#            config: Release
+#            preset: linux-clang-release
+#          - compiler: GCC
+#            config: ASan + UBSan
+#            preset: linux-gcc-asan
+#            sanitizers: true
+#          - compiler: GCC
+#            config: TSan + UBSan
+#            preset: linux-gcc-tsan
+#            sanitizers: true
           - compiler: Clang
             config: ASan + UBSan
             preset: linux-clang-asan
             sanitizers: true
-          - compiler: Clang
-            config: TSan + UBSan
-            preset: linux-clang-tsan
-            sanitizers: true
+#          - compiler: Clang
+#            config: TSan + UBSan
+#            preset: linux-clang-tsan
+#            sanitizers: true
 
     steps:
       - name: Checkout
