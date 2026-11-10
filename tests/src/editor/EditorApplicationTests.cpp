@@ -19,14 +19,6 @@
 #include <utility>
 #include <vector>
 
-TEST_CASE("The editor application has a graphics API and keeps its arguments")
-{
-    const Quasar::ApplicationSpecification specification = Quasar::Editor::GetEditorSpecification({"--project", "Game"});
-
-    CHECK(specification.Window.Graphics != Quasar::GraphicsAPI::None);
-    CHECK(specification.Arguments == std::vector<std::string>{"--project", "Game"});
-}
-
 namespace
 {
     bool HasEditorLayer(const Quasar::Application& application)
@@ -34,6 +26,14 @@ namespace
         return std::ranges::any_of(application.GetLayerStack(), [](const Quasar::Scope<Quasar::Layer>& layer)
                                    { return dynamic_cast<const Quasar::Editor::EditorLayer*>(layer.get()) != nullptr; });
     }
+}
+
+TEST_CASE("The editor application has a graphics API and keeps its arguments")
+{
+    const Quasar::ApplicationSpecification specification = Quasar::Editor::GetEditorSpecification({"--project", "Game"});
+
+    CHECK(specification.Window.Graphics != Quasar::GraphicsAPI::None);
+    CHECK(specification.Arguments == std::vector<std::string>{"--project", "Game"});
 }
 
 TEST_CASE("The editor application opens its window and runs the editor layer")

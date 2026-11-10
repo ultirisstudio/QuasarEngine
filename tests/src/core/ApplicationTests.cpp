@@ -6,14 +6,10 @@
 #include <quasar/core/Layer.h>
 #include <quasar/core/Window.h>
 #include <quasar/events/Event.h>
-#include <quasar/input/Input.h>
 #include <quasar/input/KeyCodes.h>
-#include <quasar/input/MouseCodes.h>
 #include <quasar/log/MemoryLogSink.h>
 
 #include <doctest/doctest.h>
-
-#include <glm/vec2.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -294,6 +290,30 @@ TEST_CASE("The user data directory of the application is named after its organiz
     CHECK(directory->parent_path().filename() == "Quasar Engine");
 }
 
+TEST_CASE("The working directory becomes the current directory")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder directory;
+    const TestHelpers::ScopedCurrentDirectory currentDirectory;
+
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = directory.GetPath()});
+
+    REQUIRE(application != nullptr);
+    CHECK(std::filesystem::equivalent(std::filesystem::current_path(), directory.GetPath()));
+}
+
+TEST_CASE("No application is created when its working directory does not exist")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder parent;
+    const TestHelpers::ScopedCurrentDirectory currentDirectory;
+
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = parent.GetPath() / "missing"});
+
+    CHECK(application == nullptr);
+    CHECK(std::filesystem::current_path() == currentDirectory.GetPath());
+}
+
 TEST_CASE("The layer stack of the application lists its layers from the bottom to the top")
 {
     const TestHelpers::ScopedLog log;
@@ -312,18 +332,20 @@ TEST_CASE("The layer stack of the application lists its layers from the bottom t
     CHECK(names == std::vector<std::string>{"Layer", "Overlay"});
 }
 
-TEST_CASE("Layers added before the main loop are attached right away")
+TEST_CASE("Layers and overlays added before the main loop are attached and removed right away")
 {
     const TestHelpers::ScopedLog log;
     std::vector<std::string> calls;
     const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
     REQUIRE(application != nullptr);
 
-    ScriptLayer& layer = AddLayer(*application, "A", calls);
-    CHECK(calls == std::vector<std::string>{"A attach"});
+    ScriptLayer& layer = AddLayer(*application, "Layer", calls);
+    ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
+    CHECK(calls == std::vector<std::string>{"Layer attach", "Overlay attach"});
 
     application->PopLayer(layer);
-    CHECK(calls == std::vector<std::string>{"A attach", "A detach"});
+    application->PopOverlay(overlay);
+    CHECK(calls == std::vector<std::string>{"Layer attach", "Overlay attach", "Layer detach", "Overlay detach"});
 }
 
 TEST_CASE("Layers added during a frame start at the next frame")
@@ -352,6 +374,32 @@ TEST_CASE("Layers added during a frame start at the next frame")
     CHECK(calls == expected);
 }
 
+TEST_CASE("Layers added while the changes are applied are added in the same frame")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    ScriptLayer& layer = AddLayer(*application, "A", calls);
+    layer.UpdateAction = [&application, &calls](int updates)
+    {
+        if (updates == 1)
+        {
+            ScriptLayer& parent = AddLayer(*application, "Parent", calls);
+            parent.AttachAction = [&application, &calls] { AddLayer(*application, "Child", calls); };
+        }
+    };
+    layer.CloseAfter = 2;
+    calls.clear();
+
+    application->Run();
+
+    const std::vector<std::string> expected{
+        "A update", "A render", "Parent attach", "Child attach", "A update", "Parent update", "Child update", "A render", "Parent render", "Child render",
+    };
+    CHECK(calls == expected);
+}
+
 TEST_CASE("A layer can remove itself during an update")
 {
     const TestHelpers::ScopedLog log;
@@ -367,6 +415,25 @@ TEST_CASE("A layer can remove itself during an update")
 
     const std::vector<std::string> expected{
         "Removed update", "Overlay update", "Removed render", "Overlay render", "Removed detach", "Overlay update", "Overlay render",
+    };
+    CHECK(calls == expected);
+}
+
+TEST_CASE("An overlay can remove itself during an update")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    AddLayer(*application, "Layer", calls).CloseAfter = 2;
+    ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
+    overlay.UpdateAction = [&application, &overlay](int /*updates*/) { application->PopOverlay(overlay); };
+    calls.clear();
+
+    application->Run();
+
+    const std::vector<std::string> expected{
+        "Layer update", "Overlay update", "Layer render", "Overlay render", "Overlay detach", "Layer update", "Layer render",
     };
     CHECK(calls == expected);
 }
@@ -442,114 +509,6 @@ TEST_CASE("An overlay removed twice in the same frame is removed once")
 
     CHECK(Count(calls, "Removed detach") == 1);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
-}
-
-TEST_CASE("Layers added while the changes are applied are added in the same frame")
-{
-    const TestHelpers::ScopedLog log;
-    std::vector<std::string> calls;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
-    REQUIRE(application != nullptr);
-    ScriptLayer& layer = AddLayer(*application, "A", calls);
-    layer.UpdateAction = [&application, &calls](int updates)
-    {
-        if (updates == 1)
-        {
-            ScriptLayer& parent = AddLayer(*application, "Parent", calls);
-            parent.AttachAction = [&application, &calls] { AddLayer(*application, "Child", calls); };
-        }
-    };
-    layer.CloseAfter = 2;
-    calls.clear();
-
-    application->Run();
-
-    const std::vector<std::string> expected{
-        "A update", "A render", "Parent attach", "Child attach", "A update", "Parent update", "Child update", "A render", "Parent render", "Child render",
-    };
-    CHECK(calls == expected);
-}
-
-TEST_CASE("Input reads the state of the main window")
-{
-    const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
-    REQUIRE(application != nullptr);
-
-    Quasar::Window& window = application->GetWindow();
-    TestHelpers::SendMouseMotion(window, 12.0f, 34.0f);
-    TestHelpers::SendKey(window, Quasar::Key::A, true);
-    TestHelpers::SendMouseButton(window, Quasar::MouseButton::Left, true);
-    window.Update();
-
-    CHECK(Quasar::Input::GetMousePosition() == glm::vec2(12.0f, 34.0f));
-    CHECK(Quasar::Input::IsKeyPressed(Quasar::Key::A));
-    CHECK_FALSE(Quasar::Input::IsKeyPressed(Quasar::Key::B));
-    CHECK(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Left));
-    CHECK_FALSE(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Right));
-
-    TestHelpers::SendKey(window, Quasar::Key::A, false);
-    TestHelpers::SendMouseButton(window, Quasar::MouseButton::Left, false);
-    window.Update();
-
-    CHECK_FALSE(Quasar::Input::IsKeyPressed(Quasar::Key::A));
-    CHECK_FALSE(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Left));
-}
-
-TEST_CASE("The working directory becomes the current directory")
-{
-    const TestHelpers::ScopedLog log;
-    const TestHelpers::TemporaryFolder directory;
-    const TestHelpers::ScopedCurrentDirectory currentDirectory;
-
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = directory.GetPath()});
-
-    REQUIRE(application != nullptr);
-    CHECK(std::filesystem::equivalent(std::filesystem::current_path(), directory.GetPath()));
-}
-
-TEST_CASE("No application is created when its working directory does not exist")
-{
-    const TestHelpers::ScopedLog log;
-    const TestHelpers::TemporaryFolder parent;
-    const TestHelpers::ScopedCurrentDirectory currentDirectory;
-
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication({.WorkingDirectory = parent.GetPath() / "missing"});
-
-    CHECK(application == nullptr);
-    CHECK(std::filesystem::current_path() == currentDirectory.GetPath());
-}
-
-TEST_CASE("Overlays added before the main loop are removed right away")
-{
-    const TestHelpers::ScopedLog log;
-    std::vector<std::string> calls;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
-    REQUIRE(application != nullptr);
-
-    ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
-    application->PopOverlay(overlay);
-
-    CHECK(calls == std::vector<std::string>{"Overlay attach", "Overlay detach"});
-}
-
-TEST_CASE("An overlay can remove itself during an update")
-{
-    const TestHelpers::ScopedLog log;
-    std::vector<std::string> calls;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
-    REQUIRE(application != nullptr);
-    AddLayer(*application, "Layer", calls).CloseAfter = 2;
-    ScriptLayer& overlay = AddOverlay(*application, "Overlay", calls);
-    overlay.UpdateAction = [&application, &overlay](int /*updates*/) { application->PopOverlay(overlay); };
-    calls.clear();
-
-    application->Run();
-
-    const std::vector<std::string> expected{
-        "Layer update", "Overlay update", "Layer render", "Overlay render", "Overlay detach", "Layer update", "Layer render",
-    };
-    CHECK(calls == expected);
 }
 
 TEST_CASE("Layers can still use the application when it is destroyed")

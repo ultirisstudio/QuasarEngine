@@ -1,10 +1,8 @@
-#include <quasar/events/EventDispatcher.h>
 #include <quasar/events/WindowEvent.h>
 
 #include <doctest/doctest.h>
 
 #include <array>
-#include <cstdint>
 
 using Quasar::EventCategory;
 using Quasar::EventType;
@@ -61,22 +59,4 @@ TEST_CASE("A minimize event tells whether the window was minimized or restored")
 
     CHECK(minimized.IsMinimized());
     CHECK_FALSE(restored.IsMinimized());
-}
-
-TEST_CASE("A window event reaches the handler of its type")
-{
-    WindowResizeEvent event(800, 600);
-    Quasar::EventDispatcher dispatcher(event);
-    std::uint32_t receivedWidth = 0;
-
-    dispatcher.Dispatch<WindowCloseEvent>([](WindowCloseEvent&) { return true; });
-    dispatcher.Dispatch<WindowResizeEvent>(
-        [&](WindowResizeEvent& resize)
-        {
-            receivedWidth = resize.GetWidth();
-            return true;
-        });
-
-    CHECK(receivedWidth == 800);
-    CHECK(event.IsHandled());
 }

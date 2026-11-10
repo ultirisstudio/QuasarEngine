@@ -143,6 +143,7 @@ The helpers shared by the tests are in `tests/src/helpers/`, and are included wi
 | Header | Content |
 |---|---|
 | `LogHelpers.h` | `ScopedLog`, which starts and stops the loggers for one test, and `HasLogAtLeast()` |
+| `GamepadEvents.h` | `UpdateGamepads()`, which reads the gamepads once and records their events, and the expected events to compare them with |
 | `NullWindow.h` | Hidden windows and applications, with or without an OpenGL context, and functions that send them SDL events. The applications read no gamepads |
 | `TestLayers.h` | `ClosingLayer`, which closes the application after a number of frames |
 | `TemporaryFiles.h` | `TemporaryFolder`, `TemporaryFile` and `ScopedCurrentDirectory`, removed or put back at the end of the test |

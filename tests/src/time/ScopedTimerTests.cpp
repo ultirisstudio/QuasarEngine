@@ -101,12 +101,13 @@ TEST_CASE("A ScopedTimer measures at least the time spent in its scope")
     CHECK(*milliseconds >= 20.0);
 }
 
-TEST_CASE("QUASAR_SCOPED_TIMER logs the name when its scope ends only in Debug")
+TEST_CASE("QUASAR_SCOPED_TIMER logs its name when its scope ends, only in Debug")
 {
     const LogCapture capture;
+    const char* const name = "Loading";
 
     {
-        QUASAR_SCOPED_TIMER("Loading");
+        QUASAR_SCOPED_TIMER(name);
     }
 
     if (Quasar::PlatformDetection::IsDebug())
@@ -131,16 +132,4 @@ TEST_CASE("Several QUASAR_SCOPED_TIMER can be used in the same scope")
     const std::string text = capture.GetText();
     CHECK(Contains(text, "First") == Quasar::PlatformDetection::IsDebug());
     CHECK(Contains(text, "Second") == Quasar::PlatformDetection::IsDebug());
-}
-
-TEST_CASE("A name used only by QUASAR_SCOPED_TIMER compiles in every build type")
-{
-    const LogCapture capture;
-    const char* const name = "Loading";
-
-    {
-        QUASAR_SCOPED_TIMER(name);
-    }
-
-    CHECK(capture.GetText().empty() == Quasar::PlatformDetection::IsRelease());
 }

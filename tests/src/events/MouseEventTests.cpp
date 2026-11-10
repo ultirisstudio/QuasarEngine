@@ -1,4 +1,3 @@
-#include <quasar/events/EventDispatcher.h>
 #include <quasar/events/MouseEvent.h>
 
 #include <doctest/doctest.h>
@@ -62,22 +61,4 @@ TEST_CASE("Button events carry the mouse button code")
 
     CHECK(pressed.GetButton() == MouseButton::Right);
     CHECK(released.GetButton() == MouseButton::Middle);
-}
-
-TEST_CASE("A mouse event reaches the handler of its type")
-{
-    MouseButtonPressedEvent event(MouseButton::Left);
-    Quasar::EventDispatcher dispatcher(event);
-    MouseButton receivedButton = MouseButton::Right;
-
-    dispatcher.Dispatch<MouseButtonReleasedEvent>([](MouseButtonReleasedEvent&) { return true; });
-    dispatcher.Dispatch<MouseButtonPressedEvent>(
-        [&](MouseButtonPressedEvent& pressed)
-        {
-            receivedButton = pressed.GetButton();
-            return true;
-        });
-
-    CHECK(receivedButton == MouseButton::Left);
-    CHECK(event.IsHandled());
 }

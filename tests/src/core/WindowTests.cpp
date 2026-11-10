@@ -32,6 +32,7 @@ namespace
 
 TEST_CASE("A window without a graphics API has no graphics context")
 {
+    const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
     REQUIRE(window != nullptr);
 

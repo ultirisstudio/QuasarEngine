@@ -20,16 +20,6 @@
 #include <utility>
 #include <vector>
 
-TEST_CASE("An application without a graphics context has no ImGui layer")
-{
-    const TestHelpers::ScopedLog log;
-    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
-    REQUIRE(application != nullptr);
-
-    CHECK(application->GetImGuiLayer() == nullptr);
-    CHECK(ImGui::GetCurrentContext() == nullptr);
-}
-
 namespace
 {
     class ImGuiTestLayer : public Quasar::Layer
@@ -123,6 +113,16 @@ namespace
     {
         return std::ranges::find(layer.Events, type) != layer.Events.end();
     }
+}
+
+TEST_CASE("An application without a graphics context has no ImGui layer")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+
+    CHECK(application->GetImGuiLayer() == nullptr);
+    CHECK(ImGui::GetCurrentContext() == nullptr);
 }
 
 TEST_CASE("ImGui starts with the application and stops with it")

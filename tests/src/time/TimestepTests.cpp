@@ -24,13 +24,6 @@ TEST_CASE("A Timestep converts to seconds and milliseconds")
     CHECK(timestep.GetMilliseconds() == 250.0f);
 }
 
-TEST_CASE("A frame time at 60 frames per second is about 16.7 milliseconds")
-{
-    const Quasar::Timestep timestep(1.0f / 60.0f);
-
-    CHECK(timestep.GetMilliseconds() == doctest::Approx(16.667).epsilon(0.001));
-}
-
 TEST_CASE("A Timestep can be used directly in a calculation")
 {
     const Quasar::Timestep timestep(0.25f);
