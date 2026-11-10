@@ -8,6 +8,8 @@ target_sources(QuasarEngine
         src/core/LayerStack.cpp
         src/core/UUID.cpp
         src/core/Window.cpp
+        src/imgui/ImGuiBackend.cpp
+        src/imgui/ImGuiBackend.h
         src/imgui/ImGuiLayer.cpp
         src/imgui/ImGuiTheme.cpp
         src/input/Gamepads.cpp
@@ -21,8 +23,11 @@ target_sources(QuasarEngine
         src/io/UserDataDirectory.cpp
         src/log/Log.cpp
         src/log/MemoryLogSink.cpp
-        src/renderer/OpenGLContext.cpp
-        src/renderer/OpenGLContext.h
+        src/platform/opengl/OpenGLContext.cpp
+        src/platform/opengl/OpenGLImGuiBackend.cpp
+        src/platform/opengl/OpenGLImGuiBackend.h
+        src/renderer/GraphicsContextFactory.cpp
+        src/renderer/GraphicsContextFactory.h
         src/time/ScopedTimer.cpp
         src/time/Timer.cpp
     PUBLIC
@@ -58,6 +63,9 @@ target_sources(QuasarEngine
             include/quasar/io/UserDataDirectory.h
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
+            include/quasar/platform/opengl/OpenGLContext.h
+            include/quasar/renderer/GraphicsAPI.h
+            include/quasar/renderer/GraphicsContext.h
             include/quasar/time/ScopedTimer.h
             include/quasar/time/Timer.h
             include/quasar/time/Timestep.h

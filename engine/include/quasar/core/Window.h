@@ -9,6 +9,8 @@
 #include <quasar/events/Event.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
+#include <quasar/renderer/GraphicsAPI.h>
+#include <quasar/renderer/GraphicsContext.h>
 
 #include <glm/vec2.hpp>
 
@@ -18,13 +20,10 @@
 #include <string>
 
 struct SDL_Window;
-struct SDL_GLContextState;
 union SDL_Event;
 
 namespace Quasar
 {
-    class OpenGLContext;
-
     /// @brief Settings used to create a window.
     ///
     /// Only the fields that differ from the defaults need a value: `Window::Create({.Title = "Editor"})`.
@@ -37,9 +36,9 @@ namespace Quasar
         std::uint32_t Height = 720; ///< Height of the window when it is created, in the same unit as Width.
         bool VSync = true;          ///< Whether vertical synchronization is enabled when it is created.
 
-        /// Whether the window gets an OpenGL 4.5 core context. A window without one cannot draw anything: it is only
-        /// meant for tests that run without a graphics driver.
-        bool GraphicsContext = true;
+        /// Graphics API of the window, whose context is created with the window. A window with GraphicsAPI::None cannot
+        /// draw anything: it is only meant for tests that run without a graphics driver.
+        GraphicsAPI Graphics = GraphicsAPI::OpenGL;
 
         /// Whether the window is shown when it is created. A hidden window still receives the events sent to it, which
         /// the tests use.
@@ -123,8 +122,11 @@ namespace Quasar
         /// @brief Returns the SDL window, for the code that needs to call SDL directly.
         SDL_Window* GetNativeWindow() const;
 
-        /// @brief Returns the SDL OpenGL context of the window, or nullptr when it has none.
-        SDL_GLContextState* GetNativeContext() const;
+        /// @brief Returns the graphics API of the window, or GraphicsAPI::None when it has no graphics context.
+        GraphicsAPI GetGraphicsAPI() const;
+
+        /// @brief Returns the graphics context of the window, or nullptr when its graphics API is GraphicsAPI::None.
+        GraphicsContext* GetGraphicsContext() const;
 
         /// @brief Returns the name of a key in the current keyboard layout, for example "z" for Key::W on AZERTY.
         /// @return The name of the key, or an empty string for keys that do not print a character, like Escape.
@@ -137,7 +139,7 @@ namespace Quasar
         void SendEvent(Event& event);
 
         SDL_Window* m_Handle = nullptr;
-        Scope<OpenGLContext> m_Context;
+        Scope<GraphicsContext> m_Context;
         std::string m_Title;
         bool m_VSync = false;
         bool m_ShouldClose = false;

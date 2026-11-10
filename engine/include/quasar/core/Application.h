@@ -123,7 +123,7 @@ namespace Quasar
         /// @brief Returns the gamepads, read once per frame by the main loop.
         const Gamepads& GetGamepads() const { return m_Gamepads; }
 
-        /// @brief Returns the layer that runs ImGui, or nullptr when the window has no OpenGL context.
+        /// @brief Returns the layer that runs ImGui, or nullptr when the window has no graphics context.
         ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer.get(); }
 
         /// @brief Returns the layers and overlays of the application, from the bottom of the stack to the top.

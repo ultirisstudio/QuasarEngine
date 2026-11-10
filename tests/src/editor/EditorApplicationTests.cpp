@@ -8,6 +8,7 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/Layer.h>
 #include <quasar/log/MemoryLogSink.h>
+#include <quasar/renderer/GraphicsAPI.h>
 
 #include <doctest/doctest.h>
 
@@ -18,11 +19,11 @@
 #include <utility>
 #include <vector>
 
-TEST_CASE("The editor application has an OpenGL context and keeps its arguments")
+TEST_CASE("The editor application has a graphics API and keeps its arguments")
 {
     const Quasar::ApplicationSpecification specification = Quasar::Editor::GetEditorSpecification({"--project", "Game"});
 
-    CHECK(specification.Window.GraphicsContext);
+    CHECK(specification.Window.Graphics != Quasar::GraphicsAPI::None);
     CHECK(specification.Arguments == std::vector<std::string>{"--project", "Game"});
 }
 

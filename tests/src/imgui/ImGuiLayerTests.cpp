@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-TEST_CASE("An application without an OpenGL context has no ImGui layer")
+TEST_CASE("An application without a graphics context has no ImGui layer")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();

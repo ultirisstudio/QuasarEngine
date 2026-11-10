@@ -7,6 +7,8 @@
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/core/Window.h>
 #include <quasar/log/MemoryLogSink.h>
+#include <quasar/platform/opengl/OpenGLContext.h>
+#include <quasar/renderer/GraphicsAPI.h>
 
 #include <doctest/doctest.h>
 
@@ -32,8 +34,11 @@ TEST_CASE("A window gets a current OpenGL 4.5 core context")
     CAPTURE(minor);
     CHECK((major > 4 || (major == 4 && minor >= 5)));
     CHECK((profile & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
+    CHECK(window->GetGraphicsAPI() == Quasar::GraphicsAPI::OpenGL);
+    const auto* context = dynamic_cast<const Quasar::OpenGLContext*>(window->GetGraphicsContext());
+    REQUIRE(context != nullptr);
     CHECK(SDL_GL_GetCurrentWindow() == window->GetNativeWindow());
-    CHECK(SDL_GL_GetCurrentContext() == window->GetNativeContext());
+    CHECK(SDL_GL_GetCurrentContext() == context->GetNativeContext());
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 

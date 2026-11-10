@@ -60,7 +60,10 @@ and format the files you change with `clang-format -i <file>` or with format on 
 - Types and functions use PascalCase. Members start with `m_`, static members with `s_`.
 - Public headers go in `engine/include/quasar/`, source files in `engine/src/`, in the folder of their area (see
   below). Include engine headers with `#include <quasar/...>`, and private headers of `engine/src/` with their folder,
-  for example `#include <renderer/OpenGLContext.h>`.
+  for example `#include <renderer/GraphicsContextFactory.h>`.
+- Only the code of `platform/<api>` may use a graphics API, such as OpenGL, glad or the ImGui renderer backend of
+  that API. The rest of the engine uses the interfaces of the `renderer` folder, so that another API can be added
+  without changing it.
 - New engine files must be added to `target_sources` in `engine/CMakeLists.txt`.
 - Errors are reported with `std::optional` or `bool`, and a `QUASAR_ENGINE_ERROR` message. Do not throw exceptions.
 
@@ -74,7 +77,8 @@ The engine is split in folders, with the same names in `engine/include/quasar/` 
 | `input` | The keyboard, the mouse and the gamepads, with their codes and the `Input` functions |
 | `io` | Files, paths and the folders of the application |
 | `log` | The engine and application loggers |
-| `renderer` | The OpenGL context, only in `engine/src/` for now |
+| `platform` | The code of each graphics API, in `platform/<api>`, such as `platform/opengl` |
+| `renderer` | The interfaces that do not depend on a graphics API, such as `GraphicsAPI` and `GraphicsContext` |
 | `time` | Timers and the duration of a frame |
 
 ## Static analysis

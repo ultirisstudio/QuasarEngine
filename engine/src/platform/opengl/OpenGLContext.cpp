@@ -1,4 +1,4 @@
-#include <renderer/OpenGLContext.h>
+#include <quasar/platform/opengl/OpenGLContext.h>
 
 #include <glad/gl.h>
 
