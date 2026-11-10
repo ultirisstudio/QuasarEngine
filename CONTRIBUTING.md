@@ -160,11 +160,14 @@ in the `coverage` artifact of the run. The report of `master` is published at
 https://ultirisstudio.github.io/QuasarEngine/coverage/, next to the badges of the README.
 
 To measure it locally on Linux, install [gcovr](https://gcovr.com) (`pipx install gcovr`), then run from the
-repository root:
+repository root. The `ninja` and first `find` commands remove the files left by a source file that was moved or deleted,
+because gcovr fails on them:
 
 ```sh
 cmake --preset linux-gcc-coverage
 cmake --build --preset linux-gcc-coverage
+ninja -C build/linux-gcc-coverage -t cleandead
+find build/linux-gcc-coverage -name '*.gcno' -exec sh -c 'for file; do [ -e "${file%.gcno}.o" ] || rm "$file"; done' sh {} +
 find build/linux-gcc-coverage -name '*.gcda' -delete
 xvfb-run -a ctest --preset linux-gcc-coverage
 mkdir -p build/coverage && gcovr --html-nested build/coverage/index.html --print-summary
