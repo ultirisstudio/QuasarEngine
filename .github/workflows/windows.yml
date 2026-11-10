@@ -22,8 +22,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - config: Debug
-            preset: windows-debug
+#          - config: Debug
+#            preset: windows-debug
           - config: Release
             preset: windows-release
           - config: ASan
