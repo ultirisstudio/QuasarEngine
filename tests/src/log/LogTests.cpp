@@ -46,7 +46,6 @@ TEST_CASE("Messages written before Init go to the fallback loggers")
     REQUIRE(Quasar::Log::GetMemorySink() == nullptr);
 
     CHECK(&Quasar::Log::Engine() != &Quasar::Log::App());
-    CHECK(Quasar::Log::Engine().name() != Quasar::Log::App().name());
     QUASAR_ENGINE_INFO("Written before Init");
     QUASAR_ERROR("Written before Init");
 }

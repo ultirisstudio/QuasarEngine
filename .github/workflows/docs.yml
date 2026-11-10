@@ -111,7 +111,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ninja-build pkg-config \
+            g++-14 ninja-build pkg-config \
             libx11-dev libxrandr-dev libxcursor-dev libxi-dev \
             libxext-dev libxfixes-dev libxss-dev libxtst-dev \
             libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev libegl-dev \
@@ -149,7 +149,7 @@ jobs:
 
           summary = json.load(open("build/coverage/summary.json"))
           table = ["| Coverage | Covered | Total | Percent |", "|---|---|---|---|"]
-          for kind, label in (("line", "lines"), ("function", "functions"), ("branch", "branches")):
+          for kind, label in (("line", "lines"), ("function", "functions"), ("condition", "conditions")):
               percent = summary[f"{kind}_percent"]
               color = "brightgreen" if percent >= 90 else "yellow" if percent >= 75 else "red"
               badge = {"schemaVersion": 1, "label": f"{kind} coverage", "message": f"{percent:.1f}%", "color": color}

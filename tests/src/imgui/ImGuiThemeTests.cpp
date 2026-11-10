@@ -23,6 +23,13 @@ namespace
         ScopedImGuiContext(ScopedImGuiContext&&) = delete;
         ScopedImGuiContext& operator=(ScopedImGuiContext&&) = delete;
     };
+
+    bool LoadsOnlyTheEmbeddedFont(const std::filesystem::path& file)
+    {
+        const ScopedImGuiContext context;
+        ImFontAtlas& atlas = *ImGui::GetIO().Fonts;
+        return !Quasar::ImGuiTheme::LoadFont(atlas, file) && atlas.Fonts.Size == 1;
+    }
 }
 
 TEST_CASE("The engine font is copied next to the executable")
@@ -50,27 +57,21 @@ TEST_CASE("The engine font is loaded as the default ImGui font")
 TEST_CASE("A missing font is replaced by the font embedded in ImGui")
 {
     const TestHelpers::ScopedLog log;
-    const ScopedImGuiContext context;
-    ImFontAtlas& atlas = *ImGui::GetIO().Fonts;
     const TestHelpers::TemporaryFolder folder;
-    const std::filesystem::path missing = folder.GetPath() / "missing.ttf";
 
-    CHECK_FALSE(Quasar::ImGuiTheme::LoadFont(atlas, missing));
-
-    CHECK(atlas.Fonts.Size == 1);
+    CHECK(LoadsOnlyTheEmbeddedFont(folder.GetPath() / "missing.ttf"));
+    CHECK(LoadsOnlyTheEmbeddedFont({}));
     CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
 TEST_CASE("A file that is not a font is replaced by the font embedded in ImGui")
 {
     const TestHelpers::ScopedLog log;
-    const ScopedImGuiContext context;
-    ImFontAtlas& atlas = *ImGui::GetIO().Fonts;
     const TestHelpers::TemporaryFile text("not_a_font.ttf", "This is not a font");
+    const TestHelpers::TemporaryFile tooShort("too_short.ttf", "OT");
 
-    CHECK_FALSE(Quasar::ImGuiTheme::LoadFont(atlas, text.GetPath()));
-
-    CHECK(atlas.Fonts.Size == 1);
+    CHECK(LoadsOnlyTheEmbeddedFont(text.GetPath()));
+    CHECK(LoadsOnlyTheEmbeddedFont(tooShort.GetPath()));
     CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 

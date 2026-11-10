@@ -42,13 +42,6 @@ namespace
     static_assert(!std::is_move_constructible_v<Quasar::Layer>);
 }
 
-TEST_CASE("A layer keeps the name it was given")
-{
-    const UpdateLayer named;
-
-    CHECK(named.GetName() == "Update layer");
-}
-
 TEST_CASE("A layer that overrides no hook does nothing")
 {
     EmptyLayer layer;

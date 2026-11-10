@@ -1,4 +1,3 @@
-#include <quasar/events/EventDispatcher.h>
 #include <quasar/events/KeyEvent.h>
 
 #include <doctest/doctest.h>
@@ -58,22 +57,4 @@ TEST_CASE("A character event carries the typed Unicode character")
 
     CHECK(ascii.GetCharacter() == U'A');
     CHECK(accent.GetCharacter() == U'\u00E9');
-}
-
-TEST_CASE("A keyboard event reaches the handler of its type")
-{
-    KeyPressedEvent event(Key::Escape);
-    Quasar::EventDispatcher dispatcher(event);
-    Key receivedKey = Key::Space;
-
-    dispatcher.Dispatch<KeyReleasedEvent>([](KeyReleasedEvent&) { return true; });
-    dispatcher.Dispatch<KeyPressedEvent>(
-        [&](KeyPressedEvent& pressed)
-        {
-            receivedKey = pressed.GetKey();
-            return true;
-        });
-
-    CHECK(receivedKey == Key::Escape);
-    CHECK(event.IsHandled());
 }

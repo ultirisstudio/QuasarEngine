@@ -1,4 +1,3 @@
-#include <quasar/events/EventDispatcher.h>
 #include <quasar/events/GamepadEvent.h>
 
 #include <doctest/doctest.h>
@@ -129,21 +128,4 @@ TEST_CASE("Gamepad events are printed differently when their type or their data 
     };
 
     CHECK(std::set<std::string>(texts.begin(), texts.end()).size() == texts.size());
-}
-
-TEST_CASE("A gamepad event reaches the handler of its type")
-{
-    GamepadButtonPressedEvent event(GamepadId{0}, GamepadButton::Y);
-    Quasar::EventDispatcher dispatcher(event);
-    GamepadButton received = GamepadButton::A;
-
-    dispatcher.Dispatch<GamepadButtonPressedEvent>(
-        [&received](const GamepadButtonPressedEvent& pressed)
-        {
-            received = pressed.GetButton();
-            return true;
-        });
-
-    CHECK(received == GamepadButton::Y);
-    CHECK(event.IsHandled());
 }

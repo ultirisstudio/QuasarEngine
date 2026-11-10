@@ -53,6 +53,7 @@ TEST_CASE("A handler is only called for events of its type")
     CHECK_FALSE(closeHandlerCalled);
     CHECK(keyDispatched);
     CHECK(keyHandlerCalled);
+    CHECK_FALSE(event.IsHandled());
 }
 
 TEST_CASE("The handler receives the event with its data")
@@ -100,14 +101,4 @@ TEST_CASE("A handled event stays handled when a later handler returns false")
     dispatcher.Dispatch<TestCloseEvent>([](TestCloseEvent&) { return false; });
 
     CHECK(event.IsHandled());
-}
-
-TEST_CASE("A handler that does not match the type leaves the event unchanged")
-{
-    TestKeyEvent event(42);
-    EventDispatcher dispatcher(event);
-
-    dispatcher.Dispatch<TestCloseEvent>([](TestCloseEvent&) { return true; });
-
-    CHECK_FALSE(event.IsHandled());
 }

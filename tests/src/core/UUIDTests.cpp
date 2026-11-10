@@ -49,21 +49,6 @@ TEST_CASE("Only the zero value is invalid")
     CHECK(Quasar::UUID(std::numeric_limits<std::uint64_t>::max()).IsValid());
 }
 
-TEST_CASE("Reading sixteen zeros gives the invalid UUID")
-{
-    const std::optional<Quasar::UUID> read = Quasar::UUID::FromString("0000000000000000");
-
-    REQUIRE(read.has_value());
-    CHECK_FALSE(read->IsValid());
-}
-
-TEST_CASE("A generated UUID is valid")
-{
-    const Quasar::UUID uuid = Quasar::UUID::Generate();
-
-    CHECK(uuid.IsValid());
-}
-
 TEST_CASE("Generated UUIDs are unique and all valid")
 {
     constexpr std::size_t count = 100'000;

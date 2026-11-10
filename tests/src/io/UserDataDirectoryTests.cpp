@@ -43,6 +43,7 @@ TEST_CASE("Empty names, names with punctuation and names that start or end with 
     CHECK_FALSE(Quasar::IsValidUserDataName("Game 2: Revenge"));
     CHECK_FALSE(Quasar::IsValidUserDataName("../Other"));
     CHECK_FALSE(Quasar::IsValidUserDataName("Folder\\Game"));
+    CHECK_FALSE(Quasar::IsValidUserDataName("Studio@Home"));
     CHECK_FALSE(Quasar::IsValidUserDataName(" Game"));
     CHECK_FALSE(Quasar::IsValidUserDataName("Game "));
 }

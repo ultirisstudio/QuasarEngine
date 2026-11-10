@@ -145,14 +145,14 @@ namespace TestHelpers
         SDL_PushEvent(&event);
     }
 
-    inline void SendScroll(const Quasar::Window& window, float x, float y)
+    inline void SendScroll(const Quasar::Window& window, float x, float y, bool flipped = false)
     {
         SDL_Event event{};
         event.type = SDL_EVENT_MOUSE_WHEEL;
         event.wheel.windowID = GetWindowId(window);
         event.wheel.x = x;
         event.wheel.y = y;
-        event.wheel.direction = SDL_MOUSEWHEEL_NORMAL;
+        event.wheel.direction = flipped ? SDL_MOUSEWHEEL_FLIPPED : SDL_MOUSEWHEEL_NORMAL;
         SDL_PushEvent(&event);
     }
 

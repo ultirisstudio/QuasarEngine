@@ -30,12 +30,15 @@ TEST_CASE("A normalized directory has no separator at the end")
 {
     CHECK(Quasar::NormalizePath("Assets/Models/") == "Assets/Models");
     CHECK(Quasar::NormalizePath("Assets\\Models\\") == "Assets/Models");
+    CHECK(Quasar::NormalizePath("C:/Assets/") == "C:/Assets");
 }
 
 TEST_CASE("Normalizing keeps what cannot be removed")
 {
     CHECK(Quasar::NormalizePath("../Shared/shader.glsl") == "../Shared/shader.glsl");
     CHECK(Quasar::NormalizePath("/") == "/");
+    CHECK(Quasar::NormalizePath("C:/") == "C:/");
+    CHECK(Quasar::NormalizePath("C:\\") == "C:/");
     CHECK(Quasar::NormalizePath("Assets/Cube.OBJ") == "Assets/Cube.OBJ");
     CHECK(Quasar::NormalizePath("").empty());
 }

@@ -105,9 +105,9 @@
     },
     {
       "name": "linux-gcc-coverage",
-      "displayName": "Linux Debug with code coverage (GCC)",
+      "displayName": "Linux Debug with code coverage (GCC 14)",
       "inherits": "linux-gcc-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "QUASAR_COVERAGE": "ON" }
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc-14", "CMAKE_CXX_COMPILER": "g++-14", "CMAKE_BUILD_TYPE": "Debug", "QUASAR_COVERAGE": "ON" }
     }
   ],
   "buildPresets": [
