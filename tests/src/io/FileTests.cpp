@@ -132,6 +132,17 @@ TEST_CASE("A file cannot be written inside a file")
     CHECK_FALSE(Quasar::WriteTextFile(folder.GetPath() / "file.txt" / "inner.txt", "content"));
 }
 
+TEST_CASE("A file cannot be written where a folder exists")
+{
+    const TestHelpers::ScopedLog log;
+
+    const TestHelpers::TemporaryFolder folder;
+    REQUIRE(Quasar::CreateDirectories(folder.GetPath() / "folder"));
+
+    CHECK_FALSE(Quasar::WriteTextFile(folder.GetPath() / "folder", "content"));
+    CHECK(std::filesystem::is_directory(folder.GetPath() / "folder"));
+}
+
 TEST_CASE("Creating a directory that already exists succeeds")
 {
     const TestHelpers::ScopedLog log;

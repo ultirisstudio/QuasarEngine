@@ -8,10 +8,12 @@
 #include <quasar/input/MouseCodes.h>
 #include <quasar/renderer/GraphicsAPI.h>
 
+#include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_scancode.h>
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -134,6 +136,46 @@ TEST_CASE("The keyboard events of SDL send key events")
         Quasar::KeyTypedEvent(U'\u00E9').ToString(),
     };
     CHECK(events == expected);
+}
+
+TEST_CASE("A window starts the text input again when something else stops it")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+
+    SDL_StopTextInput(window->GetNativeWindow());
+    REQUIRE_FALSE(SDL_TextInputActive(window->GetNativeWindow()));
+    window->Update();
+
+    CHECK(SDL_TextInputActive(window->GetNativeWindow()));
+}
+
+TEST_CASE("A key that prints a character is named with this character")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+
+    const std::string a = window->GetKeyName(Quasar::Key::A);
+    const std::string b = window->GetKeyName(Quasar::Key::B);
+
+    CHECK_FALSE(a.empty());
+    CHECK_FALSE(b.empty());
+    CHECK(a != b);
+}
+
+TEST_CASE("A key that prints no character has an empty name")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+
+    for (const Quasar::Key key : std::to_array({Quasar::Key::Escape, Quasar::Key::Space, Quasar::Key::Delete, Quasar::Key::F1}))
+    {
+        CAPTURE(static_cast<int>(key));
+        CHECK(window->GetKeyName(key).empty());
+    }
 }
 
 TEST_CASE("The mouse events of SDL send mouse events")
