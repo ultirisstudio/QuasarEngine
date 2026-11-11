@@ -4,7 +4,7 @@
 
 namespace Quasar::Editor
 {
-    EditorLayer::EditorLayer() : Layer("Editor") {}
+    EditorLayer::EditorLayer() : Layer("Editor"), m_Console(Log::GetMemorySink()) {}
 
     void EditorLayer::OnAttach()
     {
@@ -14,5 +14,10 @@ namespace Quasar::Editor
     void EditorLayer::OnDetach()
     {
         QUASAR_INFO("Editor stopped");
+    }
+    
+    void EditorLayer::OnImGuiRender()
+    {
+        m_Console.OnImGuiRender();
     }
 }
