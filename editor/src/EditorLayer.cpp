@@ -15,7 +15,7 @@ namespace Quasar::Editor
     {
         QUASAR_INFO("Editor stopped");
     }
-    
+
     void EditorLayer::OnImGuiRender()
     {
         m_Console.OnImGuiRender();

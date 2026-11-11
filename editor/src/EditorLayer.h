@@ -5,8 +5,8 @@
 /// \author Kurogenshi
 /// \date 2026-11-02
 
-#include <quasar/core/Layer.h>
 #include "panels/ConsolePanel.h"
+#include <quasar/core/Layer.h>
 
 namespace Quasar::Editor
 {
@@ -21,11 +21,11 @@ namespace Quasar::Editor
 
         /// @brief Logs that the editor stopped.
         void OnDetach() override;
-        
+
         /// @brief Draws the editor panels.
         void OnImGuiRender() override;
 
     private:
-       ConsolePanel m_Console;
+        ConsolePanel m_Console;
     };
 }

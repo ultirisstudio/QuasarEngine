@@ -47,7 +47,10 @@ namespace Quasar::Editor
             return fmt::format("{:%H:%M:%S}", localTime);
         }
 
-        std::string_view GetFirstLine(std::string_view text) { return text.substr(0, text.find('\n')); }
+        std::string_view GetFirstLine(std::string_view text)
+        {
+            return text.substr(0, text.find('\n'));
+        }
     }
 
     ConsolePanel::ConsolePanel(std::shared_ptr<MemoryLogSink> sink) : m_Sink(std::move(sink)) {}
