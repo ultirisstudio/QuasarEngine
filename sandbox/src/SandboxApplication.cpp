@@ -7,9 +7,11 @@
 #include <quasar/imgui/ImGuiLayer.h>
 #include <quasar/input/Input.h>
 #include <quasar/log/Log.h>
+#include <quasar/renderer/GraphicsAPI.h>
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <deque>
 #include <string>
@@ -96,6 +98,12 @@ namespace
             ImGui::Begin("Events");
 
             ImGui::TextUnformatted(fmt::format("{:.0f} frames per second", m_FramesPerSecond).c_str());
+            Quasar::Window& window = Quasar::Application::Get().GetWindow();
+            bool vsync = window.IsVSync();
+            if (ImGui::Checkbox("VSync", &vsync))
+            {
+                window.SetVSync(vsync);
+            }
             ImGui::Checkbox("Show the ImGui demo window", &m_ShowDemoWindow);
             ImGui::Checkbox("Log mouse moves", &m_LogMouseMoves);
             ImGui::Checkbox("Log gamepad axes", &m_LogGamepadAxes);
@@ -158,7 +166,11 @@ Quasar::Scope<Quasar::Application> Quasar::CreateApplication(std::vector<std::st
         QUASAR_INFO("Argument: '{}'", argument);
     }
 
-    Quasar::Scope<Application> application = Application::Create({.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox"}});
+    const bool vulkan = std::ranges::find(arguments, "--vulkan") != arguments.end();
+    const GraphicsAPI graphics = vulkan ? GraphicsAPI::Vulkan : WindowSpecification{}.Graphics;
+
+    Quasar::Scope<Application> application =
+        Application::Create({.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox", .VSync = false, .Graphics = graphics}});
     if (application)
     {
         application->PushLayer(Quasar::CreateScope<EventTestLayer>());
