@@ -52,14 +52,16 @@ jobs:
           path: build/${{ matrix.preset }}
           key: ${{ steps.cache-key.outputs.key }}
 
-      # The SDK gives the Vulkan headers and loader library, found by CMake through the VULKAN_SDK environment variable
-      # that the action sets, and the Vulkan runtime that the tests load
-      - name: Install the Vulkan SDK
-        uses: jakoch/install-vulkan-sdk-action@v1
-        with:
-          vulkan_version: 1.4.309.0
-          install_runtime: true
-          cache: true
+      # The vcpkg of the runner builds the Vulkan headers and loader, since the repository only allows the actions of
+      # GitHub. CMake finds them through the VULKAN_SDK environment variable, and the tests load the vulkan-1.dll of the
+      # loader
+      - name: Install the Vulkan headers and loader
+        shell: pwsh
+        run: |
+          $root = "$env:RUNNER_TEMP\vcpkg"
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install vulkan-headers vulkan-loader --triplet x64-windows-release --x-install-root $root
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg cannot install the Vulkan headers and loader" }
+          "VULKAN_SDK=$root\x64-windows-release" >> $env:GITHUB_ENV
 
       - name: Show tool versions
         run: cmake --version
@@ -94,17 +96,15 @@ jobs:
       - name: Copy the Mesa software drivers and the Vulkan runtime next to the tests
         shell: pwsh
         run: |
-          $loader = Get-ChildItem $env:VULKAN_SDK, C:\VulkanSDK -Recurse -Filter vulkan-1.dll -ErrorAction SilentlyContinue |
-            Sort-Object { $_.FullName -notmatch 'x64' } | Select-Object -First 1
-          if (-not $loader) { throw "vulkan-1.dll is not in the Vulkan SDK" }
+          $loader = Join-Path $env:VULKAN_SDK 'bin\vulkan-1.dll'
+          if (-not (Test-Path $loader)) { throw "vulkan-1.dll is not in the Vulkan loader" }
           Get-ChildItem build/${{ matrix.preset }}/bin -Directory | ForEach-Object {
             Copy-Item mesa/*.dll $_.FullName
-            Copy-Item $loader.FullName $_.FullName
+            Copy-Item $loader $_.FullName
           }
           $driver = Get-ChildItem mesa -Filter 'lvp_icd*.json' | Select-Object -First 1
           "VK_DRIVER_FILES=$($driver.FullName)" >> $env:GITHUB_ENV
           Get-ChildItem mesa -Name
-          $loader.FullName
 
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
