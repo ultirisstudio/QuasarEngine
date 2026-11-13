@@ -18,6 +18,11 @@ target_include_directories(imgui PUBLIC
 
 target_link_libraries(imgui PRIVATE SDL3::SDL3 ${CMAKE_DL_LIBS})
 
+if(QUASAR_VULKAN)
+    target_sources(imgui PRIVATE ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp)
+    target_link_libraries(imgui PRIVATE Vulkan::Vulkan)
+endif()
+
 if(MSVC)
     target_compile_options(imgui PRIVATE /W0)
 else()

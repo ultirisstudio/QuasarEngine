@@ -75,6 +75,8 @@ if(QUASAR_VULKAN)
     target_sources(QuasarEngine
         PRIVATE
             src/platform/vulkan/VulkanContext.cpp
+            src/platform/vulkan/VulkanImGuiBackend.cpp
+            src/platform/vulkan/VulkanImGuiBackend.h
         PUBLIC
             FILE_SET HEADERS
             FILES
