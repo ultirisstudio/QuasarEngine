@@ -31,8 +31,10 @@ namespace Quasar
     /// GetCommandBuffer(). SwapBuffers() then ends the rendering, submits the command buffer and presents the image. The
     /// CPU records up to FramesInFlight frames while the GPU draws the previous ones.
     ///
-    /// The swapchain is created again when the size of the window or VSync changes. In Debug, the Khronos validation
-    /// layer is enabled when it is installed, and its warnings and errors are logged as engine warnings and errors.
+    /// The swapchain is created again when the size of the window or VSync changes. On Android, the surface is created
+    /// again when the app comes back to the foreground, since Android destroys the window of an app in the background.
+    /// In Debug, the Khronos validation layer is enabled when it is installed, and its warnings and errors are logged as
+    /// engine warnings and errors.
     class VulkanContext final : public GraphicsContext
     {
     public:
@@ -110,6 +112,7 @@ namespace Quasar
 
         bool CreateInstance();
         bool CreateSurface();
+        bool RecreateSurface();
         bool SelectPhysicalDevice();
         bool CreateDevice();
         bool CreateFrames();
@@ -120,6 +123,7 @@ namespace Quasar
         VkInstance m_Instance = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT m_Messenger = VK_NULL_HANDLE;
         VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
+        void* m_SurfaceWindow = nullptr;
         VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
         VkDevice m_Device = VK_NULL_HANDLE;
         std::uint32_t m_QueueFamily = 0;

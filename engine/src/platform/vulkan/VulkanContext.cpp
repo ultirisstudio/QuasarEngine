@@ -24,6 +24,11 @@ namespace Quasar
         constexpr const char* ValidationLayer = "VK_LAYER_KHRONOS_validation";
         constexpr std::uint32_t PreferredImageCount = 3;
 
+        void* GetAndroidWindow(SDL_Window* window)
+        {
+            return SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr);
+        }
+
         const char* GetResultName(VkResult result)
         {
             switch (result)
@@ -360,7 +365,19 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Vulkan cannot draw in the window: {}", SDL_GetError());
             return false;
         }
+        m_SurfaceWindow = GetAndroidWindow(m_Window);
         return true;
+    }
+
+    bool VulkanContext::RecreateSurface()
+    {
+        vkDeviceWaitIdle(m_Device);
+        DestroySwapchainImages();
+        vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
+        m_Swapchain = VK_NULL_HANDLE;
+        SDL_Vulkan_DestroySurface(m_Instance, m_Surface, nullptr);
+        m_Surface = VK_NULL_HANDLE;
+        return CreateSurface() && CreateSwapchain();
     }
 
     bool VulkanContext::SelectPhysicalDevice()
@@ -588,6 +605,12 @@ namespace Quasar
 
     bool VulkanContext::BeginFrame()
     {
+        void* androidWindow = GetAndroidWindow(m_Window);
+        if (androidWindow != m_SurfaceWindow && (androidWindow == nullptr || !RecreateSurface()))
+        {
+            return false;
+        }
+
         int width = 0;
         int height = 0;
         SDL_GetWindowSizeInPixels(m_Window, &width, &height);
@@ -611,7 +634,7 @@ namespace Quasar
 
         const VkResult acquired =
             vkAcquireNextImageKHR(m_Device, m_Swapchain, std::numeric_limits<std::uint64_t>::max(), frame.ImageAvailable, VK_NULL_HANDLE, &m_ImageIndex);
-        if (acquired == VK_ERROR_OUT_OF_DATE_KHR)
+        if (acquired == VK_ERROR_OUT_OF_DATE_KHR || acquired == VK_ERROR_SURFACE_LOST_KHR)
         {
             m_SwapchainOutdated = true;
             return false;
@@ -699,7 +722,7 @@ namespace Quasar
         presentInfo.pSwapchains = &m_Swapchain;
         presentInfo.pImageIndices = &m_ImageIndex;
         const VkResult presented = vkQueuePresentKHR(m_Queue, &presentInfo);
-        if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR)
+        if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_ERROR_SURFACE_LOST_KHR || presented == VK_SUBOPTIMAL_KHR)
         {
             m_SwapchainOutdated = true;
         }
