@@ -30,9 +30,12 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<CONFIG>")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/$<CONFIG>")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/$<CONFIG>")
+# On Android, Gradle chooses where the libraries go, to put them in the APK
+if(NOT ANDROID)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<CONFIG>")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/$<CONFIG>")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/$<CONFIG>")
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -43,7 +46,12 @@ include(cmake/Sanitizers.cmake)
 include(cmake/Coverage.cmake)
 include(cmake/Vulkan.cmake)
 
-option(QUASAR_OPENGL "Build the OpenGL graphics API" ON)
+if(ANDROID)
+    set(QUASAR_OPENGL_DEFAULT OFF)
+else()
+    set(QUASAR_OPENGL_DEFAULT ON)
+endif()
+option(QUASAR_OPENGL "Build the OpenGL graphics API, which Android does not have" ${QUASAR_OPENGL_DEFAULT})
 
 option(QUASAR_BUILD_TESTS "Build the unit tests" ON)
 
@@ -61,11 +69,14 @@ endif()
 
 add_subdirectory(engine)
 add_subdirectory(sandbox)
-add_subdirectory(editor)
 
-if(QUASAR_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
+if(NOT ANDROID)
+    add_subdirectory(editor)
+
+    if(QUASAR_BUILD_TESTS)
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
 endif()
 
 set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY VS_STARTUP_PROJECT QuasarEditor)

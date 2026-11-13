@@ -118,7 +118,10 @@ namespace Quasar
         }
 
         window->SetVSync(specification.VSync);
-        SDL_StartTextInput(handle);
+        if constexpr (!PlatformDetection::IsAndroid())
+        {
+            SDL_StartTextInput(handle);
+        }
 
         QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(), window->GetHeight());
         return window;
@@ -131,7 +134,7 @@ namespace Quasar
             m_Context->SwapBuffers();
         }
 
-        if (!SDL_TextInputActive(m_Handle))
+        if (!PlatformDetection::IsAndroid() && !SDL_TextInputActive(m_Handle))
         {
             SDL_StartTextInput(m_Handle);
         }

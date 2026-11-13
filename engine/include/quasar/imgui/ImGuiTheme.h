@@ -26,7 +26,8 @@ namespace Quasar::ImGuiTheme
     void ApplyStyle(ImGuiStyle& style, float dpiScale);
 
     /// @brief Returns where the engine font is expected: `resources/fonts/Inter/Inter-Regular.ttf`, in the folder of
-    /// the executable. The build copies the engine resources there.
+    /// the executable, where the build copies the engine resources. On Android, the path is relative to the assets of
+    /// the APK.
     /// @return The path of the font file, or an empty path if the folder of the executable cannot be found.
     std::filesystem::path GetFontPath();
 

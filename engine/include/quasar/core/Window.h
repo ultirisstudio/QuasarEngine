@@ -36,9 +36,10 @@ namespace Quasar
         std::uint32_t Height = 720; ///< Height of the window when it is created, in the same unit as Width.
         bool VSync = true;          ///< Whether vertical synchronization is enabled when it is created.
 
-        /// Graphics API of the window, whose context is created with the window. A window with GraphicsAPI::None cannot
-        /// draw anything: it is only meant for tests that run without a graphics driver.
-        GraphicsAPI Graphics = GraphicsAPI::OpenGL;
+        /// Graphics API of the window, whose context is created with the window: OpenGL by default, and Vulkan on Android,
+        /// which has no OpenGL. A window with GraphicsAPI::None cannot draw anything: it is only meant for tests that run
+        /// without a graphics driver.
+        GraphicsAPI Graphics = PlatformDetection::IsAndroid() ? GraphicsAPI::Vulkan : GraphicsAPI::OpenGL;
 
         /// Whether the window is shown when it is created. A hidden window still receives the events sent to it, which
         /// the tests use.

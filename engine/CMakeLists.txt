@@ -97,20 +97,26 @@ if(QUASAR_VULKAN)
     target_compile_definitions(QuasarEngine PRIVATE QUASAR_VULKAN)
 endif()
 
-add_custom_target(QuasarEngineResources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
-    VERBATIM
-)
-set_target_properties(QuasarEngineResources PROPERTIES FOLDER "Engine")
-add_dependencies(QuasarEngine QuasarEngineResources)
+if(NOT ANDROID)
+    add_custom_target(QuasarEngineResources
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
+        VERBATIM
+    )
+    set_target_properties(QuasarEngineResources PROPERTIES FOLDER "Engine")
+    add_dependencies(QuasarEngine QuasarEngineResources)
+endif()
 
-add_library(QuasarEntryPoint STATIC src/core/EntryPoint.cpp)
+# An object library, so that main() is always linked, even into the shared library of an Android program
+add_library(QuasarEntryPoint OBJECT src/core/EntryPoint.cpp)
 add_library(Quasar::EntryPoint ALIAS QuasarEntryPoint)
 target_link_libraries(QuasarEntryPoint PUBLIC Quasar::Engine PRIVATE Quasar::CompileOptions)
 set_target_properties(QuasarEntryPoint PROPERTIES FOLDER "Engine")
 
-if(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "QuasarEngine only supports Windows and Linux.")
+if(ANDROID)
+    target_link_libraries(QuasarEntryPoint PRIVATE SDL3::Headers)
+    target_link_libraries(QuasarEngine PRIVATE log)
+elseif(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "QuasarEngine only supports Windows, Linux and Android.")
 endif()
 
 target_include_directories(QuasarEngine PRIVATE src)
