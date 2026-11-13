@@ -10,6 +10,7 @@ namespace Quasar
         {
             case GraphicsAPI::OpenGL:
                 return CreateScope<OpenGLImGuiBackend>();
+            case GraphicsAPI::Vulkan:
             case GraphicsAPI::None:
                 break;
         }

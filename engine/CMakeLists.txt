@@ -71,6 +71,19 @@ target_sources(QuasarEngine
             include/quasar/time/Timestep.h
 )
 
+if(QUASAR_VULKAN)
+    target_sources(QuasarEngine
+        PRIVATE
+            src/platform/vulkan/VulkanContext.cpp
+        PUBLIC
+            FILE_SET HEADERS
+            FILES
+                include/quasar/platform/vulkan/VulkanContext.h
+    )
+    target_link_libraries(QuasarEngine PUBLIC Vulkan::Vulkan)
+    target_compile_definitions(QuasarEngine PRIVATE QUASAR_VULKAN)
+endif()
+
 add_custom_target(QuasarEngineResources
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
     VERBATIM
