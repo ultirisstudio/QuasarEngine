@@ -92,7 +92,8 @@ jobs:
           if (-not (Test-Path mesa/opengl32.dll)) { throw "opengl32.dll is not in the x64 folder of the Mesa archive" }
           if (-not (Get-ChildItem mesa -Filter 'lvp_icd*.json')) { throw "Lavapipe is not in the x64 folder of the Mesa archive" }
 
-      # The Vulkan loader reads VK_DRIVER_FILES to use Lavapipe, the Mesa software Vulkan driver, as the only driver
+      # The tests run as an administrator, so the Vulkan loader ignores VK_DRIVER_FILES and only reads the drivers of the
+      # registry. Lavapipe, the Mesa software Vulkan driver, is registered there as the only driver
       - name: Copy the Mesa software drivers and the Vulkan runtime next to the tests
         shell: pwsh
         run: |
@@ -103,7 +104,9 @@ jobs:
             Copy-Item $loader $_.FullName
           }
           $driver = Get-ChildItem mesa -Filter 'lvp_icd*.json' | Select-Object -First 1
-          "VK_DRIVER_FILES=$($driver.FullName)" >> $env:GITHUB_ENV
+          $drivers = 'HKLM:\SOFTWARE\Khronos\Vulkan\Drivers'
+          New-Item -Path $drivers -Force | Out-Null
+          New-ItemProperty -Path $drivers -Name $driver.FullName -PropertyType DWord -Value 0 -Force | Out-Null
           Get-ChildItem mesa -Name
 
       - name: Test
