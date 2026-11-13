@@ -24,6 +24,7 @@ https://ultirisstudio.github.io/QuasarEngine/coverage/.
 |---|---|
 | Windows 10/11 x64 | MSVC (Visual Studio 2022 or later) |
 | Linux x64 | GCC 12+ or Clang 15+ |
+| Android 13+ arm64 (sandbox only, Vulkan 1.3) | Clang of the Android NDK |
 
 ## Requirements
 
@@ -79,6 +80,28 @@ Visual Studio and VS Code (with the CMake Tools extension) can also open the fol
 ```sh
 ctest --preset windows-debug
 ```
+
+## Android
+
+The sandbox can be built as an APK. This needs JDK 17 and the Android SDK, with the SDK Platform 35, the NDK
+28.2.13676358 and CMake 3.31.6, all installed from the SDK Manager of Android Studio. Set the `ANDROID_HOME`
+environment variable to the folder of the SDK, or open the `android` folder in Android Studio once.
+
+Build the APK from the `android` folder (on Windows, `gradlew.bat`):
+
+```sh
+cd android
+./gradlew assembleDebug
+```
+
+Then install it on a device with USB debugging enabled, and follow its logs:
+
+```sh
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb logcat -s QuasarEngine SDL
+```
+
+`adb` is in the `platform-tools` folder of the SDK.
 
 ## Contributing
 
