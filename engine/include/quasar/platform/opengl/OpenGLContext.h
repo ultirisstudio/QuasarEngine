@@ -40,6 +40,10 @@ namespace Quasar
         /// @brief Returns GraphicsAPI::OpenGL.
         GraphicsAPI GetAPI() const override { return GraphicsAPI::OpenGL; }
 
+        /// @brief Makes the context current and clears the whole window.
+        /// @return Always true: an OpenGL window always has an image to draw.
+        bool BeginFrame() override;
+
         /// @brief Shows the image drawn since the last call in the window.
         void SwapBuffers() override;
 
