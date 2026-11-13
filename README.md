@@ -2,6 +2,7 @@
 
 [![Windows](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/windows.yml/badge.svg)](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/windows.yml)
 [![Linux](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/linux.yml/badge.svg)](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/linux.yml)
+[![Android](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/android.yml/badge.svg)](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/android.yml)
 [![Documentation](https://github.com/ultirisstudio/QuasarEngine/actions/workflows/docs.yml/badge.svg)](https://ultirisstudio.github.io/QuasarEngine/)
 
 ![Header files](https://img.shields.io/endpoint?url=https://ultirisstudio.github.io/QuasarEngine/badges/headers.json)
