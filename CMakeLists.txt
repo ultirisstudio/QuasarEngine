@@ -43,6 +43,8 @@ include(cmake/Sanitizers.cmake)
 include(cmake/Coverage.cmake)
 include(cmake/Vulkan.cmake)
 
+option(QUASAR_OPENGL "Build the OpenGL graphics API" ON)
+
 option(QUASAR_BUILD_TESTS "Build the unit tests" ON)
 
 # Visual Studio uses only the libraries in external/, even when vcpkg is integrated with every MSBuild project
@@ -78,6 +80,7 @@ endif()
 if(QUASAR_COVERAGE)
     message(STATUS "  Coverage ............ ON")
 endif()
+message(STATUS "  OpenGL .............. ${QUASAR_OPENGL}")
 if(QUASAR_VULKAN)
     message(STATUS "  Vulkan .............. ${Vulkan_VERSION}, ${Vulkan_LIBRARY}")
 elseif(Vulkan_FOUND)

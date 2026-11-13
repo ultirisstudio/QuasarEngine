@@ -7,7 +7,6 @@ add_library(imgui STATIC
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 add_library(imgui::imgui ALIAS imgui)
 
@@ -17,6 +16,10 @@ target_include_directories(imgui PUBLIC
 )
 
 target_link_libraries(imgui PRIVATE SDL3::SDL3 ${CMAKE_DL_LIBS})
+
+if(QUASAR_OPENGL)
+    target_sources(imgui PRIVATE ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+endif()
 
 if(QUASAR_VULKAN)
     target_sources(imgui PRIVATE ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp)

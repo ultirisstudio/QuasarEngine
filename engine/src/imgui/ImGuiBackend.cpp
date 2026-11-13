@@ -1,6 +1,8 @@
 #include <imgui/ImGuiBackend.h>
 
+#ifdef QUASAR_OPENGL
 #include <platform/opengl/OpenGLImGuiBackend.h>
+#endif
 
 #ifdef QUASAR_VULKAN
 #include <platform/vulkan/VulkanImGuiBackend.h>
@@ -12,8 +14,12 @@ namespace Quasar
     {
         switch (api)
         {
+#ifdef QUASAR_OPENGL
             case GraphicsAPI::OpenGL:
                 return CreateScope<OpenGLImGuiBackend>();
+#else
+            case GraphicsAPI::OpenGL:
+#endif
 #ifdef QUASAR_VULKAN
             case GraphicsAPI::Vulkan:
                 return CreateScope<VulkanImGuiBackend>();

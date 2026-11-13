@@ -23,9 +23,6 @@ target_sources(QuasarEngine
         src/io/UserDataDirectory.cpp
         src/log/Log.cpp
         src/log/MemoryLogSink.cpp
-        src/platform/opengl/OpenGLContext.cpp
-        src/platform/opengl/OpenGLImGuiBackend.cpp
-        src/platform/opengl/OpenGLImGuiBackend.h
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/time/ScopedTimer.cpp
@@ -63,13 +60,27 @@ target_sources(QuasarEngine
             include/quasar/io/UserDataDirectory.h
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
-            include/quasar/platform/opengl/OpenGLContext.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/time/ScopedTimer.h
             include/quasar/time/Timer.h
             include/quasar/time/Timestep.h
 )
+
+if(QUASAR_OPENGL)
+    target_sources(QuasarEngine
+        PRIVATE
+            src/platform/opengl/OpenGLContext.cpp
+            src/platform/opengl/OpenGLImGuiBackend.cpp
+            src/platform/opengl/OpenGLImGuiBackend.h
+        PUBLIC
+            FILE_SET HEADERS
+            FILES
+                include/quasar/platform/opengl/OpenGLContext.h
+    )
+    target_link_libraries(QuasarEngine PRIVATE glad::glad)
+    target_compile_definitions(QuasarEngine PRIVATE QUASAR_OPENGL)
+endif()
 
 if(QUASAR_VULKAN)
     target_sources(QuasarEngine
@@ -112,7 +123,6 @@ target_link_libraries(QuasarEngine
     PRIVATE
         Quasar::CompileOptions
         SDL3::SDL3
-        glad::glad
 )
 
 target_compile_definitions(QuasarEngine PRIVATE
