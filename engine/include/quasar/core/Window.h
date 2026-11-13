@@ -77,7 +77,8 @@ namespace Quasar
         /// @brief Shows the rendered image and processes the messages of the operating system.
         ///
         /// Call it once per frame, after rendering. Every SDL event waiting is read: it goes to the native event
-        /// callback first, then to the window it belongs to, which sends the matching engine event.
+        /// callback first, then to the window it belongs to, which sends the matching engine event. The events that
+        /// belong to no window, such as AppBackgroundEvent, go to the window that reads them.
         void Update();
 
         /// @brief Sets the function that receives every event of the window.

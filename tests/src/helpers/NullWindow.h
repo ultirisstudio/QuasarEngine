@@ -180,4 +180,11 @@ namespace TestHelpers
     {
         SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED);
     }
+
+    inline void SendAppEvent(SDL_EventType type)
+    {
+        SDL_Event event{};
+        event.type = type;
+        SDL_PushEvent(&event);
+    }
 }

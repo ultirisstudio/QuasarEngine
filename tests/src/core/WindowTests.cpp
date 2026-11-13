@@ -1,5 +1,6 @@
 #include "helpers/NullWindow.h"
 
+#include <quasar/events/AppEvent.h>
 #include <quasar/events/Event.h>
 #include <quasar/events/KeyEvent.h>
 #include <quasar/events/MouseEvent.h>
@@ -8,6 +9,7 @@
 #include <quasar/input/MouseCodes.h>
 #include <quasar/renderer/GraphicsAPI.h>
 
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_scancode.h>
 #include <doctest/doctest.h>
@@ -240,6 +242,30 @@ TEST_CASE("The focus and close events of SDL send window events")
     };
     CHECK(events == expected);
     CHECK(window->ShouldClose());
+}
+
+TEST_CASE("The application events of SDL send application events")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+    std::vector<std::string> events;
+    RecordEvents(*window, events);
+
+    TestHelpers::SendAppEvent(SDL_EVENT_DID_ENTER_BACKGROUND);
+    TestHelpers::SendAppEvent(SDL_EVENT_DID_ENTER_FOREGROUND);
+    TestHelpers::SendAppEvent(SDL_EVENT_LOW_MEMORY);
+    TestHelpers::SendAppEvent(SDL_EVENT_TERMINATING);
+    window->Update();
+
+    const std::vector<std::string> expected{
+        Quasar::AppBackgroundEvent(true).ToString(),
+        Quasar::AppBackgroundEvent(false).ToString(),
+        Quasar::AppLowMemoryEvent().ToString(),
+        Quasar::AppTerminatingEvent().ToString(),
+    };
+    CHECK(events == expected);
+    CHECK_FALSE(window->ShouldClose());
 }
 
 TEST_CASE("A window without an event callback ignores its events")

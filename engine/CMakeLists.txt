@@ -40,6 +40,7 @@ target_sources(QuasarEngine
             include/quasar/core/PlatformDetection.h
             include/quasar/core/UUID.h
             include/quasar/core/Window.h
+            include/quasar/events/AppEvent.h
             include/quasar/events/Event.h
             include/quasar/events/EventDispatcher.h
             include/quasar/events/GamepadEvent.h

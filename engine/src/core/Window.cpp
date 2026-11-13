@@ -1,4 +1,5 @@
 #include <quasar/core/Window.h>
+#include <quasar/events/AppEvent.h>
 #include <quasar/events/KeyEvent.h>
 #include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
@@ -147,10 +148,8 @@ namespace Quasar
                 m_NativeEventCallback(event);
             }
 
-            if (Window* window = FindWindow(event); window != nullptr)
-            {
-                window->ProcessEvent(event);
-            }
+            Window* window = FindWindow(event);
+            (window != nullptr ? window : this)->ProcessEvent(event);
         }
     }
 
@@ -355,6 +354,25 @@ namespace Quasar
                     MouseButtonReleasedEvent buttonEvent(button);
                     SendEvent(buttonEvent);
                 }
+                break;
+            }
+            case SDL_EVENT_TERMINATING:
+            {
+                AppTerminatingEvent terminatingEvent;
+                SendEvent(terminatingEvent);
+                break;
+            }
+            case SDL_EVENT_LOW_MEMORY:
+            {
+                AppLowMemoryEvent lowMemoryEvent;
+                SendEvent(lowMemoryEvent);
+                break;
+            }
+            case SDL_EVENT_DID_ENTER_BACKGROUND:
+            case SDL_EVENT_DID_ENTER_FOREGROUND:
+            {
+                AppBackgroundEvent backgroundEvent(event.type == SDL_EVENT_DID_ENTER_BACKGROUND);
+                SendEvent(backgroundEvent);
                 break;
             }
             case SDL_EVENT_MOUSE_WHEEL:

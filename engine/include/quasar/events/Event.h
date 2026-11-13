@@ -34,18 +34,22 @@ namespace Quasar
         GamepadAxisMoved,      ///< A stick or a trigger of a gamepad moved.
         GamepadFingerDown,     ///< A finger touched a touchpad of a gamepad.
         GamepadFingerMoved,    ///< A finger moved on a touchpad of a gamepad.
-        GamepadFingerUp        ///< A finger left a touchpad of a gamepad.
+        GamepadFingerUp,       ///< A finger left a touchpad of a gamepad.
+        AppTerminating,        ///< The operating system ends the application.
+        AppLowMemory,          ///< The operating system is low on memory.
+        AppBackground          ///< The application went to the background or came back to the foreground.
     };
 
     /// @brief Categories of an event. An event can belong to several categories, combined with the `|` operator.
     enum class EventCategory : std::uint8_t
     {
-        None = 0,          ///< No category.
-        Window = Bit(0),   ///< Events about the window.
-        Input = Bit(1),    ///< Events from an input device: keyboard, mouse, or gamepad buttons, axes and touchpads.
-        Keyboard = Bit(2), ///< Events from the keyboard.
-        Mouse = Bit(3),    ///< Events from the mouse.
-        Gamepad = Bit(4)   ///< Events from the gamepads, including their connection and disconnection.
+        None = 0,            ///< No category.
+        Window = Bit(0),     ///< Events about the window.
+        Input = Bit(1),      ///< Events from an input device: keyboard, mouse, or gamepad buttons, axes and touchpads.
+        Keyboard = Bit(2),   ///< Events from the keyboard.
+        Mouse = Bit(3),      ///< Events from the mouse.
+        Gamepad = Bit(4),    ///< Events from the gamepads, including their connection and disconnection.
+        Application = Bit(5) ///< Events from the operating system about the whole application.
     };
 
     /// @brief Combines two sets of categories.
@@ -105,6 +109,12 @@ namespace Quasar
                 return "GamepadFingerMoved";
             case EventType::GamepadFingerUp:
                 return "GamepadFingerUp";
+            case EventType::AppTerminating:
+                return "AppTerminating";
+            case EventType::AppLowMemory:
+                return "AppLowMemory";
+            case EventType::AppBackground:
+                return "AppBackground";
         }
         return "Unknown";
     }

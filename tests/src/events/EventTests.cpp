@@ -74,7 +74,7 @@ TEST_CASE("The log macros print an event with its own ToString, even through a b
 
 TEST_CASE("Every event type has its own name")
 {
-    constexpr auto lastType = static_cast<std::size_t>(EventType::GamepadFingerUp);
+    constexpr auto lastType = static_cast<std::size_t>(EventType::AppBackground);
 
     std::set<std::string> names;
     for (std::size_t index = 0; index <= lastType; ++index)

@@ -70,12 +70,12 @@ namespace Quasar
         /// of the graphics context, renders every layer, lets every layer draw its ImGui windows with
         /// Layer::OnImGuiRender(), then shows the image and processes the messages of the operating system and reads the
         /// gamepads. Layers are updated and rendered from the bottom of the stack to the top. While the window is
-        /// minimized, while its drawing area is empty, or while the graphics context has no image to draw, the layers
-        /// are still updated but not rendered.
+        /// minimized, while the application is in the background, while the drawing area of the window is empty, or
+        /// while the graphics context has no image to draw, the layers are still updated but not rendered.
         ///
         /// The events of the window and of the gamepads go to the application first, then to the ImGui layer, then to
         /// the layers from the top of the stack to the bottom, until one of them handles them. Closing the window stops
-        /// the loop.
+        /// the loop, and so does an AppTerminatingEvent, once every layer received it.
         ///
         /// Layers added or removed during a frame, by a layer or by an event, are added or removed at the end of the
         /// frame, in the order they were asked for. The layers being updated, rendered or receiving an event never
@@ -177,6 +177,7 @@ namespace Quasar
         double m_LastFrameTime = 0.0;
         bool m_Running = false;
         bool m_Minimized = false;
+        bool m_InBackground = false;
         bool m_DeferLayerChanges = false;
     };
 }
