@@ -109,6 +109,11 @@ namespace
             {
                 window.SetVSync(vsync);
             }
+            bool fullscreen = window.IsFullscreen();
+            if (ImGui::Checkbox("Fullscreen", &fullscreen))
+            {
+                window.SetFullscreen(fullscreen);
+            }
             ImGui::Checkbox("Show the ImGui demo window", &m_ShowDemoWindow);
             ImGui::Checkbox("Log mouse moves", &m_LogMouseMoves);
             ImGui::Checkbox("Log touch moves", &m_LogTouchMoves);

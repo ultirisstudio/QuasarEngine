@@ -36,6 +36,10 @@ namespace Quasar
         std::uint32_t Height = 720; ///< Height of the window when it is created, in the same unit as Width.
         bool VSync = true;          ///< Whether vertical synchronization is enabled when it is created.
 
+        /// Whether the window fills the screen when it is created: true by default on Android, like a game, and false on
+        /// the other platforms. See Window::SetFullscreen().
+        bool Fullscreen = PlatformDetection::IsAndroid();
+
         /// Graphics API of the window, whose context is created with the window: OpenGL by default, and Vulkan on Android,
         /// which has no OpenGL. A window with GraphicsAPI::None cannot draw anything: it is only meant for tests that run
         /// without a graphics driver.
@@ -102,6 +106,16 @@ namespace Quasar
 
         /// @brief Returns true if vertical synchronization is enabled.
         bool IsVSync() const;
+
+        /// @brief Makes the window fill the screen, or go back to a normal window.
+        ///
+        /// On a computer, the window covers its monitor without borders. On Android, the status bar and the navigation
+        /// bar are hidden, and they come back for a moment when the user swipes from an edge of the screen. The change can
+        /// take a few frames, and the window then receives a resize event.
+        void SetFullscreen(bool enabled);
+
+        /// @brief Returns true if the window fills the screen, or was asked to.
+        bool IsFullscreen() const;
 
         /// @brief Returns the width of the drawing area, in pixels.
         std::uint32_t GetWidth() const;

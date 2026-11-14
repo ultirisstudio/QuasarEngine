@@ -1,3 +1,4 @@
+#include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
 
 #include <quasar/events/AppEvent.h>
@@ -8,6 +9,7 @@
 #include <quasar/events/WindowEvent.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
+#include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/GraphicsAPI.h>
 
 #include <SDL3/SDL_events.h>
@@ -60,6 +62,25 @@ TEST_CASE("A window is created with the settings of its specification")
     CHECK_FALSE(window->IsVSync());
     CHECK_FALSE(window->ShouldClose());
     CHECK(window->GetNativeWindow() != nullptr);
+}
+
+TEST_CASE("A window fills the screen when its specification or SetFullscreen() asks for it")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> windowed = TestHelpers::CreateNullWindow({.Fullscreen = false});
+    const Quasar::Scope<Quasar::Window> fullscreen = TestHelpers::CreateNullWindow({.Fullscreen = true});
+    REQUIRE(windowed != nullptr);
+    REQUIRE(fullscreen != nullptr);
+
+    CHECK_FALSE(windowed->IsFullscreen());
+    CHECK(fullscreen->IsFullscreen());
+
+    windowed->SetFullscreen(true);
+    fullscreen->SetFullscreen(false);
+
+    CHECK(windowed->IsFullscreen());
+    CHECK_FALSE(fullscreen->IsFullscreen());
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 TEST_CASE("Closing a window only asks it to close")

@@ -117,6 +117,10 @@ namespace Quasar
         {
             flags |= SDL_WINDOW_HIDDEN;
         }
+        if (specification.Fullscreen)
+        {
+            flags |= SDL_WINDOW_FULLSCREEN;
+        }
         flags |= PrepareGraphicsWindow(specification.Graphics);
 
         SDL_Window* handle =
@@ -209,6 +213,19 @@ namespace Quasar
     bool Window::IsVSync() const
     {
         return m_VSync;
+    }
+
+    void Window::SetFullscreen(bool enabled)
+    {
+        if (!SDL_SetWindowFullscreen(m_Handle, enabled))
+        {
+            QUASAR_ENGINE_ERROR("Cannot change the fullscreen mode of the window '{}': {}", m_Title, SDL_GetError());
+        }
+    }
+
+    bool Window::IsFullscreen() const
+    {
+        return (SDL_GetWindowFlags(m_Handle) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
     std::uint32_t Window::GetWidth() const
