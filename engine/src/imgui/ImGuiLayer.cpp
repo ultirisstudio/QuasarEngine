@@ -73,7 +73,8 @@ namespace Quasar
         }
 
         const ImGuiIO& io = ImGui::GetIO();
-        if ((event.IsInCategory(EventCategory::Mouse) && io.WantCaptureMouse) || (event.IsInCategory(EventCategory::Keyboard) && io.WantCaptureKeyboard))
+        const bool pointer = event.IsInCategory(EventCategory::Mouse) || event.IsInCategory(EventCategory::Touch);
+        if ((pointer && io.WantCaptureMouse) || (event.IsInCategory(EventCategory::Keyboard) && io.WantCaptureKeyboard))
         {
             event.SetHandled(true);
         }

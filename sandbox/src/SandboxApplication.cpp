@@ -57,6 +57,11 @@ namespace
                 return;
             }
 
+            if (event.GetType() == Quasar::EventType::TouchMoved && !m_LogTouchMoves)
+            {
+                return;
+            }
+
             if (event.GetType() == Quasar::EventType::GamepadAxisMoved && !m_LogGamepadAxes)
             {
                 return;
@@ -106,6 +111,7 @@ namespace
             }
             ImGui::Checkbox("Show the ImGui demo window", &m_ShowDemoWindow);
             ImGui::Checkbox("Log mouse moves", &m_LogMouseMoves);
+            ImGui::Checkbox("Log touch moves", &m_LogTouchMoves);
             ImGui::Checkbox("Log gamepad axes", &m_LogGamepadAxes);
             ImGui::Checkbox("Log gamepad finger moves", &m_LogGamepadFingerMoves);
 
@@ -151,6 +157,7 @@ namespace
 
         bool m_ShowDemoWindow = true;
         bool m_LogMouseMoves = false;
+        bool m_LogTouchMoves = false;
         bool m_LogGamepadAxes = false;
         bool m_LogGamepadFingerMoves = false;
         bool m_ImGuiBlocksEvents = true;

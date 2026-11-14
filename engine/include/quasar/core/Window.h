@@ -52,7 +52,8 @@ namespace Quasar
     /// first window and stopped with the last one.
     ///
     /// The window keeps the state of the keyboard and of the mouse from the events it receives, so the state and the
-    /// events always agree. Input reads this state for the main window.
+    /// events always agree. Input reads this state for the main window. The touches of the screen and of a pen send
+    /// touch events and do not move the mouse.
     class Window
     {
     public:
@@ -138,6 +139,7 @@ namespace Quasar
         Window(SDL_Window* handle, const WindowSpecification& specification);
 
         void ProcessEvent(const SDL_Event& event);
+        void ProcessTouchEvent(const SDL_Event& event);
         void SendEvent(Event& event);
 
         SDL_Window* m_Handle = nullptr;

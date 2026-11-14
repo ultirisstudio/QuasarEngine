@@ -49,7 +49,9 @@ namespace Quasar
         /// @brief Stops the backends, then ImGui.
         void OnDetach() override;
 
-        /// @brief Marks the mouse and keyboard events as handled while ImGui uses them. See SetBlockEvents().
+        /// @brief Marks the mouse, touch and keyboard events as handled while ImGui uses them. See SetBlockEvents().
+        ///
+        /// ImGui reads the touches as the mouse, so the touch events are kept from the layers while ImGui uses the mouse.
         void OnEvent(Event& event) override;
 
         /// @brief Starts a new ImGui frame. The application calls it before the OnImGuiRender() hooks.

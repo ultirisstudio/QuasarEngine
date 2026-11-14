@@ -9,6 +9,7 @@
 #include <quasar/input/MouseCodes.h>
 #include <quasar/log/MemoryLogSink.h>
 
+#include <SDL3/SDL_events.h>
 #include <doctest/doctest.h>
 
 #include <imgui.h>
@@ -96,6 +97,19 @@ namespace
         {
             TestHelpers::SendMouseButton(application.GetWindow(), Quasar::MouseButton::Left, true);
             TestHelpers::SendMouseButton(application.GetWindow(), Quasar::MouseButton::Left, false);
+        }
+    }
+
+    void TouchOverImGui(Quasar::Application& application, int updates)
+    {
+        if (updates == 1)
+        {
+            TestHelpers::SendMouseMotion(application.GetWindow(), 100.0f, 100.0f);
+        }
+        if (updates == 3)
+        {
+            TestHelpers::SendTouch(application.GetWindow(), SDL_EVENT_FINGER_DOWN, 1, 0.01f, 0.01f, 1.0f);
+            TestHelpers::SendTouch(application.GetWindow(), SDL_EVENT_FINGER_UP, 1, 0.01f, 0.01f, 0.0f);
         }
     }
 
@@ -195,6 +209,21 @@ TEST_CASE("ImGui keeps the mouse from the layers while the cursor is over an ImG
 
     CHECK_FALSE(Received(layer, Quasar::EventType::MouseButtonPressed));
     CHECK_FALSE(Received(layer, Quasar::EventType::MouseButtonReleased));
+}
+
+TEST_CASE("ImGui keeps the touches from the layers while it uses the mouse")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    layer.ImGuiAction = DrawCornerWindow;
+    layer.UpdateAction = [&application](int updates) { TouchOverImGui(*application, updates); };
+
+    application->Run();
+
+    CHECK_FALSE(Received(layer, Quasar::EventType::TouchDown));
+    CHECK_FALSE(Received(layer, Quasar::EventType::TouchUp));
 }
 
 TEST_CASE("The layers receive the mouse when ImGui does not block events")

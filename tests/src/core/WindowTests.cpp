@@ -4,6 +4,7 @@
 #include <quasar/events/Event.h>
 #include <quasar/events/KeyEvent.h>
 #include <quasar/events/MouseEvent.h>
+#include <quasar/events/TouchEvent.h>
 #include <quasar/events/WindowEvent.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
@@ -11,8 +12,13 @@
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keyboard.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_pen.h>
 #include <SDL3/SDL_scancode.h>
+#include <SDL3/SDL_touch.h>
+#include <SDL3/SDL_video.h>
 #include <doctest/doctest.h>
+#include <glm/vec2.hpp>
 
 #include <algorithm>
 #include <array>
@@ -220,6 +226,69 @@ TEST_CASE("The mouse events of SDL send mouse events")
         Quasar::MouseScrolledEvent(-2.0f, 1.0f).ToString(),
     };
     CHECK(events == expected);
+}
+
+TEST_CASE("The touches of SDL send touch events at their position in the window")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+    std::vector<std::string> events;
+    RecordEvents(*window, events);
+    int width = 0;
+    int height = 0;
+    SDL_GetWindowSize(window->GetNativeWindow(), &width, &height);
+    const glm::vec2 size{static_cast<float>(width), static_cast<float>(height)};
+
+    TestHelpers::SendTouch(*window, SDL_EVENT_FINGER_DOWN, 4, 0.25f, 0.5f, 1.0f);
+    TestHelpers::SendTouch(*window, SDL_EVENT_FINGER_DOWN, 9, 0.75f, 0.5f, 1.0f);
+    TestHelpers::SendTouch(*window, SDL_EVENT_FINGER_MOTION, 4, 0.5f, 0.25f, 0.5f);
+    TestHelpers::SendTouch(*window, SDL_EVENT_FINGER_UP, 4, 0.5f, 0.25f, 0.0f);
+    TestHelpers::SendTouch(*window, SDL_EVENT_FINGER_CANCELED, 9, 0.75f, 0.5f, 0.0f);
+    window->Update();
+
+    const std::vector<std::string> expected{
+        Quasar::TouchDownEvent(4, size * glm::vec2(0.25f, 0.5f), 1.0f).ToString(),  Quasar::TouchDownEvent(9, size * glm::vec2(0.75f, 0.5f), 1.0f).ToString(),
+        Quasar::TouchMovedEvent(4, size * glm::vec2(0.5f, 0.25f), 0.5f).ToString(), Quasar::TouchUpEvent(4, size * glm::vec2(0.5f, 0.25f), 0.0f).ToString(),
+        Quasar::TouchUpEvent(9, size * glm::vec2(0.75f, 0.5f), 0.0f).ToString(),
+    };
+    CHECK(events == expected);
+}
+
+TEST_CASE("Touches and pens only send touch events, and the mouse only sends mouse events")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+    std::vector<std::string> events;
+    RecordEvents(*window, events);
+
+    for (const SDL_MouseID mouse : {SDL_TOUCH_MOUSEID, SDL_PEN_MOUSEID})
+    {
+        SDL_Event motion{};
+        motion.type = SDL_EVENT_MOUSE_MOTION;
+        motion.motion.windowID = TestHelpers::GetWindowId(*window);
+        motion.motion.which = mouse;
+        motion.motion.x = 10.0f;
+        motion.motion.y = 20.0f;
+        SDL_PushEvent(&motion);
+
+        SDL_Event button{};
+        button.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+        button.button.windowID = TestHelpers::GetWindowId(*window);
+        button.button.which = mouse;
+        button.button.button = SDL_BUTTON_LEFT;
+        button.button.down = true;
+        SDL_PushEvent(&button);
+    }
+    TestHelpers::SendTouch(*window, SDL_EVENT_FINGER_DOWN, 1, 0.5f, 0.5f, 1.0f, SDL_MOUSE_TOUCHID);
+    TestHelpers::SendTouch(*window, SDL_EVENT_FINGER_DOWN, 2, 0.5f, 0.5f, 1.0f, SDL_PEN_TOUCHID);
+    window->Update();
+
+    REQUIRE(events.size() == 1);
+    CHECK(events.front().starts_with(Quasar::GetEventTypeName(Quasar::EventType::TouchDown)));
+    CHECK_FALSE(window->IsMouseButtonDown(Quasar::MouseButton::Left));
+    CHECK(window->GetMousePosition() == glm::vec2(0.0f, 0.0f));
 }
 
 TEST_CASE("The focus and close events of SDL send window events")
