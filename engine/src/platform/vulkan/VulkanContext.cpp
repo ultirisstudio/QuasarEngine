@@ -604,10 +604,13 @@ namespace Quasar
 
     bool VulkanContext::BeginFrame()
     {
-        void* androidWindow = GetAndroidWindow(m_Window);
-        if (androidWindow != m_SurfaceWindow && (androidWindow == nullptr || !RecreateSurface()))
+        if constexpr (PlatformDetection::IsAndroid())
         {
-            return false;
+            void* androidWindow = GetAndroidWindow(m_Window);
+            if (androidWindow != m_SurfaceWindow && (androidWindow == nullptr || !RecreateSurface()))
+            {
+                return false;
+            }
         }
 
         int width = 0;
