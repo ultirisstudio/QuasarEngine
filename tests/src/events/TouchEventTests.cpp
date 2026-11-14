@@ -40,7 +40,7 @@ TEST_CASE("Touch events carry the finger, the position and the pressure")
 
     CHECK(event.GetFinger() == 7);
     CHECK(event.GetPosition() == glm::vec2(640.0f, 360.5f));
-    CHECK(event.GetPressure() == doctest::Approx(0.25f));
+    CHECK(event.GetPressure() == 0.25f);
 }
 
 TEST_CASE("Touch events are printed differently when their finger or their data differ")
