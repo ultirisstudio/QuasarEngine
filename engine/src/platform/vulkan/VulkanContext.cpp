@@ -726,7 +726,7 @@ namespace Quasar
         {
             m_SwapchainOutdated = true;
         }
-        else
+        else if (presented != VK_SUBOPTIMAL_KHR)
         {
             Succeeded(presented, "present the image of the frame");
         }
