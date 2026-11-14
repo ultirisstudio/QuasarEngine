@@ -27,8 +27,8 @@ namespace Quasar
     /// and dragged outside the main window, where each one gets its own platform window. On Wayland, SDL cannot place
     /// windows, so the viewports are turned off and ImGui windows stay inside the main window. Docking still works.
     ///
-    /// The dock spaces and the menu bars over the main window stay inside its safe area, so that on a phone the system
-    /// bars and the cutouts of the screen do not hide them.
+    /// When the main window is not in fullscreen, the dock spaces and the menu bars over it stay inside its safe area, so
+    /// that on a phone the system bars do not hide them. In fullscreen, they use the whole window.
     ///
     /// While ImGui uses the mouse or the keyboard, for example when the cursor is over an ImGui window or a text field
     /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.

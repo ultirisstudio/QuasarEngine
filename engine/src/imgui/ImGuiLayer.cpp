@@ -28,7 +28,9 @@ namespace Quasar
             SDL_Rect safeArea{};
             int width = 0;
             int height = 0;
-            if (window == nullptr || !SDL_GetWindowSafeArea(window, &safeArea) || !SDL_GetWindowSize(window, &width, &height))
+            // On Android, the safe area also leaves out the edges where the system gestures start, which stay in fullscreen
+            if (window == nullptr || (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0 || !SDL_GetWindowSafeArea(window, &safeArea) ||
+                !SDL_GetWindowSize(window, &width, &height))
             {
                 return {0.0f, 0.0f, 0.0f, 0.0f};
             }
