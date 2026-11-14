@@ -3,6 +3,7 @@
 #include <quasar/core/Application.h>
 #include <quasar/core/EntryPoint.h>
 #include <quasar/core/Layer.h>
+#include <quasar/core/PlatformDetection.h>
 #include <quasar/events/Event.h>
 #include <quasar/imgui/ImGuiLayer.h>
 #include <quasar/input/Input.h>
@@ -181,8 +182,8 @@ Quasar::Scope<Quasar::Application> Quasar::CreateApplication(std::vector<std::st
     const bool vulkan = std::ranges::find(arguments, "--vulkan") != arguments.end();
     const GraphicsAPI graphics = vulkan ? GraphicsAPI::Vulkan : WindowSpecification{}.Graphics;
 
-    Quasar::Scope<Application> application =
-        Application::Create({.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox", .VSync = false, .Graphics = graphics}});
+    Quasar::Scope<Application> application = Application::Create(
+        {.Name = "Sandbox", .Arguments = std::move(arguments), .Window = {.Title = "Sandbox", .VSync = PlatformDetection::IsAndroid(), .Graphics = graphics}});
     if (application)
     {
         application->PushLayer(Quasar::CreateScope<EventTestLayer>());
