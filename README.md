@@ -95,6 +95,10 @@ cd android
 ./gradlew assembleDebug
 ```
 
+`assembleDebug` builds the C++ code without optimizations, to debug it. To judge the performance, build an optimized APK
+with `assembleRelease`: it is then `app/build/outputs/apk/release/app-release.apk`, signed with the debug key of the SDK,
+so it can be installed but not published.
+
 Then install it on a device with USB debugging enabled, and follow its logs:
 
 ```sh
