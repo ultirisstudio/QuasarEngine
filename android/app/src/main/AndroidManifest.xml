@@ -19,7 +19,7 @@
             android:name="org.libsdl.app.SDLActivity"
             android:label="Quasar Sandbox"
             android:launchMode="singleInstance"
-            android:screenOrientation="nosensor"
+            android:screenOrientation="fullUser"
             android:configChanges="layoutDirection|locale|grammaticalGender|fontScale|fontWeightAdjustment|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
             android:preferMinimalPostProcessing="true"
             android:exported="true">

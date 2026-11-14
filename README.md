@@ -104,8 +104,9 @@ adb logcat -s QuasarEngine SDL
 
 `adb` is in the `platform-tools` folder of the SDK.
 
-Gamepads work with a cable or over Bluetooth. A Steam Controller must first be paired in the Bluetooth settings of the
-device, and the sandbox asks for the Bluetooth permission when it starts.
+The sandbox follows the rotation of the screen, unless the rotation is locked in the settings of the device. Gamepads
+work with a cable or over Bluetooth. A Steam Controller must first be paired in the Bluetooth settings of the device,
+and the sandbox asks for the Bluetooth permission when it starts.
 
 ## Contributing
 

@@ -499,15 +499,12 @@ namespace Quasar
             return false;
         }
 
-        VkExtent2D extent = capabilities.currentExtent;
-        if (extent.width == std::numeric_limits<std::uint32_t>::max())
-        {
-            int width = 0;
-            int height = 0;
-            SDL_GetWindowSizeInPixels(m_Window, &width, &height);
-            extent.width = std::clamp(static_cast<std::uint32_t>(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            extent.height = std::clamp(static_cast<std::uint32_t>(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-        }
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSizeInPixels(m_Window, &width, &height);
+        VkExtent2D extent{};
+        extent.width = std::clamp(static_cast<std::uint32_t>(std::max(width, 0)), capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        extent.height = std::clamp(static_cast<std::uint32_t>(std::max(height, 0)), capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
         if (extent.width == 0 || extent.height == 0)
         {
             m_SwapchainOutdated = true;
@@ -538,7 +535,8 @@ namespace Quasar
         info.imageArrayLayers = 1;
         info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        info.preTransform = capabilities.currentTransform;
+        info.preTransform = (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0 ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR
+                                                                                                            : capabilities.currentTransform;
         info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         info.presentMode = ChoosePresentMode(m_PhysicalDevice, m_Surface, m_VSync);
         info.clipped = VK_TRUE;
@@ -555,6 +553,7 @@ namespace Quasar
         m_Swapchain = swapchain;
         m_ImageExtent = extent;
         m_SwapchainOutdated = false;
+        m_SystemRotatesImages = info.preTransform != capabilities.currentTransform;
 
         std::uint32_t count = 0;
         vkGetSwapchainImagesKHR(m_Device, m_Swapchain, &count, nullptr);
@@ -722,7 +721,8 @@ namespace Quasar
         presentInfo.pSwapchains = &m_Swapchain;
         presentInfo.pImageIndices = &m_ImageIndex;
         const VkResult presented = vkQueuePresentKHR(m_Queue, &presentInfo);
-        if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_ERROR_SURFACE_LOST_KHR || presented == VK_SUBOPTIMAL_KHR)
+        // Android reports the images that the system rotates as suboptimal, which is expected here
+        if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_ERROR_SURFACE_LOST_KHR || (presented == VK_SUBOPTIMAL_KHR && !m_SystemRotatesImages))
         {
             m_SwapchainOutdated = true;
         }
