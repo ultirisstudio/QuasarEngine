@@ -21,6 +21,13 @@ CMakeSettings.json
 !.vscode/settings.json
 !.vscode/extensions.json
 
+# Android
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/app/.cxx/
+/android/local.properties
+
 # CLion
 .idea/
 cmake-build-*/

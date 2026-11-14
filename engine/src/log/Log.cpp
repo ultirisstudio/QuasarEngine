@@ -2,8 +2,13 @@
 #include <quasar/log/Log.h>
 #include <quasar/log/MemoryLogSink.h>
 
-#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+
+#ifdef QUASAR_PLATFORM_ANDROID
+#include <spdlog/sinks/android_sink.h>
+#else
+#include <spdlog/sinks/basic_file_sink.h>
+#endif
 
 #include <memory>
 #include <string>
@@ -20,6 +25,22 @@ namespace Quasar
             logger.set_pattern("%^[%T] %n: %v%$");
             return logger;
         }
+
+        std::vector<spdlog::sink_ptr> CreateOutputSinks()
+        {
+#ifdef QUASAR_PLATFORM_ANDROID
+            auto logcat = std::make_shared<spdlog::sinks::android_sink_mt>("QuasarEngine");
+            logcat->set_pattern("%n: %v");
+            return {logcat};
+#else
+            auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+            console->set_pattern("%^[%T] %n: %v%$");
+
+            auto file = std::make_shared<spdlog::sinks::basic_file_sink_mt>("QuasarEngine.log", true);
+            file->set_pattern("[%Y-%m-%d %T.%e] [%l] %n: %v");
+            return {console, file};
+#endif
+        }
     }
 
     std::shared_ptr<spdlog::logger> Log::s_EngineLogger;
@@ -33,15 +54,10 @@ namespace Quasar
             return;
         }
 
-        auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        console->set_pattern("%^[%T] %n: %v%$");
-
-        auto file = std::make_shared<spdlog::sinks::basic_file_sink_mt>("QuasarEngine.log", true);
-        file->set_pattern("[%Y-%m-%d %T.%e] [%l] %n: %v");
-
         s_MemorySink = std::make_shared<MemoryLogSink>(MemoryCapacity);
 
-        const std::vector<spdlog::sink_ptr> sinks{console, file, s_MemorySink};
+        std::vector<spdlog::sink_ptr> sinks = CreateOutputSinks();
+        sinks.push_back(s_MemorySink);
         s_EngineLogger = std::make_shared<spdlog::logger>("ENGINE", sinks.begin(), sinks.end());
         s_AppLogger = std::make_shared<spdlog::logger>("APP", sinks.begin(), sinks.end());
 

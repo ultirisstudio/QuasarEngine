@@ -25,7 +25,7 @@ jobs:
           submodules: recursive
 
       # clang-tidy, plus what CMake needs to configure the project: build tools and the development packages of
-      # SDL3 (X11, Wayland, udev and D-Bus) and OpenGL
+      # SDL3 (X11, Wayland, udev and D-Bus), OpenGL and Vulkan
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -35,7 +35,7 @@ jobs:
             libxext-dev libxfixes-dev libxss-dev libxtst-dev \
             libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev libegl-dev \
             libudev-dev libdbus-1-dev \
-            libgl1-mesa-dev
+            libgl1-mesa-dev libvulkan-dev
 
       - name: Show tool versions
         run: |

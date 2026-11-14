@@ -1,6 +1,10 @@
 #include <quasar/core/EntryPoint.h>
 #include <quasar/log/Log.h>
 
+#ifdef QUASAR_PLATFORM_ANDROID
+#include <SDL3/SDL_main.h>
+#endif
+
 #include <cstddef>
 #include <span>
 #include <string>

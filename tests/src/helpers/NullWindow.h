@@ -15,6 +15,7 @@
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_scancode.h>
+#include <SDL3/SDL_touch.h>
 #include <SDL3/SDL_video.h>
 
 #include <cstdint>
@@ -145,6 +146,19 @@ namespace TestHelpers
         SDL_PushEvent(&event);
     }
 
+    inline void SendTouch(const Quasar::Window& window, SDL_EventType type, SDL_FingerID finger, float x, float y, float pressure, SDL_TouchID touch = 1)
+    {
+        SDL_Event event{};
+        event.type = type;
+        event.tfinger.touchID = touch;
+        event.tfinger.fingerID = finger;
+        event.tfinger.x = x;
+        event.tfinger.y = y;
+        event.tfinger.pressure = pressure;
+        event.tfinger.windowID = GetWindowId(window);
+        SDL_PushEvent(&event);
+    }
+
     inline void SendScroll(const Quasar::Window& window, float x, float y, bool flipped = false)
     {
         SDL_Event event{};
@@ -179,5 +193,12 @@ namespace TestHelpers
     inline void SendRestore(const Quasar::Window& window)
     {
         SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED);
+    }
+
+    inline void SendAppEvent(SDL_EventType type)
+    {
+        SDL_Event event{};
+        event.type = type;
+        SDL_PushEvent(&event);
     }
 }

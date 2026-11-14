@@ -9,6 +9,7 @@
 #include <quasar/input/KeyCodes.h>
 #include <quasar/log/MemoryLogSink.h>
 
+#include <SDL3/SDL_events.h>
 #include <doctest/doctest.h>
 
 #include <algorithm>
@@ -245,6 +246,53 @@ TEST_CASE("While the window is minimized the layers are updated but not rendered
         if (updates == 3)
         {
             TestHelpers::SendRestore(application->GetWindow());
+        }
+    };
+    layer.CloseAfter = 5;
+
+    application->Run();
+
+    CHECK(Count(calls, "A update") == 5);
+    CHECK(Count(calls, "A render") == 3);
+}
+
+TEST_CASE("The end of the application by the operating system stops the main loop once the layers received it")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    ScriptLayer& layer = AddLayer(*application, "A", calls);
+    layer.UpdateAction = [](int updates)
+    {
+        if (updates == 2)
+        {
+            TestHelpers::SendAppEvent(SDL_EVENT_TERMINATING);
+        }
+    };
+
+    application->Run();
+
+    CHECK(layer.Updates == 2);
+    CHECK(Count(calls, EventCall("A", Quasar::EventType::AppTerminating)) == 1);
+}
+
+TEST_CASE("While the application is in the background the layers are updated but not rendered")
+{
+    const TestHelpers::ScopedLog log;
+    std::vector<std::string> calls;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    ScriptLayer& layer = AddLayer(*application, "A", calls);
+    layer.UpdateAction = [](int updates)
+    {
+        if (updates == 1)
+        {
+            TestHelpers::SendAppEvent(SDL_EVENT_DID_ENTER_BACKGROUND);
+        }
+        if (updates == 3)
+        {
+            TestHelpers::SendAppEvent(SDL_EVENT_DID_ENTER_FOREGROUND);
         }
     };
     layer.CloseAfter = 5;

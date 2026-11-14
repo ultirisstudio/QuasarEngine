@@ -15,7 +15,8 @@ namespace Quasar
     /// of the `renderer` folder, such as GraphicsContext, so that another API can be added without changing it.
     enum class GraphicsAPI : std::uint8_t
     {
-        None,  ///< No graphics API: the window cannot draw. Only meant for the tests that run without a graphics driver.
-        OpenGL ///< OpenGL 4.5 core, on Windows and Linux.
+        None,   ///< No graphics API: the window cannot draw. Only meant for the tests that run without a graphics driver.
+        OpenGL, ///< OpenGL 4.5 core, on Windows and Linux.
+        Vulkan  ///< Vulkan 1.3, on Windows, Linux and Android. Only available when the engine is built with the Vulkan SDK.
     };
 }

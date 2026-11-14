@@ -1,9 +1,11 @@
 #include <quasar/core/Application.h>
+#include <quasar/events/AppEvent.h>
 #include <quasar/events/EventDispatcher.h>
 #include <quasar/events/WindowEvent.h>
 #include <quasar/io/UserDataDirectory.h>
 #include <quasar/log/Log.h>
 #include <quasar/renderer/GraphicsAPI.h>
+#include <quasar/renderer/GraphicsContext.h>
 
 #include <spdlog/fmt/std.h>
 
@@ -111,7 +113,9 @@ namespace Quasar
                 layer->OnUpdate(timestep);
             }
 
-            const bool canRender = !m_Minimized && m_Window->GetWidth() > 0 && m_Window->GetHeight() > 0;
+            GraphicsContext* context = m_Window->GetGraphicsContext();
+            const bool canRender =
+                !m_Minimized && !m_InBackground && m_Window->GetWidth() > 0 && m_Window->GetHeight() > 0 && (context == nullptr || context->BeginFrame());
             if (canRender)
             {
                 for (Scope<Layer>& layer : m_LayerStack)
@@ -147,6 +151,18 @@ namespace Quasar
             {
                 Close();
                 return true;
+            });
+        dispatcher.Dispatch<AppTerminatingEvent>(
+            [this](AppTerminatingEvent&)
+            {
+                Close();
+                return false;
+            });
+        dispatcher.Dispatch<AppBackgroundEvent>(
+            [this](AppBackgroundEvent& background)
+            {
+                m_InBackground = background.IsInBackground();
+                return false;
             });
         dispatcher.Dispatch<WindowMinimizeEvent>(
             [this](WindowMinimizeEvent& minimize)

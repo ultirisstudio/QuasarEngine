@@ -4,6 +4,7 @@
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_gamepad.h>
+#include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_stdinc.h>
@@ -115,6 +116,10 @@ namespace Quasar
 
     SdlGamepadBackend::SdlGamepadBackend()
     {
+        // SDL only reads the Steam Controllers itself when this is on, which is not the default on Android, where it
+        // also connects to them over Bluetooth and so asks for the Bluetooth permission
+        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_STEAM, "1");
+
         if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
         {
             QUASAR_ENGINE_ERROR("Cannot read the gamepads: {}", SDL_GetError());

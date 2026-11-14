@@ -23,9 +23,6 @@ target_sources(QuasarEngine
         src/io/UserDataDirectory.cpp
         src/log/Log.cpp
         src/log/MemoryLogSink.cpp
-        src/platform/opengl/OpenGLContext.cpp
-        src/platform/opengl/OpenGLImGuiBackend.cpp
-        src/platform/opengl/OpenGLImGuiBackend.h
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/time/ScopedTimer.cpp
@@ -43,11 +40,13 @@ target_sources(QuasarEngine
             include/quasar/core/PlatformDetection.h
             include/quasar/core/UUID.h
             include/quasar/core/Window.h
+            include/quasar/events/AppEvent.h
             include/quasar/events/Event.h
             include/quasar/events/EventDispatcher.h
             include/quasar/events/GamepadEvent.h
             include/quasar/events/KeyEvent.h
             include/quasar/events/MouseEvent.h
+            include/quasar/events/TouchEvent.h
             include/quasar/events/WindowEvent.h
             include/quasar/imgui/ImGuiLayer.h
             include/quasar/imgui/ImGuiTheme.h
@@ -63,7 +62,6 @@ target_sources(QuasarEngine
             include/quasar/io/UserDataDirectory.h
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
-            include/quasar/platform/opengl/OpenGLContext.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/time/ScopedTimer.h
@@ -71,20 +69,56 @@ target_sources(QuasarEngine
             include/quasar/time/Timestep.h
 )
 
-add_custom_target(QuasarEngineResources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
-    VERBATIM
-)
-set_target_properties(QuasarEngineResources PROPERTIES FOLDER "Engine")
-add_dependencies(QuasarEngine QuasarEngineResources)
+if(QUASAR_OPENGL)
+    target_sources(QuasarEngine
+        PRIVATE
+            src/platform/opengl/OpenGLContext.cpp
+            src/platform/opengl/OpenGLImGuiBackend.cpp
+            src/platform/opengl/OpenGLImGuiBackend.h
+        PUBLIC
+            FILE_SET HEADERS
+            FILES
+                include/quasar/platform/opengl/OpenGLContext.h
+    )
+    target_link_libraries(QuasarEngine PRIVATE glad::glad)
+    target_compile_definitions(QuasarEngine PRIVATE QUASAR_OPENGL)
+endif()
 
-add_library(QuasarEntryPoint STATIC src/core/EntryPoint.cpp)
+if(QUASAR_VULKAN)
+    target_sources(QuasarEngine
+        PRIVATE
+            src/platform/vulkan/VulkanContext.cpp
+            src/platform/vulkan/VulkanImGuiBackend.cpp
+            src/platform/vulkan/VulkanImGuiBackend.h
+        PUBLIC
+            FILE_SET HEADERS
+            FILES
+                include/quasar/platform/vulkan/VulkanContext.h
+    )
+    target_link_libraries(QuasarEngine PUBLIC Vulkan::Vulkan)
+    target_compile_definitions(QuasarEngine PRIVATE QUASAR_VULKAN)
+endif()
+
+if(NOT ANDROID)
+    add_custom_target(QuasarEngineResources
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
+        VERBATIM
+    )
+    set_target_properties(QuasarEngineResources PROPERTIES FOLDER "Engine")
+    add_dependencies(QuasarEngine QuasarEngineResources)
+endif()
+
+# An object library, so that main() is always linked, even into the shared library of an Android program
+add_library(QuasarEntryPoint OBJECT src/core/EntryPoint.cpp)
 add_library(Quasar::EntryPoint ALIAS QuasarEntryPoint)
 target_link_libraries(QuasarEntryPoint PUBLIC Quasar::Engine PRIVATE Quasar::CompileOptions)
 set_target_properties(QuasarEntryPoint PROPERTIES FOLDER "Engine")
 
-if(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "QuasarEngine only supports Windows and Linux.")
+if(ANDROID)
+    target_link_libraries(QuasarEntryPoint PRIVATE SDL3::Headers)
+    target_link_libraries(QuasarEngine PRIVATE log)
+elseif(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "QuasarEngine only supports Windows, Linux and Android.")
 endif()
 
 target_include_directories(QuasarEngine PRIVATE src)
@@ -97,7 +131,6 @@ target_link_libraries(QuasarEngine
     PRIVATE
         Quasar::CompileOptions
         SDL3::SDL3
-        glad::glad
 )
 
 target_compile_definitions(QuasarEngine PRIVATE

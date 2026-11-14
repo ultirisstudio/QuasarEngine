@@ -52,6 +52,17 @@ jobs:
           path: build/${{ matrix.preset }}
           key: ${{ steps.cache-key.outputs.key }}
 
+      # The vcpkg of the runner builds the Vulkan headers and loader, since the repository only allows the actions of
+      # GitHub. CMake finds them through the VULKAN_SDK environment variable, and the tests load the vulkan-1.dll of the
+      # loader
+      - name: Install the Vulkan headers and loader
+        shell: pwsh
+        run: |
+          $root = "$env:RUNNER_TEMP\vcpkg"
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install vulkan-headers vulkan-loader --triplet x64-windows-release --x-install-root $root
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg cannot install the Vulkan headers and loader" }
+          "VULKAN_SDK=$root\x64-windows-release" >> $env:GITHUB_ENV
+
       - name: Show tool versions
         run: cmake --version
 
@@ -61,14 +72,14 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
-      - name: Cache the Mesa software OpenGL driver
+      - name: Cache the Mesa software OpenGL and Vulkan drivers
         id: mesa-cache
         uses: actions/cache@v6
         with:
           path: mesa
-          key: mesa-dist-win-26.0.3-release-msvc-x64
+          key: mesa-dist-win-26.0.3-release-msvc-x64-lavapipe
 
-      - name: Download the Mesa software OpenGL driver
+      - name: Download the Mesa software OpenGL and Vulkan drivers
         if: steps.mesa-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
@@ -77,12 +88,25 @@ jobs:
           7z x mesa.7z -omesa-archive -y | Out-Null
           New-Item -ItemType Directory -Force mesa | Out-Null
           Copy-Item mesa-archive/x64/*.dll mesa/
+          Copy-Item mesa-archive/x64/*.json mesa/
           if (-not (Test-Path mesa/opengl32.dll)) { throw "opengl32.dll is not in the x64 folder of the Mesa archive" }
+          if (-not (Get-ChildItem mesa -Filter 'lvp_icd*.json')) { throw "Lavapipe is not in the x64 folder of the Mesa archive" }
 
-      - name: Copy the Mesa software OpenGL driver next to the tests
+      # The tests run as an administrator, so the Vulkan loader ignores VK_DRIVER_FILES and only reads the drivers of the
+      # registry. Lavapipe, the Mesa software Vulkan driver, is registered there as the only driver
+      - name: Copy the Mesa software drivers and the Vulkan runtime next to the tests
         shell: pwsh
         run: |
-          Get-ChildItem build/${{ matrix.preset }}/bin -Directory | ForEach-Object { Copy-Item mesa/*.dll $_.FullName }
+          $loader = Join-Path $env:VULKAN_SDK 'bin\vulkan-1.dll'
+          if (-not (Test-Path $loader)) { throw "vulkan-1.dll is not in the Vulkan loader" }
+          Get-ChildItem build/${{ matrix.preset }}/bin -Directory | ForEach-Object {
+            Copy-Item mesa/*.dll $_.FullName
+            Copy-Item $loader $_.FullName
+          }
+          $driver = Get-ChildItem mesa -Filter 'lvp_icd*.json' | Select-Object -First 1
+          $drivers = 'HKLM:\SOFTWARE\Khronos\Vulkan\Drivers'
+          New-Item -Path $drivers -Force | Out-Null
+          New-ItemProperty -Path $drivers -Name $driver.FullName -PropertyType DWord -Value 0 -Force | Out-Null
           Get-ChildItem mesa -Name
 
       - name: Test

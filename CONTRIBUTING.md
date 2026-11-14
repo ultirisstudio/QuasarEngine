@@ -77,7 +77,7 @@ The engine is split in folders, with the same names in `engine/include/quasar/` 
 | `input` | The keyboard, the mouse and the gamepads, with their codes and the `Input` functions |
 | `io` | Files, paths and the folders of the application |
 | `log` | The engine and application loggers |
-| `platform` | The code of each graphics API, in `platform/<api>`, such as `platform/opengl` |
+| `platform` | The code of each graphics API, in `platform/<api>`: `platform/opengl` and `platform/vulkan` |
 | `renderer` | The interfaces that do not depend on a graphics API, such as `GraphicsAPI` and `GraphicsContext` |
 | `time` | Timers and the duration of a frame |
 
@@ -131,9 +131,12 @@ The tests create hidden windows with SDL, and send them input by putting SDL eve
 On Linux, they use the X11 driver of SDL, which supports the ImGui windows that leave the main window, so they need an
 X server. On a computer without a desktop, run them with `xvfb-run -a ctest --preset <preset>`, from the `xvfb` package.
 Tests that need an OpenGL context create their windows with `TestHelpers::CreateWindowWithContext()` or
-`TestHelpers::CreateApplicationWithContext()`, and use the installed driver. The CI installs the Mesa software driver,
-because its runners have no GPU. The window of the editor and the ImGui windows that a test moves outside the main window
-can appear on the screen for a moment.
+`TestHelpers::CreateApplicationWithContext()`, and use the installed driver. The Vulkan tests, in
+`tests/src/platform/vulkan/`, give these functions `.Graphics = Quasar::GraphicsAPI::Vulkan`, and are only built when
+the engine is built with Vulkan. The CI installs the Mesa software drivers, llvmpipe for OpenGL and Lavapipe for Vulkan,
+because its runners have no GPU. On Linux, it also installs the Vulkan validation layer, whose errors make the tests
+fail. The window of the editor and the ImGui windows that a test moves outside the main window can appear on the screen
+for a moment.
 
 ### Test helpers
 

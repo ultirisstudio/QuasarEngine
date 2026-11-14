@@ -74,6 +74,19 @@ namespace Quasar
         return created;
     }
 
+    bool OpenGLContext::BeginFrame()
+    {
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSizeInPixels(m_Window, &width, &height);
+
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        glViewport(0, 0, width, height);
+        glClearColor(ClearColor[0], ClearColor[1], ClearColor[2], ClearColor[3]);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        return true;
+    }
+
     void OpenGLContext::SwapBuffers()
     {
         SDL_GL_SwapWindow(m_Window);

@@ -27,6 +27,9 @@ namespace Quasar
     /// and dragged outside the main window, where each one gets its own platform window. On Wayland, SDL cannot place
     /// windows, so the viewports are turned off and ImGui windows stay inside the main window. Docking still works.
     ///
+    /// When the main window is not in fullscreen, the dock spaces and the menu bars over it stay inside its safe area, so
+    /// that on a phone the system bars do not hide them. In fullscreen, they use the whole window.
+    ///
     /// While ImGui uses the mouse or the keyboard, for example when the cursor is over an ImGui window or a text field
     /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.
     class ImGuiLayer final : public Layer
@@ -49,7 +52,9 @@ namespace Quasar
         /// @brief Stops the backends, then ImGui.
         void OnDetach() override;
 
-        /// @brief Marks the mouse and keyboard events as handled while ImGui uses them. See SetBlockEvents().
+        /// @brief Marks the mouse, touch and keyboard events as handled while ImGui uses them. See SetBlockEvents().
+        ///
+        /// ImGui reads the touches as the mouse, so the touch events are kept from the layers while ImGui uses the mouse.
         void OnEvent(Event& event) override;
 
         /// @brief Starts a new ImGui frame. The application calls it before the OnImGuiRender() hooks.
