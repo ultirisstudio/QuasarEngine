@@ -7,10 +7,7 @@
 
 namespace Quasar::Editor
 {
-    EditorPanel::EditorPanel(std::string name, EditorContext& context, ImGuiWindowFlags flags)
-        : m_Name(std::move(name)), m_Context(&context), m_Flags(flags)
-    {
-    }
+    EditorPanel::EditorPanel(std::string name, EditorContext& context, ImGuiWindowFlags flags) : m_Name(std::move(name)), m_Context(&context), m_Flags(flags) {}
 
     void EditorPanel::Draw()
     {
