@@ -1,5 +1,7 @@
 #include "EditorLayer.h"
 
+#include "panels/ConsolePanel.h"
+
 #include <quasar/core/Application.h>
 #include <quasar/events/Event.h>
 #include <quasar/log/Log.h>
@@ -13,6 +15,7 @@ namespace Quasar::Editor
     void EditorLayer::OnAttach()
     {
         QUASAR_INFO("Editor started");
+        AddPanel<ConsolePanel>();
     }
 
     void EditorLayer::OnDetach()
