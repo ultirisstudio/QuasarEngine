@@ -26,3 +26,4 @@
 *.so binary
 *.lib binary
 *.a binary
+*.jar binary

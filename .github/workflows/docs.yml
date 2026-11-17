@@ -116,7 +116,8 @@ jobs:
             libxext-dev libxfixes-dev libxss-dev libxtst-dev \
             libwayland-dev libxkbcommon-dev wayland-protocols libdecor-0-dev libegl-dev \
             libudev-dev libdbus-1-dev \
-            libgl1-mesa-dev libglx-mesa0 libgl1-mesa-dri xvfb
+            libgl1-mesa-dev libglx-mesa0 libgl1-mesa-dri xvfb \
+            libvulkan-dev mesa-vulkan-drivers vulkan-validationlayers
           pipx install gcovr==$GCOVR_VERSION
           gcovr --version
 

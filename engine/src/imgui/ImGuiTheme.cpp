@@ -6,6 +6,11 @@
 
 #include <spdlog/fmt/std.h>
 
+#ifdef QUASAR_PLATFORM_ANDROID
+#include <SDL3/SDL_iostream.h>
+#include <SDL3/SDL_stdinc.h>
+#endif
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -14,6 +19,7 @@
 #include <filesystem>
 #include <limits>
 #include <optional>
+#include <span>
 #include <system_error>
 #include <vector>
 
@@ -153,7 +159,24 @@ namespace Quasar::ImGuiTheme
                                                            { return std::memcmp(data.data(), signature.data(), 4) == 0; });
         }
 
-        std::optional<std::vector<std::byte>> ReadFontFile(const std::filesystem::path& file)
+#ifdef QUASAR_PLATFORM_ANDROID
+        std::optional<std::vector<std::byte>> ReadFontData(const std::filesystem::path& file)
+        {
+            std::size_t size = 0;
+            void* loaded = SDL_LoadFile(file.generic_string().c_str(), &size);
+            if (loaded == nullptr)
+            {
+                QUASAR_ENGINE_WARN("Cannot find the font '{}' in the APK, so ImGui uses its embedded font", file);
+                return std::nullopt;
+            }
+
+            const std::span<const std::byte> bytes(static_cast<const std::byte*>(loaded), size);
+            std::vector<std::byte> data(bytes.begin(), bytes.end());
+            SDL_free(loaded);
+            return data;
+        }
+#else
+        std::optional<std::vector<std::byte>> ReadFontData(const std::filesystem::path& file)
         {
             std::error_code error;
             if (file.empty() || !std::filesystem::is_regular_file(file, error))
@@ -166,6 +189,16 @@ namespace Quasar::ImGuiTheme
             if (!data)
             {
                 QUASAR_ENGINE_WARN("Cannot read the font '{}', so ImGui uses its embedded font", file);
+            }
+            return data;
+        }
+#endif
+
+        std::optional<std::vector<std::byte>> ReadFontFile(const std::filesystem::path& file)
+        {
+            std::optional<std::vector<std::byte>> data = ReadFontData(file);
+            if (!data)
+            {
                 return std::nullopt;
             }
 
@@ -193,13 +226,18 @@ namespace Quasar::ImGuiTheme
 
     std::filesystem::path GetFontPath()
     {
+        std::filesystem::path font = std::filesystem::path("resources") / "fonts" / "Inter" / "Inter-Regular.ttf";
+        if constexpr (PlatformDetection::IsAndroid())
+        {
+            return font;
+        }
+
         const std::optional<std::filesystem::path> directory = GetExecutableDirectory();
         if (!directory)
         {
             return {};
         }
-
-        return *directory / "resources" / "fonts" / "Inter" / "Inter-Regular.ttf";
+        return *directory / font;
     }
 
     bool LoadFont(ImFontAtlas& atlas, const std::filesystem::path& file)

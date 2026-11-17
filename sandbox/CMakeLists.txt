@@ -1,4 +1,9 @@
-add_executable(QuasarSandbox)
+if(ANDROID)
+    add_library(QuasarSandbox SHARED)
+    set_target_properties(QuasarSandbox PROPERTIES OUTPUT_NAME main)
+else()
+    add_executable(QuasarSandbox)
+endif()
 
 target_sources(QuasarSandbox PRIVATE
     src/GamepadPanel.cpp

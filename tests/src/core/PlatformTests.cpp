@@ -4,7 +4,10 @@
 
 TEST_CASE("Exactly one platform is detected")
 {
-    CHECK(Quasar::PlatformDetection::IsWindows() != Quasar::PlatformDetection::IsLinux());
+    const int platforms = static_cast<int>(Quasar::PlatformDetection::IsWindows()) + static_cast<int>(Quasar::PlatformDetection::IsLinux()) +
+                          static_cast<int>(Quasar::PlatformDetection::IsAndroid());
+
+    CHECK(platforms == 1);
 }
 
 TEST_CASE("The build configuration matches NDEBUG")

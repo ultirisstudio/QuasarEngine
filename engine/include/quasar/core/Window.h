@@ -36,9 +36,14 @@ namespace Quasar
         std::uint32_t Height = 720; ///< Height of the window when it is created, in the same unit as Width.
         bool VSync = true;          ///< Whether vertical synchronization is enabled when it is created.
 
-        /// Graphics API of the window, whose context is created with the window. A window with GraphicsAPI::None cannot
-        /// draw anything: it is only meant for tests that run without a graphics driver.
-        GraphicsAPI Graphics = GraphicsAPI::OpenGL;
+        /// Whether the window fills the screen when it is created: true by default on Android, like a game, and false on
+        /// the other platforms. See Window::SetFullscreen().
+        bool Fullscreen = PlatformDetection::IsAndroid();
+
+        /// Graphics API of the window, whose context is created with the window: OpenGL by default, and Vulkan on Android,
+        /// which has no OpenGL. A window with GraphicsAPI::None cannot draw anything: it is only meant for tests that run
+        /// without a graphics driver.
+        GraphicsAPI Graphics = PlatformDetection::IsAndroid() ? GraphicsAPI::Vulkan : GraphicsAPI::OpenGL;
 
         /// Whether the window is shown when it is created. A hidden window still receives the events sent to it, which
         /// the tests use.
@@ -51,7 +56,8 @@ namespace Quasar
     /// first window and stopped with the last one.
     ///
     /// The window keeps the state of the keyboard and of the mouse from the events it receives, so the state and the
-    /// events always agree. Input reads this state for the main window.
+    /// events always agree. Input reads this state for the main window. The touches of the screen and of a pen send
+    /// touch events and do not move the mouse.
     class Window
     {
     public:
@@ -76,7 +82,8 @@ namespace Quasar
         /// @brief Shows the rendered image and processes the messages of the operating system.
         ///
         /// Call it once per frame, after rendering. Every SDL event waiting is read: it goes to the native event
-        /// callback first, then to the window it belongs to, which sends the matching engine event.
+        /// callback first, then to the window it belongs to, which sends the matching engine event. The events that
+        /// belong to no window, such as AppBackgroundEvent, go to the window that reads them.
         void Update();
 
         /// @brief Sets the function that receives every event of the window.
@@ -99,6 +106,16 @@ namespace Quasar
 
         /// @brief Returns true if vertical synchronization is enabled.
         bool IsVSync() const;
+
+        /// @brief Makes the window fill the screen, or go back to a normal window.
+        ///
+        /// On a computer, the window covers its monitor without borders. On Android, the status bar and the navigation
+        /// bar are hidden, and they come back for a moment when the user swipes from an edge of the screen. The change can
+        /// take a few frames, and the window then receives a resize event.
+        void SetFullscreen(bool enabled);
+
+        /// @brief Returns true if the window fills the screen, or was asked to.
+        bool IsFullscreen() const;
 
         /// @brief Returns the width of the drawing area, in pixels.
         std::uint32_t GetWidth() const;
@@ -136,6 +153,7 @@ namespace Quasar
         Window(SDL_Window* handle, const WindowSpecification& specification);
 
         void ProcessEvent(const SDL_Event& event);
+        void ProcessTouchEvent(const SDL_Event& event);
         void SendEvent(Event& event);
 
         SDL_Window* m_Handle = nullptr;

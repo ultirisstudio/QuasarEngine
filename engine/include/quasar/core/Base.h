@@ -12,7 +12,7 @@
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/log/Log.h>
 
-#ifdef QUASAR_PLATFORM_LINUX
+#ifndef QUASAR_PLATFORM_WINDOWS
 #include <csignal>
 #endif
 

@@ -5,14 +5,16 @@
 /// \author Kurogenshi
 /// \date 2026-10-19
 ///
-/// This header defines one platform macro, QUASAR_PLATFORM_WINDOWS or QUASAR_PLATFORM_LINUX, and one build type
-/// macro, QUASAR_DEBUG or QUASAR_RELEASE. The build type is Release when `NDEBUG` is defined. Other platforms,
-/// including macOS, stop the build with an error.
+/// This header defines one platform macro, QUASAR_PLATFORM_WINDOWS, QUASAR_PLATFORM_LINUX or QUASAR_PLATFORM_ANDROID,
+/// and one build type macro, QUASAR_DEBUG or QUASAR_RELEASE. The build type is Release when `NDEBUG` is defined. Other
+/// platforms, including macOS, stop the build with an error.
 ///
 /// Use these macros with `#ifdef` only for code that does not compile on every platform. Everywhere else, use the
 /// PlatformDetection class.
 
-#if defined(__linux__)
+#if defined(__ANDROID__)
+#define QUASAR_PLATFORM_ANDROID
+#elif defined(__linux__)
 #define QUASAR_PLATFORM_LINUX
 #elif defined(_WIN32)
 #define QUASAR_PLATFORM_WINDOWS
@@ -50,6 +52,16 @@ namespace Quasar
         static constexpr bool IsLinux()
         {
 #ifdef QUASAR_PLATFORM_LINUX
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        /// @brief Returns true when the engine is built for Android.
+        static constexpr bool IsAndroid()
+        {
+#ifdef QUASAR_PLATFORM_ANDROID
             return true;
 #else
             return false;

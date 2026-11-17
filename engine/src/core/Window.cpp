@@ -1,6 +1,8 @@
 #include <quasar/core/Window.h>
+#include <quasar/events/AppEvent.h>
 #include <quasar/events/KeyEvent.h>
 #include <quasar/events/MouseEvent.h>
+#include <quasar/events/TouchEvent.h>
 #include <quasar/events/WindowEvent.h>
 #include <quasar/log/Log.h>
 
@@ -11,10 +13,13 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_pen.h>
 #include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_touch.h>
 #include <SDL3/SDL_version.h>
 #include <SDL3/SDL_video.h>
+#include <glm/vec2.hpp>
 
 #include <array>
 #include <cstddef>
@@ -43,6 +48,26 @@ namespace Quasar
                 return nullptr;
             }
             return static_cast<Window*>(SDL_GetPointerProperty(SDL_GetWindowProperties(handle), WindowProperty, nullptr));
+        }
+
+        // SDL also turns the touches and the pens into mouse events, and the mouse into touches. Only the real mouse
+        // sends mouse events, and only the screen and the pens send touch events.
+        bool IsMouse(SDL_MouseID mouse)
+        {
+            return mouse != SDL_TOUCH_MOUSEID && mouse != SDL_PEN_MOUSEID;
+        }
+
+        bool IsTouchScreen(SDL_TouchID touch)
+        {
+            return touch != SDL_MOUSE_TOUCHID;
+        }
+
+        glm::vec2 GetTouchPosition(SDL_Window* window, const SDL_TouchFingerEvent& finger)
+        {
+            int width = 0;
+            int height = 0;
+            SDL_GetWindowSize(window, &width, &height);
+            return {finger.x * static_cast<float>(width), finger.y * static_cast<float>(height)};
         }
 
         std::uint32_t ButtonMask(MouseButton button)
@@ -92,6 +117,10 @@ namespace Quasar
         {
             flags |= SDL_WINDOW_HIDDEN;
         }
+        if (specification.Fullscreen)
+        {
+            flags |= SDL_WINDOW_FULLSCREEN;
+        }
         flags |= PrepareGraphicsWindow(specification.Graphics);
 
         SDL_Window* handle =
@@ -118,7 +147,10 @@ namespace Quasar
         }
 
         window->SetVSync(specification.VSync);
-        SDL_StartTextInput(handle);
+        if constexpr (!PlatformDetection::IsAndroid())
+        {
+            SDL_StartTextInput(handle);
+        }
 
         QUASAR_ENGINE_INFO("Created the window '{}' ({}x{})", window->GetTitle(), window->GetWidth(), window->GetHeight());
         return window;
@@ -131,7 +163,7 @@ namespace Quasar
             m_Context->SwapBuffers();
         }
 
-        if (!SDL_TextInputActive(m_Handle))
+        if (!PlatformDetection::IsAndroid() && !SDL_TextInputActive(m_Handle))
         {
             SDL_StartTextInput(m_Handle);
         }
@@ -144,10 +176,8 @@ namespace Quasar
                 m_NativeEventCallback(event);
             }
 
-            if (Window* window = FindWindow(event); window != nullptr)
-            {
-                window->ProcessEvent(event);
-            }
+            Window* window = FindWindow(event);
+            (window != nullptr ? window : this)->ProcessEvent(event);
         }
     }
 
@@ -183,6 +213,19 @@ namespace Quasar
     bool Window::IsVSync() const
     {
         return m_VSync;
+    }
+
+    void Window::SetFullscreen(bool enabled)
+    {
+        if (!SDL_SetWindowFullscreen(m_Handle, enabled))
+        {
+            QUASAR_ENGINE_ERROR("Cannot change the fullscreen mode of the window '{}': {}", m_Title, SDL_GetError());
+        }
+    }
+
+    bool Window::IsFullscreen() const
+    {
+        return (SDL_GetWindowFlags(m_Handle) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
     std::uint32_t Window::GetWidth() const
@@ -331,6 +374,10 @@ namespace Quasar
             }
             case SDL_EVENT_MOUSE_MOTION:
             {
+                if (!IsMouse(event.motion.which))
+                {
+                    break;
+                }
                 m_MousePosition = {event.motion.x, event.motion.y};
                 MouseMovedEvent movedEvent(event.motion.x, event.motion.y);
                 SendEvent(movedEvent);
@@ -339,6 +386,10 @@ namespace Quasar
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             case SDL_EVENT_MOUSE_BUTTON_UP:
             {
+                if (!IsMouse(event.button.which))
+                {
+                    break;
+                }
                 const auto button = static_cast<MouseButton>(event.button.button);
                 if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
                 {
@@ -354,6 +405,33 @@ namespace Quasar
                 }
                 break;
             }
+            case SDL_EVENT_FINGER_DOWN:
+            case SDL_EVENT_FINGER_MOTION:
+            case SDL_EVENT_FINGER_UP:
+            case SDL_EVENT_FINGER_CANCELED:
+            {
+                ProcessTouchEvent(event);
+                break;
+            }
+            case SDL_EVENT_TERMINATING:
+            {
+                AppTerminatingEvent terminatingEvent;
+                SendEvent(terminatingEvent);
+                break;
+            }
+            case SDL_EVENT_LOW_MEMORY:
+            {
+                AppLowMemoryEvent lowMemoryEvent;
+                SendEvent(lowMemoryEvent);
+                break;
+            }
+            case SDL_EVENT_DID_ENTER_BACKGROUND:
+            case SDL_EVENT_DID_ENTER_FOREGROUND:
+            {
+                AppBackgroundEvent backgroundEvent(event.type == SDL_EVENT_DID_ENTER_BACKGROUND);
+                SendEvent(backgroundEvent);
+                break;
+            }
             case SDL_EVENT_MOUSE_WHEEL:
             {
                 const float direction = event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1.0f : 1.0f;
@@ -363,6 +441,32 @@ namespace Quasar
             }
             default:
                 break;
+        }
+    }
+
+    void Window::ProcessTouchEvent(const SDL_Event& event)
+    {
+        const SDL_TouchFingerEvent& finger = event.tfinger;
+        if (!IsTouchScreen(finger.touchID))
+        {
+            return;
+        }
+
+        const glm::vec2 position = GetTouchPosition(m_Handle, finger);
+        if (event.type == SDL_EVENT_FINGER_DOWN)
+        {
+            TouchDownEvent touchEvent(finger.fingerID, position, finger.pressure);
+            SendEvent(touchEvent);
+        }
+        else if (event.type == SDL_EVENT_FINGER_MOTION)
+        {
+            TouchMovedEvent touchEvent(finger.fingerID, position, finger.pressure);
+            SendEvent(touchEvent);
+        }
+        else
+        {
+            TouchUpEvent touchEvent(finger.fingerID, position, finger.pressure);
+            SendEvent(touchEvent);
         }
     }
 
