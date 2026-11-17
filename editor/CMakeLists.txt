@@ -9,6 +9,8 @@ target_sources(QuasarEditorLibrary PRIVATE
     src/EditorContext.h
     src/panels/EditorPanel.cpp
     src/panels/EditorPanel.h
+    src/panels/ConsolePanel.cpp
+    src/panels/ConsolePanel.h
 )
 
 target_include_directories(QuasarEditorLibrary PUBLIC src)
