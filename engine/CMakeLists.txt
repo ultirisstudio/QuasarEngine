@@ -45,6 +45,7 @@ target_sources(QuasarEngine
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Image.cpp
+        src/renderer/Material.cpp
         src/renderer/Mesh.cpp
         src/renderer/Pipeline.cpp
         src/renderer/Primitives.cpp
@@ -96,6 +97,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Image.h
+            include/quasar/renderer/Material.h
             include/quasar/renderer/Mesh.h
             include/quasar/renderer/Pipeline.h
             include/quasar/renderer/Primitives.h
