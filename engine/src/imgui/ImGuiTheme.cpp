@@ -1,8 +1,7 @@
 #include <quasar/imgui/ImGuiTheme.h>
+#include <quasar/io/EngineResources.h>
 #include <quasar/io/File.h>
 #include <quasar/log/Log.h>
-
-#include <io/ExecutableDirectory.h>
 
 #include <spdlog/fmt/std.h>
 
@@ -193,13 +192,13 @@ namespace Quasar::ImGuiTheme
 
     std::filesystem::path GetFontPath()
     {
-        const std::optional<std::filesystem::path> directory = GetExecutableDirectory();
-        if (!directory)
+        const std::filesystem::path directory = GetEngineResourcesDirectory();
+        if (directory.empty())
         {
             return {};
         }
 
-        return *directory / "resources" / "fonts" / "Inter" / "Inter-Regular.ttf";
+        return directory / "fonts" / "Inter" / "Inter-Regular.ttf";
     }
 
     bool LoadFont(ImFontAtlas& atlas, const std::filesystem::path& file)

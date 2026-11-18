@@ -16,6 +16,7 @@ target_sources(QuasarEngine
         src/input/Input.cpp
         src/input/SdlGamepadBackend.cpp
         src/input/SdlGamepadBackend.h
+        src/io/EngineResources.cpp
         src/io/ExecutableDirectory.cpp
         src/io/ExecutableDirectory.h
         src/io/File.cpp
@@ -44,11 +45,13 @@ target_sources(QuasarEngine
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Image.cpp
+        src/renderer/Material.cpp
         src/renderer/Mesh.cpp
         src/renderer/Pipeline.cpp
         src/renderer/Primitives.cpp
         src/renderer/Shader.cpp
         src/renderer/Texture.cpp
+        src/renderer/UniformBlockLayout.cpp
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
         src/time/ScopedTimer.cpp
@@ -81,6 +84,7 @@ target_sources(QuasarEngine
             include/quasar/input/Input.h
             include/quasar/input/KeyCodes.h
             include/quasar/input/MouseCodes.h
+            include/quasar/io/EngineResources.h
             include/quasar/io/File.h
             include/quasar/io/Path.h
             include/quasar/io/UserDataDirectory.h
@@ -93,11 +97,13 @@ target_sources(QuasarEngine
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Image.h
+            include/quasar/renderer/Material.h
             include/quasar/renderer/Mesh.h
             include/quasar/renderer/Pipeline.h
             include/quasar/renderer/Primitives.h
             include/quasar/renderer/Shader.h
             include/quasar/renderer/Texture.h
+            include/quasar/renderer/UniformBlockLayout.h
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
             include/quasar/time/ScopedTimer.h
@@ -106,7 +112,7 @@ target_sources(QuasarEngine
 )
 
 add_custom_target(QuasarEngineResources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources/engine"
     VERBATIM
 )
 set_target_properties(QuasarEngineResources PROPERTIES FOLDER "Engine")
