@@ -1,5 +1,7 @@
 #include <quasar/platform/opengl/OpenGLContext.h>
 
+#include <platform/opengl/OpenGLFramebuffer.h>
+
 #include <glad/gl.h>
 
 #include <SDL3/SDL_error.h>
@@ -83,5 +85,11 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+    }
+
+    Scope<Framebuffer> OpenGLContext::CreateFramebuffer(const FramebufferSpecification& specification)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLFramebuffer::Create(specification);
     }
 }
