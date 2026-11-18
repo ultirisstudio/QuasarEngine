@@ -1,6 +1,7 @@
 #include <quasar/platform/opengl/OpenGLContext.h>
 
 #include <platform/opengl/OpenGLFramebuffer.h>
+#include <platform/opengl/OpenGLShader.h>
 
 #include <glad/gl.h>
 
@@ -91,5 +92,11 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         return OpenGLFramebuffer::Create(specification);
+    }
+
+    Scope<Shader> OpenGLContext::CreateShader(const ShaderSpecification& specification)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLShader::Create(specification);
     }
 }

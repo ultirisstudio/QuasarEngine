@@ -26,11 +26,14 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLContext.cpp
         src/platform/opengl/OpenGLFramebuffer.cpp
         src/platform/opengl/OpenGLFramebuffer.h
+        src/platform/opengl/OpenGLShader.cpp
+        src/platform/opengl/OpenGLShader.h
         src/platform/opengl/OpenGLImGuiBackend.cpp
         src/platform/opengl/OpenGLImGuiBackend.h
         src/renderer/Framebuffer.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
+        src/renderer/Shader.cpp
         src/time/ScopedTimer.cpp
         src/time/Timer.cpp
     PUBLIC
@@ -70,6 +73,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Framebuffer.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
+            include/quasar/renderer/Shader.h
             include/quasar/time/ScopedTimer.h
             include/quasar/time/Timer.h
             include/quasar/time/Timestep.h

@@ -49,6 +49,9 @@ namespace Quasar
         /// @brief Makes the context current, then creates an OpenGL framebuffer. See GraphicsContext::CreateFramebuffer().
         [[nodiscard]] Scope<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) override;
 
+        /// @brief Makes the context current, then compiles an OpenGL shader. See GraphicsContext::CreateShader().
+        [[nodiscard]] Scope<Shader> CreateShader(const ShaderSpecification& specification) override;
+
         /// @brief Returns the SDL OpenGL context, for the code that needs to call SDL or OpenGL directly.
         SDL_GLContextState* GetNativeContext() const { return m_Context; }
 
