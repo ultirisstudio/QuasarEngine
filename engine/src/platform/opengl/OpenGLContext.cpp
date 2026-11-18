@@ -1,7 +1,9 @@
 #include <quasar/platform/opengl/OpenGLContext.h>
 
+#include <platform/opengl/OpenGLBuffer.h>
 #include <platform/opengl/OpenGLFramebuffer.h>
 #include <platform/opengl/OpenGLShader.h>
+#include <platform/opengl/OpenGLVertexArray.h>
 
 #include <glad/gl.h>
 
@@ -9,6 +11,10 @@
 #include <SDL3/SDL_video.h>
 
 #include <quasar/log/Log.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <span>
 
 namespace Quasar
 {
@@ -23,6 +29,13 @@ namespace Quasar
             // OpenGL returns its strings as unsigned characters, which hold the same bytes as characters
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
             return text != nullptr ? reinterpret_cast<const char*>(text) : "unknown";
+        }
+
+        const OpenGLVertexArray& GetOpenGLVertexArray(const VertexArray& vertexArray)
+        {
+            // The vertex arrays of an OpenGL context are OpenGL vertex arrays
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
+            return static_cast<const OpenGLVertexArray&>(vertexArray);
         }
     }
 
@@ -98,5 +111,60 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         return OpenGLShader::Create(specification);
+    }
+
+    Scope<VertexBuffer> OpenGLContext::CreateVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLVertexBuffer::Create(vertices, layout);
+    }
+
+    Scope<IndexBuffer> OpenGLContext::CreateIndexBuffer(std::span<const std::uint32_t> indices)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLIndexBuffer::Create(indices);
+    }
+
+    Scope<UniformBuffer> OpenGLContext::CreateUniformBuffer(std::size_t size, std::uint32_t binding)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLUniformBuffer::Create(size, binding);
+    }
+
+    Scope<VertexArray> OpenGLContext::CreateVertexArray()
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLVertexArray::Create();
+    }
+
+    void OpenGLContext::Draw(const VertexArray& vertexArray, std::uint32_t vertexCount)
+    {
+        for (std::size_t index = 0; index < vertexArray.GetVertexBufferCount(); ++index)
+        {
+            const std::uint32_t available = vertexArray.GetVertexBuffer(index).GetVertexCount();
+            if (vertexCount > available)
+            {
+                QUASAR_ENGINE_ERROR("Cannot draw {} vertices: the vertex buffer {} of the vertex array only holds {}", vertexCount, index, available);
+                return;
+            }
+        }
+
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        GetOpenGLVertexArray(vertexArray).Bind();
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
+    }
+
+    void OpenGLContext::DrawIndexed(const VertexArray& vertexArray)
+    {
+        const IndexBuffer* indexBuffer = vertexArray.GetIndexBuffer();
+        if (indexBuffer == nullptr)
+        {
+            QUASAR_ENGINE_ERROR("Cannot draw the indices of a vertex array that has no index buffer");
+            return;
+        }
+
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        GetOpenGLVertexArray(vertexArray).Bind();
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexBuffer->GetCount()), GL_UNSIGNED_INT, nullptr);
     }
 }
