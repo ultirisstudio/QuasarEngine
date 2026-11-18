@@ -34,6 +34,7 @@ target_sources(QuasarEngine
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Shader.cpp
+        src/renderer/VertexLayout.cpp
         src/time/ScopedTimer.cpp
         src/time/Timer.cpp
     PUBLIC
@@ -74,6 +75,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Shader.h
+            include/quasar/renderer/VertexLayout.h
             include/quasar/time/ScopedTimer.h
             include/quasar/time/Timer.h
             include/quasar/time/Timestep.h
