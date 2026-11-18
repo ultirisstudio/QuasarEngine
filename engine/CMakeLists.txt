@@ -44,7 +44,9 @@ target_sources(QuasarEngine
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Image.cpp
+        src/renderer/Mesh.cpp
         src/renderer/Pipeline.cpp
+        src/renderer/Primitives.cpp
         src/renderer/Shader.cpp
         src/renderer/Texture.cpp
         src/renderer/VertexArray.cpp
@@ -91,7 +93,9 @@ target_sources(QuasarEngine
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Image.h
+            include/quasar/renderer/Mesh.h
             include/quasar/renderer/Pipeline.h
+            include/quasar/renderer/Primitives.h
             include/quasar/renderer/Shader.h
             include/quasar/renderer/Texture.h
             include/quasar/renderer/VertexArray.h
