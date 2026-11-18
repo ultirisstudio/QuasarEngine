@@ -38,6 +38,7 @@ target_sources(QuasarEngine
         src/renderer/Framebuffer.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
+        src/renderer/Image.cpp
         src/renderer/Shader.cpp
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
@@ -81,6 +82,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Framebuffer.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
+            include/quasar/renderer/Image.h
             include/quasar/renderer/Shader.h
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
@@ -116,6 +118,7 @@ target_link_libraries(QuasarEngine
         Quasar::CompileOptions
         SDL3::SDL3
         glad::glad
+        stb::image
 )
 
 target_compile_definitions(QuasarEngine PRIVATE
