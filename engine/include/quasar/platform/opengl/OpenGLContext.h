@@ -9,6 +9,10 @@
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <span>
+
 struct SDL_Window;
 struct SDL_GLContextState;
 
@@ -51,6 +55,25 @@ namespace Quasar
 
         /// @brief Makes the context current, then compiles an OpenGL shader. See GraphicsContext::CreateShader().
         [[nodiscard]] Scope<Shader> CreateShader(const ShaderSpecification& specification) override;
+
+        /// @brief Makes the context current, then creates an OpenGL vertex buffer. See GraphicsContext::CreateVertexBuffer().
+        [[nodiscard]] Scope<VertexBuffer> CreateVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout) override;
+
+        /// @brief Makes the context current, then creates an OpenGL index buffer. See GraphicsContext::CreateIndexBuffer().
+        [[nodiscard]] Scope<IndexBuffer> CreateIndexBuffer(std::span<const std::uint32_t> indices) override;
+
+        /// @brief Makes the context current, then creates an OpenGL uniform buffer. See
+        /// GraphicsContext::CreateUniformBuffer().
+        [[nodiscard]] Scope<UniformBuffer> CreateUniformBuffer(std::size_t size, std::uint32_t binding) override;
+
+        /// @brief Makes the context current, then creates an OpenGL vertex array. See GraphicsContext::CreateVertexArray().
+        [[nodiscard]] Scope<VertexArray> CreateVertexArray() override;
+
+        /// @brief Makes the context current, then draws triangles. See GraphicsContext::Draw().
+        void Draw(const VertexArray& vertexArray, std::uint32_t vertexCount) override;
+
+        /// @brief Makes the context current, then draws indexed triangles. See GraphicsContext::DrawIndexed().
+        void DrawIndexed(const VertexArray& vertexArray) override;
 
         /// @brief Returns the SDL OpenGL context, for the code that needs to call SDL or OpenGL directly.
         SDL_GLContextState* GetNativeContext() const { return m_Context; }

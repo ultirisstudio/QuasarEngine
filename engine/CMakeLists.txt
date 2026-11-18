@@ -23,17 +23,23 @@ target_sources(QuasarEngine
         src/io/UserDataDirectory.cpp
         src/log/Log.cpp
         src/log/MemoryLogSink.cpp
+        src/platform/opengl/OpenGLBuffer.cpp
+        src/platform/opengl/OpenGLBuffer.h
         src/platform/opengl/OpenGLContext.cpp
         src/platform/opengl/OpenGLFramebuffer.cpp
         src/platform/opengl/OpenGLFramebuffer.h
         src/platform/opengl/OpenGLShader.cpp
         src/platform/opengl/OpenGLShader.h
+        src/platform/opengl/OpenGLVertexArray.cpp
+        src/platform/opengl/OpenGLVertexArray.h
         src/platform/opengl/OpenGLImGuiBackend.cpp
         src/platform/opengl/OpenGLImGuiBackend.h
+        src/renderer/Buffer.cpp
         src/renderer/Framebuffer.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Shader.cpp
+        src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
         src/time/ScopedTimer.cpp
         src/time/Timer.cpp
@@ -71,10 +77,12 @@ target_sources(QuasarEngine
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
             include/quasar/platform/opengl/OpenGLContext.h
+            include/quasar/renderer/Buffer.h
             include/quasar/renderer/Framebuffer.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Shader.h
+            include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
             include/quasar/time/ScopedTimer.h
             include/quasar/time/Timer.h
