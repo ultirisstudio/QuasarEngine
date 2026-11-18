@@ -28,6 +28,11 @@ namespace Quasar
 
         std::optional<Image> Decode(std::span<const std::byte> encoded, const std::string& name)
         {
+            if (encoded.empty())
+            {
+                QUASAR_ENGINE_ERROR("Cannot decode the image {}: the data is empty", name);
+                return std::nullopt;
+            }
             if (encoded.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
             {
                 QUASAR_ENGINE_ERROR("Cannot decode the image {}: it is larger than 2 GB", name);

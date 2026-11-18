@@ -102,7 +102,7 @@ TEST_CASE("An image is decoded from a file")
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
-TEST_CASE("Data that is not an image, a truncated image or a missing file gives no image")
+TEST_CASE("Data that is not an image, a truncated or empty image or a missing file gives no image")
 {
     const std::vector<std::byte> text = ToBytes({'Q', 'u', 'a', 's', 'a', 'r'});
     const TestHelpers::TemporaryFolder folder;
@@ -120,6 +120,12 @@ TEST_CASE("Data that is not an image, a truncated image or a missing file gives 
     {
         const TestHelpers::ScopedLog log;
         CHECK_FALSE(Image::FromMemory({}).has_value());
+        CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+    }
+    {
+        const TestHelpers::ScopedLog log;
+        const TestHelpers::TemporaryFile empty("Empty.png", "");
+        CHECK_FALSE(Image::FromFile(empty.GetPath()).has_value());
         CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
     }
     {
