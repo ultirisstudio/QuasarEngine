@@ -8,6 +8,7 @@
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsAPI.h>
+#include <quasar/renderer/Shader.h>
 
 namespace Quasar
 {
@@ -40,5 +41,10 @@ namespace Quasar
         /// @return The framebuffer, or nullptr if the specification is not valid or if the graphics API cannot create it.
         /// The reason is logged as an engine error.
         [[nodiscard]] virtual Scope<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) = 0;
+
+        /// @brief Compiles a shader for the graphics API of the context.
+        /// @return The shader, or nullptr if the specification is not valid or if a stage cannot be compiled or linked.
+        /// The reason, with the messages of the compiler, is logged as an engine error.
+        [[nodiscard]] virtual Scope<Shader> CreateShader(const ShaderSpecification& specification) = 0;
     };
 }
