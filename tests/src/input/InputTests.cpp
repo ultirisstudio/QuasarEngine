@@ -35,3 +35,19 @@ TEST_CASE("Input reads the state of the main window")
     CHECK_FALSE(Quasar::Input::IsKeyPressed(Quasar::Key::A));
     CHECK_FALSE(Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Left));
 }
+
+TEST_CASE("Input gives the movement of the mouse during the last frame")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    Quasar::Window& window = application->GetWindow();
+
+    TestHelpers::SendMouseMotion(window, 10.0f, 10.0f, 3.0f, -2.0f);
+    TestHelpers::SendMouseMotion(window, 15.0f, 9.0f, 5.0f, -1.0f);
+    window.Update();
+    CHECK(Quasar::Input::GetMouseDelta() == glm::vec2(8.0f, -3.0f));
+
+    window.Update();
+    CHECK(Quasar::Input::GetMouseDelta() == glm::vec2(0.0f, 0.0f));
+}

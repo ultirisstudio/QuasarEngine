@@ -21,6 +21,11 @@ namespace Quasar::Input
         return Application::Get().GetWindow().GetMousePosition();
     }
 
+    glm::vec2 GetMouseDelta()
+    {
+        return Application::Get().GetWindow().GetMouseDelta();
+    }
+
     bool IsGamepadConnected(GamepadId gamepad)
     {
         return Application::Get().GetGamepads().IsConnected(gamepad);

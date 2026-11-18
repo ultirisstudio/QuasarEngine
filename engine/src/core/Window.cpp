@@ -131,6 +131,8 @@ namespace Quasar
             m_Context->SwapBuffers();
         }
 
+        m_MouseDelta = {0.0f, 0.0f};
+
         if (!SDL_TextInputActive(m_Handle))
         {
             SDL_StartTextInput(m_Handle);
@@ -214,6 +216,25 @@ namespace Quasar
     glm::vec2 Window::GetMousePosition() const
     {
         return m_MousePosition;
+    }
+
+    glm::vec2 Window::GetMouseDelta() const
+    {
+        return m_MouseDelta;
+    }
+
+    bool Window::SetCursorCaptured(bool captured)
+    {
+        if (!SDL_SetWindowRelativeMouseMode(m_Handle, captured))
+        {
+            QUASAR_ENGINE_WARN("Cannot {} the cursor: {}", captured ? "capture" : "release", SDL_GetError());
+        }
+        return IsCursorCaptured() == captured;
+    }
+
+    bool Window::IsCursorCaptured() const
+    {
+        return SDL_GetWindowRelativeMouseMode(m_Handle);
     }
 
     SDL_Window* Window::GetNativeWindow() const
@@ -332,7 +353,8 @@ namespace Quasar
             case SDL_EVENT_MOUSE_MOTION:
             {
                 m_MousePosition = {event.motion.x, event.motion.y};
-                MouseMovedEvent movedEvent(event.motion.x, event.motion.y);
+                m_MouseDelta += glm::vec2(event.motion.xrel, event.motion.yrel);
+                MouseMovedEvent movedEvent(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
                 SendEvent(movedEvent);
                 break;
             }

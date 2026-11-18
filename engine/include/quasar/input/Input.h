@@ -39,6 +39,10 @@ namespace Quasar::Input
     /// macOS, where a scaled display has more pixels than points.
     glm::vec2 GetMousePosition();
 
+    /// @brief Returns how far the mouse moved during the last frame, toward the right and the bottom, also while the
+    /// cursor is captured. See Window::SetCursorCaptured().
+    glm::vec2 GetMouseDelta();
+
     /// @brief Returns true if a gamepad is connected with this id. See Gamepads.
     bool IsGamepadConnected(GamepadId gamepad);
 

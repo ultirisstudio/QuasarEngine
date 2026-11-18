@@ -1,6 +1,7 @@
 #include "helpers/NullWindow.h"
 
 #include <quasar/events/Event.h>
+#include <quasar/events/EventDispatcher.h>
 #include <quasar/events/KeyEvent.h>
 #include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
@@ -11,6 +12,7 @@
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_scancode.h>
 #include <doctest/doctest.h>
+#include <glm/vec2.hpp>
 
 #include <algorithm>
 #include <array>
@@ -255,4 +257,42 @@ TEST_CASE("A window without an event callback ignores its events")
     window->Update();
 
     CHECK(events.empty());
+}
+
+TEST_CASE("A mouse moved event gives the movement of the mouse")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+    std::vector<glm::vec2> deltas;
+    window->SetEventCallback(
+        [&deltas](Quasar::Event& event)
+        {
+            Quasar::EventDispatcher dispatcher(event);
+            dispatcher.Dispatch<Quasar::MouseMovedEvent>(
+                [&deltas](const Quasar::MouseMovedEvent& moved)
+                {
+                    deltas.emplace_back(moved.GetDeltaX(), moved.GetDeltaY());
+                    return false;
+                });
+        });
+
+    TestHelpers::SendMouseMotion(*window, 10.0f, 10.0f, 3.0f, -2.0f);
+    TestHelpers::SendMouseMotion(*window, 15.0f, 9.0f, 5.0f, -1.0f);
+    window->Update();
+
+    CHECK(deltas == std::vector<glm::vec2>{glm::vec2(3.0f, -2.0f), glm::vec2(5.0f, -1.0f)});
+    CHECK(window->GetMouseDelta() == glm::vec2(8.0f, -3.0f));
+}
+
+TEST_CASE("The cursor can be captured and released")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+
+    const bool captured = window->SetCursorCaptured(true);
+    CHECK(captured == window->IsCursorCaptured());
+    CHECK(window->SetCursorCaptured(false));
+    CHECK_FALSE(window->IsCursorCaptured());
 }

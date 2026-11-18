@@ -135,13 +135,15 @@ namespace TestHelpers
         SDL_PushEvent(&event);
     }
 
-    inline void SendMouseMotion(const Quasar::Window& window, float x, float y)
+    inline void SendMouseMotion(const Quasar::Window& window, float x, float y, float deltaX = 0.0f, float deltaY = 0.0f)
     {
         SDL_Event event{};
         event.type = SDL_EVENT_MOUSE_MOTION;
         event.motion.windowID = GetWindowId(window);
         event.motion.x = x;
         event.motion.y = y;
+        event.motion.xrel = deltaX;
+        event.motion.yrel = deltaY;
         SDL_PushEvent(&event);
     }
 
