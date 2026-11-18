@@ -1,5 +1,3 @@
-#include "GamepadPanel.h"
-
 #include <quasar/core/Application.h>
 #include <quasar/core/EntryPoint.h>
 #include <quasar/core/Layer.h>
@@ -84,8 +82,6 @@ namespace
             }
 
             DrawEventWindow();
-
-            m_GamepadPanel.Draw();
         }
 
     private:
@@ -147,7 +143,6 @@ namespace
         bool m_LogGamepadFingerMoves = false;
         bool m_ImGuiBlocksEvents = true;
         std::deque<std::string> m_RecentEvents;
-        Quasar::Sandbox::GamepadPanel m_GamepadPanel;
     };
 }
 

@@ -1,6 +1,5 @@
 #include "GamepadPanel.h"
 
-#include <quasar/core/Application.h>
 #include <quasar/input/GamepadCodes.h>
 #include <quasar/input/GamepadState.h>
 #include <quasar/input/Gamepads.h>
@@ -21,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace Quasar::Sandbox
+namespace Quasar::Editor
 {
     namespace
     {
@@ -738,50 +737,48 @@ namespace Quasar::Sandbox
         }
     }
 
-    void GamepadPanel::Draw()
+    GamepadPanel::GamepadPanel(EditorContext& context, Gamepads& gamepads)
+        : EditorPanel("Gamepad", context, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse), m_Gamepads(&gamepads)
     {
-        ImGui::SetNextWindowSize({DetailsWidth + (TotalWidth * 0.75f), ViewHeight * 0.95f}, ImGuiCond_FirstUseEver);
-        if (!ImGui::Begin("Gamepad", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
-        {
-            ImGui::End();
-            return;
-        }
-
-        Gamepads& gamepads = Application::Get().GetGamepads();
-        const std::optional<GamepadId> gamepad = SelectGamepad(gamepads);
-        const GamepadState state = gamepad ? ReadState(gamepads, *gamepad) : GamepadState{};
-
-        constexpr ImGuiTableFlags layoutFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_BordersInnerV;
-        if (ImGui::BeginTable("Layout", 2, layoutFlags))
-        {
-            ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthFixed, DetailsWidth);
-            ImGui::TableSetupColumn("Drawing", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableHeadersRow();
-            ImGui::TableNextRow();
-
-            ImGui::TableSetColumnIndex(0);
-            ImGui::BeginChild("Details");
-            if (gamepad)
-            {
-                DrawDetails(gamepads, *gamepad, state);
-            }
-            else
-            {
-                DisabledText("No gamepad connected");
-            }
-            ImGui::EndChild();
-
-            ImGui::TableSetColumnIndex(1);
-            DrawGamepad(state);
-
-            ImGui::EndTable();
-        }
-
-        ImGui::End();
+        SetInitialSize({DetailsWidth + (TotalWidth * 0.75f), ViewHeight * 0.95f});
     }
 
-    std::optional<GamepadId> GamepadPanel::SelectGamepad(const Gamepads& gamepads)
+    void GamepadPanel::OnImGuiRender()
     {
+        const std::optional<GamepadId> gamepad = SelectGamepad();
+        const GamepadState state = gamepad ? ReadState(*m_Gamepads, *gamepad) : GamepadState{};
+
+        constexpr ImGuiTableFlags layoutFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_BordersInnerV;
+        if (!ImGui::BeginTable("Layout", 2, layoutFlags))
+        {
+            return;
+        }
+        ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthFixed, DetailsWidth);
+        ImGui::TableSetupColumn("Drawing", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableHeadersRow();
+        ImGui::TableNextRow();
+
+        ImGui::TableSetColumnIndex(0);
+        ImGui::BeginChild("Details");
+        if (gamepad)
+        {
+            DrawDetails(*gamepad, state);
+        }
+        else
+        {
+            DisabledText("No gamepad connected");
+        }
+        ImGui::EndChild();
+
+        ImGui::TableSetColumnIndex(1);
+        DrawGamepad(state);
+
+        ImGui::EndTable();
+    }
+
+    std::optional<GamepadId> GamepadPanel::SelectGamepad()
+    {
+        const Gamepads& gamepads = *m_Gamepads;
         if (!gamepads.IsConnected(m_Selected))
         {
             std::optional<GamepadId> first;
@@ -817,8 +814,9 @@ namespace Quasar::Sandbox
         return m_Selected;
     }
 
-    void GamepadPanel::DrawDetails(Gamepads& gamepads, GamepadId gamepad, const GamepadState& state)
+    void GamepadPanel::DrawDetails(GamepadId gamepad, const GamepadState& state)
     {
+        Gamepads& gamepads = *m_Gamepads;
         ImGui::TextUnformatted(fmt::format("Type: {}", GetTypeName(gamepads.GetType(gamepad))).c_str());
 
         DrawSticks(state);

@@ -1,6 +1,7 @@
 #include "EditorLayer.h"
 
 #include "panels/ConsolePanel.h"
+#include "panels/GamepadPanel.h"
 
 #include <quasar/core/Application.h>
 #include <quasar/events/Event.h>
@@ -16,6 +17,7 @@ namespace Quasar::Editor
     {
         QUASAR_INFO("Editor started");
         AddPanel<ConsolePanel>();
+        AddPanel<GamepadPanel>(Application::Get().GetGamepads());
     }
 
     void EditorLayer::OnDetach()

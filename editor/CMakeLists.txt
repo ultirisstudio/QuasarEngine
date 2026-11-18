@@ -11,6 +11,8 @@ target_sources(QuasarEditorLibrary PRIVATE
     src/panels/EditorPanel.h
     src/panels/ConsolePanel.cpp
     src/panels/ConsolePanel.h
+    src/panels/GamepadPanel.cpp
+    src/panels/GamepadPanel.h
 )
 
 target_include_directories(QuasarEditorLibrary PUBLIC src)
