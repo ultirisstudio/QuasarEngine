@@ -84,6 +84,8 @@ namespace Quasar
             return nullptr;
         }
 
+        glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+
         QUASAR_ENGINE_INFO("OpenGL vendor: {}", GetString(GL_VENDOR));
         QUASAR_ENGINE_INFO("OpenGL renderer: {}", GetString(GL_RENDERER));
         QUASAR_ENGINE_INFO("OpenGL version: {}", GetString(GL_VERSION));

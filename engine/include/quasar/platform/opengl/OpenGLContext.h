@@ -28,7 +28,8 @@ namespace Quasar
         /// with a depth and a stencil buffer. Call it before the window is created.
         static void SetAttributes();
 
-        /// @brief Creates the context of a window, makes it current and loads the OpenGL functions.
+        /// @brief Creates the context of a window, makes it current and loads the OpenGL functions. Depths go from 0 to
+        /// 1, as in Vulkan, so that both APIs use the same projection matrices.
         /// @param window The SDL window, created with SDL_WINDOW_OPENGL.
         /// @return The context, or nullptr if the driver does not provide OpenGL 4.5 core. The reason is logged as an
         /// engine error.
