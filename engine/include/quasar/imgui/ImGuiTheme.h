@@ -25,8 +25,8 @@ namespace Quasar::ImGuiTheme
     /// density. Values of 0 or less are read as 1.
     void ApplyStyle(ImGuiStyle& style, float dpiScale);
 
-    /// @brief Returns where the engine font is expected: `resources/fonts/Inter/Inter-Regular.ttf`, in the folder of
-    /// the executable. The build copies the engine resources there.
+    /// @brief Returns where the engine font is expected: `fonts/Inter/Inter-Regular.ttf`, in the folder of the engine
+    /// resources. See GetEngineResourcesDirectory().
     /// @return The path of the font file, or an empty path if the folder of the executable cannot be found.
     std::filesystem::path GetFontPath();
 

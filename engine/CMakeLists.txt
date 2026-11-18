@@ -16,6 +16,7 @@ target_sources(QuasarEngine
         src/input/Input.cpp
         src/input/SdlGamepadBackend.cpp
         src/input/SdlGamepadBackend.h
+        src/io/EngineResources.cpp
         src/io/ExecutableDirectory.cpp
         src/io/ExecutableDirectory.h
         src/io/File.cpp
@@ -81,6 +82,7 @@ target_sources(QuasarEngine
             include/quasar/input/Input.h
             include/quasar/input/KeyCodes.h
             include/quasar/input/MouseCodes.h
+            include/quasar/io/EngineResources.h
             include/quasar/io/File.h
             include/quasar/io/Path.h
             include/quasar/io/UserDataDirectory.h
@@ -106,7 +108,7 @@ target_sources(QuasarEngine
 )
 
 add_custom_target(QuasarEngineResources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources/engine"
     VERBATIM
 )
 set_target_properties(QuasarEngineResources PROPERTIES FOLDER "Engine")
