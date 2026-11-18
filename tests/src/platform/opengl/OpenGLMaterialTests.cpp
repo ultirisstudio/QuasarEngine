@@ -20,6 +20,7 @@
 
 #include <glad/gl.h>
 #include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
 
 #include <algorithm>
 #include <array>
@@ -104,11 +105,14 @@ void main()
             REQUIRE(m_Window != nullptr);
             m_Framebuffer = GetContext().CreateFramebuffer({.Width = 2, .Height = 2, .Attachments = {format}});
             m_Quad = Quasar::Mesh::Create(GetContext(), Quasar::Primitives::CreateQuad(2.0f));
-            m_Camera = GetContext().CreateUniformBuffer(sizeof(glm::mat4), 0);
+            m_Camera = GetContext().CreateUniformBuffer(3 * sizeof(glm::mat4) + sizeof(glm::vec4), 0);
+            m_Object = GetContext().CreateUniformBuffer(sizeof(glm::mat4), 2);
             REQUIRE(m_Framebuffer != nullptr);
             REQUIRE(m_Quad != nullptr);
             REQUIRE(m_Camera != nullptr);
+            REQUIRE(m_Object != nullptr);
             m_Camera->Set(glm::mat4(1.0f));
+            m_Object->Set(glm::mat4(1.0f));
         }
 
         Quasar::GraphicsContext& GetContext() const { return *m_Window->GetGraphicsContext(); }
@@ -139,6 +143,7 @@ void main()
         {
             m_Framebuffer->Bind();
             m_Camera->Bind();
+            m_Object->Bind();
             GetContext().DrawIndexed(m_Quad->GetVertexArray());
             m_Framebuffer->Unbind();
         }
@@ -169,6 +174,7 @@ void main()
         Quasar::Scope<Quasar::Framebuffer> m_Framebuffer;
         Quasar::Scope<Quasar::Mesh> m_Quad;
         Quasar::Scope<Quasar::UniformBuffer> m_Camera;
+        Quasar::Scope<Quasar::UniformBuffer> m_Object;
     };
 
     bool IsNear(const Color& color, const Color& expected)
@@ -299,7 +305,6 @@ TEST_CASE("The unlit shader of the engine draws the texture of its material mult
     const TestHelpers::ScopedLog log;
     const Scene scene(Quasar::FramebufferFormat::Rgba8);
     const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(ReadUnlitShader());
-    shader->SetMat4("u_Model", glm::mat4(1.0f));
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
     const Quasar::Scope<Quasar::Material> material =
         scene.CreateMaterial({.Pipeline = pipeline.get(), .Uniforms = {{"Color", UniformType::Vec4}}, .Textures = {{.Name = "Texture", .Slot = 0}}});
