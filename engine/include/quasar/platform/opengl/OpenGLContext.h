@@ -57,6 +57,9 @@ namespace Quasar
         /// @brief Makes the context current, then compiles an OpenGL shader. See GraphicsContext::CreateShader().
         [[nodiscard]] Scope<Shader> CreateShader(const ShaderSpecification& specification) override;
 
+        /// @brief Creates an OpenGL pipeline. See GraphicsContext::CreatePipeline().
+        [[nodiscard]] Scope<Pipeline> CreatePipeline(const PipelineSpecification& specification) override;
+
         /// @brief Makes the context current, then creates an OpenGL vertex buffer. See GraphicsContext::CreateVertexBuffer().
         [[nodiscard]] Scope<VertexBuffer> CreateVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout) override;
 
@@ -72,6 +75,13 @@ namespace Quasar
 
         /// @brief Makes the context current, then creates an OpenGL vertex array. See GraphicsContext::CreateVertexArray().
         [[nodiscard]] Scope<VertexArray> CreateVertexArray() override;
+
+        /// @brief Makes the context current, then makes the next draws go into the window. See
+        /// GraphicsContext::BindWindow().
+        void BindWindow() override;
+
+        /// @brief Makes the context current, then fills the window. See GraphicsContext::ClearWindow().
+        void ClearWindow(glm::vec4 color, float depth, std::uint8_t stencil) override;
 
         /// @brief Makes the context current, then draws triangles. See GraphicsContext::Draw().
         void Draw(const VertexArray& vertexArray, std::uint32_t vertexCount) override;

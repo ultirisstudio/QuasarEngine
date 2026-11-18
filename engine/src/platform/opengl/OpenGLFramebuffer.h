@@ -10,6 +10,8 @@
 
 namespace Quasar
 {
+    void ClearOpenGLDepthStencil(std::uint32_t framebuffer, float depth, std::uint8_t stencil);
+
     class OpenGLFramebuffer final : public Framebuffer
     {
     public:

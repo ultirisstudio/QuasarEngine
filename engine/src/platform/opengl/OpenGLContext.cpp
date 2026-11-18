@@ -2,11 +2,13 @@
 
 #include <platform/opengl/OpenGLBuffer.h>
 #include <platform/opengl/OpenGLFramebuffer.h>
+#include <platform/opengl/OpenGLPipeline.h>
 #include <platform/opengl/OpenGLShader.h>
 #include <platform/opengl/OpenGLTexture.h>
 #include <platform/opengl/OpenGLVertexArray.h>
 
 #include <glad/gl.h>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_video.h>
@@ -116,6 +118,11 @@ namespace Quasar
         return OpenGLShader::Create(specification);
     }
 
+    Scope<Pipeline> OpenGLContext::CreatePipeline(const PipelineSpecification& specification)
+    {
+        return OpenGLPipeline::Create(specification);
+    }
+
     Scope<VertexBuffer> OpenGLContext::CreateVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
@@ -144,6 +151,23 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         return OpenGLVertexArray::Create();
+    }
+
+    void OpenGLContext::BindWindow()
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSizeInPixels(m_Window, &width, &height);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, width, height);
+    }
+
+    void OpenGLContext::ClearWindow(glm::vec4 color, float depth, std::uint8_t stencil)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        glClearNamedFramebufferfv(0, GL_COLOR, 0, glm::value_ptr(color));
+        ClearOpenGLDepthStencil(0, depth, stencil);
     }
 
     void OpenGLContext::Draw(const VertexArray& vertexArray, std::uint32_t vertexCount)

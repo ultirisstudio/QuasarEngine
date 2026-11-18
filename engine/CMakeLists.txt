@@ -28,6 +28,8 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLContext.cpp
         src/platform/opengl/OpenGLFramebuffer.cpp
         src/platform/opengl/OpenGLFramebuffer.h
+        src/platform/opengl/OpenGLPipeline.cpp
+        src/platform/opengl/OpenGLPipeline.h
         src/platform/opengl/OpenGLShader.cpp
         src/platform/opengl/OpenGLShader.h
         src/platform/opengl/OpenGLTexture.cpp
@@ -41,6 +43,7 @@ target_sources(QuasarEngine
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Image.cpp
+        src/renderer/Pipeline.cpp
         src/renderer/Shader.cpp
         src/renderer/Texture.cpp
         src/renderer/VertexArray.cpp
@@ -86,6 +89,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Image.h
+            include/quasar/renderer/Pipeline.h
             include/quasar/renderer/Shader.h
             include/quasar/renderer/Texture.h
             include/quasar/renderer/VertexArray.h

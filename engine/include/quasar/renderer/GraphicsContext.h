@@ -9,10 +9,13 @@
 #include <quasar/renderer/Buffer.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsAPI.h>
+#include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/Shader.h>
 #include <quasar/renderer/Texture.h>
 #include <quasar/renderer/VertexArray.h>
 #include <quasar/renderer/VertexLayout.h>
+
+#include <glm/vec4.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -55,6 +58,10 @@ namespace Quasar
         /// The reason, with the messages of the compiler, is logged as an engine error.
         [[nodiscard]] virtual Scope<Shader> CreateShader(const ShaderSpecification& specification) = 0;
 
+        /// @brief Creates a pipeline: a shader and the state of its draws.
+        /// @return The pipeline, or nullptr if the specification has no shader. The reason is logged as an engine error.
+        [[nodiscard]] virtual Scope<Pipeline> CreatePipeline(const PipelineSpecification& specification) = 0;
+
         /// @brief Creates a vertex buffer from its vertices, which also give its size.
         /// @param vertices The bytes of the vertices, for example `std::as_bytes(std::span(vertices))`.
         /// @param layout How the attributes of a vertex are stored.
@@ -84,15 +91,21 @@ namespace Quasar
         /// @brief Creates a vertex array without buffers.
         [[nodiscard]] virtual Scope<VertexArray> CreateVertexArray() = 0;
 
-        /// @brief Draws triangles from the first vertices of a vertex array, with the bound shader, into the bound
-        /// framebuffer or the window.
+        /// @brief Makes the next draws go into the window, on its whole area.
+        virtual void BindWindow() = 0;
+
+        /// @brief Fills the window with a color, and its depth and stencil with a value, whatever the pipeline bound.
+        virtual void ClearWindow(glm::vec4 color, float depth = 1.0f, std::uint8_t stencil = 0) = 0;
+
+        /// @brief Draws triangles from the first vertices of a vertex array, with the bound pipeline or shader, into the
+        /// bound framebuffer or the window.
         /// @param vertexArray The vertex array, created by this context.
         /// @param vertexCount The number of vertices, 3 per triangle. More vertices than a vertex buffer of the array
         /// holds are refused with an engine error.
         virtual void Draw(const VertexArray& vertexArray, std::uint32_t vertexCount) = 0;
 
-        /// @brief Draws the triangles of the index buffer of a vertex array, with the bound shader, into the bound
-        /// framebuffer or the window. A vertex array without an index buffer is refused with an engine error.
+        /// @brief Draws the triangles of the index buffer of a vertex array, with the bound pipeline or shader, into the
+        /// bound framebuffer or the window. A vertex array without an index buffer is refused with an engine error.
         /// @param vertexArray The vertex array, created by this context. Its indices must be below the number of
         /// vertices of its vertex buffers.
         virtual void DrawIndexed(const VertexArray& vertexArray) = 0;

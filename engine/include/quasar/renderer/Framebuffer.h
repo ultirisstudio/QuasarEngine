@@ -67,8 +67,8 @@ namespace Quasar
         /// @brief Makes the next draws go into the framebuffer, on its whole area.
         virtual void Bind() = 0;
 
-        /// @brief Makes the next draws go into the window again. With several samples per pixel, it also resolves the
-        /// attachments.
+        /// @brief Ends the draws into the framebuffer. With several samples per pixel, it also resolves the
+        /// attachments. GraphicsContext::BindWindow() then makes the next draws go into the window.
         virtual void Unbind() = 0;
 
         /// @brief Changes the size of the attachments, which loses their content. A size of 0, for example while a
