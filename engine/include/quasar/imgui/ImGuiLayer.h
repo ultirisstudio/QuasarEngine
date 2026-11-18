@@ -14,6 +14,13 @@ namespace Quasar
     class Window;
     class ImGuiBackend;
 
+    /// @brief Settings of the ImGui windows of an application.
+    struct ImGuiSpecification
+    {
+        bool Docking = true;   ///< ImGui windows can be docked into each other or into a dock space, as in an editor.
+        bool Viewports = true; ///< ImGui windows can be dragged outside of the main window, into their own windows.
+    };
+
     /// @brief Overlay that starts Dear ImGui with the backends of the window, and wraps each frame.
     ///
     /// The backends are the SDL backend of ImGui and the one of the graphics API of the window, for example OpenGL. The
@@ -23,9 +30,10 @@ namespace Quasar
     ///
     /// The interface uses the engine theme and font, scaled for the monitor. See ImGuiTheme.
     ///
-    /// Docking and multiple viewports are enabled: ImGui windows can be docked into each other or into a dock space,
-    /// and dragged outside the main window, where each one gets its own platform window. On Wayland, SDL cannot place
-    /// windows, so the viewports are turned off and ImGui windows stay inside the main window. Docking still works.
+    /// Docking and multiple viewports are enabled by default: ImGui windows can be docked into each other or into a dock
+    /// space, and dragged outside the main window, where each one gets its own platform window. A game usually turns
+    /// both off, see ImGuiSpecification. On Wayland, SDL cannot place windows, so the viewports are turned off and ImGui
+    /// windows stay inside the main window.
     ///
     /// While ImGui uses the mouse or the keyboard, for example when the cursor is over an ImGui window or a text field
     /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.
@@ -34,7 +42,8 @@ namespace Quasar
     public:
         /// @brief Creates the layer for a window that has a graphics context. ImGui starts when the layer is attached.
         /// @param window The window where ImGui draws and reads its input. It must outlive the layer.
-        explicit ImGuiLayer(Window& window);
+        /// @param specification Whether ImGui windows can be docked and leave the main window.
+        explicit ImGuiLayer(Window& window, const ImGuiSpecification& specification = {});
 
         ~ImGuiLayer() override;
 
@@ -67,6 +76,7 @@ namespace Quasar
 
     private:
         Window* m_Window = nullptr;
+        ImGuiSpecification m_Specification;
         Scope<ImGuiBackend> m_Backend;
         bool m_BlockEvents = true;
     };

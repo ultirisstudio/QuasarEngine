@@ -59,9 +59,9 @@ namespace
         std::function<void()> ImGuiAction;
     };
 
-    Quasar::Scope<Quasar::Application> CreateImGuiApplication()
+    Quasar::Scope<Quasar::Application> CreateImGuiApplication(const Quasar::ImGuiSpecification& imgui = {})
     {
-        Quasar::Scope<Quasar::Application> application = TestHelpers::CreateApplicationWithContext();
+        Quasar::Scope<Quasar::Application> application = TestHelpers::CreateApplicationWithContext({.ImGui = imgui});
         if (application != nullptr && ImGui::GetCurrentContext() != nullptr)
         {
             ImGui::GetIO().IniFilename = nullptr;
@@ -259,6 +259,33 @@ TEST_CASE("ImGui windows can be dragged outside the main window")
 
     CHECK(outside);
     CHECK(viewports == 2);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("An application can keep its ImGui windows undocked and inside the main window")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication({.Docking = false, .Viewports = false});
+    REQUIRE(application != nullptr);
+    ImGuiTestLayer& layer = AddLayer(*application, "Game");
+    bool inside = false;
+    int viewports = 0;
+    layer.ImGuiAction = [&inside, &viewports]
+    {
+        const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(ImVec2(mainViewport->Pos.x + mainViewport->Size.x + 20.0f, mainViewport->Pos.y + 20.0f));
+        ImGui::Begin("Outside");
+        inside = ImGui::GetWindowViewport() == mainViewport;
+        ImGui::End();
+        viewports = ImGui::GetPlatformIO().Viewports.Size;
+    };
+
+    CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) == 0);
+    CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0);
+    application->Run();
+
+    CHECK(inside);
+    CHECK(viewports == 1);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
