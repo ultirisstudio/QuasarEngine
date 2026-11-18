@@ -7,9 +7,15 @@ layout(location = 2) in vec2 a_TexCoord;
 layout(std140, binding = 0) uniform Camera
 {
     mat4 u_ViewProjection;
+    mat4 u_View;
+    mat4 u_Projection;
+    vec4 u_CameraPosition;
 };
 
-uniform mat4 u_Model;
+layout(std140, binding = 2) uniform Object
+{
+    mat4 u_Model;
+};
 
 layout(location = 0) out vec2 v_TexCoord;
 
