@@ -50,6 +50,7 @@ target_sources(QuasarEngine
         src/renderer/Primitives.cpp
         src/renderer/Shader.cpp
         src/renderer/Texture.cpp
+        src/renderer/UniformBlockLayout.cpp
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
         src/time/ScopedTimer.cpp
@@ -100,6 +101,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Primitives.h
             include/quasar/renderer/Shader.h
             include/quasar/renderer/Texture.h
+            include/quasar/renderer/UniformBlockLayout.h
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
             include/quasar/time/ScopedTimer.h
