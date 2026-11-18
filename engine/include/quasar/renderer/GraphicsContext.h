@@ -5,6 +5,8 @@
 /// \author Kurogenshi
 /// \date 2026-11-10
 
+#include <quasar/core/Base.h>
+#include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsAPI.h>
 
 namespace Quasar
@@ -33,5 +35,10 @@ namespace Quasar
 
         /// @brief Enables or disables vertical synchronization, which makes SwapBuffers() wait for the monitor.
         virtual void SetVSync(bool enabled) = 0;
+
+        /// @brief Creates a framebuffer that draws with the graphics API of the context.
+        /// @return The framebuffer, or nullptr if the specification is not valid or if the graphics API cannot create it.
+        /// The reason is logged as an engine error.
+        [[nodiscard]] virtual Scope<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) = 0;
     };
 }

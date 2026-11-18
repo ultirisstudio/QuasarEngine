@@ -24,8 +24,11 @@ target_sources(QuasarEngine
         src/log/Log.cpp
         src/log/MemoryLogSink.cpp
         src/platform/opengl/OpenGLContext.cpp
+        src/platform/opengl/OpenGLFramebuffer.cpp
+        src/platform/opengl/OpenGLFramebuffer.h
         src/platform/opengl/OpenGLImGuiBackend.cpp
         src/platform/opengl/OpenGLImGuiBackend.h
+        src/renderer/Framebuffer.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/time/ScopedTimer.cpp
@@ -64,6 +67,7 @@ target_sources(QuasarEngine
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
             include/quasar/platform/opengl/OpenGLContext.h
+            include/quasar/renderer/Framebuffer.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/time/ScopedTimer.h

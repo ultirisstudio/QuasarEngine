@@ -46,6 +46,9 @@ namespace Quasar
         /// @brief Enables or disables vertical synchronization.
         void SetVSync(bool enabled) override;
 
+        /// @brief Makes the context current, then creates an OpenGL framebuffer. See GraphicsContext::CreateFramebuffer().
+        [[nodiscard]] Scope<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) override;
+
         /// @brief Returns the SDL OpenGL context, for the code that needs to call SDL or OpenGL directly.
         SDL_GLContextState* GetNativeContext() const { return m_Context; }
 
