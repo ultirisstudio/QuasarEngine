@@ -10,6 +10,7 @@
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/Shader.h>
+#include <quasar/renderer/Texture.h>
 #include <quasar/renderer/VertexArray.h>
 #include <quasar/renderer/VertexLayout.h>
 
@@ -71,6 +72,14 @@ namespace Quasar
         /// @return The buffer, or nullptr if the size is 0 or if the graphics API does not allow the size or the
         /// binding. The reason is logged as an engine error.
         [[nodiscard]] virtual Scope<UniformBuffer> CreateUniformBuffer(std::size_t size, std::uint32_t binding) = 0;
+
+        /// @brief Creates a 2D texture.
+        /// @param specification The size and the settings of the texture.
+        /// @param pixels Width * Height pixels of GetTexturePixelSize() bytes, from the top row, for example the
+        /// Image::Pixels of an image of the same size. Without pixels, the texture is filled with zeros.
+        /// @return The texture, or nullptr if the specification is not valid, if the pixels do not have the size of the
+        /// texture, or if the graphics API does not allow its size. The reason is logged as an engine error.
+        [[nodiscard]] virtual Scope<Texture2D> CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels) = 0;
 
         /// @brief Creates a vertex array without buffers.
         [[nodiscard]] virtual Scope<VertexArray> CreateVertexArray() = 0;

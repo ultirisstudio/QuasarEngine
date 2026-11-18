@@ -30,6 +30,8 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLFramebuffer.h
         src/platform/opengl/OpenGLShader.cpp
         src/platform/opengl/OpenGLShader.h
+        src/platform/opengl/OpenGLTexture.cpp
+        src/platform/opengl/OpenGLTexture.h
         src/platform/opengl/OpenGLVertexArray.cpp
         src/platform/opengl/OpenGLVertexArray.h
         src/platform/opengl/OpenGLImGuiBackend.cpp
@@ -38,7 +40,9 @@ target_sources(QuasarEngine
         src/renderer/Framebuffer.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
+        src/renderer/Image.cpp
         src/renderer/Shader.cpp
+        src/renderer/Texture.cpp
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
         src/time/ScopedTimer.cpp
@@ -81,7 +85,9 @@ target_sources(QuasarEngine
             include/quasar/renderer/Framebuffer.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
+            include/quasar/renderer/Image.h
             include/quasar/renderer/Shader.h
+            include/quasar/renderer/Texture.h
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
             include/quasar/time/ScopedTimer.h
@@ -116,6 +122,7 @@ target_link_libraries(QuasarEngine
         Quasar::CompileOptions
         SDL3::SDL3
         glad::glad
+        stb::image
 )
 
 target_compile_definitions(QuasarEngine PRIVATE

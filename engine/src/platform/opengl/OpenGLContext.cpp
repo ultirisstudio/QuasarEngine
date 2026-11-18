@@ -3,6 +3,7 @@
 #include <platform/opengl/OpenGLBuffer.h>
 #include <platform/opengl/OpenGLFramebuffer.h>
 #include <platform/opengl/OpenGLShader.h>
+#include <platform/opengl/OpenGLTexture.h>
 #include <platform/opengl/OpenGLVertexArray.h>
 
 #include <glad/gl.h>
@@ -129,6 +130,12 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         return OpenGLUniformBuffer::Create(size, binding);
+    }
+
+    Scope<Texture2D> OpenGLContext::CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLTexture2D::Create(specification, pixels);
     }
 
     Scope<VertexArray> OpenGLContext::CreateVertexArray()
