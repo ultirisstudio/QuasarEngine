@@ -30,7 +30,7 @@ namespace Quasar
 
         if (m_Window->GetGraphicsAPI() != GraphicsAPI::None)
         {
-            m_ImGuiLayer = CreateScope<ImGuiLayer>(*m_Window);
+            m_ImGuiLayer = CreateScope<ImGuiLayer>(*m_Window, m_Specification.ImGui);
             m_ImGuiLayer->OnAttach();
         }
     }

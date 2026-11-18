@@ -39,6 +39,7 @@ namespace Quasar
 
         std::vector<std::string> Arguments{}; ///< Command-line arguments, without the name of the program.
         WindowSpecification Window{};         ///< Settings of the main window, created with the application.
+        ImGuiSpecification ImGui{};           ///< Settings of the ImGui windows.
     };
 
     /// @brief The application: it creates the window, owns the layers and runs the main loop.

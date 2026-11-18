@@ -13,7 +13,7 @@
 
 namespace Quasar
 {
-    ImGuiLayer::ImGuiLayer(Window& window) : Layer("ImGui"), m_Window(&window) {}
+    ImGuiLayer::ImGuiLayer(Window& window, const ImGuiSpecification& specification) : Layer("ImGui"), m_Window(&window), m_Specification(specification) {}
 
     ImGuiLayer::~ImGuiLayer() = default;
 
@@ -24,8 +24,14 @@ namespace Quasar
 
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        if (m_Specification.Docking)
+        {
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        }
+        if (m_Specification.Viewports)
+        {
+            io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        }
 
         m_Backend = ImGuiBackend::Create(m_Window->GetGraphicsAPI());
         if (m_Backend != nullptr && m_Backend->Init(*m_Window))
@@ -45,7 +51,7 @@ namespace Quasar
         ImGuiTheme::ApplyStyle(ImGui::GetStyle(), dpiScale);
         ImGuiTheme::LoadFont(*io.Fonts, ImGuiTheme::GetFontPath());
 
-        if ((io.BackendFlags & ImGuiBackendFlags_PlatformHasViewports) == 0)
+        if (m_Specification.Viewports && (io.BackendFlags & ImGuiBackendFlags_PlatformHasViewports) == 0)
         {
             io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
             QUASAR_ENGINE_WARN("ImGui windows cannot leave the main window on this platform");

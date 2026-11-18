@@ -21,8 +21,9 @@ namespace Quasar
     class MouseMovedEvent final : public EventOf<EventType::MouseMoved, EventCategory::Input | EventCategory::Mouse>
     {
     public:
-        /// @brief Creates the event with the new position of the cursor, in screen coordinates.
-        MouseMovedEvent(float x, float y) : m_X(x), m_Y(y) {}
+        /// @brief Creates the event with the new position of the cursor and the movement since the previous event, in
+        /// screen coordinates.
+        MouseMovedEvent(float x, float y, float deltaX = 0.0f, float deltaY = 0.0f) : m_X(x), m_Y(y), m_DeltaX(deltaX), m_DeltaY(deltaY) {}
 
         /// @brief Returns the horizontal position of the cursor, from the left edge of the drawing area.
         float GetX() const { return m_X; }
@@ -30,12 +31,21 @@ namespace Quasar
         /// @brief Returns the vertical position of the cursor, from the top edge of the drawing area.
         float GetY() const { return m_Y; }
 
+        /// @brief Returns the horizontal movement of the mouse since the previous event, toward the right. It is also
+        /// given while the cursor is captured, see Window::SetCursorCaptured().
+        float GetDeltaX() const { return m_DeltaX; }
+
+        /// @brief Returns the vertical movement of the mouse since the previous event, toward the bottom.
+        float GetDeltaY() const { return m_DeltaY; }
+
         /// @brief Returns the event with the position, for example "MouseMoved: 640, 360.5".
         std::string ToString() const override { return fmt::format("{}: {}, {}", GetName(), m_X, m_Y); }
 
     private:
         float m_X = 0.0f;
         float m_Y = 0.0f;
+        float m_DeltaX = 0.0f;
+        float m_DeltaY = 0.0f;
     };
 
     /// @brief Sent when the mouse wheel or the touchpad scrolls.

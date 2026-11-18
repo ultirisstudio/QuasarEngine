@@ -18,6 +18,10 @@ namespace Quasar::Editor
             return;
         }
 
+        if (m_InitialSize.x > 0.0f && m_InitialSize.y > 0.0f)
+        {
+            ImGui::SetNextWindowSize(m_InitialSize, ImGuiCond_FirstUseEver);
+        }
         if (ImGui::Begin(m_Name.c_str(), &m_Open, m_Flags))
         {
             m_Focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

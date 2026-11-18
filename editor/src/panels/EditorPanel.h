@@ -43,11 +43,13 @@ namespace Quasar::Editor
         virtual void OnImGuiRender() = 0;
 
         EditorContext& GetContext() const { return *m_Context; }
+        void SetInitialSize(ImVec2 size) { m_InitialSize = size; }
 
     private:
         std::string m_Name;
         EditorContext* m_Context;
         ImGuiWindowFlags m_Flags;
+        ImVec2 m_InitialSize{0.0f, 0.0f};
         bool m_Open = true;
         bool m_Focused = false;
         bool m_Hovered = false;

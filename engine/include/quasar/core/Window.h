@@ -119,6 +119,17 @@ namespace Quasar
         /// drawing area.
         glm::vec2 GetMousePosition() const;
 
+        /// @brief Returns how far the mouse moved during the last Update(), toward the right and the bottom.
+        glm::vec2 GetMouseDelta() const;
+
+        /// @brief Captures or releases the cursor. A captured cursor is hidden and stays in the window, and the mouse
+        /// still gives its movement, for example to turn a camera.
+        /// @return True if the cursor is in the asked state. Otherwise the reason is logged as an engine warning.
+        bool SetCursorCaptured(bool captured);
+
+        /// @brief Returns true if the cursor is captured.
+        bool IsCursorCaptured() const;
+
         /// @brief Returns the SDL window, for the code that needs to call SDL directly.
         SDL_Window* GetNativeWindow() const;
 
@@ -149,6 +160,7 @@ namespace Quasar
         std::bitset<KeyCount> m_KeysDown;
         std::uint32_t m_MouseButtonsDown = 0;
         glm::vec2 m_MousePosition{0.0f, 0.0f};
+        glm::vec2 m_MouseDelta{0.0f, 0.0f};
         EventCallback m_EventCallback;
         NativeEventCallback m_NativeEventCallback;
     };

@@ -10,6 +10,7 @@ TEST_CASE("The engine resources are copied into resources/engine, next to the ex
 
     REQUIRE_FALSE(directory.empty());
     CHECK(directory.filename() == "engine");
-    CHECK(directory.parent_path().filename() == "resources");
+    CHECK(directory.parent_path() == Quasar::GetResourcesDirectory());
+    CHECK(Quasar::GetResourcesDirectory().filename() == "resources");
     CHECK(std::filesystem::is_regular_file(directory / "fonts" / "Inter" / "Inter-Regular.ttf"));
 }
