@@ -38,8 +38,14 @@ namespace Quasar
 
         std::optional<ShaderStage> FindStage(std::string_view name)
         {
-            const auto* stage = std::ranges::find_if(Stages, [name](ShaderStage candidate) { return name == GetShaderStageName(candidate); });
-            return stage != Stages.end() ? std::optional<ShaderStage>(*stage) : std::nullopt;
+            for (const ShaderStage stage : Stages)
+            {
+                if (name == GetShaderStageName(stage))
+                {
+                    return stage;
+                }
+            }
+            return std::nullopt;
         }
     }
 
