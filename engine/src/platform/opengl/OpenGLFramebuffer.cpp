@@ -118,6 +118,16 @@ namespace Quasar
         }
     }
 
+    void ClearOpenGLDepthStencil(std::uint32_t framebuffer, float depth, std::uint8_t stencil)
+    {
+        // A pipeline that does not write the depth also stops the depth from being cleared
+        GLboolean depthWrite = GL_TRUE;
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWrite);
+        glDepthMask(GL_TRUE);
+        glClearNamedFramebufferfi(framebuffer, GL_DEPTH_STENCIL, 0, depth, static_cast<GLint>(stencil));
+        glDepthMask(depthWrite);
+    }
+
     OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& specification) : Framebuffer(specification)
     {
         for (const FramebufferFormat format : specification.Attachments)
@@ -210,7 +220,7 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot fill the depth of a framebuffer that has no depth attachment");
             return;
         }
-        glClearNamedFramebufferfi(m_Framebuffer, GL_DEPTH_STENCIL, 0, depth, static_cast<GLint>(stencil));
+        ClearOpenGLDepthStencil(m_Framebuffer, depth, stencil);
     }
 
     std::optional<int> OpenGLFramebuffer::ReadInteger(std::uint32_t attachment, std::uint32_t x, std::uint32_t y)
