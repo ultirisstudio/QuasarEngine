@@ -29,7 +29,7 @@ namespace Quasar
         /// @param target The framebuffer to draw into, or nullptr for the window.
         void Render(Scene& scene, const Camera& camera, Framebuffer* target = nullptr);
 
-        /// @brief Draws a scene seen from its primary camera, at the TransformComponent of its entity.
+        /// @brief Draws a scene seen from its primary camera, at the place of its entity in the world.
         ///
         /// Without a primary camera, nothing is drawn and an engine error is logged, once until a primary camera is
         /// found again.

@@ -11,8 +11,8 @@ namespace Quasar
 {
     /// @brief A light of a scene that comes from the same direction everywhere, such as the sun.
     ///
-    /// The light goes in the forward direction of the TransformComponent of its entity, the -Z axis turned by its
-    /// rotation. The SceneRenderer lights the scene with the first one it finds. See DirectionalLight.
+    /// The light goes in the forward direction of its entity in the world, the -Z axis turned by its rotation. See
+    /// Entity::GetWorldTransform(). The SceneRenderer lights the scene with the first one it finds. See DirectionalLight.
     struct DirectionalLightComponent
     {
         glm::vec3 Color{1.0f};  ///< The color of the light.

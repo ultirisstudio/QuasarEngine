@@ -10,7 +10,7 @@
 
 namespace Quasar
 {
-    /// @brief Draws an entity with a mesh and a material, at its TransformComponent.
+    /// @brief Draws an entity with a mesh and a material, at its place in the world. See Entity::GetWorldMatrix().
     ///
     /// The component does not own the mesh and the material, which must stay alive while the scene uses them. An
     /// entity without a mesh or a material is not drawn.
