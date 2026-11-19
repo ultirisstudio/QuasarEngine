@@ -15,6 +15,10 @@ target_sources(QuasarEditorLibrary PRIVATE
     src/panels/GamepadPanel.h
     src/Project.cpp
     src/Project.h
+    src/FolderDialog.cpp
+    src/FolderDialog.h
+    src/ProjectPopups.cpp
+    src/ProjectPopups.h
 )
 
 target_include_directories(QuasarEditorLibrary PUBLIC src)
@@ -24,6 +28,7 @@ target_link_libraries(QuasarEditorLibrary
         Quasar::Engine
     PRIVATE
         Quasar::CompileOptions
+        SDL3::SDL3
 )
 
 set_target_properties(QuasarEditorLibrary PROPERTIES FOLDER "Editor")

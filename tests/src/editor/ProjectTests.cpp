@@ -1,200 +1,214 @@
 #include <Project.h>
 
+#include "helpers/LogHelpers.h"
+#include "helpers/TemporaryFiles.h"
+
+#include <quasar/io/File.h>
+#include <quasar/io/Path.h>
+
 #include <doctest/doctest.h>
 
 #include <filesystem>
-#include <fstream>
-#include <random>
 #include <string>
-#include <system_error>
 
-namespace Quasar::Editor
+using Quasar::PathFromUtf8;
+using Quasar::Editor::CreateProject;
+using Quasar::Editor::GetAssetsDirectory;
+using Quasar::Editor::GetDefaultProjectLocation;
+using Quasar::Editor::OpenProject;
+using Quasar::Editor::PathToUtf8;
+using Quasar::Editor::ProjectResult;
+using Quasar::Editor::ResolveProjectDirectory;
+
+namespace
 {
-    namespace
+    void CheckFailed(const ProjectResult& result)
     {
-        /// A folder of its own for each test, removed with everything inside when the test ends.
-        class ScratchFolder
+        CHECK_FALSE(result.IsValid());
+        CHECK_FALSE(result.Error.empty());
+        CHECK(result.Directory.empty());
+    }
+}
+
+TEST_SUITE("Project")
+{
+    TEST_CASE("PathToUtf8 gives back the UTF-8 text of a path made by PathFromUtf8")
+    {
+        const std::string text = "Proj\xC3\xA9t \xE6\x97\xA5\xE6\x9C\xAC";
+
+        CHECK(PathToUtf8(PathFromUtf8(text)) == text);
+    }
+
+    TEST_CASE("GetAssetsDirectory points to the Assets folder inside the project folder")
+    {
+        const std::filesystem::path project = std::filesystem::temp_directory_path() / "MyGame";
+
+        const std::filesystem::path assets = GetAssetsDirectory(project);
+
+        CHECK(assets.filename() == "Assets");
+        CHECK(assets.parent_path() == project);
+    }
+
+    TEST_CASE("GetDefaultProjectLocation is a full path that ends with the Quasar Projects folder")
+    {
+        const std::filesystem::path location = GetDefaultProjectLocation();
+
+        REQUIRE_FALSE(location.empty());
+        CHECK(location.is_absolute());
+        CHECK(location.filename() == "Quasar Projects");
+    }
+
+    TEST_CASE("ResolveProjectDirectory gives the normalized full path of the project folder")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_resolve_project");
+        const std::filesystem::path expected = (folder.GetPath() / "MyGame").lexically_normal();
+
+        SUBCASE("from a plain location")
         {
-        public:
-            ScratchFolder() : m_Root(std::filesystem::temp_directory_path() / ("QuasarProject-" + std::to_string(std::random_device{}())))
-            {
-                std::filesystem::create_directories(m_Root);
-            }
-
-            ~ScratchFolder()
-            {
-                std::error_code error;
-                std::filesystem::remove_all(m_Root, error);
-            }
-
-            ScratchFolder(const ScratchFolder&) = delete;
-            ScratchFolder& operator=(const ScratchFolder&) = delete;
-            ScratchFolder(ScratchFolder&&) = delete;
-            ScratchFolder& operator=(ScratchFolder&&) = delete;
-
-            [[nodiscard]] const std::filesystem::path& Root() const { return m_Root; }
-
-            void WriteFile(const std::filesystem::path& path) const
-            {
-                std::ofstream(m_Root / path) << "content";
-            }
-
-        private:
-            std::filesystem::path m_Root;
-        };
-
-        void CheckFailed(const ProjectResult& result)
+            CHECK(ResolveProjectDirectory(folder.GetPath(), "MyGame") == expected);
+        }
+        SUBCASE("from a location with dot segments")
         {
-            CHECK_FALSE(result.IsValid());
-            CHECK_FALSE(result.Error.empty());
-            CHECK(result.Directory.empty());
+            CHECK(ResolveProjectDirectory(folder.GetPath() / "Sub" / ".." / ".", "MyGame") == expected);
+        }
+        SUBCASE("from a location that does not exist yet")
+        {
+            const std::filesystem::path missing = folder.GetPath() / "Missing";
+            CHECK(ResolveProjectDirectory(missing, "MyGame") == (missing / "MyGame").lexically_normal());
         }
     }
 
-    TEST_SUITE("Project")
+    TEST_CASE("ResolveProjectDirectory refuses a location that is not a full path")
     {
-        TEST_CASE("PathToUtf8 gives back the UTF-8 text given to PathFromUtf8")
-        {
-            const std::string text = "Proj\xC3\xA9t \xE6\x97\xA5\xE6\x9C\xAC";
+        CHECK(ResolveProjectDirectory("", "MyGame").empty());
+        CHECK(ResolveProjectDirectory("Projects", "MyGame").empty());
+        CHECK(ResolveProjectDirectory(std::filesystem::path(".") / "Projects", "MyGame").empty());
+    }
 
-            CHECK(PathToUtf8(PathFromUtf8(text)) == text);
+    TEST_CASE("ResolveProjectDirectory refuses a name that cannot be a folder name")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_resolve_name");
+
+        for (const char* name : {"", ".", "..", "My/Game", "My\\Game", "Game.", "Game ", "Ga:me", "Ga*me", "Tab\tName"})
+        {
+            CAPTURE(name);
+            CHECK(ResolveProjectDirectory(folder.GetPath(), name).empty());
+        }
+    }
+
+    TEST_CASE("CreateProject creates an empty Assets folder inside the new project folder")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_project");
+
+        const ProjectResult result = CreateProject(folder.GetPath(), "MyGame");
+
+        REQUIRE_MESSAGE(result.IsValid(), result.Error);
+        CHECK(result.Directory == (folder.GetPath() / "MyGame").lexically_normal());
+        REQUIRE(std::filesystem::is_directory(GetAssetsDirectory(result.Directory)));
+        CHECK(std::filesystem::is_empty(GetAssetsDirectory(result.Directory)));
+    }
+
+    TEST_CASE("CreateProject creates the folders of the location that do not exist")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_location");
+        const std::filesystem::path location = folder.GetPath() / "Quasar Projects" / "Games";
+
+        const ProjectResult result = CreateProject(location, "MyGame");
+
+        REQUIRE_MESSAGE(result.IsValid(), result.Error);
+        CHECK(result.Directory == (location / "MyGame").lexically_normal());
+        CHECK(std::filesystem::is_directory(GetAssetsDirectory(result.Directory)));
+    }
+
+    TEST_CASE("CreateProject names the project folder with the UTF-8 name as typed")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_utf8");
+        const std::string name = "Proj\xC3\xA9t";
+
+        const ProjectResult result = CreateProject(folder.GetPath(), name);
+
+        REQUIRE_MESSAGE(result.IsValid(), result.Error);
+        CHECK(PathToUtf8(result.Directory.filename()) == name);
+    }
+
+    TEST_CASE("CreateProject creates nothing when the name cannot be a folder name")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_bad_name");
+
+        for (const char* name : {"", "..", "My/Game", "My\\Game", "Game."})
+        {
+            CAPTURE(name);
+            CheckFailed(CreateProject(folder.GetPath(), name));
         }
 
-        TEST_CASE("GetAssetsDirectory points to the Assets folder inside the project folder")
+        CHECK(std::filesystem::is_empty(folder.GetPath()));
+    }
+
+    TEST_CASE("CreateProject creates nothing when the location is relative")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_relative");
+        const TestHelpers::ScopedCurrentDirectory currentDirectory;
+        std::filesystem::current_path(folder.GetPath());
+
+        CheckFailed(CreateProject("Projects", "MyGame"));
+        CheckFailed(CreateProject(".", "MyGame"));
+
+        CHECK(std::filesystem::is_empty(folder.GetPath()));
+    }
+
+    TEST_CASE("CreateProject leaves an existing project folder untouched")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_existing");
+        REQUIRE(Quasar::WriteTextFile(folder.GetPath() / "MyGame" / "notes.txt", "content"));
+
+        CheckFailed(CreateProject(folder.GetPath(), "MyGame"));
+
+        CHECK_FALSE(std::filesystem::exists(folder.GetPath() / "MyGame" / "Assets"));
+        CHECK(std::filesystem::exists(folder.GetPath() / "MyGame" / "notes.txt"));
+    }
+
+    TEST_CASE("CreateProject fails when a file is in the way of the location")
+    {
+        const TestHelpers::ScopedLog log;
+        const TestHelpers::TemporaryFolder folder("quasar_create_over_file");
+        REQUIRE(Quasar::WriteTextFile(folder.GetPath() / "file.txt", "content"));
+
+        CheckFailed(CreateProject(folder.GetPath() / "file.txt", "MyGame"));
+        CHECK(std::filesystem::is_regular_file(folder.GetPath() / "file.txt"));
+    }
+
+    TEST_CASE("OpenProject gives the normalized full path of a folder that has an Assets folder")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_open_project");
+        REQUIRE(Quasar::CreateDirectories(folder.GetPath() / "MyGame" / "Assets"));
+
+        const ProjectResult result = OpenProject(folder.GetPath() / "MyGame" / "Assets" / "..");
+
+        REQUIRE_MESSAGE(result.IsValid(), result.Error);
+        CHECK(result.Directory == (folder.GetPath() / "MyGame").lexically_normal());
+    }
+
+    TEST_CASE("OpenProject refuses a folder that is not a project")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_open_not_project");
+
+        SUBCASE("the folder has no Assets folder")
         {
-            const std::filesystem::path project = std::filesystem::temp_directory_path() / "MyGame";
-
-            const std::filesystem::path assets = GetAssetsDirectory(project);
-
-            CHECK(assets.filename() == "Assets");
-            CHECK(assets.parent_path() == project);
+            REQUIRE(Quasar::CreateDirectories(folder.GetPath() / "MyGame"));
+            CheckFailed(OpenProject(folder.GetPath() / "MyGame"));
         }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "ResolveProjectDirectory gives the normalized full path of the project folder")
+        SUBCASE("Assets is a file instead of a folder")
         {
-            const std::filesystem::path expected = (Root() / "MyGame").lexically_normal();
-
-            SUBCASE("from a plain location")
-            {
-                CHECK(ResolveProjectDirectory(Root(), "MyGame") == expected);
-            }
-            SUBCASE("from a location with dot segments")
-            {
-                CHECK(ResolveProjectDirectory(Root() / "Sub" / ".." / ".", "MyGame") == expected);
-            }
+            REQUIRE(Quasar::WriteTextFile(folder.GetPath() / "MyGame" / "Assets", "content"));
+            CheckFailed(OpenProject(folder.GetPath() / "MyGame"));
         }
-
-        TEST_CASE("ResolveProjectDirectory refuses a location that is not a full path")
+        SUBCASE("the folder does not exist")
         {
-            CHECK(ResolveProjectDirectory("", "MyGame").empty());
-            CHECK(ResolveProjectDirectory("Projects", "MyGame").empty());
-            CHECK(ResolveProjectDirectory(std::filesystem::path(".") / "Projects", "MyGame").empty());
+            CheckFailed(OpenProject(folder.GetPath() / "Missing"));
         }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "ResolveProjectDirectory refuses a name that cannot be a folder name")
+        SUBCASE("no folder is given")
         {
-            for (const char* name : {"", ".", "..", "My/Game", "My\\Game", "Game.", "Game ", "Ga:me", "Ga*me", "Tab\tName"})
-            {
-                CAPTURE(name);
-                CHECK(ResolveProjectDirectory(Root(), name).empty());
-            }
-        }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "CreateProject creates an empty Assets folder inside the new project folder")
-        {
-            const ProjectResult result = CreateProject(Root(), "MyGame");
-
-            REQUIRE_MESSAGE(result.IsValid(), result.Error);
-            CHECK(result.Directory == (Root() / "MyGame").lexically_normal());
-            REQUIRE(std::filesystem::is_directory(GetAssetsDirectory(result.Directory)));
-            CHECK(std::filesystem::is_empty(GetAssetsDirectory(result.Directory)));
-        }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "CreateProject names the project folder with the UTF-8 name as typed")
-        {
-            const std::string name = "Proj\xC3\xA9t";
-
-            const ProjectResult result = CreateProject(Root(), name);
-
-            REQUIRE_MESSAGE(result.IsValid(), result.Error);
-            CHECK(PathToUtf8(result.Directory.filename()) == name);
-        }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "CreateProject creates nothing when the name cannot be a folder name")
-        {
-            for (const char* name : {"", "..", "My/Game", "My\\Game", "Game."})
-            {
-                CAPTURE(name);
-                CheckFailed(CreateProject(Root(), name));
-            }
-
-            CHECK(std::filesystem::is_empty(Root()));
-        }
-
-        TEST_CASE("CreateProject creates nothing when the location is relative")
-        {
-            const std::string name = "QuasarRelativeProject-" + std::to_string(std::random_device{}());
-
-            CheckFailed(CreateProject(".", name));
-            CHECK_FALSE(std::filesystem::exists(std::filesystem::current_path() / name));
-        }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "CreateProject leaves an existing folder untouched")
-        {
-            std::filesystem::create_directory(Root() / "MyGame");
-            WriteFile(std::filesystem::path("MyGame") / "notes.txt");
-
-            CheckFailed(CreateProject(Root(), "MyGame"));
-
-            CHECK_FALSE(std::filesystem::exists(Root() / "MyGame" / "Assets"));
-            CHECK(std::filesystem::exists(Root() / "MyGame" / "notes.txt"));
-        }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "CreateProject fails when the location is not an existing folder")
-        {
-            SUBCASE("the location does not exist")
-            {
-                CheckFailed(CreateProject(Root() / "Missing", "MyGame"));
-                CHECK_FALSE(std::filesystem::exists(Root() / "Missing"));
-            }
-            SUBCASE("the location is a file")
-            {
-                WriteFile("file.txt");
-                CheckFailed(CreateProject(Root() / "file.txt", "MyGame"));
-            }
-        }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "OpenProject gives the normalized full path of a folder that has an Assets folder")
-        {
-            std::filesystem::create_directories(Root() / "MyGame" / "Assets");
-
-            const ProjectResult result = OpenProject(Root() / "MyGame" / "Assets" / "..");
-
-            REQUIRE_MESSAGE(result.IsValid(), result.Error);
-            CHECK(result.Directory == (Root() / "MyGame").lexically_normal());
-        }
-
-        TEST_CASE_FIXTURE(ScratchFolder, "OpenProject refuses a folder that is not a project")
-        {
-            SUBCASE("the folder has no Assets folder")
-            {
-                std::filesystem::create_directory(Root() / "MyGame");
-                CheckFailed(OpenProject(Root() / "MyGame"));
-            }
-            SUBCASE("Assets is a file instead of a folder")
-            {
-                std::filesystem::create_directory(Root() / "MyGame");
-                WriteFile(std::filesystem::path("MyGame") / "Assets");
-                CheckFailed(OpenProject(Root() / "MyGame"));
-            }
-            SUBCASE("the folder does not exist")
-            {
-                CheckFailed(OpenProject(Root() / "Missing"));
-            }
-            SUBCASE("no folder is given")
-            {
-                CheckFailed(OpenProject({}));
-            }
+            CheckFailed(OpenProject({}));
         }
     }
 }
