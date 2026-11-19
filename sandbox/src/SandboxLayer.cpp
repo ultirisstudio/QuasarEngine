@@ -5,6 +5,7 @@
 #include <quasar/events/EventDispatcher.h>
 #include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
+#include <quasar/input/GamepadCodes.h>
 #include <quasar/input/Input.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
@@ -35,6 +36,8 @@ namespace Quasar::Sandbox
         constexpr glm::vec4 White{1.0f};
         constexpr float GroundSize = 30.0f;
         constexpr float GroundTiles = 15.0f;
+        constexpr float StickLookSpeed = 1500.0f;
+        constexpr GamepadId Gamepad{0};
 
         struct SpinComponent
         {
@@ -89,6 +92,13 @@ namespace Quasar::Sandbox
         {
             input.Look = Input::GetMouseDelta();
         }
+        if (Input::IsGamepadConnected(Gamepad))
+        {
+            const auto axis = [](GamepadAxis value) { return Input::GetGamepadAxis(Gamepad, value); };
+            input.Move += glm::vec3(axis(GamepadAxis::LeftX), axis(GamepadAxis::RightTrigger) - axis(GamepadAxis::LeftTrigger), -axis(GamepadAxis::LeftY));
+            input.Look += glm::vec2(axis(GamepadAxis::RightX), axis(GamepadAxis::RightY)) * StickLookSpeed * timestep.GetSeconds();
+            input.Fast = input.Fast || Input::IsGamepadButtonPressed(Gamepad, GamepadButton::LeftThumb);
+        }
         if (m_Camera.IsValid())
         {
             m_CameraController.Update(timestep, input, m_Camera.Get<TransformComponent>());
@@ -139,6 +149,8 @@ namespace Quasar::Sandbox
             ImGui::TextUnformatted("Up and down: Space and Left Ctrl");
             ImGui::TextUnformatted("Faster: Left Shift");
             ImGui::TextUnformatted("Look around: hold the right mouse button");
+            ImGui::TextUnformatted("Gamepad: left stick to move, right stick to look");
+            ImGui::TextUnformatted("Triggers to go up and down, left stick click to go faster");
         }
         ImGui::End();
     }
