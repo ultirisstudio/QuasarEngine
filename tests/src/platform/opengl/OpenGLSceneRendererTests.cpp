@@ -11,6 +11,7 @@
 #include <quasar/renderer/Material.h>
 #include <quasar/renderer/Mesh.h>
 #include <quasar/renderer/Pipeline.h>
+#include <quasar/renderer/PipelineLibrary.h>
 #include <quasar/renderer/Primitives.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
@@ -18,12 +19,14 @@
 #include <quasar/scene/Scene.h>
 #include <quasar/scene/SceneRenderer.h>
 #include <quasar/scene/components/CameraComponent.h>
+#include <quasar/scene/components/DirectionalLightComponent.h>
 #include <quasar/scene/components/MeshRendererComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <doctest/doctest.h>
 
 #include <glad/gl.h>
+#include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
@@ -31,6 +34,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
@@ -38,6 +42,7 @@
 #include <vector>
 
 using Quasar::CameraComponent;
+using Quasar::DirectionalLightComponent;
 using Quasar::Entity;
 using Quasar::MeshRendererComponent;
 using Quasar::TransformComponent;
@@ -75,6 +80,7 @@ namespace
             m_SceneRenderer = Quasar::CreateScope<Quasar::SceneRenderer>(*m_Renderer);
         }
 
+        Quasar::GraphicsContext& GetContext() const { return *m_Window->GetGraphicsContext(); }
         Quasar::Scene& GetScene() { return m_Scene; }
         Quasar::SceneRenderer& GetSceneRenderer() const { return *m_SceneRenderer; }
         Quasar::Framebuffer& GetFramebuffer() const { return *m_Framebuffer; }
@@ -230,4 +236,36 @@ TEST_CASE("Without a primary camera, the scene renderer draws nothing and logs o
     fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
     const std::vector<Quasar::LogMessage> later = Quasar::Log::GetMemorySink()->GetMessages();
     CHECK(std::ranges::count_if(later, [](const Quasar::LogMessage& message) { return message.Level == Quasar::LogLevel::Error; }) == 2);
+}
+
+TEST_CASE("The scene renderer lights the scene with its directional light, or with the default light")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    Quasar::PipelineLibrary library(fixture.GetContext());
+    REQUIRE(library.AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = library.CreateMaterial(Quasar::PipelineLibrary::BlinnPhong);
+    REQUIRE(lit != nullptr);
+    lit->SetFloat("Specular", 0.0f);
+    fixture.AddQuad(*lit);
+    fixture.AddCamera({0.0f, 0.0f, 1.0f});
+    const auto render = [&fixture]
+    {
+        fixture.Clear();
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        return fixture.ReadColor(4, 4);
+    };
+
+    const Quasar::DirectionalLight light;
+    const int expected = static_cast<int>(std::lround((-glm::normalize(light.Direction).z + light.Ambient) * 255.0f));
+    CHECK(IsNear(render(), {expected, expected, expected, 255}));
+
+    Entity sun = fixture.GetScene().CreateEntity("Sun");
+    auto& component = sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 0.0f});
+    CHECK(IsNear(render(), {255, 255, 255, 255}));
+
+    sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    component = {.Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 1.0f};
+    CHECK(IsNear(render(), {128, 0, 0, 255}));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }

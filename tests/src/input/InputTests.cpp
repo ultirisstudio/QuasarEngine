@@ -51,3 +51,24 @@ TEST_CASE("Input gives the movement of the mouse during the last frame")
     window.Update();
     CHECK(Quasar::Input::GetMouseDelta() == glm::vec2(0.0f, 0.0f));
 }
+
+TEST_CASE("A key axis is 1 or -1 while only one of its keys is held down, and 0 otherwise")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+    Quasar::Window& window = application->GetWindow();
+    CHECK(Quasar::Input::GetKeyAxis(Quasar::Key::S, Quasar::Key::W) == 0.0f);
+
+    TestHelpers::SendKey(window, Quasar::Key::W, true);
+    window.Update();
+    CHECK(Quasar::Input::GetKeyAxis(Quasar::Key::S, Quasar::Key::W) == 1.0f);
+
+    TestHelpers::SendKey(window, Quasar::Key::S, true);
+    window.Update();
+    CHECK(Quasar::Input::GetKeyAxis(Quasar::Key::S, Quasar::Key::W) == 0.0f);
+
+    TestHelpers::SendKey(window, Quasar::Key::W, false);
+    window.Update();
+    CHECK(Quasar::Input::GetKeyAxis(Quasar::Key::S, Quasar::Key::W) == -1.0f);
+}

@@ -231,3 +231,19 @@ TEST_CASE("The primary camera is an entity whose camera component is primary")
     secondary.Get<Quasar::CameraComponent>().Primary = true;
     CHECK(scene.FindPrimaryCamera() == secondary);
 }
+
+TEST_CASE("The viewport size of a scene goes to the camera of every camera component")
+{
+    const TestHelpers::ScopedLog log;
+    Scene scene;
+    Entity first = scene.CreateEntity("First");
+    Entity second = scene.CreateEntity("Second");
+    first.Add<Quasar::CameraComponent>();
+    second.Add<Quasar::CameraComponent>().Primary = false;
+    scene.CreateEntity("Without camera");
+
+    scene.SetViewportSize(400, 200);
+
+    CHECK(first.Get<Quasar::CameraComponent>().Camera.GetAspectRatio() == 2.0f);
+    CHECK(second.Get<Quasar::CameraComponent>().Camera.GetAspectRatio() == 2.0f);
+}

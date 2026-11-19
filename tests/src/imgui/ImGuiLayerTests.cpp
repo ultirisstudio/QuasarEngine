@@ -326,3 +326,30 @@ TEST_CASE("The layers receive the keyboard while ImGui does not use it")
     CHECK(Received(layer, Quasar::EventType::KeyTyped));
     CHECK(Received(layer, Quasar::EventType::KeyReleased));
 }
+
+TEST_CASE("ImGui ignores the mouse while the cursor is captured, then gives back only the flags it changed")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    layer.ImGuiAction = DrawCornerWindow;
+    layer.UpdateAction = [&application](int updates) { ClickOverImGui(*application, updates); };
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+    REQUIRE(application->GetWindow().SetCursorCaptured(true));
+
+    application->Run();
+
+    CHECK(Received(layer, Quasar::EventType::MouseButtonPressed));
+    CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) != 0);
+
+    REQUIRE(application->GetWindow().SetCursorCaptured(false));
+    layer.Events.clear();
+    layer.CloseAfter = 6;
+    layer.UpdateAction = [&application](int updates) { ClickOverImGui(*application, updates - 3); };
+    application->Run();
+
+    CHECK_FALSE(Received(layer, Quasar::EventType::MouseButtonPressed));
+    CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) == 0);
+    CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) != 0);
+}
