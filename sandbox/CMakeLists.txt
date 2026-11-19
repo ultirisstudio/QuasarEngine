@@ -1,8 +1,6 @@
 add_executable(QuasarSandbox)
 
 target_sources(QuasarSandbox PRIVATE
-    src/FlyCamera.cpp
-    src/FlyCamera.h
     src/SandboxApplication.cpp
     src/SandboxLayer.cpp
     src/SandboxLayer.h
