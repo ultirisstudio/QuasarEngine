@@ -20,6 +20,7 @@ namespace Quasar::Editor
     [[nodiscard]] std::string PathToUtf8(const std::filesystem::path& path);
 
     [[nodiscard]] std::filesystem::path GetAssetsDirectory(const std::filesystem::path& projectDirectory);
+    [[nodiscard]] std::filesystem::path ResolveProjectDirectory(const std::filesystem::path& parentDirectory, std::string_view name);
 
     [[nodiscard]] ProjectResult CreateProject(const std::filesystem::path& parentDirectory, std::string_view name);
     [[nodiscard]] ProjectResult OpenProject(const std::filesystem::path& projectDirectory);

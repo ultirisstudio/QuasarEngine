@@ -67,6 +67,15 @@ namespace Quasar::Editor
         return projectDirectory / AssetsDirectoryName;
     }
 
+    std::filesystem::path ResolveProjectDirectory(const std::filesystem::path& parentDirectory, std::string_view name)
+    {
+        if (!parentDirectory.is_absolute() || !IsValidProjectName(name))
+        {
+            return {};
+        }
+        return (parentDirectory / PathFromUtf8(name)).lexically_normal();
+    }
+
     ProjectResult CreateProject(const std::filesystem::path& parentDirectory, std::string_view name)
     {
         if (!IsValidProjectName(name))
@@ -77,6 +86,10 @@ namespace Quasar::Editor
         {
             return Fail("Choose the folder in which the project is created");
         }
+        if (!parentDirectory.is_absolute())
+        {
+            return Fail("The location " + Quote(parentDirectory) + " must be a full path, starting from the root of the disk");
+        }
 
         std::error_code error;
         if (!std::filesystem::is_directory(parentDirectory, error))
@@ -84,11 +97,7 @@ namespace Quasar::Editor
             return Fail("The folder " + Quote(parentDirectory) + " does not exist");
         }
 
-        const std::filesystem::path directory = std::filesystem::absolute(parentDirectory / PathFromUtf8(name), error);
-        if (error)
-        {
-            return Fail("Cannot resolve the folder of the project: " + error.message());
-        }
+        const std::filesystem::path directory = ResolveProjectDirectory(parentDirectory, name);
         if (std::filesystem::exists(directory, error))
         {
             return Fail("The folder " + Quote(directory) + " already exists");
@@ -97,7 +106,7 @@ namespace Quasar::Editor
         {
             return Fail("Cannot create the folder " + Quote(directory) + ": " + error.message());
         }
-        if (!std::filesystem::create_directory(GetAssetsDirectory(directory), error))
+        if(!std::filesystem::create_directory(GetAssetsDirectory(directory), error))
         {
             return Fail("Cannot create the folder " + Quote(GetAssetsDirectory(directory)) + ": " + error.message());
         }
@@ -122,11 +131,11 @@ namespace Quasar::Editor
             return Fail("The folder " + Quote(projectDirectory) + " is not a project: it has no " + std::string(AssetsDirectoryName) + " folder");
         }
 
-        std::filesystem::path directory = std::filesystem::absolute(projectDirectory, error);
+        const std::filesystem::path directory = std::filesystem::absolute(projectDirectory, error);
         if (error)
         {
             return Fail("Cannot resolve the folder of the project: " + error.message());
         }
-        return {.Directory = std::move(directory), .Error = {}};
+        return {.Directory = directory.lexically_normal(), .Error = {}};
     }
 }
