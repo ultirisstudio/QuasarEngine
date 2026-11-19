@@ -9,6 +9,8 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
+#include <cmath>
+
 using Quasar::TransformComponent;
 
 namespace
@@ -52,4 +54,28 @@ TEST_CASE("The rotation of a transform can be set and read as angles in radians"
     transform.SetEulerAngles(angles);
     CHECK(IsNear(transform.GetEulerAngles(), angles));
     CHECK(IsNear(transform.Rotation * glm::vec3(1.0f, 0.0f, 0.0f), glm::quat(angles) * glm::vec3(1.0f, 0.0f, 0.0f)));
+}
+
+TEST_CASE("A transform is set back from its matrix, a mirror gives a negative X scale, and a zero scale keeps the rotation")
+{
+    const TransformComponent source{.Position = {1.0f, -2.0f, 3.0f},
+                                    .Rotation = glm::angleAxis(glm::radians(40.0f), glm::normalize(glm::vec3(1.0f, 2.0f, 3.0f))),
+                                    .Scale = {2.0f, 0.5f, 3.0f}};
+    TransformComponent transform;
+    transform.SetMatrix(source.GetMatrix());
+    CHECK(IsNear(transform.Position, source.Position));
+    CHECK(IsNear(transform.Scale, source.Scale));
+    CHECK(std::abs(glm::dot(transform.Rotation, source.Rotation)) > 0.99999f);
+
+    const TransformComponent mirrored{.Scale = {-2.0f, 1.0f, 1.0f}};
+    transform.SetMatrix(mirrored.GetMatrix());
+    CHECK(IsNear(transform.Scale, {-2.0f, 1.0f, 1.0f}));
+    CHECK(std::abs(glm::dot(transform.Rotation, glm::quat(1.0f, 0.0f, 0.0f, 0.0f))) > 0.99999f);
+
+    const glm::quat kept = glm::angleAxis(glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    transform.Rotation = kept;
+    transform.SetMatrix(TransformComponent{.Position = {4.0f, 5.0f, 6.0f}, .Scale = {1.0f, 0.0f, 1.0f}}.GetMatrix());
+    CHECK(IsNear(transform.Position, {4.0f, 5.0f, 6.0f}));
+    CHECK(IsNear(transform.Scale, {1.0f, 0.0f, 1.0f}));
+    CHECK(transform.Rotation == kept);
 }
