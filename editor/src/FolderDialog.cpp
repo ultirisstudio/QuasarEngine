@@ -49,7 +49,7 @@ namespace Quasar::Editor
     {
         {
             const std::scoped_lock lock(m_State->Mutex);
-            if(m_State->Open)
+            if (m_State->Open)
             {
                 return;
             }

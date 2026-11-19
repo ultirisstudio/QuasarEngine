@@ -123,7 +123,7 @@ namespace Quasar::Editor
             return Fail("The folder " + Quote(directory) + " already exists");
         }
 
-        if(!CreateDirectories(GetAssetsDirectory(directory)))
+        if (!CreateDirectories(GetAssetsDirectory(directory)))
         {
             return Fail("Cannot create the folder " + Quote(directory) + ": see the console for the reason");
         }

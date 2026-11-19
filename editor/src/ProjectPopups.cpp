@@ -416,7 +416,7 @@ namespace Quasar::Editor
         }
 
         const std::optional<std::filesystem::path> folder = m_ProjectDialog.TakeFolder();
-        if(!folder)
+        if (!folder)
         {
             return std::nullopt;
         }
