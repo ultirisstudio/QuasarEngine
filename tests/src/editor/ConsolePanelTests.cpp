@@ -464,4 +464,3 @@ TEST_CASE("A console without a log shows no message")
 
     CHECK(CopiedText().empty());
 }
-
