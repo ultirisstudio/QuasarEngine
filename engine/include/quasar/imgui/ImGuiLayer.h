@@ -17,6 +17,10 @@ namespace Quasar
     /// @brief Settings of the ImGui windows of an application.
     struct ImGuiSpecification
     {
+        /// Whether the application runs ImGui. Without it, the application creates no ImGui layer and never calls
+        /// Layer::OnImGuiRender(), for example to save its cost in a game.
+        bool Enabled = true;
+
         bool Docking = true;   ///< ImGui windows can be docked into each other or into a dock space, as in an editor.
         bool Viewports = true; ///< ImGui windows can be dragged outside of the main window, into their own windows.
     };

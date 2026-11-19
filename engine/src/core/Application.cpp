@@ -33,7 +33,7 @@ namespace Quasar
         s_Instance = this;
         m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
 
-        if (m_Window->GetGraphicsAPI() != GraphicsAPI::None)
+        if (m_Window->GetGraphicsAPI() != GraphicsAPI::None && m_Specification.ImGui.Enabled)
         {
             m_ImGuiLayer = CreateScope<ImGuiLayer>(*m_Window, m_Specification.ImGui);
             m_ImGuiLayer->OnAttach();
