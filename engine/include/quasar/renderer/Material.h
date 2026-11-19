@@ -41,8 +41,8 @@ namespace Quasar
         /// The pipeline of the draws. It must stay alive as long as the material, which does not own it.
         Quasar::Pipeline* Pipeline = nullptr;
 
-        /// The N of the `layout(std140, binding = N) uniform` block that holds the values. The binding 0 is left to the
-        /// camera.
+        /// The N of the `layout(std140, binding = N) uniform` block that holds the values. The bindings of the Renderer,
+        /// 0, 2 and 3, are left to it.
         std::uint32_t UniformBinding = 1;
 
         UniformBlockLayout Uniforms{};           ///< The members of the block, in the order of the GLSL block.

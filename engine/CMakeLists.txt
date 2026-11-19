@@ -42,12 +42,14 @@ target_sources(QuasarEngine
         src/renderer/Buffer.cpp
         src/renderer/Camera.cpp
         src/renderer/Framebuffer.cpp
+        src/renderer/GraphicsContext.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Image.cpp
         src/renderer/Material.cpp
         src/renderer/Mesh.cpp
         src/renderer/Pipeline.cpp
+        src/renderer/PipelineLibrary.cpp
         src/renderer/Primitives.cpp
         src/renderer/Renderer.cpp
         src/renderer/Shader.cpp
@@ -56,6 +58,7 @@ target_sources(QuasarEngine
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
         src/scene/Entity.cpp
+        src/scene/FlyCameraController.cpp
         src/scene/Scene.cpp
         src/scene/SceneRenderer.cpp
         src/scene/components/TransformComponent.cpp
@@ -105,6 +108,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Material.h
             include/quasar/renderer/Mesh.h
             include/quasar/renderer/Pipeline.h
+            include/quasar/renderer/PipelineLibrary.h
             include/quasar/renderer/Primitives.h
             include/quasar/renderer/Renderer.h
             include/quasar/renderer/Shader.h
@@ -113,9 +117,11 @@ target_sources(QuasarEngine
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
             include/quasar/scene/Entity.h
+            include/quasar/scene/FlyCameraController.h
             include/quasar/scene/Scene.h
             include/quasar/scene/SceneRenderer.h
             include/quasar/scene/components/CameraComponent.h
+            include/quasar/scene/components/DirectionalLightComponent.h
             include/quasar/scene/components/IdComponent.h
             include/quasar/scene/components/MeshRendererComponent.h
             include/quasar/scene/components/NameComponent.h

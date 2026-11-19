@@ -61,6 +61,14 @@ namespace Quasar
         return {};
     }
 
+    void Scene::SetViewportSize(std::uint32_t width, std::uint32_t height)
+    {
+        for (const auto [handle, camera] : m_Registry.view<CameraComponent>().each())
+        {
+            camera.Camera.SetViewportSize(width, height);
+        }
+    }
+
     Entity Scene::Create(UUID id, std::string name)
     {
         const entt::entity handle = m_Registry.create();

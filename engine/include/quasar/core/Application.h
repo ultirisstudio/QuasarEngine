@@ -1,7 +1,7 @@
 #pragma once
 
 /// \file
-/// \brief The application: it creates the window, owns the layers and runs the main loop.
+/// \brief The application: it creates the window and the renderer, owns the layers and runs the main loop.
 /// \author Kurogenshi
 /// \date 2026-10-24
 
@@ -12,7 +12,12 @@
 #include <quasar/events/Event.h>
 #include <quasar/imgui/ImGuiLayer.h>
 #include <quasar/input/Gamepads.h>
+#include <quasar/renderer/PipelineLibrary.h>
+#include <quasar/renderer/Renderer.h>
+#include <quasar/scene/SceneRenderer.h>
 #include <quasar/time/Timer.h>
+
+#include <glm/vec4.hpp>
 
 #include <cstdint>
 #include <filesystem>
@@ -40,12 +45,20 @@ namespace Quasar
         std::vector<std::string> Arguments{}; ///< Command-line arguments, without the name of the program.
         WindowSpecification Window{};         ///< Settings of the main window, created with the application.
         ImGuiSpecification ImGui{};           ///< Settings of the ImGui windows.
+
+        /// Color the window is cleared with at the start of each frame, before the layers are rendered, with a depth of
+        /// 1. No value leaves the window as the previous frame left it.
+        std::optional<glm::vec4> ClearColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
     };
 
-    /// @brief The application: it creates the window, owns the layers and runs the main loop.
+    /// @brief The application: it creates the window and the renderer, owns the layers and runs the main loop.
     ///
     /// An application is built by adding layers to it, then calling Run(). Only one application can exist at a time,
     /// and it can be reached from anywhere with Get().
+    ///
+    /// When the window has a graphics context, the application also creates a Renderer, a SceneRenderer that draws with
+    /// it, and a PipelineLibrary with the default pipelines, which the layers can use or replace with their own. They
+    /// are destroyed after the layers.
     class Application
     {
     public:
@@ -59,7 +72,8 @@ namespace Quasar
         /// @brief Creates the application and its window.
         /// @param specification Settings of the application and of its window.
         /// @return The new application, or `nullptr` if an application already exists, if the working directory
-        /// cannot be used or if the window cannot be created. The reason is logged as an engine error.
+        /// cannot be used, or if the window or the renderer cannot be created. The reason is logged as an engine error.
+        /// A default pipeline that cannot be added is logged as an engine error, without stopping the application.
         [[nodiscard]] static Scope<Application> Create(const ApplicationSpecification& specification);
 
         /// @brief Returns the application. An application must exist.
@@ -67,11 +81,10 @@ namespace Quasar
 
         /// @brief Runs the main loop until the window is closed or Close() is called.
         ///
-        /// Each frame, the loop computes the time elapsed since the previous frame, updates every layer, renders
-        /// every layer, lets every layer draw its ImGui windows with Layer::OnImGuiRender(), then shows the image and
-        /// processes the messages of the operating system and reads the gamepads. Layers are updated and rendered from
-        /// the bottom of the stack to the top. While the window is minimized, or while its drawing area is empty, the
-        /// layers are still updated but not rendered.
+        /// Each frame, the loop computes the time elapsed since the previous frame, updates every layer, clears the
+        /// window with ApplicationSpecification::ClearColor, renders every layer, lets every layer draw its ImGui windows with Layer::OnImGuiRender(), then
+        /// shows the image and processes the messages of the operating system and reads the gamepads. Layers are updated and rendered from the bottom of the
+        /// stack to the top. While the window is minimized, or while its drawing area is empty, the layers are still updated but not rendered.
         ///
         /// The events of the window and of the gamepads go to the application first, then to the ImGui layer, then to
         /// the layers from the top of the stack to the bottom, until one of them handles them. Closing the window stops
@@ -127,6 +140,17 @@ namespace Quasar
         /// @brief Returns the layer that runs ImGui, or nullptr when the window has no graphics context.
         ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer.get(); }
 
+        /// @brief Returns the renderer of the window, or nullptr when the window has no graphics context.
+        Renderer* GetRenderer() { return m_Renderer.get(); }
+
+        /// @brief Returns the scene renderer that draws with GetRenderer(), for the main view of the application, or
+        /// nullptr when the window has no graphics context. Other views can create their own SceneRenderer.
+        SceneRenderer* GetSceneRenderer() { return m_SceneRenderer.get(); }
+
+        /// @brief Returns the pipelines of the application, which start with the ones of
+        /// PipelineLibrary::AddDefaults(), or nullptr when the window has no graphics context.
+        PipelineLibrary* GetPipelines() { return m_Pipelines.get(); }
+
         /// @brief Returns the layers and overlays of the application, from the bottom of the stack to the top.
         ///
         /// Layers added or removed during a frame only appear in it, or leave it, at the end of the frame.
@@ -145,7 +169,7 @@ namespace Quasar
         std::optional<std::filesystem::path> GetUserDataDirectory() const;
 
     private:
-        Application(ApplicationSpecification specification, Scope<Window> window);
+        Application(ApplicationSpecification specification, Scope<Window> window, Scope<PipelineLibrary> pipelines, Scope<Renderer> renderer);
 
         struct LayerChange
         {
@@ -169,6 +193,9 @@ namespace Quasar
         ApplicationSpecification m_Specification;
 
         Scope<Window> m_Window;
+        Scope<PipelineLibrary> m_Pipelines;
+        Scope<Renderer> m_Renderer;
+        Scope<SceneRenderer> m_SceneRenderer;
         Gamepads m_Gamepads;
         LayerStack m_LayerStack;
         Scope<ImGuiLayer> m_ImGuiLayer;

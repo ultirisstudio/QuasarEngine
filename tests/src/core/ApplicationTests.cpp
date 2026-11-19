@@ -531,3 +531,14 @@ TEST_CASE("Layers can still use the application when it is destroyed")
 
     CHECK(calls == std::vector<std::string>{"Layer detach", "Other detach"});
 }
+
+TEST_CASE("An application without a graphics context has no renderer, no scene renderer and no pipelines")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateNullApplication();
+    REQUIRE(application != nullptr);
+
+    CHECK(application->GetRenderer() == nullptr);
+    CHECK(application->GetSceneRenderer() == nullptr);
+    CHECK(application->GetPipelines() == nullptr);
+}

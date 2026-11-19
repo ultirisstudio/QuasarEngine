@@ -3,14 +3,32 @@
 #include <quasar/log/Log.h>
 #include <quasar/scene/Entity.h>
 #include <quasar/scene/components/CameraComponent.h>
+#include <quasar/scene/components/DirectionalLightComponent.h>
 #include <quasar/scene/components/MeshRendererComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
 
+#include <glm/vec3.hpp>
+
 namespace Quasar
 {
+    namespace
+    {
+        DirectionalLight FindLight(Scene& scene)
+        {
+            auto lights = scene.GetRegistry().view<TransformComponent, DirectionalLightComponent>();
+            if (lights.begin() == lights.end())
+            {
+                return {};
+            }
+            const auto [transform, light] = lights.get(*lights.begin());
+            return {
+                .Direction = transform.Rotation * glm::vec3(0.0f, 0.0f, -1.0f), .Color = light.Color, .Intensity = light.Intensity, .Ambient = light.Ambient};
+        }
+    }
+
     void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
     {
-        m_Renderer->BeginScene(camera, target);
+        m_Renderer->BeginScene(camera, target, FindLight(scene));
         scene.ForEach<TransformComponent, MeshRendererComponent>(
             [this](Entity /*entity*/, const TransformComponent& transform, const MeshRendererComponent& renderer)
             {

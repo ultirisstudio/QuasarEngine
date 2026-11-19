@@ -9,6 +9,8 @@
 #include <quasar/core/Layer.h>
 #include <quasar/events/Event.h>
 
+#include <imgui.h>
+
 namespace Quasar
 {
     class Window;
@@ -37,6 +39,8 @@ namespace Quasar
     ///
     /// While ImGui uses the mouse or the keyboard, for example when the cursor is over an ImGui window or a text field
     /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.
+    /// While the cursor of the window is captured, for example to turn a camera, ImGui ignores the mouse, and its events
+    /// go to the layers.
     class ImGuiLayer final : public Layer
     {
     public:
@@ -78,6 +82,7 @@ namespace Quasar
         Window* m_Window = nullptr;
         ImGuiSpecification m_Specification;
         Scope<ImGuiBackend> m_Backend;
+        ImGuiConfigFlags m_IgnoredMouseFlags = 0;
         bool m_BlockEvents = true;
     };
 }

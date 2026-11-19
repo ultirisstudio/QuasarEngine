@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <span>
 
 namespace Quasar
@@ -87,6 +88,14 @@ namespace Quasar
         /// @return The texture, or nullptr if the specification is not valid, if the pixels do not have the size of the
         /// texture, or if the graphics API does not allow its size. The reason is logged as an engine error.
         [[nodiscard]] virtual Scope<Texture2D> CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels) = 0;
+
+        /// @brief Creates a 2D texture from the image of a PNG, JPEG, BMP or TGA file. See Image::FromFile().
+        /// @param file The file.
+        /// @param settings The settings of the texture, whose size is replaced by the size of the image. Its format must
+        /// be TextureFormat::Rgba8 or TextureFormat::Srgba8.
+        /// @return The texture, or nullptr if the file cannot be decoded or if the texture cannot be created. The reason
+        /// is logged as an engine error.
+        [[nodiscard]] Scope<Texture2D> LoadTexture2D(const std::filesystem::path& file, TextureSpecification settings = {});
 
         /// @brief Creates a vertex array without buffers.
         [[nodiscard]] virtual Scope<VertexArray> CreateVertexArray() = 0;

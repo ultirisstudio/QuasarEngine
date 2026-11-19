@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/TemporaryFiles.h"
 #include "helpers/TestLayers.h"
 
 #include <quasar/core/Application.h>
@@ -19,12 +20,14 @@
 #include <glm/vec2.hpp>
 #include <imgui.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -416,4 +419,52 @@ TEST_CASE("ImGui draws a texture")
 
     CHECK(glGetError() == GL_NO_ERROR);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+}
+
+TEST_CASE("A texture is loaded from an image file, with its size and the other settings it is given")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene(2, 2);
+    // 2x2: red, green at half alpha, blue at zero alpha, then (10, 20, 30, 40)
+    constexpr std::array<unsigned char, 83> png{
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00,
+        0x00, 0x00, 0x02, 0x08, 0x06, 0x00, 0x00, 0x00, 0x72, 0xB6, 0x0D, 0x24, 0x00, 0x00, 0x00, 0x1A, 0x49, 0x44, 0x41, 0x54, 0x78,
+        0xDA, 0x63, 0xF8, 0xCF, 0xC0, 0xF0, 0x9F, 0xE1, 0x3F, 0x43, 0x03, 0x03, 0x03, 0xC3, 0x7F, 0x06, 0x2E, 0x11, 0x39, 0x0D, 0x00,
+        0x36, 0xA9, 0x04, 0xE1, 0xF4, 0x7A, 0x5A, 0xDB, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    };
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    const TestHelpers::TemporaryFile file("Sprite.png", std::string(reinterpret_cast<const char*>(png.data()), png.size()));
+
+    const Quasar::Scope<Quasar::Texture2D> texture = scene.GetContext().LoadTexture2D(
+        file.GetPath(), {.Width = 7, .Height = 9, .Filter = TextureFilter::Nearest, .Wrap = TextureWrap::ClampToEdge, .Mipmaps = false});
+
+    REQUIRE(texture != nullptr);
+    CHECK(texture->GetSpecification().Width == 2);
+    CHECK(texture->GetSpecification().Height == 2);
+    CHECK(texture->GetSpecification().Format == TextureFormat::Rgba8);
+    CHECK(texture->GetSpecification().Filter == TextureFilter::Nearest);
+    CHECK(texture->GetSpecification().Wrap == TextureWrap::ClampToEdge);
+    CHECK_FALSE(texture->GetSpecification().Mipmaps);
+    texture->Bind(1);
+    CHECK(scene.Draw({.Channel = 0}) == std::vector<int>{255, 0, 0, 10});
+    CHECK(scene.Draw({.Channel = 3}) == std::vector<int>{255, 128, 0, 40});
+
+    const Quasar::Scope<Quasar::Texture2D> srgb = scene.GetContext().LoadTexture2D(file.GetPath(), {.Format = TextureFormat::Srgba8});
+    REQUIRE(srgb != nullptr);
+    CHECK(srgb->GetSpecification().Format == TextureFormat::Srgba8);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("No texture is loaded from a file that cannot be decoded, or into a format that an image does not fill")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene;
+    const TestHelpers::TemporaryFile file("Broken.png", "not an image");
+
+    CHECK(scene.GetContext().LoadTexture2D(file.GetPath()) == nullptr);
+    CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+
+    CHECK(scene.GetContext().LoadTexture2D(file.GetPath(), {.Format = TextureFormat::R8}) == nullptr);
+    const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
+    CHECK(std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Text.find("Rgba8 or Srgba8") != std::string::npos; }) == 1);
 }
