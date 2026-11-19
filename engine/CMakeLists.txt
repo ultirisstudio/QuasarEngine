@@ -116,6 +116,7 @@ target_sources(QuasarEngine
             include/quasar/scene/Scene.h
             include/quasar/scene/SceneRenderer.h
             include/quasar/scene/components/CameraComponent.h
+            include/quasar/scene/components/DirectionalLightComponent.h
             include/quasar/scene/components/IdComponent.h
             include/quasar/scene/components/MeshRendererComponent.h
             include/quasar/scene/components/NameComponent.h

@@ -15,7 +15,8 @@ namespace Quasar
     /// @brief Draws the entities of a scene that have a TransformComponent and a MeshRendererComponent.
     ///
     /// The scene is drawn from any camera, such as the camera of the editor, or from its primary camera, as in the
-    /// game. The target is not cleared.
+    /// game. It is lit by its first DirectionalLightComponent, or by a default DirectionalLight if it has none. The
+    /// target is not cleared.
     class SceneRenderer
     {
     public:
