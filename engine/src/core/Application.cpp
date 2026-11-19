@@ -4,6 +4,7 @@
 #include <quasar/io/UserDataDirectory.h>
 #include <quasar/log/Log.h>
 #include <quasar/renderer/GraphicsAPI.h>
+#include <quasar/renderer/GraphicsContext.h>
 
 #include <spdlog/fmt/std.h>
 
@@ -22,9 +23,13 @@ namespace Quasar
         Application* s_Instance = nullptr;
     }
 
-    Application::Application(ApplicationSpecification specification, Scope<Window> window)
-        : m_Specification(std::move(specification)), m_Window(std::move(window))
+    Application::Application(ApplicationSpecification specification, Scope<Window> window, Scope<PipelineLibrary> pipelines, Scope<Renderer> renderer)
+        : m_Specification(std::move(specification)), m_Window(std::move(window)), m_Pipelines(std::move(pipelines)), m_Renderer(std::move(renderer))
     {
+        if (m_Renderer != nullptr)
+        {
+            m_SceneRenderer = CreateScope<SceneRenderer>(*m_Renderer);
+        }
         s_Instance = this;
         m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
 
@@ -78,8 +83,22 @@ namespace Quasar
             return nullptr;
         }
 
+        Scope<PipelineLibrary> pipelines;
+        Scope<Renderer> renderer;
+        if (GraphicsContext* context = window->GetGraphicsContext(); context != nullptr)
+        {
+            renderer = Renderer::Create(*context);
+            if (renderer == nullptr)
+            {
+                QUASAR_ENGINE_ERROR("Cannot create the application '{}': its renderer cannot be created", specification.Name);
+                return nullptr;
+            }
+            pipelines = CreateScope<PipelineLibrary>(*context);
+            pipelines->AddDefaults();
+        }
+
         QUASAR_ENGINE_INFO("Created the application '{}'", specification.Name);
-        return Scope<Application>(new Application(specification, std::move(window)));
+        return Scope<Application>(new Application(specification, std::move(window), std::move(pipelines), std::move(renderer)));
     }
 
     Application& Application::Get()
@@ -114,6 +133,10 @@ namespace Quasar
             const bool canRender = !m_Minimized && m_Window->GetWidth() > 0 && m_Window->GetHeight() > 0;
             if (canRender)
             {
+                if (GraphicsContext* context = m_Window->GetGraphicsContext(); context != nullptr && m_Specification.ClearColor)
+                {
+                    context->ClearWindow(*m_Specification.ClearColor);
+                }
                 for (Scope<Layer>& layer : m_LayerStack)
                 {
                     layer->OnRender();
