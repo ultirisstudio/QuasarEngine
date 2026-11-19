@@ -235,7 +235,7 @@ namespace Quasar::Editor
 
     void EditorLayer::ApplyProjectResult(const ProjectResult& result)
     {
-        if(!result.IsValid())
+        if (!result.IsValid())
         {
             m_ProjectError = result.Error;
             return;

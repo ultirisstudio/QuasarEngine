@@ -97,7 +97,7 @@ namespace Quasar::Editor
         {
             return Fail("Cannot create the folder " + Quote(directory) + ": " + error.message());
         }
-        if(!std::filesystem::create_directory(GetAssetsDirectory(directory), error))
+        if (!std::filesystem::create_directory(GetAssetsDirectory(directory), error))
         {
             return Fail("Cannot create the folder " + Quote(GetAssetsDirectory(directory)) + ": " + error.message());
         }
