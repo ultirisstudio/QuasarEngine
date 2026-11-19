@@ -4,6 +4,7 @@
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/scene/Entity.h>
 #include <quasar/scene/Scene.h>
+#include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <doctest/doctest.h>
@@ -210,4 +211,23 @@ TEST_CASE("ForEach can destroy the entity it visits")
     {
         CHECK(scene.FindEntity(id).IsValid());
     }
+}
+
+TEST_CASE("The primary camera is an entity whose camera component is primary")
+{
+    Scene scene;
+    CHECK_FALSE(scene.FindPrimaryCamera().IsValid());
+
+    Entity secondary = scene.CreateEntity("Secondary");
+    secondary.Add<Quasar::CameraComponent>().Primary = false;
+    scene.CreateEntity("Without camera");
+    CHECK_FALSE(scene.FindPrimaryCamera().IsValid());
+
+    Entity primary = scene.CreateEntity("Primary");
+    primary.Add<Quasar::CameraComponent>();
+    CHECK(scene.FindPrimaryCamera() == primary);
+
+    primary.Get<Quasar::CameraComponent>().Primary = false;
+    secondary.Get<Quasar::CameraComponent>().Primary = true;
+    CHECK(scene.FindPrimaryCamera() == secondary);
 }
