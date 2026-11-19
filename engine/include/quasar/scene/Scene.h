@@ -48,6 +48,10 @@ namespace Quasar
         /// @brief Returns the entity with this UUID, or an invalid entity.
         Entity FindEntity(UUID id);
 
+        /// @brief Returns an entity whose CameraComponent is primary, or an invalid entity if there is none. With several
+        /// primary cameras, any of them can be returned.
+        Entity FindPrimaryCamera();
+
         /// @brief Returns the number of entities.
         std::size_t GetEntityCount() const { return m_Entities.size(); }
 

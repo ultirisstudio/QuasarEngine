@@ -10,13 +10,17 @@
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
 #include <quasar/renderer/Texture.h>
+#include <quasar/scene/Entity.h>
+#include <quasar/scene/Scene.h>
+#include <quasar/scene/SceneRenderer.h>
+#include <quasar/scene/components/TransformComponent.h>
 #include <quasar/time/Timestep.h>
 
-#include <glm/gtc/quaternion.hpp>
-#include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
+#include <cstdint>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 namespace Quasar
@@ -40,23 +44,18 @@ namespace Quasar::Sandbox
         void OnEvent(Event& event) override;
 
     private:
-        struct SceneObject
-        {
-            const Mesh* Shape = nullptr;
-            Material* Look = nullptr;
-            glm::vec3 Position{0.0f};
-            glm::vec3 Scale{1.0f};
-            glm::quat Orientation{1.0f, 0.0f, 0.0f, 0.0f};
-            float Spin = 0.0f;
-        };
-
         bool CreateScene(GraphicsContext& context);
+        void AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform, float spin = 0.0f);
         static Scope<Texture2D> LoadTexture(GraphicsContext& context, const std::filesystem::path& file);
         Material* AddMaterial(GraphicsContext& context, Texture2D* texture, glm::vec4 color);
+        void SetViewportSize(std::uint32_t width, std::uint32_t height);
         void SetLooking(bool looking);
 
-        FlyCamera m_Camera;
+        Scene m_Scene;
+        Entity m_Camera;
+        FlyCamera m_CameraController;
         Scope<Renderer> m_Renderer;
+        Scope<SceneRenderer> m_SceneRenderer;
         Scope<Shader> m_Shader;
         Scope<Pipeline> m_Pipeline;
         Scope<Mesh> m_Cube;
@@ -64,9 +63,6 @@ namespace Quasar::Sandbox
         Scope<Mesh> m_Ground;
         std::vector<Scope<Texture2D>> m_Textures;
         std::vector<Scope<Material>> m_Materials;
-        std::vector<SceneObject> m_Objects;
-
-        float m_Time = 0.0f;
         float m_FrameTime = 0.0f;
         bool m_Looking = false;
         bool m_VSync = true;

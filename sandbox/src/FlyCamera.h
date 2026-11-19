@@ -1,12 +1,10 @@
 #pragma once
 
-#include <quasar/renderer/Camera.h>
+#include <quasar/scene/components/TransformComponent.h>
 #include <quasar/time/Timestep.h>
 
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-
-#include <cstdint>
 
 namespace Quasar::Sandbox
 {
@@ -20,20 +18,13 @@ namespace Quasar::Sandbox
     class FlyCamera
     {
     public:
-        FlyCamera();
+        void Update(Timestep timestep, const FlyCameraInput& input, TransformComponent& transform);
 
-        void Update(Timestep timestep, const FlyCameraInput& input);
-        void SetViewportSize(std::uint32_t width, std::uint32_t height);
-
-        const Camera& GetCamera() const { return m_Camera; }
         float GetYaw() const { return m_Yaw; }
         float GetPitch() const { return m_Pitch; }
 
     private:
-        void UpdateOrientation();
-
-        Camera m_Camera;
         float m_Yaw = 0.0f;
-        float m_Pitch = 0.0f;
+        float m_Pitch = -10.0f;
     };
 }

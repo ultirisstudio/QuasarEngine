@@ -13,11 +13,13 @@
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Image.h>
 #include <quasar/renderer/Primitives.h>
+#include <quasar/scene/components/CameraComponent.h>
+#include <quasar/scene/components/MeshRendererComponent.h>
+#include <quasar/scene/components/TransformComponent.h>
 
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
+#include <glm/vec3.hpp>
 #include <imgui.h>
 #include <spdlog/fmt/fmt.h>
 
@@ -35,6 +37,11 @@ namespace Quasar::Sandbox
         constexpr glm::vec4 White{1.0f};
         constexpr float GroundSize = 30.0f;
         constexpr float GroundTiles = 15.0f;
+
+        struct SpinComponent
+        {
+            float Speed = 0.0f;
+        };
 
         float Axis(Key positive, Key negative)
         {
@@ -54,15 +61,15 @@ namespace Quasar::Sandbox
     void SandboxLayer::OnAttach()
     {
         Window& window = Application::Get().GetWindow();
-        m_Camera.SetViewportSize(window.GetWidth(), window.GetHeight());
         window.SetVSync(m_VSync);
 
         GraphicsContext* context = window.GetGraphicsContext();
         if (context == nullptr || !CreateScene(*context))
         {
             QUASAR_ERROR("The sandbox scene cannot be created");
-            m_Objects.clear();
+            m_SceneRenderer.reset();
         }
+        SetViewportSize(window.GetWidth(), window.GetHeight());
     }
 
     void SandboxLayer::OnDetach()
@@ -72,7 +79,6 @@ namespace Quasar::Sandbox
 
     void SandboxLayer::OnUpdate(Timestep timestep)
     {
-        m_Time += timestep.GetSeconds();
         m_FrameTime = timestep.GetMilliseconds();
 
         if (m_Looking && !Input::IsMouseButtonPressed(MouseButton::Right))
@@ -90,27 +96,25 @@ namespace Quasar::Sandbox
         {
             input.Look = Input::GetMouseDelta();
         }
-        m_Camera.Update(timestep, input);
+        if (m_Camera.IsValid())
+        {
+            m_CameraController.Update(timestep, input, m_Camera.Get<TransformComponent>());
+        }
+
+        m_Scene.ForEach<TransformComponent, SpinComponent>(
+            [timestep](Entity /*entity*/, TransformComponent& transform, const SpinComponent& spin)
+            { transform.Rotation = glm::angleAxis(spin.Speed * timestep.GetSeconds(), glm::vec3(0.0f, 1.0f, 0.0f)) * transform.Rotation; });
     }
 
     void SandboxLayer::OnRender()
     {
-        if (m_Renderer == nullptr)
+        if (m_SceneRenderer == nullptr)
         {
             return;
         }
 
-        GraphicsContext& context = *Application::Get().GetWindow().GetGraphicsContext();
-        context.ClearWindow(SkyColor);
-        m_Renderer->BeginScene(m_Camera.GetCamera());
-        for (const SceneObject& object : m_Objects)
-        {
-            const glm::mat4 transform = glm::translate(glm::mat4(1.0f), object.Position) *
-                                        glm::rotate(glm::mat4(1.0f), m_Time * object.Spin, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::mat4_cast(object.Orientation) *
-                                        glm::scale(glm::mat4(1.0f), object.Scale);
-            m_Renderer->Submit(*object.Shape, *object.Look, transform);
-        }
-        m_Renderer->EndScene();
+        Application::Get().GetWindow().GetGraphicsContext()->ClearWindow(SkyColor);
+        m_SceneRenderer->Render(m_Scene);
     }
 
     void SandboxLayer::OnImGuiRender()
@@ -118,10 +122,14 @@ namespace Quasar::Sandbox
         ImGui::SetNextWindowPos({10.0f, 10.0f}, ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Debug", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            const glm::vec3& position = m_Camera.GetCamera().GetPosition();
             ImGui::TextUnformatted(fmt::format("{:.0f} frames per second ({:.2f} ms)", ImGui::GetIO().Framerate, m_FrameTime).c_str());
-            ImGui::TextUnformatted(fmt::format("Camera: {:.1f}, {:.1f}, {:.1f}", position.x, position.y, position.z).c_str());
-            ImGui::TextUnformatted(fmt::format("Yaw {:.0f}, pitch {:.0f}", m_Camera.GetYaw(), m_Camera.GetPitch()).c_str());
+            ImGui::TextUnformatted(fmt::format("{} entities", m_Scene.GetEntityCount()).c_str());
+            if (m_Camera.IsValid())
+            {
+                const glm::vec3& position = m_Camera.Get<TransformComponent>().Position;
+                ImGui::TextUnformatted(fmt::format("Camera: {:.1f}, {:.1f}, {:.1f}", position.x, position.y, position.z).c_str());
+            }
+            ImGui::TextUnformatted(fmt::format("Yaw {:.0f}, pitch {:.0f}", m_CameraController.GetYaw(), m_CameraController.GetPitch()).c_str());
             if (ImGui::Checkbox("VSync", &m_VSync))
             {
                 Application::Get().GetWindow().SetVSync(m_VSync);
@@ -142,7 +150,7 @@ namespace Quasar::Sandbox
         dispatcher.Dispatch<WindowResizeEvent>(
             [this](const WindowResizeEvent& resize)
             {
-                m_Camera.SetViewportSize(resize.GetWidth(), resize.GetHeight());
+                SetViewportSize(resize.GetWidth(), resize.GetHeight());
                 return false;
             });
         dispatcher.Dispatch<MouseButtonPressedEvent>(
@@ -160,6 +168,10 @@ namespace Quasar::Sandbox
     bool SandboxLayer::CreateScene(GraphicsContext& context)
     {
         m_Renderer = Renderer::Create(context);
+        if (m_Renderer != nullptr)
+        {
+            m_SceneRenderer = CreateScope<SceneRenderer>(*m_Renderer);
+        }
         const std::optional<ShaderSpecification> unlit = ShaderSpecification::FromFile(GetEngineResourcesDirectory() / "shaders" / "Unlit.glsl");
         if (m_Renderer == nullptr || !unlit)
         {
@@ -199,19 +211,19 @@ namespace Quasar::Sandbox
             return false;
         }
 
-        m_Objects = {
-            {.Shape = m_Ground.get(),
-             .Look = groundMaterial,
-             .Scale = {GroundSize, GroundSize, 1.0f},
-             .Orientation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))},
-            {.Shape = m_Cube.get(), .Look = crateMaterial, .Position = {0.0f, 1.5f, 0.0f}, .Scale = glm::vec3(1.5f), .Spin = 0.8f},
-            {.Shape = m_Cube.get(), .Look = crateMaterial, .Position = {-3.0f, 0.5f, -1.0f}},
-            {.Shape = m_Cube.get(), .Look = redCrate, .Position = {3.0f, 0.75f, -2.0f}, .Scale = glm::vec3(1.5f), .Spin = -0.4f},
-            {.Shape = m_Cube.get(), .Look = crateMaterial, .Position = {-3.0f, 1.5f, -1.0f}, .Spin = 1.5f},
-            {.Shape = m_Sphere.get(), .Look = ballMaterial, .Position = {-1.5f, 0.5f, 2.0f}, .Spin = 1.0f},
-            {.Shape = m_Sphere.get(), .Look = greenBall, .Position = {2.0f, 1.0f, 2.0f}, .Scale = glm::vec3(2.0f), .Spin = 0.3f},
-            {.Shape = m_Sphere.get(), .Look = ballMaterial, .Position = {0.0f, 0.75f, -5.0f}, .Scale = glm::vec3(1.5f), .Spin = -0.6f},
-        };
+        const glm::quat flat = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        AddObject("Ground", *m_Ground, *groundMaterial, {.Rotation = flat, .Scale = {GroundSize, GroundSize, 1.0f}});
+        AddObject("Big crate", *m_Cube, *crateMaterial, {.Position = {0.0f, 1.5f, 0.0f}, .Scale = glm::vec3(1.5f)}, 0.8f);
+        AddObject("Crate", *m_Cube, *crateMaterial, {.Position = {-3.0f, 0.5f, -1.0f}});
+        AddObject("Red crate", *m_Cube, *redCrate, {.Position = {3.0f, 0.75f, -2.0f}, .Scale = glm::vec3(1.5f)}, -0.4f);
+        AddObject("Stacked crate", *m_Cube, *crateMaterial, {.Position = {-3.0f, 1.5f, -1.0f}}, 1.5f);
+        AddObject("Ball", *m_Sphere, *ballMaterial, {.Position = {-1.5f, 0.5f, 2.0f}}, 1.0f);
+        AddObject("Green ball", *m_Sphere, *greenBall, {.Position = {2.0f, 1.0f, 2.0f}, .Scale = glm::vec3(2.0f)}, 0.3f);
+        AddObject("Far ball", *m_Sphere, *ballMaterial, {.Position = {0.0f, 0.75f, -5.0f}, .Scale = glm::vec3(1.5f)}, -0.6f);
+
+        m_Camera = m_Scene.CreateEntity("Camera");
+        m_Camera.Get<TransformComponent>().Position = {0.0f, 2.0f, 8.0f};
+        m_Camera.Add<CameraComponent>().Camera.SetPerspective({.VerticalFov = glm::radians(60.0f), .Near = 0.1f, .Far = 500.0f});
         return true;
     }
 
@@ -237,6 +249,22 @@ namespace Quasar::Sandbox
         material->SetVec4("Color", color);
         material->SetTexture("Texture", texture);
         return m_Materials.emplace_back(std::move(material)).get();
+    }
+
+    void SandboxLayer::AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform, float spin)
+    {
+        Entity entity = m_Scene.CreateEntity(std::move(name));
+        entity.Get<TransformComponent>() = transform;
+        entity.Add<MeshRendererComponent>(MeshRendererComponent{.Mesh = &mesh, .Material = &material});
+        if (spin != 0.0f)
+        {
+            entity.Add<SpinComponent>(SpinComponent{.Speed = spin});
+        }
+    }
+
+    void SandboxLayer::SetViewportSize(std::uint32_t width, std::uint32_t height)
+    {
+        m_Scene.ForEach<CameraComponent>([width, height](Entity /*entity*/, CameraComponent& camera) { camera.Camera.SetViewportSize(width, height); });
     }
 
     void SandboxLayer::SetLooking(bool looking)
