@@ -55,6 +55,9 @@ target_sources(QuasarEngine
         src/renderer/UniformBlockLayout.cpp
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
+        src/scene/Entity.cpp
+        src/scene/Scene.cpp
+        src/scene/components/TransformComponent.cpp
         src/time/ScopedTimer.cpp
         src/time/Timer.cpp
     PUBLIC
@@ -108,6 +111,11 @@ target_sources(QuasarEngine
             include/quasar/renderer/UniformBlockLayout.h
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
+            include/quasar/scene/Entity.h
+            include/quasar/scene/Scene.h
+            include/quasar/scene/components/IdComponent.h
+            include/quasar/scene/components/NameComponent.h
+            include/quasar/scene/components/TransformComponent.h
             include/quasar/time/ScopedTimer.h
             include/quasar/time/Timer.h
             include/quasar/time/Timestep.h
@@ -136,6 +144,7 @@ target_link_libraries(QuasarEngine
         glm::glm
         spdlog::spdlog
         imgui::imgui
+        EnTT::EnTT
     PRIVATE
         Quasar::CompileOptions
         SDL3::SDL3
