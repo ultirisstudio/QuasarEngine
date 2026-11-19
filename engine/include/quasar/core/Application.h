@@ -82,9 +82,11 @@ namespace Quasar
         /// @brief Runs the main loop until the window is closed or Close() is called.
         ///
         /// Each frame, the loop computes the time elapsed since the previous frame, updates every layer, clears the
-        /// window with ApplicationSpecification::ClearColor, renders every layer, lets every layer draw its ImGui windows with Layer::OnImGuiRender(), then
-        /// shows the image and processes the messages of the operating system and reads the gamepads. Layers are updated and rendered from the bottom of the
-        /// stack to the top. While the window is minimized, or while its drawing area is empty, the layers are still updated but not rendered.
+        /// window with ApplicationSpecification::ClearColor, renders every layer, lets every layer draw its ImGui
+        /// windows with Layer::OnImGuiRender() when ImGui is enabled, then shows the image and processes the messages
+        /// of the operating system and reads the gamepads. Layers are updated and rendered from the bottom of the stack
+        /// to the top. While the window is minimized, or while its drawing area is empty, the layers are still updated
+        /// but not rendered.
         ///
         /// The events of the window and of the gamepads go to the application first, then to the ImGui layer, then to
         /// the layers from the top of the stack to the bottom, until one of them handles them. Closing the window stops
@@ -137,7 +139,8 @@ namespace Quasar
         /// @brief Returns the gamepads, read once per frame by the main loop.
         const Gamepads& GetGamepads() const { return m_Gamepads; }
 
-        /// @brief Returns the layer that runs ImGui, or nullptr when the window has no graphics context.
+        /// @brief Returns the layer that runs ImGui, or nullptr when ImGui is disabled or the window has no graphics
+        /// context. See ImGuiSpecification::Enabled.
         ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer.get(); }
 
         /// @brief Returns the renderer of the window, or nullptr when the window has no graphics context.

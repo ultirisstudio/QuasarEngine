@@ -82,12 +82,8 @@ namespace Quasar::Sandbox
             SetLooking(false);
         }
 
-        FlyCameraInput input;
-        if (m_Looking || !ImGui::GetIO().WantCaptureKeyboard)
-        {
-            input.Move = {Input::GetKeyAxis(Key::A, Key::D), Input::GetKeyAxis(Key::LeftControl, Key::Space), Input::GetKeyAxis(Key::S, Key::W)};
-            input.Fast = Input::IsKeyPressed(Key::LeftShift);
-        }
+        FlyCameraInput input{.Move = {Input::GetKeyAxis(Key::A, Key::D), Input::GetKeyAxis(Key::LeftControl, Key::Space), Input::GetKeyAxis(Key::S, Key::W)},
+                             .Fast = Input::IsKeyPressed(Key::LeftShift)};
         if (m_Looking)
         {
             input.Look = Input::GetMouseDelta();

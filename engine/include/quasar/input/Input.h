@@ -23,9 +23,14 @@
 ///
 /// The functions read the main window and the gamepads of the application, so an Application must exist. The state is
 /// the one known at the end of the last frame, when the messages of the operating system and the gamepads are read.
+///
+/// While ImGui blocks the keyboard or the mouse, as it blocks their events, the keys and the mouse buttons read as
+/// released and the mouse does not move, so a layer does not react to what is typed or clicked in an ImGui window. See
+/// ImGuiLayer::IsBlockingKeyboard() and ImGuiLayer::IsBlockingMouse(). The position of the cursor and the gamepads are
+/// never blocked. Window gives the state of the keyboard and of the mouse without blocking.
 namespace Quasar::Input
 {
-    /// @brief Returns true if the key is held down.
+    /// @brief Returns true if the key is held down, and not blocked by ImGui.
     ///
     /// Key codes are physical keys: Key::W is the key at the position of W on QWERTY, which is Z on AZERTY.
     bool IsKeyPressed(Key key);
@@ -34,7 +39,7 @@ namespace Quasar::Input
     /// held down, and 0 otherwise. For example `GetKeyAxis(Key::S, Key::W)` moves forward and back.
     float GetKeyAxis(Key negative, Key positive);
 
-    /// @brief Returns true if the mouse button is held down.
+    /// @brief Returns true if the mouse button is held down, and not blocked by ImGui.
     bool IsMouseButtonPressed(MouseButton button);
 
     /// @brief Returns the position of the cursor, from the top-left corner of the drawing area.
@@ -44,7 +49,7 @@ namespace Quasar::Input
     glm::vec2 GetMousePosition();
 
     /// @brief Returns how far the mouse moved during the last frame, toward the right and the bottom, also while the
-    /// cursor is captured. See Window::SetCursorCaptured().
+    /// cursor is captured, or zero while ImGui blocks the mouse. See Window::SetCursorCaptured().
     glm::vec2 GetMouseDelta();
 
     /// @brief Returns true if a gamepad is connected with this id. See Gamepads.

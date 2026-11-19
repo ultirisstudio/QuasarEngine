@@ -5,12 +5,14 @@
 #include <quasar/core/Layer.h>
 #include <quasar/events/Event.h>
 #include <quasar/imgui/ImGuiLayer.h>
+#include <quasar/input/Input.h>
 #include <quasar/input/KeyCodes.h>
 #include <quasar/input/MouseCodes.h>
 #include <quasar/log/MemoryLogSink.h>
 
 #include <doctest/doctest.h>
 
+#include <glm/vec2.hpp>
 #include <imgui.h>
 
 #include <algorithm>
@@ -107,6 +109,62 @@ namespace
             TestHelpers::SendText(application.GetWindow(), "a");
             TestHelpers::SendKey(application.GetWindow(), Quasar::Key::A, false);
         }
+    }
+
+    struct HeldInput
+    {
+        bool Read = false;
+        bool KeyPressed = false;
+        bool KeyDown = false;
+        bool ButtonPressed = false;
+        bool ButtonDown = false;
+        glm::vec2 Delta{0.0f};
+        glm::vec2 Position{0.0f};
+    };
+
+    void HoldOverImGui(Quasar::Application& application, int updates, HeldInput& held)
+    {
+        const Quasar::Window& window = application.GetWindow();
+        if (updates == 1)
+        {
+            TestHelpers::SendMouseMotion(window, 100.0f, 100.0f);
+        }
+        if (updates == 3)
+        {
+            TestHelpers::SendKey(window, Quasar::Key::W, true);
+            TestHelpers::SendMouseButton(window, Quasar::MouseButton::Left, true);
+            TestHelpers::SendMouseMotion(window, 110.0f, 105.0f, 10.0f, 5.0f);
+        }
+        if (updates == 4)
+        {
+            held = {.Read = true,
+                    .KeyPressed = Quasar::Input::IsKeyPressed(Quasar::Key::W),
+                    .KeyDown = window.IsKeyDown(Quasar::Key::W),
+                    .ButtonPressed = Quasar::Input::IsMouseButtonPressed(Quasar::MouseButton::Left),
+                    .ButtonDown = window.IsMouseButtonDown(Quasar::MouseButton::Left),
+                    .Delta = Quasar::Input::GetMouseDelta(),
+                    .Position = Quasar::Input::GetMousePosition()};
+        }
+    }
+
+    void DrawFocusedTextField(std::array<char, 64>& text)
+    {
+        DrawCornerWindow();
+        ImGui::Begin("Text");
+        ImGui::SetKeyboardFocusHere();
+        ImGui::InputText("Name", text.data(), text.size());
+        ImGui::End();
+    }
+
+    HeldInput RunHoldingOverImGui(Quasar::Application& application, ImGuiTestLayer& layer, const std::function<void()>& draw)
+    {
+        HeldInput held;
+        layer.CloseAfter = 4;
+        layer.ImGuiAction = draw;
+        layer.UpdateAction = [&application, &held](int updates) { HoldOverImGui(application, updates, held); };
+        application.Run();
+        REQUIRE(held.Read);
+        return held;
     }
 
     bool Received(const ImGuiTestLayer& layer, Quasar::EventType type)
@@ -327,7 +385,7 @@ TEST_CASE("The layers receive the keyboard while ImGui does not use it")
     CHECK(Received(layer, Quasar::EventType::KeyReleased));
 }
 
-TEST_CASE("ImGui ignores the mouse while the cursor is captured, then gives back only the flags it changed")
+TEST_CASE("ImGui ignores the mouse and the keyboard while the cursor is captured, then gives back only the flags it changed")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
@@ -342,6 +400,7 @@ TEST_CASE("ImGui ignores the mouse while the cursor is captured, then gives back
 
     CHECK(Received(layer, Quasar::EventType::MouseButtonPressed));
     CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) != 0);
+    CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoKeyboard) != 0);
 
     REQUIRE(application->GetWindow().SetCursorCaptured(false));
     layer.Events.clear();
@@ -351,5 +410,97 @@ TEST_CASE("ImGui ignores the mouse while the cursor is captured, then gives back
 
     CHECK_FALSE(Received(layer, Quasar::EventType::MouseButtonPressed));
     CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) == 0);
+    CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoKeyboard) == 0);
     CHECK((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) != 0);
+}
+
+TEST_CASE("An application without ImGui never calls the ImGui hook, and nothing blocks the input of its layers")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication({.Enabled = false});
+    REQUIRE(application != nullptr);
+    CHECK(application->GetImGuiLayer() == nullptr);
+    CHECK(ImGui::GetCurrentContext() == nullptr);
+
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    const HeldInput held = RunHoldingOverImGui(*application, layer, {});
+
+    CHECK(held.KeyPressed);
+    CHECK(held.ButtonPressed);
+    CHECK(held.Delta == glm::vec2(10.0f, 5.0f));
+    CHECK(layer.Updates == 4);
+    CHECK(layer.ImGuiRenders == 0);
+    CHECK(Received(layer, Quasar::EventType::KeyPressed));
+    CHECK(Received(layer, Quasar::EventType::MouseButtonPressed));
+}
+
+TEST_CASE("Input reads the keyboard and the mouse as released and still while ImGui blocks them, but not the window")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    std::array<char, 64> text{};
+
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    const HeldInput held = RunHoldingOverImGui(*application, layer, [&text] { DrawFocusedTextField(text); });
+
+    REQUIRE(application->GetImGuiLayer() != nullptr);
+    CHECK(application->GetImGuiLayer()->IsBlockingKeyboard());
+    CHECK(application->GetImGuiLayer()->IsBlockingMouse());
+    CHECK_FALSE(held.KeyPressed);
+    CHECK(held.KeyDown);
+    CHECK_FALSE(held.ButtonPressed);
+    CHECK(held.ButtonDown);
+    CHECK(held.Delta == glm::vec2(0.0f));
+    CHECK(held.Position == glm::vec2(110.0f, 105.0f));
+
+    REQUIRE(application->GetWindow().SetCursorCaptured(true));
+    CHECK_FALSE(application->GetImGuiLayer()->IsBlockingKeyboard());
+    CHECK_FALSE(application->GetImGuiLayer()->IsBlockingMouse());
+}
+
+TEST_CASE("Input reads the keyboard and the mouse that ImGui uses when the ImGui layer does not block events")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    application->GetImGuiLayer()->SetBlockEvents(false);
+    std::array<char, 64> text{};
+
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    const HeldInput held = RunHoldingOverImGui(*application, layer, [&text] { DrawFocusedTextField(text); });
+
+    CHECK_FALSE(application->GetImGuiLayer()->IsBlockingKeyboard());
+    CHECK_FALSE(application->GetImGuiLayer()->IsBlockingMouse());
+    CHECK(held.KeyPressed);
+    CHECK(held.ButtonPressed);
+    CHECK(held.Delta == glm::vec2(10.0f, 5.0f));
+}
+
+TEST_CASE("While the cursor is captured, ImGui blocks neither the keyboard nor the mouse")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = CreateImGuiApplication();
+    REQUIRE(application != nullptr);
+    std::array<char, 64> text{};
+    REQUIRE(application->GetWindow().SetCursorCaptured(true));
+
+    ImGuiTestLayer& layer = AddLayer(*application, "Scene");
+    const HeldInput held = RunHoldingOverImGui(*application, layer, [&text] { DrawFocusedTextField(text); });
+
+    CHECK_FALSE(application->GetImGuiLayer()->IsBlockingKeyboard());
+    CHECK_FALSE(application->GetImGuiLayer()->IsBlockingMouse());
+    CHECK(held.KeyPressed);
+    CHECK(held.ButtonPressed);
+}
+
+TEST_CASE("An ImGui layer that is not attached blocks nothing")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
+    REQUIRE(window != nullptr);
+    const Quasar::ImGuiLayer layer(*window);
+
+    CHECK_FALSE(layer.IsBlockingKeyboard());
+    CHECK_FALSE(layer.IsBlockingMouse());
 }

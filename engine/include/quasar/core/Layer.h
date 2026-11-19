@@ -42,7 +42,8 @@ namespace Quasar
         /// @brief Called once per frame, after OnUpdate(), to render the layer.
         virtual void OnRender() {}
 
-        /// @brief Called once per frame, after OnRender(), to draw the ImGui windows of the layer.
+        /// @brief Called once per frame, after OnRender(), to draw the ImGui windows of the layer. Never called when
+        /// ImGui is disabled, see ImGuiSpecification::Enabled. The ImGui functions belong here only.
         virtual void OnImGuiRender() {}
 
         /// @brief Called for each event received by the layer.

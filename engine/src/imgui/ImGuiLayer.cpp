@@ -73,31 +73,35 @@ namespace Quasar
 
     void ImGuiLayer::OnEvent(Event& event)
     {
-        if (!m_BlockEvents)
-        {
-            return;
-        }
-
-        const ImGuiIO& io = ImGui::GetIO();
-        if ((event.IsInCategory(EventCategory::Mouse) && io.WantCaptureMouse) || (event.IsInCategory(EventCategory::Keyboard) && io.WantCaptureKeyboard))
+        if ((event.IsInCategory(EventCategory::Mouse) && IsBlockingMouse()) || (event.IsInCategory(EventCategory::Keyboard) && IsBlockingKeyboard()))
         {
             event.SetHandled(true);
         }
     }
 
+    bool ImGuiLayer::IsBlockingMouse() const
+    {
+        return m_BlockEvents && ImGui::GetCurrentContext() != nullptr && !m_Window->IsCursorCaptured() && ImGui::GetIO().WantCaptureMouse;
+    }
+
+    bool ImGuiLayer::IsBlockingKeyboard() const
+    {
+        return m_BlockEvents && ImGui::GetCurrentContext() != nullptr && !m_Window->IsCursorCaptured() && ImGui::GetIO().WantCaptureKeyboard;
+    }
+
     void ImGuiLayer::Begin()
     {
         ImGuiIO& io = ImGui::GetIO();
-        constexpr ImGuiConfigFlags mouseFlags = ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoMouseCursorChange;
+        constexpr ImGuiConfigFlags ignoredFlags = ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoMouseCursorChange | ImGuiConfigFlags_NoKeyboard;
         if (m_Window->IsCursorCaptured())
         {
-            m_IgnoredMouseFlags |= mouseFlags & ~io.ConfigFlags;
-            io.ConfigFlags |= mouseFlags;
+            m_IgnoredFlags |= ignoredFlags & ~io.ConfigFlags;
+            io.ConfigFlags |= ignoredFlags;
         }
         else
         {
-            io.ConfigFlags &= ~m_IgnoredMouseFlags;
-            m_IgnoredMouseFlags = 0;
+            io.ConfigFlags &= ~m_IgnoredFlags;
+            m_IgnoredFlags = 0;
         }
 
         if (m_Backend != nullptr)
