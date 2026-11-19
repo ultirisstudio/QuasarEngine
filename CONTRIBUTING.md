@@ -90,6 +90,10 @@ empty `std::optional` that is read, or a name that does not follow the code styl
 On Linux, configure a preset, then run `run-clang-tidy` from the repository root (see the table above). In Visual
 Studio, use Analyze > Run Code Analysis.
 
+In a pull request, the CI only checks the source files that the changes affect: the changed files and the files that
+include a changed file. To check the same files before pushing, pass the list of
+`.github/scripts/affected_translation_units.py --build build/linux-clang-debug --base origin/master` to `run-clang-tidy`.
+
 When a report is wrong for one line, explain why in a comment, then silence it for that line only:
 
 ```cpp
