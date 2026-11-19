@@ -42,6 +42,7 @@ target_sources(QuasarEngine
         src/renderer/Buffer.cpp
         src/renderer/Camera.cpp
         src/renderer/Framebuffer.cpp
+        src/renderer/GraphicsContext.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
         src/renderer/Image.cpp
@@ -57,6 +58,7 @@ target_sources(QuasarEngine
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
         src/scene/Entity.cpp
+        src/scene/FlyCameraController.cpp
         src/scene/Scene.cpp
         src/scene/SceneRenderer.cpp
         src/scene/components/TransformComponent.cpp
@@ -115,6 +117,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
             include/quasar/scene/Entity.h
+            include/quasar/scene/FlyCameraController.h
             include/quasar/scene/Scene.h
             include/quasar/scene/SceneRenderer.h
             include/quasar/scene/components/CameraComponent.h

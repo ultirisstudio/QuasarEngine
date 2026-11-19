@@ -11,6 +11,7 @@
 #include <entt/entity/registry.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -51,6 +52,10 @@ namespace Quasar
         /// @brief Returns an entity whose CameraComponent is primary, or an invalid entity if there is none. With several
         /// primary cameras, any of them can be returned.
         Entity FindPrimaryCamera();
+
+        /// @brief Gives a viewport size to the camera of every CameraComponent, for example the size of the window when
+        /// it changes. See Camera::SetViewportSize().
+        void SetViewportSize(std::uint32_t width, std::uint32_t height);
 
         /// @brief Returns the number of entities.
         std::size_t GetEntityCount() const { return m_Entities.size(); }

@@ -87,6 +87,19 @@ namespace Quasar
 
     void ImGuiLayer::Begin()
     {
+        ImGuiIO& io = ImGui::GetIO();
+        constexpr ImGuiConfigFlags mouseFlags = ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoMouseCursorChange;
+        if (m_Window->IsCursorCaptured())
+        {
+            m_IgnoredMouseFlags |= mouseFlags & ~io.ConfigFlags;
+            io.ConfigFlags |= mouseFlags;
+        }
+        else
+        {
+            io.ConfigFlags &= ~m_IgnoredMouseFlags;
+            m_IgnoredMouseFlags = 0;
+        }
+
         if (m_Backend != nullptr)
         {
             m_Backend->NewFrame();

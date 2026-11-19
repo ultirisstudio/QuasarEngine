@@ -11,6 +11,11 @@ namespace Quasar::Input
         return Application::Get().GetWindow().IsKeyDown(key);
     }
 
+    float GetKeyAxis(Key negative, Key positive)
+    {
+        return (IsKeyPressed(positive) ? 1.0f : 0.0f) - (IsKeyPressed(negative) ? 1.0f : 0.0f);
+    }
+
     bool IsMouseButtonPressed(MouseButton button)
     {
         return Application::Get().GetWindow().IsMouseButtonDown(button);

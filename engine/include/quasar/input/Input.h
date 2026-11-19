@@ -30,6 +30,10 @@ namespace Quasar::Input
     /// Key codes are physical keys: Key::W is the key at the position of W on QWERTY, which is Z on AZERTY.
     bool IsKeyPressed(Key key);
 
+    /// @brief Returns an axis of two keys: 1 while only the positive key is held down, -1 while only the negative key is
+    /// held down, and 0 otherwise. For example `GetKeyAxis(Key::S, Key::W)` moves forward and back.
+    float GetKeyAxis(Key negative, Key positive);
+
     /// @brief Returns true if the mouse button is held down.
     bool IsMouseButtonPressed(MouseButton button);
 
