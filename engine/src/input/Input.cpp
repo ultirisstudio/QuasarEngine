@@ -3,12 +3,28 @@
 #include <quasar/input/Input.h>
 
 #include <quasar/core/Window.h>
+#include <quasar/imgui/ImGuiLayer.h>
 
 namespace Quasar::Input
 {
+    namespace
+    {
+        bool IsMouseBlocked()
+        {
+            const ImGuiLayer* imgui = Application::Get().GetImGuiLayer();
+            return imgui != nullptr && imgui->IsBlockingMouse();
+        }
+
+        bool IsKeyboardBlocked()
+        {
+            const ImGuiLayer* imgui = Application::Get().GetImGuiLayer();
+            return imgui != nullptr && imgui->IsBlockingKeyboard();
+        }
+    }
+
     bool IsKeyPressed(Key key)
     {
-        return Application::Get().GetWindow().IsKeyDown(key);
+        return !IsKeyboardBlocked() && Application::Get().GetWindow().IsKeyDown(key);
     }
 
     float GetKeyAxis(Key negative, Key positive)
@@ -18,7 +34,7 @@ namespace Quasar::Input
 
     bool IsMouseButtonPressed(MouseButton button)
     {
-        return Application::Get().GetWindow().IsMouseButtonDown(button);
+        return !IsMouseBlocked() && Application::Get().GetWindow().IsMouseButtonDown(button);
     }
 
     glm::vec2 GetMousePosition()
@@ -28,7 +44,7 @@ namespace Quasar::Input
 
     glm::vec2 GetMouseDelta()
     {
-        return Application::Get().GetWindow().GetMouseDelta();
+        return IsMouseBlocked() ? glm::vec2(0.0f) : Application::Get().GetWindow().GetMouseDelta();
     }
 
     bool IsGamepadConnected(GamepadId gamepad)

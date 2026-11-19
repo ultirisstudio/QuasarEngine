@@ -9,8 +9,6 @@
 #include <quasar/core/Layer.h>
 #include <quasar/events/Event.h>
 
-#include <imgui.h>
-
 namespace Quasar
 {
     class Window;
@@ -38,9 +36,9 @@ namespace Quasar
     /// windows stay inside the main window.
     ///
     /// While ImGui uses the mouse or the keyboard, for example when the cursor is over an ImGui window or a text field
-    /// has the focus, the mouse or keyboard events are marked as handled, so the layers below do not receive them.
-    /// While the cursor of the window is captured, for example to turn a camera, ImGui ignores the mouse, and its events
-    /// go to the layers.
+    /// has the focus, it blocks them: their events are marked as handled, so the layers below do not receive them, and
+    /// Input reads them as released. While the cursor of the window is captured, for example to turn a camera, ImGui
+    /// ignores the mouse and the keyboard, which go to the layers.
     class ImGuiLayer final : public Layer
     {
     public:
@@ -62,7 +60,8 @@ namespace Quasar
         /// @brief Stops the backends, then ImGui.
         void OnDetach() override;
 
-        /// @brief Marks the mouse and keyboard events as handled while ImGui uses them. See SetBlockEvents().
+        /// @brief Marks the mouse and keyboard events as handled while ImGui blocks them. See IsBlockingMouse() and
+        /// IsBlockingKeyboard().
         void OnEvent(Event& event) override;
 
         /// @brief Starts a new ImGui frame. The application calls it before the OnImGuiRender() hooks.
@@ -73,16 +72,27 @@ namespace Quasar
         /// The application calls it after the OnImGuiRender() hooks.
         void End();
 
-        /// @brief Chooses whether the events used by ImGui are kept from the layers below. True by default.
+        /// @brief Chooses whether the mouse and the keyboard used by ImGui are kept from the layers below. True by
+        /// default.
         ///
         /// The editor turns it off while the cursor is over the scene view, so the scene receives the input.
         void SetBlockEvents(bool block) { m_BlockEvents = block; }
+
+        /// @brief Returns true while ImGui keeps the mouse from the layers: while it uses the mouse, the blocking is on
+        /// and the cursor is not captured. The use of the mouse is the one found at the start of the current ImGui
+        /// frame.
+        bool IsBlockingMouse() const;
+
+        /// @brief Returns true while ImGui keeps the keyboard from the layers: while it uses the keyboard, the blocking
+        /// is on and the cursor is not captured. The use of the keyboard is the one found at the start of the current
+        /// ImGui frame.
+        bool IsBlockingKeyboard() const;
 
     private:
         Window* m_Window = nullptr;
         ImGuiSpecification m_Specification;
         Scope<ImGuiBackend> m_Backend;
-        ImGuiConfigFlags m_IgnoredMouseFlags = 0;
+        int m_IgnoredFlags = 0;
         bool m_BlockEvents = true;
     };
 }
