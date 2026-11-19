@@ -1,5 +1,6 @@
 #include <quasar/scene/Scene.h>
 
+#include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/IdComponent.h>
 #include <quasar/scene/components/NameComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
@@ -46,6 +47,18 @@ namespace Quasar
     {
         const auto found = m_Entities.find(id);
         return found != m_Entities.end() ? Entity(found->second, this) : Entity();
+    }
+
+    Entity Scene::FindPrimaryCamera()
+    {
+        for (const auto [handle, camera] : m_Registry.view<CameraComponent>().each())
+        {
+            if (camera.Primary)
+            {
+                return {handle, this};
+            }
+        }
+        return {};
     }
 
     Entity Scene::Create(UUID id, std::string name)

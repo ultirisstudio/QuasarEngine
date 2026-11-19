@@ -57,6 +57,7 @@ target_sources(QuasarEngine
         src/renderer/VertexLayout.cpp
         src/scene/Entity.cpp
         src/scene/Scene.cpp
+        src/scene/SceneRenderer.cpp
         src/scene/components/TransformComponent.cpp
         src/time/ScopedTimer.cpp
         src/time/Timer.cpp
@@ -113,7 +114,10 @@ target_sources(QuasarEngine
             include/quasar/renderer/VertexLayout.h
             include/quasar/scene/Entity.h
             include/quasar/scene/Scene.h
+            include/quasar/scene/SceneRenderer.h
+            include/quasar/scene/components/CameraComponent.h
             include/quasar/scene/components/IdComponent.h
+            include/quasar/scene/components/MeshRendererComponent.h
             include/quasar/scene/components/NameComponent.h
             include/quasar/scene/components/TransformComponent.h
             include/quasar/time/ScopedTimer.h
