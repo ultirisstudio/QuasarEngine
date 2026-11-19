@@ -125,6 +125,7 @@ target_sources(QuasarEngine
             include/quasar/scene/components/IdComponent.h
             include/quasar/scene/components/MeshRendererComponent.h
             include/quasar/scene/components/NameComponent.h
+            include/quasar/scene/components/RelationshipComponent.h
             include/quasar/scene/components/TransformComponent.h
             include/quasar/time/ScopedTimer.h
             include/quasar/time/Timer.h
