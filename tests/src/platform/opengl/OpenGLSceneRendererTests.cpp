@@ -351,24 +351,24 @@ TEST_CASE("The scene framebuffer takes the size of the target, or of the window,
     Fixture fixture;
     fixture.AddCamera({0.0f, 0.0f, 1.0f});
     fixture.GetSceneRenderer().SetSettings({.Background = {0.0f, 1.0f, 0.0f}, .Tonemap = Quasar::Tonemapping::None});
-    const Quasar::Framebuffer& scene = fixture.GetSceneRenderer().GetSceneFramebuffer();
-    CHECK(scene.GetSpecification().Attachments.front() == Quasar::FramebufferFormat::Rgba16F);
+    const auto scene = [&fixture]() -> const Quasar::FramebufferSpecification& { return fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification(); };
+    CHECK(scene().Attachments.front() == Quasar::FramebufferFormat::Rgba16F);
 
     fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
-    CHECK(scene.GetSpecification().Width == 8);
-    CHECK(scene.GetSpecification().Height == 8);
+    CHECK(scene().Width == 8);
+    CHECK(scene().Height == 8);
 
     const Quasar::Scope<Quasar::Framebuffer> wide = fixture.GetContext().CreateFramebuffer({.Width = 16, .Height = 4});
     REQUIRE(wide != nullptr);
     fixture.GetSceneRenderer().Render(fixture.GetScene(), wide.get());
-    CHECK(scene.GetSpecification().Width == 16);
-    CHECK(scene.GetSpecification().Height == 4);
+    CHECK(scene().Width == 16);
+    CHECK(scene().Height == 4);
 
     fixture.GetContext().ClearWindow({1.0f, 0.0f, 0.0f, 1.0f});
     fixture.GetSceneRenderer().Render(fixture.GetScene());
     const glm::uvec2 window = fixture.GetContext().GetWindowSize();
-    CHECK(scene.GetSpecification().Width == window.x);
-    CHECK(scene.GetSpecification().Height == window.y);
+    CHECK(scene().Width == window.x);
+    CHECK(scene().Height == window.y);
     std::array<std::uint8_t, 4> pixel{};
     glReadPixels(static_cast<GLint>(window.x) - 1, static_cast<GLint>(window.y) - 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
     CHECK(IsNear({pixel[0], pixel[1], pixel[2], pixel[3]}, {0, 255, 0, 255}));

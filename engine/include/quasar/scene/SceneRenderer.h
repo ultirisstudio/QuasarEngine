@@ -50,6 +50,11 @@ namespace Quasar
         float Exposure = 1.0f;                   ///< The factor of the linear colors, applied before the tonemapping.
         Tonemapping Tonemap = Tonemapping::Aces; ///< How the colors above 1 are brought to the screen.
         ShadowSettings Shadows{};                ///< The shadows of the directional light.
+
+        /// Samples per pixel of the scene, which smooth the edges of the meshes (MSAA). 1 turns it off, and a value above
+        /// GraphicsContext::GetMaxSamples() is lowered to it. If the framebuffer cannot be created with them, the
+        /// previous samples are kept and set back here.
+        std::uint32_t Samples = 4;
     };
 
     /// @brief Draws the entities of a scene that have a TransformComponent and a MeshRendererComponent.
@@ -59,8 +64,8 @@ namespace Quasar
     /// SpotLightComponent, up to the maximums of the Renderer. The meshes cast shadows from the directional light, see
     /// ShadowSettings.
     ///
-    /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F and of
-    /// the size of the target, cleared with SceneRendererSettings::Background. A last pass then applies the exposure
+    /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F, of the
+    /// size of the target and with SceneRendererSettings::Samples, cleared with SceneRendererSettings::Background. A last pass then applies the exposure
     /// and the tonemapping, converts the colors to sRGB and writes them over the whole first color attachment of the
     /// target, which must be of format Rgba8 or Rgba16F. Each view, such as a viewport of the editor, should have its
     /// own SceneRenderer, which keeps a framebuffer of its size.
@@ -98,7 +103,8 @@ namespace Quasar
         /// @brief Replaces the settings of the image, used from the next Render().
         void SetSettings(const SceneRendererSettings& settings) { m_Settings = settings; }
 
-        /// @brief Returns the framebuffer where the scene is drawn in linear colors, before the last pass.
+        /// @brief Returns the framebuffer where the scene is drawn in linear colors, before the last pass. A Render()
+        /// with other SceneRendererSettings::Samples replaces it, so it should not be kept.
         const Framebuffer& GetSceneFramebuffer() const { return *m_Framebuffer; }
 
         /// @brief Returns the framebuffer where the depth of the scene is drawn from the directional light.
