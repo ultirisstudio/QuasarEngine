@@ -14,6 +14,7 @@
 #include <quasar/renderer/VertexArray.h>
 #include <quasar/scene/Scene.h>
 
+#include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
 #include <cstdint>
@@ -28,19 +29,35 @@ namespace Quasar
         Aces      ///< The curve of the film industry standard ACES, as fitted by Krzysztof Narkowicz: contrasted, with soft whites.
     };
 
+    /// @brief Settings of the shadows of the directional light.
+    ///
+    /// The shadows are drawn into a square map, seen from the light, that covers the part of the view of the camera up
+    /// to Distance. A smaller distance gives sharper shadows. Without bias, a surface can shadow itself in stripes,
+    /// called shadow acne; too much bias detaches the shadows from the objects.
+    struct ShadowSettings
+    {
+        bool Enabled = true;             ///< Whether the directional light casts shadows.
+        std::uint32_t Resolution = 2048; ///< The width and the height of the map, in pixels.
+        float Distance = 40.0f;          ///< The distance from the camera up to which the shadows are drawn.
+        float DepthBias = 0.0005f;       ///< The depth, from 0 to 1 across the map, removed from each surface before the test.
+        float NormalBias = 1.5f;         ///< How far each surface is moved along its normal before the test, in pixels of the map.
+    };
+
     /// @brief Settings of the image of a SceneRenderer.
     struct SceneRendererSettings
     {
         glm::vec3 Background{0.1f};              ///< The color behind the entities, in sRGB as in a color picker.
         float Exposure = 1.0f;                   ///< The factor of the linear colors, applied before the tonemapping.
         Tonemapping Tonemap = Tonemapping::Aces; ///< How the colors above 1 are brought to the screen.
+        ShadowSettings Shadows{};                ///< The shadows of the directional light.
     };
 
     /// @brief Draws the entities of a scene that have a TransformComponent and a MeshRendererComponent.
     ///
     /// The scene is drawn from any camera, such as the camera of the editor, or from its primary camera, as in the
     /// game. It is lit by its first DirectionalLightComponent, if it has one, and by all its PointLightComponent and
-    /// SpotLightComponent, up to the maximums of the Renderer.
+    /// SpotLightComponent, up to the maximums of the Renderer. The meshes cast shadows from the directional light, see
+    /// ShadowSettings.
     ///
     /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F and of
     /// the size of the target, cleared with SceneRendererSettings::Background. A last pass then applies the exposure
@@ -51,8 +68,9 @@ namespace Quasar
     {
     public:
         /// @brief Creates a scene renderer that draws with a renderer, which must outlive it.
-        /// @return The scene renderer, or nullptr if the shader of its last pass cannot be read from the engine
-        /// resources, or if its framebuffer or its pipeline cannot be created. The reason is logged as an engine error.
+        /// @return The scene renderer, or nullptr if the shaders of its shadows and of its last pass cannot be read from
+        /// the engine resources, or if its framebuffers or its pipelines cannot be created. The reason is logged as an
+        /// engine error.
         static Scope<SceneRenderer> Create(Renderer& renderer, const SceneRendererSettings& settings = {});
 
         ~SceneRenderer() = default;
@@ -83,6 +101,13 @@ namespace Quasar
         /// @brief Returns the framebuffer where the scene is drawn in linear colors, before the last pass.
         const Framebuffer& GetSceneFramebuffer() const { return *m_Framebuffer; }
 
+        /// @brief Returns the framebuffer where the depth of the scene is drawn from the directional light.
+        const Framebuffer& GetShadowMap() const { return *m_ShadowMap; }
+
+        /// @brief Returns the matrix that projected the world onto the shadow map at the last Render() with shadows. It
+        /// moves only by whole pixels of the map, so that the shadows do not shimmer when the camera moves.
+        const glm::mat4& GetShadowViewProjection() const { return m_ShadowViewProjection; }
+
     private:
         struct Resources
         {
@@ -90,10 +115,14 @@ namespace Quasar
             Scope<Pipeline> PresentPipeline;
             Scope<Framebuffer> SceneFramebuffer;
             Scope<VertexArray> EmptyVertexArray;
+            Scope<Shader> ShadowShader;
+            Scope<Pipeline> ShadowPipeline;
+            Scope<Framebuffer> ShadowMap;
         };
 
         SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings);
 
+        DirectionalShadow RenderShadows(Scene& scene, const Camera& camera, const DirectionalLight& light);
         void Present(Framebuffer* target);
 
         Renderer* m_Renderer;
@@ -102,6 +131,10 @@ namespace Quasar
         Scope<Pipeline> m_PresentPipeline;
         Scope<Framebuffer> m_Framebuffer;
         Scope<VertexArray> m_VertexArray;
+        Scope<Shader> m_ShadowShader;
+        Scope<Pipeline> m_ShadowPipeline;
+        Scope<Framebuffer> m_ShadowMap;
+        glm::mat4 m_ShadowViewProjection{1.0f};
         bool m_ReportedNoCamera = false;
     };
 }

@@ -163,6 +163,12 @@ namespace Quasar::Sandbox
                 int tonemap = static_cast<int>(settings.Tonemap);
                 ImGui::Combo("Tonemapping", &tonemap, tonemaps.data(), static_cast<int>(tonemaps.size()));
                 settings.Tonemap = static_cast<Tonemapping>(tonemap);
+
+                ImGui::SeparatorText("Shadows");
+                ImGui::Checkbox("Enabled", &settings.Shadows.Enabled);
+                ImGui::SliderFloat("Distance", &settings.Shadows.Distance, 5.0f, 100.0f, "%.0f");
+                ImGui::SliderFloat("Depth bias", &settings.Shadows.DepthBias, 0.0f, 0.005f, "%.4f");
+                ImGui::SliderFloat("Normal bias", &settings.Shadows.NormalBias, 0.0f, 4.0f, "%.2f");
                 renderer->SetSettings(settings);
             }
 
@@ -264,6 +270,7 @@ namespace Quasar::Sandbox
             }
             Entity lamp = AddObject(name, *m_Sphere, *bulb, {.Position = position, .Scale = glm::vec3(0.2f)});
             lamp.Add<PointLightComponent>(PointLightComponent{.Color = color, .Intensity = 8.0f, .Range = 8.0f});
+            lamp.Get<MeshRendererComponent>().CastShadows = false;
             lamp.SetParent(rig, false);
         }
 

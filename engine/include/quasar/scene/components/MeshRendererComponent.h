@@ -18,5 +18,6 @@ namespace Quasar
     {
         const Quasar::Mesh* Mesh = nullptr;   ///< The mesh to draw.
         Quasar::Material* Material = nullptr; ///< The material to draw it with.
+        bool CastShadows = true;              ///< Whether the mesh hides the directional light from the surfaces behind it.
     };
 }

@@ -37,6 +37,22 @@ namespace Quasar
             return;
         }
         m_Perspective = projection;
+        m_ProjectionType = ProjectionType::Perspective;
+        UpdateProjection();
+    }
+
+    void Camera::SetOrthographic(const OrthographicProjection& projection)
+    {
+        if (!(projection.Height > 0.0f) || !(projection.Far > projection.Near))
+        {
+            QUASAR_ENGINE_ERROR(
+                "Cannot use an orthographic height of {}, a near plane at {} and a far plane at {}: the height must be above 0, and the far plane "
+                "above the near plane",
+                projection.Height, projection.Near, projection.Far);
+            return;
+        }
+        m_Orthographic = projection;
+        m_ProjectionType = ProjectionType::Orthographic;
         UpdateProjection();
     }
 
@@ -109,7 +125,16 @@ namespace Quasar
 
     void Camera::UpdateProjection()
     {
-        m_Projection = glm::perspectiveRH_ZO(m_Perspective.VerticalFov, m_AspectRatio, m_Perspective.Near, m_Perspective.Far);
+        if (m_ProjectionType == ProjectionType::Perspective)
+        {
+            m_Projection = glm::perspectiveRH_ZO(m_Perspective.VerticalFov, m_AspectRatio, m_Perspective.Near, m_Perspective.Far);
+        }
+        else
+        {
+            const float halfHeight = m_Orthographic.Height / 2.0f;
+            const float halfWidth = halfHeight * m_AspectRatio;
+            m_Projection = glm::orthoRH_ZO(-halfWidth, halfWidth, -halfHeight, halfHeight, m_Orthographic.Near, m_Orthographic.Far);
+        }
         m_ViewProjection = m_Projection * m_View;
     }
 }

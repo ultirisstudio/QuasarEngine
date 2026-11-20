@@ -9,16 +9,20 @@
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
+#include <quasar/renderer/Shader.h>
+#include <quasar/renderer/VertexArray.h>
 
 #include <doctest/doctest.h>
 
 #include <glad/gl.h>
+#include <glm/vec3.hpp>
 #include <imgui.h>
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -207,11 +211,13 @@ TEST_CASE("No framebuffer is created from a specification that cannot be drawn i
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
     REQUIRE(window != nullptr);
-    const std::array<FramebufferSpecification, 7> specifications{{
+    const std::array<FramebufferSpecification, 9> specifications{{
         {.Width = 0},
         {.Height = 0},
         {.Attachments = {}},
         {.Attachments = {FramebufferFormat::Depth24Stencil8, FramebufferFormat::Depth24Stencil8}},
+        {.Attachments = {FramebufferFormat::Depth24Stencil8, FramebufferFormat::Depth32F}},
+        {.Attachments = {FramebufferFormat::Depth32F}, .Samples = 4},
         {.Samples = 0},
         {.Samples = 1024},
         {.Width = 1'000'000},
@@ -245,4 +251,64 @@ TEST_CASE("ImGui draws a color attachment of a framebuffer")
 
     CHECK(glGetError() == GL_NO_ERROR);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+}
+
+TEST_CASE("A Depth32F attachment is read as a shadow map, which compares depths and gives 1 outside of it")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
+    REQUIRE(window != nullptr);
+    Quasar::GraphicsContext& context = *window->GetGraphicsContext();
+    const Quasar::Scope<Quasar::Framebuffer> map = CreateFramebuffer(*window, {.Width = 4, .Height = 4, .Attachments = {FramebufferFormat::Depth32F}});
+    const Quasar::Scope<Quasar::Framebuffer> target = CreateFramebuffer(*window, {.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::RedInteger}});
+    const std::optional<Quasar::ShaderSpecification> specification = Quasar::ShaderSpecification::Parse("Shadow", R"(
+#type vertex
+#version 450 core
+void main()
+{
+    const vec2 positions[3] = vec2[](vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
+    gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
+}
+#type fragment
+#version 450 core
+layout(binding = 3) uniform sampler2DShadow u_Map;
+uniform vec3 u_Coordinates;
+layout(location = 0) out int o_Value;
+void main()
+{
+    o_Value = int(round(texture(u_Map, u_Coordinates) * 100.0));
+}
+)");
+    REQUIRE(map != nullptr);
+    REQUIRE(target != nullptr);
+    REQUIRE(specification.has_value());
+    const Quasar::Scope<Quasar::Shader> shader = context.CreateShader(*specification);
+    const Quasar::Scope<Quasar::VertexArray> vertexArray = context.CreateVertexArray();
+    REQUIRE(shader != nullptr);
+    REQUIRE(vertexArray != nullptr);
+    map->ClearDepthStencil(0.5f);
+    map->BindDepthTexture(3);
+    const auto read = [&](const glm::vec3& coordinates)
+    {
+        shader->SetVec3("u_Coordinates", coordinates);
+        target->Bind();
+        shader->Bind();
+        context.Draw(*vertexArray, 3);
+        target->Unbind();
+        return target->ReadInteger(0, 0, 0);
+    };
+
+    CHECK(read({0.5f, 0.5f, 0.4f}) == 100);
+    CHECK(read({0.5f, 0.5f, 0.6f}) == 0);
+    CHECK(read({1.5f, 0.5f, 0.6f}) == 100);
+    CHECK(glGetError() == GL_NO_ERROR);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+
+    const Quasar::Scope<Quasar::Framebuffer> stencil = CreateFramebuffer(*window, {.Width = 1, .Height = 1});
+    REQUIRE(stencil != nullptr);
+    target->BindDepthTexture(3);
+    stencil->BindDepthTexture(3);
+    const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
+    CHECK(std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Text.find("no Depth32F attachment") != std::string::npos; }) ==
+          2);
 }

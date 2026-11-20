@@ -21,9 +21,16 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot create a framebuffer without attachments");
             return false;
         }
-        if (std::ranges::count(specification.Attachments, FramebufferFormat::Depth24Stencil8) > 1)
+        const auto depthAttachments = std::ranges::count_if(specification.Attachments, [](FramebufferFormat format)
+                                                            { return format == FramebufferFormat::Depth24Stencil8 || format == FramebufferFormat::Depth32F; });
+        if (depthAttachments > 1)
         {
             QUASAR_ENGINE_ERROR("Cannot create a framebuffer with more than one depth attachment");
+            return false;
+        }
+        if (specification.Samples > 1 && std::ranges::find(specification.Attachments, FramebufferFormat::Depth32F) != specification.Attachments.end())
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a framebuffer with a Depth32F attachment and {} samples per pixel", specification.Samples);
             return false;
         }
         if (specification.Samples == 0)

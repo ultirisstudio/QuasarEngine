@@ -41,6 +41,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 using Quasar::CameraComponent;
@@ -413,4 +414,227 @@ TEST_CASE("The scene renderer lights the scene with its point and spot lights, a
     rig.Get<TransformComponent>().Rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     CHECK(IsNear(render(), Black));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+namespace
+{
+    struct ShadowScene
+    {
+        explicit ShadowScene(Fixture& fixture) : Library(fixture.GetContext())
+        {
+            REQUIRE(Library.AddDefaults());
+            Lit = Library.CreateMaterial(Quasar::PipelineLibrary::BlinnPhong);
+            REQUIRE(Lit != nullptr);
+            Lit->SetFloat("Specular", 0.0f);
+            const glm::quat facingUp = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            fixture.AddQuad(*Lit, {.Rotation = facingUp, .Scale = glm::vec3(20.0f)});
+            Occluder = fixture.AddQuad(*Lit, {.Position = {0.0f, 3.0f, 0.0f}, .Rotation = facingUp, .Scale = glm::vec3(4.0f)});
+            Camera = fixture.AddCamera({0.0f, 1.0f, 0.0f});
+            Camera.Get<TransformComponent>().Rotation = facingUp;
+            Sun = fixture.GetScene().CreateEntity("Sun");
+            Sun.Get<TransformComponent>().Rotation = facingUp;
+            Sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 0.1f});
+        }
+
+        Quasar::PipelineLibrary Library;
+        Quasar::Scope<Quasar::Material> Lit;
+        Entity Occluder;
+        Entity Camera;
+        Entity Sun;
+    };
+
+    constexpr Color Shadowed{89, 89, 89, 255};
+    constexpr Color White{255, 255, 255, 255};
+
+    bool IsAround(const Color& color, const Color& expected)
+    {
+        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 3; });
+    }
+}
+
+TEST_CASE("The meshes hide the directional light from the surfaces behind them, even out of the view of the camera")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const ShadowScene scene(fixture);
+    const auto render = [&fixture](int x, int y)
+    {
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        return fixture.ReadColor(x, y);
+    };
+
+    CHECK(IsAround(render(4, 4), Shadowed));
+    CHECK(IsAround(render(1, 6), Shadowed));
+    CHECK(fixture.GetSceneRenderer().GetShadowMap().GetSpecification().Width == 2048);
+
+    scene.Occluder.Get<TransformComponent>().Position.x = 30.0f;
+    CHECK(IsNear(render(4, 4), White));
+    scene.Occluder.Get<TransformComponent>().Position.x = 0.0f;
+
+    scene.Occluder.Get<MeshRendererComponent>().CastShadows = false;
+    CHECK(IsNear(render(4, 4), White));
+    scene.Occluder.Get<MeshRendererComponent>().CastShadows = true;
+
+    scene.Sun.Get<DirectionalLightComponent>().CastShadows = false;
+    CHECK(IsNear(render(4, 4), White));
+    scene.Sun.Get<DirectionalLightComponent>().CastShadows = true;
+
+    Quasar::SceneRendererSettings settings = fixture.GetSceneRenderer().GetSettings();
+    settings.Shadows.Enabled = false;
+    fixture.GetSceneRenderer().SetSettings(settings);
+    const Quasar::Scope<Quasar::Framebuffer> closest =
+        fixture.GetContext().CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {Quasar::FramebufferFormat::Depth32F}});
+    REQUIRE(closest != nullptr);
+    closest->ClearDepthStencil(0.0f);
+    closest->BindDepthTexture(Quasar::Renderer::ShadowMapSlot);
+    CHECK(IsNear(render(4, 4), White));
+
+    settings.Shadows = {.Resolution = 512};
+    fixture.GetSceneRenderer().SetSettings(settings);
+    CHECK(IsAround(render(4, 4), Shadowed));
+    CHECK(fixture.GetSceneRenderer().GetShadowMap().GetSpecification().Width == 512);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("A surface lit at an angle does not shadow itself, and an orthographic camera also gets shadows")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const ShadowScene scene(fixture);
+    scene.Occluder.Get<TransformComponent>().Position.x = 30.0f;
+    scene.Sun.Get<TransformComponent>().Rotation =
+        glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+
+    for (const auto& [x, y] : {std::pair{1, 1}, std::pair{4, 4}, std::pair{6, 6}, std::pair{1, 6}, std::pair{6, 1}})
+    {
+        CAPTURE(x);
+        CAPTURE(y);
+        CHECK(IsNear(fixture.ReadColor(x, y), {232, 232, 232, 255}));
+    }
+
+    scene.Occluder.Get<TransformComponent>().Position.x = 0.0f;
+    scene.Sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    scene.Camera.Get<CameraComponent>().Camera.SetOrthographic({.Height = 2.0f, .Near = 0.1f, .Far = 10.0f});
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+    CHECK(IsAround(fixture.ReadColor(4, 4), Shadowed));
+}
+
+TEST_CASE("The shadow map moves by whole pixels when the camera moves or turns, so that the shadows do not shimmer")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const ShadowScene scene(fixture);
+    scene.Sun.Get<TransformComponent>().Rotation =
+        glm::angleAxis(glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(glm::radians(-60.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    const auto pixelOfOrigin = [&fixture]
+    {
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        const glm::vec4 clip = fixture.GetSceneRenderer().GetShadowViewProjection() * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        return ((glm::vec2(clip) / clip.w) * 0.5f + 0.5f) * 2048.0f;
+    };
+    const glm::vec2 first = pixelOfOrigin();
+
+    for (const glm::vec3& move : {glm::vec3(0.0137f, 0.0f, 0.0f), glm::vec3(0.0f, 0.021f, 0.0091f), glm::vec3(1.37f, 0.4f, -2.2f)})
+    {
+        CAPTURE(move.x);
+        scene.Camera.Get<TransformComponent>().Position += move;
+        scene.Camera.Get<TransformComponent>().Rotation = glm::angleAxis(0.013f, glm::vec3(0.0f, 1.0f, 0.0f)) * scene.Camera.Get<TransformComponent>().Rotation;
+        const glm::vec2 moved = pixelOfOrigin();
+        const glm::vec2 shift = moved - first;
+        CHECK(std::abs(shift.x - std::round(shift.x)) < 0.01f);
+        CHECK(std::abs(shift.y - std::round(shift.y)) < 0.01f);
+    }
+}
+
+TEST_CASE("A surface lit at a grazing angle does not shadow itself, thanks to the biases")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const ShadowScene scene(fixture);
+    scene.Occluder.Get<TransformComponent>().Position.x = 30.0f;
+    scene.Sun.Get<TransformComponent>().Rotation =
+        glm::angleAxis(glm::radians(80.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Resolution = 128}});
+    const auto lowest = [&fixture]
+    {
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        int value = 255;
+        for (int y = 0; y < 8; ++y)
+        {
+            for (int x = 0; x < 8; ++x)
+            {
+                value = std::min(value, fixture.ReadColor(x, y)[0]);
+            }
+        }
+        return value;
+    };
+
+    CHECK(lowest() > 130);
+
+    fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Resolution = 128, .DepthBias = 0.0f, .NormalBias = 0.0f}});
+    CHECK(lowest() < 125);
+
+    fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Resolution = 128, .DepthBias = 0.03f, .NormalBias = 0.0f}});
+    CHECK(lowest() > 130);
+}
+
+TEST_CASE("The shadow map covers the view only up to the shadow distance, and the surfaces beyond it are lit")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const ShadowScene scene(fixture);
+    fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Distance = 3.0f}});
+    const auto isOnMap = [&fixture](const glm::vec3& point)
+    {
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        const glm::vec4 clip = fixture.GetSceneRenderer().GetShadowViewProjection() * glm::vec4(point, 1.0f);
+        return std::abs(clip.x / clip.w) <= 1.0f && std::abs(clip.y / clip.w) <= 1.0f;
+    };
+
+    CHECK(isOnMap({0.0f, 0.0f, 0.0f}));
+    CHECK_FALSE(isOnMap({10.0f, 0.0f, 0.0f}));
+    scene.Camera.Get<CameraComponent>().Camera.SetOrthographic({.Height = 2.0f, .Near = 0.1f, .Far = 1000.0f});
+    CHECK(isOnMap({0.0f, 0.0f, 0.0f}));
+    CHECK_FALSE(isOnMap({10.0f, 0.0f, 0.0f}));
+
+    scene.Camera.Get<CameraComponent>().Camera.SetPerspective({.VerticalFov = glm::radians(90.0f), .Near = 0.1f, .Far = 10.0f});
+    scene.Occluder.Get<TransformComponent>().Position.x = 30.0f;
+    fixture.GetScene().ForEach<MeshRendererComponent, TransformComponent>(
+        [](Entity /*entity*/, const MeshRendererComponent& /*renderer*/, TransformComponent& transform)
+        {
+            if (transform.Scale.x == 20.0f)
+            {
+                transform.Position.y = -6.0f;
+            }
+        });
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+    CHECK(IsNear(fixture.ReadColor(4, 4), White));
+}
+
+TEST_CASE("The shadows have soft edges, over a few pixels of the shadow map")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const ShadowScene scene(fixture);
+    scene.Camera.Get<TransformComponent>().Position.x = 2.0f;
+    fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Resolution = 32, .Distance = 3.0f}});
+    const Quasar::Scope<Quasar::Framebuffer> wide = fixture.GetContext().CreateFramebuffer({.Width = 64, .Height = 64});
+    REQUIRE(wide != nullptr);
+
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), wide.get());
+    std::vector<std::uint8_t> row(std::size_t{64} * 4);
+    wide->Bind();
+    glReadPixels(0, 32, 64, 1, GL_RGBA, GL_UNSIGNED_BYTE, row.data());
+    wide->Unbind();
+
+    int between = 0;
+    for (std::size_t x = 0; x < 64; ++x)
+    {
+        between += row[x * 4] > Shadowed[0] + 10 && row[x * 4] < 245 ? 1 : 0;
+    }
+    CAPTURE(between);
+    CHECK(between >= 10);
+    CHECK(row[0] < Shadowed[0] + 10);
+    CHECK(row[std::size_t{63} * 4] > 245);
 }

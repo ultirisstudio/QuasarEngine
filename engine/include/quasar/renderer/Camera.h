@@ -22,6 +22,22 @@ namespace Quasar
         float Far = 1000.0f;                     ///< The distance of the far plane, above Near.
     };
 
+    /// @brief Settings of an orthographic projection, in which objects keep their size whatever their distance, for
+    /// example for a 2D game, a view of the editor from a side, or the shadows of the sun.
+    struct OrthographicProjection
+    {
+        float Height = 10.0f; ///< The height of the visible area, above 0. Its width is the height times the aspect ratio.
+        float Near = 0.0f;    ///< The distance of the near plane, which can be 0 or below to see behind the camera.
+        float Far = 100.0f;   ///< The distance of the far plane, above Near.
+    };
+
+    /// @brief The kind of projection of a camera.
+    enum class ProjectionType : std::uint8_t
+    {
+        Perspective, ///< See PerspectiveProjection.
+        Orthographic ///< See OrthographicProjection.
+    };
+
     /// @brief The point of view from which a scene is drawn, for a camera of the game or of the editor.
     ///
     /// The camera looks toward its -Z axis, with +Y up and +X to the right, as in OpenGL and glTF. Its projection gives
@@ -34,12 +50,23 @@ namespace Quasar
         /// aspect ratio of 1.
         Camera();
 
-        /// @brief Sets the perspective projection. A field of view outside of 0 to pi, a near plane at 0 or below, or a
-        /// far plane not above the near plane is refused with an engine error, and the projection is not changed.
+        /// @brief Makes the camera use a perspective projection. A field of view outside of 0 to pi, a near plane at 0 or
+        /// below, or a far plane not above the near plane is refused with an engine error, and the projection is not
+        /// changed.
         void SetPerspective(const PerspectiveProjection& projection);
 
-        /// @brief Returns the settings of the perspective projection.
+        /// @brief Returns the settings of the perspective projection, kept while the camera is orthographic.
         const PerspectiveProjection& GetPerspective() const { return m_Perspective; }
+
+        /// @brief Makes the camera use an orthographic projection. A height at 0 or below, or a far plane not above the
+        /// near plane is refused with an engine error, and the projection is not changed.
+        void SetOrthographic(const OrthographicProjection& projection);
+
+        /// @brief Returns the settings of the orthographic projection, kept while the camera is perspective.
+        const OrthographicProjection& GetOrthographic() const { return m_Orthographic; }
+
+        /// @brief Returns the kind of projection that the camera uses.
+        ProjectionType GetProjectionType() const { return m_ProjectionType; }
 
         /// @brief Sets the size of the image that the camera draws, which gives its aspect ratio. A size of 0, for
         /// example while a window is minimized, is ignored.
@@ -89,6 +116,8 @@ namespace Quasar
         void UpdateProjection();
 
         PerspectiveProjection m_Perspective;
+        OrthographicProjection m_Orthographic;
+        ProjectionType m_ProjectionType = ProjectionType::Perspective;
         float m_AspectRatio = 1.0f;
         glm::vec3 m_Position{0.0f};
         glm::quat m_Orientation;

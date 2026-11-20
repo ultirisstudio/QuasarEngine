@@ -34,6 +34,7 @@ namespace Quasar
 
         std::optional<int> ReadInteger(std::uint32_t attachment, std::uint32_t x, std::uint32_t y) override;
         void BindColorTexture(std::uint32_t attachment, std::uint32_t slot) const override;
+        void BindDepthTexture(std::uint32_t slot) const override;
         ImTextureID GetImGuiTexture(std::uint32_t attachment) const override;
 
     private:
@@ -47,11 +48,12 @@ namespace Quasar
         std::uint32_t GetReadableTexture(std::size_t index) const;
 
         std::vector<FramebufferFormat> m_ColorFormats;
-        bool m_HasDepthStencil = false;
+        std::optional<FramebufferFormat> m_DepthFormat;
 
         std::uint32_t m_Framebuffer = 0;
         std::vector<std::uint32_t> m_ColorTextures;
         std::uint32_t m_DepthStencil = 0;
+        std::uint32_t m_DepthTexture = 0;
         std::uint32_t m_ResolveFramebuffer = 0;
         std::vector<std::uint32_t> m_ResolvedTextures;
     };

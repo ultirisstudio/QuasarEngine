@@ -7,13 +7,16 @@
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <initializer_list>
 #include <optional>
+#include <vector>
 
 using Quasar::Camera;
 using Quasar::PerspectiveProjection;
@@ -167,4 +170,43 @@ TEST_CASE("A camera normalizes its orientation")
 
     CHECK(IsNear(glm::length(camera.GetOrientation()), 1.0f));
     CHECK(IsNear(camera.GetForward(), turn * glm::vec3(0.0f, 0.0f, -1.0f)));
+}
+
+TEST_CASE("An orthographic camera keeps the size of the objects whatever their distance, and its width follows the aspect ratio")
+{
+    const TestHelpers::ScopedLog log;
+    Camera camera;
+    camera.SetOrthographic({.Height = 4.0f, .Near = -1.0f, .Far = 9.0f});
+    camera.SetViewportSize(200, 100);
+
+    CHECK(camera.GetProjectionType() == Quasar::ProjectionType::Orthographic);
+    CHECK(camera.GetOrthographic().Height == 4.0f);
+    const std::optional<glm::vec3> near = Project(camera, {4.0f, 2.0f, 1.0f});
+    const std::optional<glm::vec3> far = Project(camera, {4.0f, 2.0f, -9.0f});
+    REQUIRE(near.has_value());
+    REQUIRE(far.has_value());
+    CHECK(glm::distance(*near, glm::vec3(1.0f, 1.0f, 0.0f)) < 1e-5f);
+    CHECK(glm::distance(*far, glm::vec3(1.0f, 1.0f, 1.0f)) < 1e-5f);
+    CHECK_FALSE(IsVisible(camera, {0.0f, 0.0f, -10.0f}));
+
+    camera.SetPerspective({.VerticalFov = glm::radians(90.0f), .Near = 0.5f, .Far = 9.0f});
+    CHECK(camera.GetProjectionType() == Quasar::ProjectionType::Perspective);
+    CHECK(camera.GetOrthographic().Height == 4.0f);
+    CHECK_FALSE(IsVisible(camera, {0.0f, 0.0f, 1.0f}));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("An orthographic projection without height, or whose far plane is not beyond its near plane, is refused")
+{
+    const TestHelpers::ScopedLog log;
+    Camera camera;
+    const glm::mat4 projection = camera.GetProjection();
+
+    camera.SetOrthographic({.Height = 0.0f});
+    camera.SetOrthographic({.Height = 1.0f, .Near = 2.0f, .Far = 2.0f});
+
+    CHECK(camera.GetProjectionType() == Quasar::ProjectionType::Perspective);
+    CHECK(camera.GetProjection() == projection);
+    const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
+    CHECK(std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Level == Quasar::LogLevel::Error; }) == 2);
 }

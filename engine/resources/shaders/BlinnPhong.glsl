@@ -71,11 +71,14 @@ layout(std140, binding = 3) uniform Lights
     vec3 u_DirectionalColor;
     int u_PointLightCount;
     int u_SpotLightCount;
+    mat4 u_ShadowViewProjection;
+    vec4 u_Shadow;
     PointLight u_PointLights[32];
     SpotLight u_SpotLights[32];
 };
 
 layout(binding = 0) uniform sampler2D u_Texture;
+layout(binding = 15) uniform sampler2DShadow u_ShadowMap;
 
 layout(location = 0) out vec4 o_Color;
 
@@ -102,6 +105,31 @@ float Attenuate(vec3 toLight, float range)
     return fade * fade / distanceSquared;
 }
 
+float ReadShadow(vec3 normal)
+{
+    if (u_Shadow.x == 0.0)
+    {
+        return 1.0;
+    }
+    vec4 clip = u_ShadowViewProjection * vec4(v_Position + normal * u_Shadow.z, 1.0);
+    vec3 coordinates = clip.xyz / clip.w;
+    if (coordinates.z > 1.0)
+    {
+        return 1.0;
+    }
+    vec2 center = coordinates.xy * 0.5 + 0.5;
+    float depth = coordinates.z - u_Shadow.y;
+    float lit = 0.0;
+    for (int y = -1; y <= 1; ++y)
+    {
+        for (int x = -1; x <= 1; ++x)
+        {
+            lit += texture(u_ShadowMap, vec3(center + vec2(x, y) * u_Shadow.w, depth));
+        }
+    }
+    return lit / 9.0;
+}
+
 void main()
 {
     vec4 base = texture(u_Texture, v_TexCoord) * vec4(SrgbToLinear(u_Color.rgb), u_Color.a);
@@ -109,7 +137,7 @@ void main()
     vec3 toCamera = normalize(u_CameraPosition.xyz - v_Position);
 
     vec3 color = u_DirectionalColor * base.rgb * u_DirectionalAmbient;
-    color += Shade(base.rgb, normal, toCamera, -u_DirectionalDirection, u_DirectionalColor);
+    color += Shade(base.rgb, normal, toCamera, -u_DirectionalDirection, u_DirectionalColor * ReadShadow(normal));
 
     for (int index = 0; index < u_PointLightCount; ++index)
     {
