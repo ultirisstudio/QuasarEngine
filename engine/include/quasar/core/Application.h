@@ -172,7 +172,14 @@ namespace Quasar
         std::optional<std::filesystem::path> GetUserDataDirectory() const;
 
     private:
-        Application(ApplicationSpecification specification, Scope<Window> window, Scope<PipelineLibrary> pipelines, Scope<Renderer> renderer);
+        struct Graphics
+        {
+            Scope<PipelineLibrary> Pipelines;
+            Scope<Quasar::Renderer> Renderer;
+            Scope<Quasar::SceneRenderer> SceneRenderer;
+        };
+
+        Application(ApplicationSpecification specification, Scope<Window> window, Graphics graphics);
 
         struct LayerChange
         {

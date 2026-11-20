@@ -6,6 +6,7 @@
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/Camera.h>
+#include <quasar/renderer/Color.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Material.h>
@@ -29,6 +30,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
@@ -77,7 +79,8 @@ namespace
             REQUIRE(m_Quad != nullptr);
             m_Red = CreateColor({1.0f, 0.0f, 0.0f, 1.0f});
             m_Blue = CreateColor({0.0f, 0.0f, 1.0f, 1.0f});
-            m_SceneRenderer = Quasar::CreateScope<Quasar::SceneRenderer>(*m_Renderer);
+            m_SceneRenderer = Quasar::SceneRenderer::Create(*m_Renderer, {.Background = glm::vec3(0.0f), .Tonemap = Quasar::Tonemapping::None});
+            REQUIRE(m_SceneRenderer != nullptr);
         }
 
         Quasar::GraphicsContext& GetContext() const { return *m_Window->GetGraphicsContext(); }
@@ -132,7 +135,6 @@ namespace
             return {pixel[0], pixel[1], pixel[2], pixel[3]};
         }
 
-    private:
         Quasar::Scope<Quasar::Material> CreateColor(glm::vec4 color) const
         {
             Quasar::Scope<Quasar::Material> material = Quasar::Material::Create(
@@ -143,6 +145,7 @@ namespace
             return material;
         }
 
+    private:
         Quasar::Scope<Quasar::Window> m_Window;
         Quasar::Scope<Quasar::Shader> m_Shader;
         Quasar::Scope<Quasar::Pipeline> m_Pipeline;
@@ -257,7 +260,7 @@ TEST_CASE("The scene renderer lights the scene with its directional light, or wi
     };
 
     const Quasar::DirectionalLight light;
-    const int expected = static_cast<int>(std::lround((-glm::normalize(light.Direction).z + light.Ambient) * 255.0f));
+    const int expected = static_cast<int>(std::lround(Quasar::LinearToSrgb(-glm::normalize(light.Direction).z + light.Ambient) * 255.0f));
     CHECK(IsNear(render(), {expected, expected, expected, 255}));
 
     Entity sun = fixture.GetScene().CreateEntity("Sun");
@@ -266,7 +269,7 @@ TEST_CASE("The scene renderer lights the scene with its directional light, or wi
 
     sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     component = {.Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 1.0f};
-    CHECK(IsNear(render(), {128, 0, 0, 255}));
+    CHECK(IsNear(render(), {188, 0, 0, 255}));
 
     const Entity rig = fixture.GetScene().CreateEntity("Rig");
     rig.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));

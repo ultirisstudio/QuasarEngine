@@ -57,6 +57,9 @@ namespace Quasar
     /// ```
     /// A scene is drawn between BeginScene() and EndScene(), and each Submit() draws one mesh at once. The target is not
     /// cleared, so that several scenes can be drawn into it.
+    ///
+    /// The shaders compute and write linear colors, which can go above 1, for example into a framebuffer of format
+    /// FramebufferFormat::Rgba16F. The SceneRenderer turns them into the colors of the screen at the end.
     class Renderer
     {
     public:
