@@ -216,7 +216,8 @@ namespace Quasar::Sandbox
 
         const glm::quat flat = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         AddObject("Ground", *m_Ground, *groundMaterial, {.Rotation = flat, .Scale = {GroundSize, GroundSize, 1.0f}});
-        AddObject("Big crate", *m_Cube, *crateMaterial, {.Position = {0.0f, 1.5f, 0.0f}, .Scale = glm::vec3(1.5f)}, 0.8f);
+        const Entity bigCrate = AddObject("Big crate", *m_Cube, *crateMaterial, {.Position = {0.0f, 1.5f, 0.0f}, .Scale = glm::vec3(1.5f)}, 0.8f);
+        AddObject("Moon", *m_Sphere, *greenBall, {.Position = {1.2f, 0.4f, 0.0f}, .Scale = glm::vec3(0.3f)}).SetParent(bigCrate, false);
         AddObject("Crate", *m_Cube, *crateMaterial, {.Position = {-3.0f, 0.5f, -1.0f}});
         AddObject("Red crate", *m_Cube, *redCrate, {.Position = {3.0f, 0.75f, -2.0f}, .Scale = glm::vec3(1.5f)}, -0.4f);
         AddObject("Stacked crate", *m_Cube, *crateMaterial, {.Position = {-3.0f, 1.5f, -1.0f}}, 1.5f);
@@ -257,7 +258,7 @@ namespace Quasar::Sandbox
         return m_Materials.emplace_back(std::move(material)).get();
     }
 
-    void SandboxLayer::AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform, float spin)
+    Entity SandboxLayer::AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform, float spin)
     {
         Entity entity = m_Scene.CreateEntity(std::move(name));
         entity.Get<TransformComponent>() = transform;
@@ -266,6 +267,7 @@ namespace Quasar::Sandbox
         {
             entity.Add<SpinComponent>(SpinComponent{.Speed = spin});
         }
+        return entity;
     }
 
     void SandboxLayer::UpdateSun()

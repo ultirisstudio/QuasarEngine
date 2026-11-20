@@ -20,9 +20,12 @@ namespace Quasar
             {
                 return {};
             }
-            const auto [transform, light] = lights.get(*lights.begin());
-            return {
-                .Direction = transform.Rotation * glm::vec3(0.0f, 0.0f, -1.0f), .Color = light.Color, .Intensity = light.Intensity, .Ambient = light.Ambient};
+            const Entity entity(*lights.begin(), &scene);
+            const DirectionalLightComponent& light = entity.Get<DirectionalLightComponent>();
+            return {.Direction = entity.GetWorldTransform().Rotation * glm::vec3(0.0f, 0.0f, -1.0f),
+                    .Color = light.Color,
+                    .Intensity = light.Intensity,
+                    .Ambient = light.Ambient};
         }
     }
 
@@ -30,11 +33,11 @@ namespace Quasar
     {
         m_Renderer->BeginScene(camera, target, FindLight(scene));
         scene.ForEach<TransformComponent, MeshRendererComponent>(
-            [this](Entity /*entity*/, const TransformComponent& transform, const MeshRendererComponent& renderer)
+            [this](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
             {
                 if (renderer.Mesh != nullptr && renderer.Material != nullptr)
                 {
-                    m_Renderer->Submit(*renderer.Mesh, *renderer.Material, transform.GetMatrix());
+                    m_Renderer->Submit(*renderer.Mesh, *renderer.Material, entity.GetWorldMatrix());
                 }
             });
         m_Renderer->EndScene();
@@ -55,11 +58,9 @@ namespace Quasar
         m_ReportedNoCamera = false;
 
         Camera camera = entity.Get<CameraComponent>().Camera;
-        if (const TransformComponent* transform = entity.TryGet<TransformComponent>(); transform != nullptr)
-        {
-            camera.SetPosition(transform->Position);
-            camera.SetOrientation(transform->Rotation);
-        }
+        const TransformComponent world = entity.GetWorldTransform();
+        camera.SetPosition(world.Position);
+        camera.SetOrientation(world.Rotation);
         Render(scene, camera, target);
     }
 }

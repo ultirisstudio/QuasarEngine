@@ -11,7 +11,8 @@
 
 namespace Quasar
 {
-    /// @brief The position, the rotation and the scale of an entity.
+    /// @brief The position, the rotation and the scale of an entity, relative to its parent, or to the world for an entity
+    /// at the root of its scene. See Entity::GetWorldTransform().
     struct TransformComponent
     {
         glm::vec3 Position{0.0f};                   ///< The position.
@@ -20,6 +21,12 @@ namespace Quasar
 
         /// @brief Returns the matrix that scales, then rotates, then moves the entity.
         glm::mat4 GetMatrix() const;
+
+        /// @brief Sets the position, the rotation and the scale from a matrix made of them, such as one of GetMatrix().
+        ///
+        /// A matrix that also slants, which a scale along an axis that the rotation turned can give, is approached. A
+        /// matrix that mirrors gives a negative X scale. With a zero scale, the rotation cannot be found and is kept.
+        void SetMatrix(const glm::mat4& matrix);
 
         /// @brief Returns the rotation as angles around X, Y and Z, in radians, for example to edit it. Near 90 degrees
         /// around Y, several angles give the same rotation, and any of them can be returned.

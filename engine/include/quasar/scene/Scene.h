@@ -33,17 +33,19 @@ namespace Quasar
         Scene(Scene&&) = delete;
         Scene& operator=(Scene&&) = delete;
 
-        /// @brief Creates an entity with a new UUID, a name and a TransformComponent at the origin.
+        /// @brief Creates an entity with a new UUID, a name and a TransformComponent at the origin, at the root of the
+        /// scene.
         Entity CreateEntity(std::string name = "Entity");
 
         /// @brief Creates an entity with a given UUID, for example when a scene is loaded, a name and a
-        /// TransformComponent at the origin.
+        /// TransformComponent at the origin, at the root of the scene.
         /// @return The entity, or an invalid entity if the UUID is not valid or is already used. The reason is logged
         /// as an engine error.
         Entity CreateEntity(UUID id, std::string name);
 
-        /// @brief Destroys an entity and its components. The entity can be the current one of a ForEach() or of a view,
-        /// but not another one. An invalid entity is refused with an engine error.
+        /// @brief Destroys an entity, its components and all its descendants, and removes it from the children of its
+        /// parent. The entity can be the current one of a ForEach() or of a view if it has no children, but not
+        /// another one. An invalid entity is refused with an engine error.
         void DestroyEntity(Entity entity);
 
         /// @brief Returns the entity with this UUID, or an invalid entity.

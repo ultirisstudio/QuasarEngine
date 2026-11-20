@@ -267,5 +267,36 @@ TEST_CASE("The scene renderer lights the scene with its directional light, or wi
     sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     component = {.Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 1.0f};
     CHECK(IsNear(render(), {128, 0, 0, 255}));
+
+    const Entity rig = fixture.GetScene().CreateEntity("Rig");
+    rig.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    REQUIRE(sun.SetParent(rig, false));
+    component = {.Ambient = 0.0f};
+    CHECK(IsNear(render(), {255, 255, 255, 255}));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The scene renderer places the meshes and the camera at their places in the world, under their parents")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const Entity holder = fixture.GetScene().CreateEntity("Holder");
+    holder.Get<TransformComponent>().Position = {-2.0f, 0.0f, 0.0f};
+    Entity quad = fixture.AddQuad(fixture.GetRed(), {.Position = {2.0f, 0.0f, 0.0f}});
+    REQUIRE(quad.SetParent(holder, false));
+
+    const Entity rig = fixture.GetScene().CreateEntity("Rig");
+    rig.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    Entity camera = fixture.AddCamera({0.0f, 0.0f, -1.0f});
+    camera.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    REQUIRE(camera.SetParent(rig, false));
+
+    fixture.Clear();
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+    CHECK(IsNear(fixture.ReadColor(4, 4), Red));
+
+    holder.Get<TransformComponent>().Position = {-10.0f, 0.0f, 0.0f};
+    fixture.Clear();
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+    CHECK(IsNear(fixture.ReadColor(4, 4), Black));
 }

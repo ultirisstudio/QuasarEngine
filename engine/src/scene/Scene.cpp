@@ -3,12 +3,14 @@
 #include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/IdComponent.h>
 #include <quasar/scene/components/NameComponent.h>
+#include <quasar/scene/components/RelationshipComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <quasar/log/Log.h>
 
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace Quasar
 {
@@ -39,8 +41,19 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot destroy an entity that is not in the scene");
             return;
         }
-        m_Entities.erase(entity.GetUUID());
-        m_Registry.destroy(entity.GetHandle());
+        entity.SetParent({}, false);
+        std::vector<Entity> pending{entity};
+        while (!pending.empty())
+        {
+            const Entity current = pending.back();
+            pending.pop_back();
+            for (const Entity child : current.GetChildren())
+            {
+                pending.push_back(child);
+            }
+            m_Entities.erase(current.GetUUID());
+            m_Registry.destroy(current.GetHandle());
+        }
     }
 
     Entity Scene::FindEntity(UUID id)
@@ -75,6 +88,7 @@ namespace Quasar
         m_Registry.emplace<IdComponent>(handle, id);
         m_Registry.emplace<NameComponent>(handle, std::move(name));
         m_Registry.emplace<TransformComponent>(handle);
+        m_Registry.emplace<RelationshipComponent>(handle);
         m_Entities.emplace(id, handle);
         return {handle, this};
     }
