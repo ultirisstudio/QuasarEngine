@@ -33,6 +33,7 @@ namespace Quasar
         void ClearDepthStencil(float depth, std::uint8_t stencil) override;
 
         std::optional<int> ReadInteger(std::uint32_t attachment, std::uint32_t x, std::uint32_t y) override;
+        void BindColorTexture(std::uint32_t attachment, std::uint32_t slot) const override;
         ImTextureID GetImGuiTexture(std::uint32_t attachment) const override;
 
     private:

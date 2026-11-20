@@ -15,6 +15,7 @@
 #include <quasar/renderer/VertexArray.h>
 #include <quasar/renderer/VertexLayout.h>
 
+#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include <cstddef>
@@ -92,7 +93,8 @@ namespace Quasar
         /// @brief Creates a 2D texture from the image of a PNG, JPEG, BMP or TGA file. See Image::FromFile().
         /// @param file The file.
         /// @param settings The settings of the texture, whose size is replaced by the size of the image. Its format must
-        /// be TextureFormat::Rgba8 or TextureFormat::Srgba8.
+        /// be TextureFormat::Srgba8, the default, for an image of colors, or TextureFormat::Rgba8 for an image of
+        /// data. See TextureSpecification::Format.
         /// @return The texture, or nullptr if the file cannot be decoded or if the texture cannot be created. The reason
         /// is logged as an engine error.
         [[nodiscard]] Scope<Texture2D> LoadTexture2D(const std::filesystem::path& file, TextureSpecification settings = {});
@@ -102,6 +104,10 @@ namespace Quasar
 
         /// @brief Makes the next draws go into the window, on its whole area.
         virtual void BindWindow() = 0;
+
+        /// @brief Returns the size of the drawing area of the window, in pixels, which is the size of the images drawn
+        /// into the window. See Window::GetWidth().
+        virtual glm::uvec2 GetWindowSize() const = 0;
 
         /// @brief Fills the window with a color, and its depth and stencil with a value, whatever the pipeline bound.
         virtual void ClearWindow(glm::vec4 color, float depth = 1.0f, std::uint8_t stencil = 0) = 0;

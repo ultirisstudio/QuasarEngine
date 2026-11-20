@@ -93,6 +93,13 @@ namespace Quasar
         /// attachment. With several samples per pixel, the value comes from the last Unbind().
         virtual std::optional<int> ReadInteger(std::uint32_t attachment, std::uint32_t x, std::uint32_t y) = 0;
 
+        /// @brief Makes the shaders read a color attachment of format Rgba8 or Rgba16F from a texture slot, for example
+        /// to process the image of a first pass in a second one. With several samples per pixel, the image comes from
+        /// the last Unbind(). Another attachment is refused with an engine error.
+        /// @param attachment The number of the color attachment.
+        /// @param slot The N of the `layout(binding = N) uniform sampler2D` of the shader.
+        virtual void BindColorTexture(std::uint32_t attachment, std::uint32_t slot) const = 0;
+
         /// @brief Returns the texture that ImGui::Image() draws for a color attachment of format Rgba8 or Rgba16F, or 0
         /// for another attachment. With several samples per pixel, the image comes from the last Unbind().
         virtual ImTextureID GetImGuiTexture(std::uint32_t attachment) const = 0;

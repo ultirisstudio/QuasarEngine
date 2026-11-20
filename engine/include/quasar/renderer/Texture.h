@@ -45,9 +45,11 @@ namespace Quasar
     /// @brief Settings of a texture.
     struct TextureSpecification
     {
-        std::uint32_t Width = 1;                      ///< The width, in pixels.
-        std::uint32_t Height = 1;                     ///< The height, in pixels.
-        TextureFormat Format = TextureFormat::Rgba8;  ///< The format of the pixels.
+        std::uint32_t Width = 1;  ///< The width, in pixels.
+        std::uint32_t Height = 1; ///< The height, in pixels.
+        /// The format of the pixels: Srgba8 for colors, the default, or Rgba8 for data that the shaders read as they are
+        /// stored, such as a normal map or a mask.
+        TextureFormat Format = TextureFormat::Srgba8;
         TextureFilter Filter = TextureFilter::Linear; ///< How the texture is read between its pixels.
         TextureWrap Wrap = TextureWrap::Repeat;       ///< How the texture is read outside of the coordinates 0 to 1.
         bool Mipmaps = true;                          ///< Keeps smaller copies of the image, which avoid flickering when the texture is far.

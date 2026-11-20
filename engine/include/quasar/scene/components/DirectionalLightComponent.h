@@ -15,7 +15,7 @@ namespace Quasar
     /// Entity::GetWorldTransform(). The SceneRenderer lights the scene with the first one it finds. See DirectionalLight.
     struct DirectionalLightComponent
     {
-        glm::vec3 Color{1.0f};  ///< The color of the light.
+        glm::vec3 Color{1.0f};  ///< The color of the light, in sRGB as in a color picker.
         float Intensity = 1.0f; ///< The factor of the color.
         float Ambient = 0.1f;   ///< The part of the light that reaches every surface, even the ones that face away.
     };

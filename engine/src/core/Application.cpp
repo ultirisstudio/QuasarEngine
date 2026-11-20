@@ -23,13 +23,10 @@ namespace Quasar
         Application* s_Instance = nullptr;
     }
 
-    Application::Application(ApplicationSpecification specification, Scope<Window> window, Scope<PipelineLibrary> pipelines, Scope<Renderer> renderer)
-        : m_Specification(std::move(specification)), m_Window(std::move(window)), m_Pipelines(std::move(pipelines)), m_Renderer(std::move(renderer))
+    Application::Application(ApplicationSpecification specification, Scope<Window> window, Graphics graphics)
+        : m_Specification(std::move(specification)), m_Window(std::move(window)), m_Pipelines(std::move(graphics.Pipelines)),
+          m_Renderer(std::move(graphics.Renderer)), m_SceneRenderer(std::move(graphics.SceneRenderer))
     {
-        if (m_Renderer != nullptr)
-        {
-            m_SceneRenderer = CreateScope<SceneRenderer>(*m_Renderer);
-        }
         s_Instance = this;
         m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
 
@@ -83,22 +80,25 @@ namespace Quasar
             return nullptr;
         }
 
-        Scope<PipelineLibrary> pipelines;
-        Scope<Renderer> renderer;
+        Graphics graphics;
         if (GraphicsContext* context = window->GetGraphicsContext(); context != nullptr)
         {
-            renderer = Renderer::Create(*context);
-            if (renderer == nullptr)
+            graphics.Renderer = Renderer::Create(*context);
+            if (graphics.Renderer != nullptr)
+            {
+                graphics.SceneRenderer = SceneRenderer::Create(*graphics.Renderer);
+            }
+            if (graphics.SceneRenderer == nullptr)
             {
                 QUASAR_ENGINE_ERROR("Cannot create the application '{}': its renderer cannot be created", specification.Name);
                 return nullptr;
             }
-            pipelines = CreateScope<PipelineLibrary>(*context);
-            pipelines->AddDefaults();
+            graphics.Pipelines = CreateScope<PipelineLibrary>(*context);
+            graphics.Pipelines->AddDefaults();
         }
 
         QUASAR_ENGINE_INFO("Created the application '{}'", specification.Name);
-        return Scope<Application>(new Application(specification, std::move(window), std::move(pipelines), std::move(renderer)));
+        return Scope<Application>(new Application(specification, std::move(window), std::move(graphics)));
     }
 
     Application& Application::Get()

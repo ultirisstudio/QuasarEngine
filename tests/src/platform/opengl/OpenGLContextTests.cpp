@@ -14,6 +14,7 @@
 
 #include <SDL3/SDL_video.h>
 #include <glad/gl.h>
+#include <glm/vec2.hpp>
 
 #include <utility>
 
@@ -39,6 +40,8 @@ TEST_CASE("A window gets a current OpenGL 4.5 core context")
     REQUIRE(context != nullptr);
     CHECK(SDL_GL_GetCurrentWindow() == window->GetNativeWindow());
     CHECK(SDL_GL_GetCurrentContext() == context->GetNativeContext());
+    CHECK(context->GetWindowSize() == glm::uvec2(window->GetWidth(), window->GetHeight()));
+    CHECK(context->GetWindowSize().x > 0);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 

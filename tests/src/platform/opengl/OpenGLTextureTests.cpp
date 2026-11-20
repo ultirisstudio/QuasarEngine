@@ -194,7 +194,7 @@ TEST_CASE("A texture is read from its top row at the texture coordinate v = 0, w
     const Scene scene;
     const std::vector<std::uint8_t> grid = MakeGrid();
     const Quasar::Scope<Quasar::Texture2D> texture =
-        scene.CreateTexture({.Width = 4, .Height = 4, .Filter = TextureFilter::Nearest, .Mipmaps = false}, AsBytes(grid));
+        scene.CreateTexture({.Width = 4, .Height = 4, .Format = TextureFormat::Rgba8, .Filter = TextureFilter::Nearest, .Mipmaps = false}, AsBytes(grid));
     texture->Bind(1);
 
     for (int channel = 0; channel < 4; ++channel)
@@ -288,8 +288,9 @@ TEST_CASE("A texture is repeated, mirrored or clamped outside of the texture coo
     for (const Expected expected : std::array<Expected, 3>{{{TextureWrap::Repeat, 11}, {TextureWrap::MirroredRepeat, 22}, {TextureWrap::ClampToEdge, 33}}})
     {
         CAPTURE(expected.Value);
-        const Quasar::Scope<Quasar::Texture2D> texture =
-            scene.CreateTexture({.Width = 4, .Height = 4, .Filter = TextureFilter::Nearest, .Wrap = expected.Wrap, .Mipmaps = false}, AsBytes(grid));
+        const Quasar::Scope<Quasar::Texture2D> texture = scene.CreateTexture(
+            {.Width = 4, .Height = 4, .Format = TextureFormat::Rgba8, .Filter = TextureFilter::Nearest, .Wrap = expected.Wrap, .Mipmaps = false},
+            AsBytes(grid));
         texture->Bind(1);
         CHECK(scene.DrawFirst(outside) == expected.Value);
     }
@@ -335,7 +336,7 @@ TEST_CASE("A texture created without pixels is filled with zeros, and pixels of 
 {
     const TestHelpers::ScopedLog log;
     const Scene scene;
-    const Quasar::Scope<Quasar::Texture2D> texture = scene.CreateTexture({.Width = 4, .Height = 4}, {});
+    const Quasar::Scope<Quasar::Texture2D> texture = scene.CreateTexture({.Width = 4, .Height = 4, .Format = TextureFormat::Rgba8}, {});
     texture->Bind(1);
     CHECK(texture->GetDataSize() == 64);
 
@@ -359,8 +360,8 @@ TEST_CASE("Bind makes the draws read a texture from the slot of the sampler")
     const Scene scene(1, 1);
     const std::vector<std::uint8_t> first{10, 0, 0, 255};
     const std::vector<std::uint8_t> second{20, 0, 0, 255};
-    const Quasar::Scope<Quasar::Texture2D> textureA = scene.CreateTexture({}, AsBytes(first));
-    const Quasar::Scope<Quasar::Texture2D> textureB = scene.CreateTexture({}, AsBytes(second));
+    const Quasar::Scope<Quasar::Texture2D> textureA = scene.CreateTexture({.Format = TextureFormat::Rgba8}, AsBytes(first));
+    const Quasar::Scope<Quasar::Texture2D> textureB = scene.CreateTexture({.Format = TextureFormat::Rgba8}, AsBytes(second));
 
     textureA->Bind(1);
     CHECK(scene.DrawFirst({}) == 10);
@@ -436,7 +437,8 @@ TEST_CASE("A texture is loaded from an image file, with its size and the other s
     const TestHelpers::TemporaryFile file("Sprite.png", std::string(reinterpret_cast<const char*>(png.data()), png.size()));
 
     const Quasar::Scope<Quasar::Texture2D> texture = scene.GetContext().LoadTexture2D(
-        file.GetPath(), {.Width = 7, .Height = 9, .Filter = TextureFilter::Nearest, .Wrap = TextureWrap::ClampToEdge, .Mipmaps = false});
+        file.GetPath(),
+        {.Width = 7, .Height = 9, .Format = TextureFormat::Rgba8, .Filter = TextureFilter::Nearest, .Wrap = TextureWrap::ClampToEdge, .Mipmaps = false});
 
     REQUIRE(texture != nullptr);
     CHECK(texture->GetSpecification().Width == 2);
@@ -449,7 +451,7 @@ TEST_CASE("A texture is loaded from an image file, with its size and the other s
     CHECK(scene.Draw({.Channel = 0}) == std::vector<int>{255, 0, 0, 10});
     CHECK(scene.Draw({.Channel = 3}) == std::vector<int>{255, 128, 0, 40});
 
-    const Quasar::Scope<Quasar::Texture2D> srgb = scene.GetContext().LoadTexture2D(file.GetPath(), {.Format = TextureFormat::Srgba8});
+    const Quasar::Scope<Quasar::Texture2D> srgb = scene.GetContext().LoadTexture2D(file.GetPath());
     REQUIRE(srgb != nullptr);
     CHECK(srgb->GetSpecification().Format == TextureFormat::Srgba8);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));

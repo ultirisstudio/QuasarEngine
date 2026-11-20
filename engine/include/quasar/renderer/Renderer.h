@@ -26,7 +26,7 @@ namespace Quasar
     {
         /// The direction in which the light goes, which does not need a length of 1. A zero direction goes down.
         glm::vec3 Direction{-0.4f, -1.0f, -0.6f};
-        glm::vec3 Color{1.0f};  ///< The color of the light.
+        glm::vec3 Color{1.0f};  ///< The color of the light, in sRGB as in a color picker.
         float Intensity = 1.0f; ///< The factor of the color.
         float Ambient = 0.1f;   ///< The part of the light that reaches every surface, even the ones that face away.
     };
@@ -52,11 +52,14 @@ namespace Quasar
     /// {
     ///     vec3 u_LightDirection; // The direction in which the light goes, with a length of 1.
     ///     float u_LightAmbient;
-    ///     vec3 u_LightColor;     // The color multiplied by the intensity.
+    ///     vec3 u_LightColor;     // The linear color multiplied by the intensity.
     /// };
     /// ```
     /// A scene is drawn between BeginScene() and EndScene(), and each Submit() draws one mesh at once. The target is not
     /// cleared, so that several scenes can be drawn into it.
+    ///
+    /// The shaders compute and write linear colors, which can go above 1, for example into a framebuffer of format
+    /// FramebufferFormat::Rgba16F. The SceneRenderer turns them into the colors of the screen at the end.
     class Renderer
     {
     public:
@@ -96,6 +99,9 @@ namespace Quasar
         /// @brief Ends the scene, and makes the next draws go into the window. Ending without a scene is refused with
         /// an engine error.
         void EndScene();
+
+        /// @brief Returns the context that the renderer draws with.
+        GraphicsContext& GetContext() const { return *m_Context; }
 
     private:
         Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<UniformBuffer> light);

@@ -300,7 +300,7 @@ TEST_CASE("A value of another type or an unknown name is refused with one warnin
     }
 }
 
-TEST_CASE("The unlit shader of the engine draws the texture of its material multiplied by its color")
+TEST_CASE("The unlit shader of the engine draws the texture of its material multiplied by its color, converted from sRGB to linear")
 {
     const TestHelpers::ScopedLog log;
     const Scene scene(Quasar::FramebufferFormat::Rgba8);
@@ -310,26 +310,27 @@ TEST_CASE("The unlit shader of the engine draws the texture of its material mult
         scene.CreateMaterial({.Pipeline = pipeline.get(), .Uniforms = {{"Color", UniformType::Vec4}}, .Textures = {{.Name = "Texture", .Slot = 0}}});
     constexpr std::array<std::uint8_t, 16> pixels{255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255};
     const Quasar::Scope<Quasar::Texture2D> texture = scene.GetContext().CreateTexture2D(
-        {.Width = 2, .Height = 2, .Filter = Quasar::TextureFilter::Nearest, .Mipmaps = false}, std::as_bytes(std::span(pixels)));
+        {.Width = 2, .Height = 2, .Format = Quasar::TextureFormat::Rgba8, .Filter = Quasar::TextureFilter::Nearest, .Mipmaps = false},
+        std::as_bytes(std::span(pixels)));
     REQUIRE(texture != nullptr);
 
     material->SetVec4("Color", {0.5f, 1.0f, 1.0f, 1.0f});
     material->Bind();
     scene.DrawQuad();
-    CHECK(IsNear(scene.ReadColor(0, 0), {128, 255, 255, 255}));
+    CHECK(IsNear(scene.ReadColor(0, 0), {55, 255, 255, 255}));
 
     material->SetTexture("Texture", texture.get());
     material->Bind();
     scene.DrawQuad();
-    CHECK(IsNear(scene.ReadColor(0, 0), {128, 0, 0, 255}));
+    CHECK(IsNear(scene.ReadColor(0, 0), {55, 0, 0, 255}));
     CHECK(IsNear(scene.ReadColor(1, 0), {0, 255, 0, 255}));
     CHECK(IsNear(scene.ReadColor(0, 1), {0, 0, 255, 255}));
-    CHECK(IsNear(scene.ReadColor(1, 1), {128, 255, 255, 255}));
+    CHECK(IsNear(scene.ReadColor(1, 1), {55, 255, 255, 255}));
 
     material->SetTexture("Texture", nullptr);
     material->Bind();
     scene.DrawQuad();
-    CHECK(IsNear(scene.ReadColor(1, 0), {128, 255, 255, 255}));
+    CHECK(IsNear(scene.ReadColor(1, 0), {55, 255, 255, 255}));
     CHECK(glGetError() == GL_NO_ERROR);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
@@ -343,7 +344,8 @@ TEST_CASE("Each texture of a material is bound to its slot, and a texture that i
     const Quasar::Scope<Quasar::Material> material =
         scene.CreateMaterial({.Pipeline = pipeline.get(), .Textures = {{.Name = "Second", .Slot = 2}, {.Name = "First", .Slot = 1}}});
     constexpr std::array<std::uint8_t, 4> pixel{3, 0, 0, 255};
-    const Quasar::Scope<Quasar::Texture2D> texture = scene.GetContext().CreateTexture2D({.Mipmaps = false}, std::as_bytes(std::span(pixel)));
+    const Quasar::Scope<Quasar::Texture2D> texture =
+        scene.GetContext().CreateTexture2D({.Format = Quasar::TextureFormat::Rgba8, .Mipmaps = false}, std::as_bytes(std::span(pixel)));
     REQUIRE(texture != nullptr);
 
     material->Bind();

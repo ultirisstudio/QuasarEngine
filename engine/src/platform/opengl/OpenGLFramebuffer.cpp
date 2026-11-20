@@ -239,6 +239,14 @@ namespace Quasar
         return value;
     }
 
+    void OpenGLFramebuffer::BindColorTexture(std::uint32_t attachment, std::uint32_t slot) const
+    {
+        if (const std::optional<std::size_t> index = FindColor(attachment, false, "bind"); index)
+        {
+            glBindTextureUnit(slot, GetReadableTexture(*index));
+        }
+    }
+
     ImTextureID OpenGLFramebuffer::GetImGuiTexture(std::uint32_t attachment) const
     {
         const std::optional<std::size_t> index = FindColor(attachment, false, "show");

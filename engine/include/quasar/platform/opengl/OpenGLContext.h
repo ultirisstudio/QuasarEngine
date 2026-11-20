@@ -9,6 +9,8 @@
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
 
+#include <glm/vec2.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -79,6 +81,9 @@ namespace Quasar
         /// @brief Makes the context current, then makes the next draws go into the window. See
         /// GraphicsContext::BindWindow().
         void BindWindow() override;
+
+        /// @brief Returns the size of the drawing area of the window, in pixels. See GraphicsContext::GetWindowSize().
+        glm::uvec2 GetWindowSize() const override;
 
         /// @brief Makes the context current, then fills the window. See GraphicsContext::ClearWindow().
         void ClearWindow(glm::vec4 color, float depth, std::uint8_t stencil) override;

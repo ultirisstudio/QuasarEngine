@@ -15,6 +15,7 @@
 
 #include <quasar/log/Log.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -161,6 +162,14 @@ namespace Quasar
         SDL_GetWindowSizeInPixels(m_Window, &width, &height);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, width, height);
+    }
+
+    glm::uvec2 OpenGLContext::GetWindowSize() const
+    {
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSizeInPixels(m_Window, &width, &height);
+        return {static_cast<std::uint32_t>(std::max(width, 0)), static_cast<std::uint32_t>(std::max(height, 0))};
     }
 
     void OpenGLContext::ClearWindow(glm::vec4 color, float depth, std::uint8_t stencil)
