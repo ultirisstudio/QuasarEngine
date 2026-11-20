@@ -303,3 +303,73 @@ TEST_CASE("The scene renderer places the meshes and the camera at their places i
     fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
     CHECK(IsNear(fixture.ReadColor(4, 4), Black));
 }
+
+TEST_CASE("The scene renderer brings the linear colors of the scene back to sRGB, over its background")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const Quasar::Scope<Quasar::Material> gray = fixture.CreateColor({0.5f, 0.5f, 0.5f, 1.0f});
+    fixture.AddQuad(*gray);
+    fixture.AddCamera({0.0f, 0.0f, 1.0f});
+    fixture.GetSceneRenderer().SetSettings({.Background = {0.25f, 0.5f, 1.0f}, .Tonemap = Quasar::Tonemapping::None});
+
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+
+    CHECK(IsNear(fixture.ReadColor(4, 4), {128, 128, 128, 255}));
+    CHECK(IsNear(fixture.ReadColor(0, 0), {64, 128, 255, 255}));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The exposure and the tonemapping bring the colors above 1 back to the screen")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const Quasar::Scope<Quasar::Material> white = fixture.CreateColor(glm::vec4(1.0f));
+    fixture.AddQuad(*white);
+    fixture.AddCamera({0.0f, 0.0f, 1.0f});
+    const auto render = [&fixture](float exposure, Quasar::Tonemapping tonemap)
+    {
+        fixture.GetSceneRenderer().SetSettings({.Exposure = exposure, .Tonemap = tonemap});
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        return fixture.ReadColor(4, 4)[0];
+    };
+
+    CHECK(render(2.0f, Quasar::Tonemapping::None) == 255);
+    CHECK(std::abs(render(0.5f, Quasar::Tonemapping::None) - 188) <= 1);
+    CHECK(std::abs(render(1.0f, Quasar::Tonemapping::Reinhard) - 188) <= 1);
+    CHECK(std::abs(render(2.0f, Quasar::Tonemapping::Reinhard) - 213) <= 1);
+    CHECK(std::abs(render(1.0f, Quasar::Tonemapping::Aces) - 232) <= 1);
+    CHECK(std::abs(render(2.0f, Quasar::Tonemapping::Aces) - 245) <= 1);
+    CHECK(fixture.GetSceneRenderer().GetSettings().Exposure == 2.0f);
+    CHECK(fixture.GetSceneRenderer().GetSettings().Tonemap == Quasar::Tonemapping::Aces);
+}
+
+TEST_CASE("The scene framebuffer takes the size of the target, or of the window, and the window receives the image")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    fixture.AddCamera({0.0f, 0.0f, 1.0f});
+    fixture.GetSceneRenderer().SetSettings({.Background = {0.0f, 1.0f, 0.0f}, .Tonemap = Quasar::Tonemapping::None});
+    const Quasar::Framebuffer& scene = fixture.GetSceneRenderer().GetSceneFramebuffer();
+    CHECK(scene.GetSpecification().Attachments.front() == Quasar::FramebufferFormat::Rgba16F);
+
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+    CHECK(scene.GetSpecification().Width == 8);
+    CHECK(scene.GetSpecification().Height == 8);
+
+    const Quasar::Scope<Quasar::Framebuffer> wide = fixture.GetContext().CreateFramebuffer({.Width = 16, .Height = 4});
+    REQUIRE(wide != nullptr);
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), wide.get());
+    CHECK(scene.GetSpecification().Width == 16);
+    CHECK(scene.GetSpecification().Height == 4);
+
+    fixture.GetContext().ClearWindow({1.0f, 0.0f, 0.0f, 1.0f});
+    fixture.GetSceneRenderer().Render(fixture.GetScene());
+    const glm::uvec2 window = fixture.GetContext().GetWindowSize();
+    CHECK(scene.GetSpecification().Width == window.x);
+    CHECK(scene.GetSpecification().Height == window.y);
+    std::array<std::uint8_t, 4> pixel{};
+    glReadPixels(static_cast<GLint>(window.x) - 1, static_cast<GLint>(window.y) - 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+    CHECK(IsNear({pixel[0], pixel[1], pixel[2], pixel[3]}, {0, 255, 0, 255}));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}

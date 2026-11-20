@@ -15,10 +15,12 @@
 #include <glad/gl.h>
 #include <imgui.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
 #include <utility>
+#include <vector>
 
 using Quasar::FramebufferFormat;
 using Quasar::FramebufferSpecification;
@@ -175,8 +177,12 @@ TEST_CASE("A framebuffer refuses the attachments that do not exist or that have 
     CHECK(framebuffer->ReadInteger(0, 0, 0) == std::nullopt);
     CHECK(framebuffer->GetImGuiTexture(1) == ImTextureID{});
     CHECK(framebuffer->GetImGuiTexture(2) == ImTextureID{});
+    framebuffer->BindColorTexture(1, 0);
+    framebuffer->BindColorTexture(2, 0);
     CHECK(glGetError() == GL_NO_ERROR);
     CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+    const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
+    CHECK(std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Text.starts_with("Cannot bind"); }) == 2);
 }
 
 TEST_CASE("A framebuffer can have only a depth attachment")
