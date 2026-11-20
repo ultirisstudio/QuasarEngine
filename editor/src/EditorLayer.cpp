@@ -1,5 +1,6 @@
 #include "EditorLayer.h"
 
+#include "Project.h"
 #include "panels/ConsolePanel.h"
 #include "panels/GamepadPanel.h"
 
@@ -8,6 +9,8 @@
 #include <quasar/log/Log.h>
 
 #include <imgui.h>
+
+#include <optional>
 
 namespace Quasar::Editor
 {
@@ -45,6 +48,10 @@ namespace Quasar::Editor
     void EditorLayer::OnImGuiRender()
     {
         DrawMenuBar();
+        if (const std::optional<std::filesystem::path> project = m_ProjectPopups.Draw())
+        {
+            SetProject(*project);
+        }
         ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 
         for (const Scope<EditorPanel>& panel : m_Panels)
@@ -74,6 +81,15 @@ namespace Quasar::Editor
 
         if (ImGui::BeginMenu("File"))
         {
+            if (ImGui::MenuItem("New Project..."))
+            {
+                m_ProjectPopups.RequestNewProject();
+            }
+            if (ImGui::MenuItem("Open Project..."))
+            {
+                m_ProjectPopups.RequestOpenProject();
+            }
+            ImGui::Separator();
             if (ImGui::MenuItem("Quit"))
             {
                 Application::Get().Close();
@@ -95,5 +111,11 @@ namespace Quasar::Editor
         }
 
         ImGui::EndMainMenuBar();
+    }
+
+    void EditorLayer::SetProject(const std::filesystem::path& directory)
+    {
+        m_Context.ProjectDirectory = directory;
+        QUASAR_INFO("Project opened: {}", PathToUtf8(directory));
     }
 }
