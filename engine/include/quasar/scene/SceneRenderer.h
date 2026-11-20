@@ -11,7 +11,8 @@
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
-#include <quasar/renderer/VertexArray.h>
+#include <quasar/renderer/Shadows.h>
+#include <quasar/renderer/ToneMapper.h>
 #include <quasar/scene/Scene.h>
 
 #include <glm/mat4x4.hpp>
@@ -21,28 +22,6 @@
 
 namespace Quasar
 {
-    /// @brief How the linear colors of a scene, which can go above 1, are brought between 0 and 1 for the screen.
-    enum class Tonemapping : std::uint8_t
-    {
-        None,     ///< The colors above 1 are cut to 1, so bright areas lose their details.
-        Reinhard, ///< Each channel c becomes c / (1 + c): soft, but the whites never reach 1.
-        Aces      ///< The curve of the film industry standard ACES, as fitted by Krzysztof Narkowicz: contrasted, with soft whites.
-    };
-
-    /// @brief Settings of the shadows of the directional light.
-    ///
-    /// The shadows are drawn into a square map, seen from the light, that covers the part of the view of the camera up
-    /// to Distance. A smaller distance gives sharper shadows. Without bias, a surface can shadow itself in stripes,
-    /// called shadow acne; too much bias detaches the shadows from the objects.
-    struct ShadowSettings
-    {
-        bool Enabled = true;             ///< Whether the directional light casts shadows.
-        std::uint32_t Resolution = 2048; ///< The width and the height of the map, in pixels.
-        float Distance = 40.0f;          ///< The distance from the camera up to which the shadows are drawn.
-        float DepthBias = 0.0005f;       ///< The depth, from 0 to 1 across the map, removed from each surface before the test.
-        float NormalBias = 1.5f;         ///< How far each surface is moved along its normal before the test, in pixels of the map.
-    };
-
     /// @brief Settings of the image of a SceneRenderer.
     struct SceneRendererSettings
     {
@@ -65,15 +44,15 @@ namespace Quasar
     /// ShadowSettings.
     ///
     /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F, of the
-    /// size of the target and with SceneRendererSettings::Samples, cleared with SceneRendererSettings::Background. A last pass then applies the exposure
-    /// and the tonemapping, converts the colors to sRGB and writes them over the whole first color attachment of the
-    /// target, which must be of format Rgba8 or Rgba16F. Each view, such as a viewport of the editor, should have its
+    /// size of the target and with SceneRendererSettings::Samples, cleared with SceneRendererSettings::Background. A
+    /// ToneMapper then applies the exposure and the tonemapping, converts the colors to sRGB and writes them over the
+    /// whole first color attachment of the target, which must be of format Rgba8 or Rgba16F. Each view, such as a viewport of the editor, should have its
     /// own SceneRenderer, which keeps a framebuffer of its size.
     class SceneRenderer
     {
     public:
         /// @brief Creates a scene renderer that draws with a renderer, which must outlive it.
-        /// @return The scene renderer, or nullptr if the shaders of its shadows and of its last pass cannot be read from
+        /// @return The scene renderer, or nullptr if the shaders of its shadows or of its ToneMapper cannot be read from
         /// the engine resources, or if its framebuffers or its pipelines cannot be created. The reason is logged as an
         /// engine error.
         static Scope<SceneRenderer> Create(Renderer& renderer, const SceneRendererSettings& settings = {});
@@ -117,10 +96,8 @@ namespace Quasar
     private:
         struct Resources
         {
-            Scope<Shader> PresentShader;
-            Scope<Pipeline> PresentPipeline;
+            Scope<Quasar::ToneMapper> ToneMapper;
             Scope<Framebuffer> SceneFramebuffer;
-            Scope<VertexArray> EmptyVertexArray;
             Scope<Shader> ShadowShader;
             Scope<Pipeline> ShadowPipeline;
             Scope<Framebuffer> ShadowMap;
@@ -129,14 +106,11 @@ namespace Quasar
         SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings);
 
         DirectionalShadow RenderShadows(Scene& scene, const Camera& camera, const DirectionalLight& light);
-        void Present(Framebuffer* target);
 
         Renderer* m_Renderer;
         SceneRendererSettings m_Settings;
-        Scope<Shader> m_PresentShader;
-        Scope<Pipeline> m_PresentPipeline;
+        Scope<ToneMapper> m_ToneMapper;
         Scope<Framebuffer> m_Framebuffer;
-        Scope<VertexArray> m_VertexArray;
         Scope<Shader> m_ShadowShader;
         Scope<Pipeline> m_ShadowPipeline;
         Scope<Framebuffer> m_ShadowMap;

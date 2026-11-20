@@ -46,9 +46,9 @@ target_sources(QuasarEngine
         src/renderer/GraphicsContext.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
+        src/renderer/Image.cpp
         src/renderer/LightsBuffer.cpp
         src/renderer/LightsBuffer.h
-        src/renderer/Image.cpp
         src/renderer/Material.cpp
         src/renderer/Mesh.cpp
         src/renderer/Pipeline.cpp
@@ -56,7 +56,9 @@ target_sources(QuasarEngine
         src/renderer/Primitives.cpp
         src/renderer/Renderer.cpp
         src/renderer/Shader.cpp
+        src/renderer/Shadows.cpp
         src/renderer/Texture.cpp
+        src/renderer/ToneMapper.cpp
         src/renderer/UniformBlockLayout.cpp
         src/renderer/VertexArray.cpp
         src/renderer/VertexLayout.cpp
@@ -118,7 +120,9 @@ target_sources(QuasarEngine
             include/quasar/renderer/Renderer.h
             include/quasar/renderer/Shader.h
             include/quasar/renderer/ShaderBindings.h
+            include/quasar/renderer/Shadows.h
             include/quasar/renderer/Texture.h
+            include/quasar/renderer/ToneMapper.h
             include/quasar/renderer/UniformBlockLayout.h
             include/quasar/renderer/VertexArray.h
             include/quasar/renderer/VertexLayout.h
