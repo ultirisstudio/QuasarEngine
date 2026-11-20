@@ -8,6 +8,9 @@
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Camera.h>
 #include <quasar/renderer/Framebuffer.h>
+#include <quasar/renderer/Lights.h>
+#include <quasar/renderer/Material.h>
+#include <quasar/renderer/Mesh.h>
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
@@ -19,6 +22,7 @@
 #include <glm/vec3.hpp>
 
 #include <cstdint>
+#include <vector>
 
 namespace Quasar
 {
@@ -103,9 +107,19 @@ namespace Quasar
             Scope<Framebuffer> ShadowMap;
         };
 
+        struct DrawItem
+        {
+            const Quasar::Mesh* Mesh = nullptr;
+            Quasar::Material* Material = nullptr;
+            glm::mat4 Transform{1.0f};
+            bool CastShadows = true;
+        };
+
         SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings);
 
-        DirectionalShadow RenderShadows(Scene& scene, const Camera& camera, const DirectionalLight& light);
+        bool GatherLights(Scene& scene);
+        void GatherDrawList(Scene& scene);
+        DirectionalShadow RenderShadows(const Camera& camera, const DirectionalLight& light);
 
         Renderer* m_Renderer;
         SceneRendererSettings m_Settings;
@@ -114,6 +128,8 @@ namespace Quasar
         Scope<Shader> m_ShadowShader;
         Scope<Pipeline> m_ShadowPipeline;
         Scope<Framebuffer> m_ShadowMap;
+        SceneLights m_Lights;
+        std::vector<DrawItem> m_DrawList;
         glm::mat4 m_ShadowViewProjection{1.0f};
         bool m_ReportedNoCamera = false;
     };

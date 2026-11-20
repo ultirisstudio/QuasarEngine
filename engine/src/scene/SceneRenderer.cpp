@@ -23,43 +23,6 @@
 
 namespace Quasar
 {
-    namespace
-    {
-        SceneLights GatherLights(Scene& scene, bool& castShadows)
-        {
-            SceneLights lights{.Directional = std::nullopt};
-            castShadows = false;
-            auto directionals = scene.GetRegistry().view<DirectionalLightComponent>();
-            if (directionals.begin() != directionals.end())
-            {
-                const Entity entity(*directionals.begin(), &scene);
-                const DirectionalLightComponent& light = entity.Get<DirectionalLightComponent>();
-                castShadows = light.CastShadows;
-                lights.Directional = DirectionalLight{
-                    .Direction = entity.GetWorldTransform().GetForward(), .Color = light.Color, .Intensity = light.Intensity, .Ambient = light.Ambient};
-            }
-
-            scene.ForEach<PointLightComponent>(
-                [&lights](Entity entity, const PointLightComponent& light) {
-                    lights.Points.push_back(
-                        {.Position = glm::vec3(entity.GetWorldMatrix()[3]), .Color = light.Color, .Intensity = light.Intensity, .Range = light.Range});
-                });
-            scene.ForEach<SpotLightComponent>(
-                [&lights](Entity entity, const SpotLightComponent& light)
-                {
-                    const TransformComponent world = entity.GetWorldTransform();
-                    lights.Spots.push_back({.Position = world.Position,
-                                            .Direction = world.GetForward(),
-                                            .Color = light.Color,
-                                            .Intensity = light.Intensity,
-                                            .Range = light.Range,
-                                            .InnerAngle = light.InnerAngle,
-                                            .OuterAngle = light.OuterAngle});
-                });
-            return lights;
-        }
-    }
-
     SceneRenderer::SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings)
         : m_Renderer(&renderer), m_Settings(settings), m_ToneMapper(std::move(resources.ToneMapper)), m_Framebuffer(std::move(resources.SceneFramebuffer)),
           m_ShadowShader(std::move(resources.ShadowShader)), m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_ShadowMap(std::move(resources.ShadowMap))
@@ -94,13 +57,63 @@ namespace Quasar
         return Scope<SceneRenderer>(new SceneRenderer(renderer, std::move(resources), settings));
     }
 
-    void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
+    bool SceneRenderer::GatherLights(Scene& scene)
     {
         bool castShadows = false;
-        SceneLights lights = GatherLights(scene, castShadows);
-        if (m_Settings.Shadows.Enabled && castShadows && lights.Directional)
+        m_Lights.Directional.reset();
+        m_Lights.Shadow = {};
+        m_Lights.Points.clear();
+        m_Lights.Spots.clear();
+        auto directionals = scene.GetRegistry().view<DirectionalLightComponent>();
+        if (directionals.begin() != directionals.end())
         {
-            lights.Shadow = RenderShadows(scene, camera, *lights.Directional);
+            const Entity entity(*directionals.begin(), &scene);
+            const DirectionalLightComponent& light = entity.Get<DirectionalLightComponent>();
+            castShadows = light.CastShadows;
+            m_Lights.Directional = DirectionalLight{
+                .Direction = entity.GetWorldTransform().GetForward(), .Color = light.Color, .Intensity = light.Intensity, .Ambient = light.Ambient};
+        }
+
+        scene.ForEach<PointLightComponent>(
+            [this](Entity entity, const PointLightComponent& light) {
+                m_Lights.Points.push_back(
+                    {.Position = glm::vec3(entity.GetWorldMatrix()[3]), .Color = light.Color, .Intensity = light.Intensity, .Range = light.Range});
+            });
+        scene.ForEach<SpotLightComponent>(
+            [this](Entity entity, const SpotLightComponent& light)
+            {
+                const TransformComponent world = entity.GetWorldTransform();
+                m_Lights.Spots.push_back({.Position = world.Position,
+                                          .Direction = world.GetForward(),
+                                          .Color = light.Color,
+                                          .Intensity = light.Intensity,
+                                          .Range = light.Range,
+                                          .InnerAngle = light.InnerAngle,
+                                          .OuterAngle = light.OuterAngle});
+            });
+        return castShadows;
+    }
+
+    void SceneRenderer::GatherDrawList(Scene& scene)
+    {
+        m_DrawList.clear();
+        scene.ForEach<TransformComponent, MeshRendererComponent>(
+            [this](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
+            {
+                if (renderer.Mesh != nullptr && renderer.Material != nullptr)
+                {
+                    m_DrawList.push_back(
+                        {.Mesh = renderer.Mesh, .Material = renderer.Material, .Transform = entity.GetWorldMatrix(), .CastShadows = renderer.CastShadows});
+                }
+            });
+    }
+
+    void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
+    {
+        GatherDrawList(scene);
+        if (GatherLights(scene) && m_Settings.Shadows.Enabled && m_Lights.Directional)
+        {
+            m_Lights.Shadow = RenderShadows(camera, *m_Lights.Directional);
         }
 
         const glm::uvec2 size =
@@ -123,34 +136,29 @@ namespace Quasar
         m_Framebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
         m_Framebuffer->ClearDepthStencil();
 
-        m_Renderer->BeginScene(camera, m_Framebuffer.get(), lights);
-        scene.ForEach<TransformComponent, MeshRendererComponent>(
-            [this](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
-            {
-                if (renderer.Mesh != nullptr && renderer.Material != nullptr)
-                {
-                    m_Renderer->Submit(*renderer.Mesh, *renderer.Material, entity.GetWorldMatrix());
-                }
-            });
+        m_Renderer->BeginScene(camera, m_Framebuffer.get(), m_Lights);
+        for (const DrawItem& item : m_DrawList)
+        {
+            m_Renderer->Submit(*item.Mesh, *item.Material, item.Transform);
+        }
         m_Renderer->EndScene();
         m_ToneMapper->Apply(*m_Framebuffer, target, m_Settings.Exposure, m_Settings.Tonemap);
     }
 
-    DirectionalShadow SceneRenderer::RenderShadows(Scene& scene, const Camera& camera, const DirectionalLight& light)
+    DirectionalShadow SceneRenderer::RenderShadows(const Camera& camera, const DirectionalLight& light)
     {
         const ShadowCamera shadow = ComputeShadowCamera(camera, light.Direction, m_Settings.Shadows);
         m_ShadowMap->Resize(shadow.Resolution, shadow.Resolution);
 
         m_ShadowMap->ClearDepthStencil();
         m_Renderer->BeginScene(shadow.View, m_ShadowMap.get(), SceneLights{.Directional = std::nullopt});
-        scene.ForEach<TransformComponent, MeshRendererComponent>(
-            [this](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
+        for (const DrawItem& item : m_DrawList)
+        {
+            if (item.CastShadows)
             {
-                if (renderer.Mesh != nullptr && renderer.Material != nullptr && renderer.CastShadows)
-                {
-                    m_Renderer->Submit(*renderer.Mesh, *m_ShadowPipeline, entity.GetWorldMatrix());
-                }
-            });
+                m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Transform);
+            }
+        }
         m_Renderer->EndScene();
 
         m_ShadowViewProjection = shadow.View.GetViewProjection();

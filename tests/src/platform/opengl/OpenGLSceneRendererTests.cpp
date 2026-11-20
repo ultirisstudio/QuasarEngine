@@ -475,10 +475,12 @@ TEST_CASE("The meshes hide the directional light from the surfaces behind them, 
     scene.Occluder.Get<MeshRendererComponent>().CastShadows = false;
     CHECK(IsNear(render(4, 4), White));
     scene.Occluder.Get<MeshRendererComponent>().CastShadows = true;
+    CHECK(IsAround(render(4, 4), Shadowed));
 
     scene.Sun.Get<DirectionalLightComponent>().CastShadows = false;
     CHECK(IsNear(render(4, 4), White));
     scene.Sun.Get<DirectionalLightComponent>().CastShadows = true;
+    CHECK(IsAround(render(4, 4), Shadowed));
 
     Quasar::SceneRendererSettings settings = fixture.GetSceneRenderer().GetSettings();
     settings.Shadows.Enabled = false;
