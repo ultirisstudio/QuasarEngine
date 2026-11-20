@@ -638,3 +638,42 @@ TEST_CASE("The shadows have soft edges, over a few pixels of the shadow map")
     CHECK(row[0] < Shadowed[0] + 10);
     CHECK(row[std::size_t{63} * 4] > 245);
 }
+
+TEST_CASE("Several samples per pixel smooth the edges of the meshes, up to the limit of the GPU")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const Quasar::Scope<Quasar::Material> white = fixture.CreateColor(glm::vec4(1.0f));
+    fixture.AddQuad(*white, {.Rotation = glm::angleAxis(glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)), .Scale = glm::vec3(1.2f)});
+    fixture.AddCamera({0.0f, 0.0f, 1.0f});
+    const auto partlyCovered = [&fixture](std::uint32_t samples)
+    {
+        fixture.GetSceneRenderer().SetSettings({.Background = glm::vec3(0.0f), .Tonemap = Quasar::Tonemapping::None, .Samples = samples});
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        int count = 0;
+        for (int y = 0; y < 8; ++y)
+        {
+            for (int x = 0; x < 8; ++x)
+            {
+                const int red = fixture.ReadColor(x, y)[0];
+                count += red > 10 && red < 245 ? 1 : 0;
+            }
+        }
+        return count;
+    };
+    const std::uint32_t limit = fixture.GetContext().GetMaxSamples();
+
+    CHECK(partlyCovered(1) == 0);
+    CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == 1);
+    CHECK(partlyCovered(0) == 0);
+    CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == 1);
+    if (limit >= 4)
+    {
+        CHECK(partlyCovered(4) > 4);
+        CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == 4);
+    }
+    CHECK(partlyCovered(1000) > 0);
+    CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == limit);
+    CHECK(fixture.GetSceneRenderer().GetSettings().Samples == 1000);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
