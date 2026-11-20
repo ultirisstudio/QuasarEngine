@@ -45,6 +45,7 @@ namespace Quasar::Sandbox
         Entity AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform, float spin = 0.0f);
         Texture2D* AddTexture(GraphicsContext& context, const std::filesystem::path& file);
         Material* AddMaterial(const PipelineLibrary& pipelines, std::string_view pipeline, Texture2D* texture, glm::vec4 color);
+        void DrawScenePanel();
         void UpdateSun();
         void SetLooking(bool looking);
 
@@ -61,6 +62,5 @@ namespace Quasar::Sandbox
         float m_FrameTime = 0.0f;
         bool m_Ready = false;
         bool m_Looking = false;
-        bool m_VSync = true;
     };
 }
