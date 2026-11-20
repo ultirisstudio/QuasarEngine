@@ -69,11 +69,11 @@ namespace
             m_Camera.LookAt(target, up);
         }
 
-        Color Draw(Quasar::Material& material, const Quasar::DirectionalLight& light = {}, const glm::mat4& transform = glm::mat4(1.0f)) const
+        Color Draw(Quasar::Material& material, const Quasar::SceneLights& lights = {}, const glm::mat4& transform = glm::mat4(1.0f)) const
         {
             m_Framebuffer->ClearColor(0, {0.0f, 0.0f, 0.0f, 1.0f});
             m_Framebuffer->ClearDepthStencil();
-            m_Renderer->BeginScene(m_Camera, m_Framebuffer.get(), light);
+            m_Renderer->BeginScene(m_Camera, m_Framebuffer.get(), lights);
             m_Renderer->Submit(*m_Quad, material, transform);
             m_Renderer->EndScene();
 
@@ -126,9 +126,14 @@ namespace
         return material;
     }
 
-    Quasar::DirectionalLight Light(const glm::vec3& direction, float ambient = 0.0f)
+    Quasar::SceneLights Sun(const Quasar::DirectionalLight& light)
     {
-        return {.Direction = direction, .Ambient = ambient};
+        return {.Directional = light};
+    }
+
+    Quasar::SceneLights Light(const glm::vec3& direction, float ambient = 0.0f)
+    {
+        return Sun({.Direction = direction, .Ambient = ambient});
     }
 }
 
@@ -264,13 +269,14 @@ TEST_CASE("The BlinnPhong pipeline uses the color and the intensity of the light
     REQUIRE(fixture.GetLibrary().AddDefaults());
     const Quasar::Scope<Quasar::Material> lit = CreateLit(fixture.GetLibrary());
 
-    CHECK(IsNear(fixture.Draw(*lit, {.Direction = {0.0f, 0.0f, -1.0f}, .Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 0.0f}), {128, 0, 0, 255}));
+    CHECK(
+        IsNear(fixture.Draw(*lit, Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 0.0f})), {128, 0, 0, 255}));
 
     lit->SetVec4("Color", {0.0f, 1.0f, 0.5f, 0.5f});
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, -1.0f})), {0, 255, 55, 128}));
 
     lit->SetVec4("Color", glm::vec4(1.0f));
-    CHECK(IsNear(fixture.Draw(*lit, {.Direction = {0.0f, 0.0f, -1.0f}, .Color = glm::vec3(0.5f), .Ambient = 0.0f}), Gray(55)));
+    CHECK(IsNear(fixture.Draw(*lit, Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Color = glm::vec3(0.5f), .Ambient = 0.0f})), Gray(55)));
 }
 
 TEST_CASE("The BlinnPhong pipeline turns the normals with the mesh, and a zero light direction goes down")
@@ -293,4 +299,84 @@ TEST_CASE("The BlinnPhong pipeline turns the normals with the mesh, and a zero l
     fixture.SetCamera({0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f});
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, 0.0f}), facingUp), Gray(255)));
     CHECK(IsNear(fixture.Draw(*lit, Light({1.0f, -1.0f, 0.0f}), facingUp), Gray(180)));
+}
+
+TEST_CASE("A point light lights a surface by its intensity over the square of the distance, until its range")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = CreateLit(fixture.GetLibrary());
+    const auto point = [](const Quasar::PointLight& light) { return Quasar::SceneLights{.Directional = std::nullopt, .Points = {light}}; };
+
+    CHECK(IsNear(fixture.Draw(*lit, point({.Position = {0.0f, 0.0f, 1.0f}})), Gray(243)));
+    CHECK(IsNear(fixture.Draw(*lit, point({.Position = {0.0f, 0.0f, 2.0f}, .Intensity = 4.0f})), Gray(251)));
+    CHECK(IsNear(fixture.Draw(*lit, point({.Position = {0.0f, 0.0f, 2.0f}, .Intensity = 4.0f, .Range = 3.0f})), Gray(161)));
+    CHECK(IsNear(fixture.Draw(*lit, point({.Position = {0.0f, 0.0f, 2.0f}, .Intensity = 4.0f, .Range = 2.0f})), Gray(0)));
+    CHECK(IsNear(fixture.Draw(*lit, point({.Position = {0.0f, 0.0f, 1.0f}, .Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f})), {122, 0, 0, 255}));
+    CHECK(IsNear(fixture.Draw(*lit, point({.Position = {0.0f, 0.0f, -1.0f}})), Gray(0)));
+    CHECK(IsNear(fixture.Draw(*lit, Quasar::SceneLights{.Directional = std::nullopt}), Gray(0)));
+}
+
+TEST_CASE("A spot light lights only inside its cone, fully inside its inner angle")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = CreateLit(fixture.GetLibrary());
+    const auto spot = [](const glm::vec3& direction, float inner, float outer)
+    {
+        return Quasar::SceneLights{
+            .Directional = std::nullopt,
+            .Spots = {{.Position = {0.0f, 0.0f, 1.0f}, .Direction = direction, .InnerAngle = glm::radians(inner), .OuterAngle = glm::radians(outer)}}};
+    };
+
+    CHECK(IsNear(fixture.Draw(*lit, spot({0.0f, 0.0f, -1.0f}, 20.0f, 30.0f)), Gray(243)));
+    CHECK(IsNear(fixture.Draw(*lit, spot({0.0f, 0.0f, -3.0f}, 20.0f, 30.0f)), Gray(243)));
+    CHECK(IsNear(fixture.Draw(*lit, spot({0.0f, 0.0f, 0.0f}, 20.0f, 30.0f)), Gray(243)));
+    CHECK(IsNear(fixture.Draw(*lit, spot({0.0f, 0.0f, 1.0f}, 20.0f, 30.0f)), Gray(0)));
+    CHECK(IsNear(fixture.Draw(*lit, spot({0.0f, 0.0f, -1.0f}, 5.0f, 15.0f)), Gray(94)));
+    CHECK(IsNear(fixture.Draw(*lit, spot({0.0f, 0.0f, -1.0f}, 2.0f, 8.0f)), Gray(0)));
+    CHECK(IsNear(fixture.Draw(*lit, spot({0.0f, 0.0f, -1.0f}, 40.0f, 30.0f)), Gray(243)));
+}
+
+TEST_CASE("The point and spot lights add up with the directional light")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = CreateLit(fixture.GetLibrary());
+    Quasar::SceneLights lights = Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Intensity = 0.25f, .Ambient = 0.0f});
+    lights.Points.push_back({.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 0.25f});
+    CHECK(IsNear(fixture.Draw(*lit, lights), Gray(125)));
+
+    lights.Spots.push_back({.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 0.25f});
+    CHECK(IsNear(fixture.Draw(*lit, lights), Gray(185)));
+}
+
+TEST_CASE("A scene uses only its first lights up to the maximums, and warns once until it has few enough lights again")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = CreateLit(fixture.GetLibrary());
+    const auto countWarnings = []
+    {
+        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
+        return std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Level == Quasar::LogLevel::Warning; });
+    };
+
+    Quasar::SceneLights points{.Directional = std::nullopt,
+                               .Points = std::vector<Quasar::PointLight>(32, {.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 0.01f})};
+    points.Points.push_back({.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 100.0f});
+    CHECK(IsNear(fixture.Draw(*lit, points), Gray(78)));
+    CHECK(IsNear(fixture.Draw(*lit, points), Gray(78)));
+    CHECK(countWarnings() == 1);
+
+    Quasar::SceneLights spots{.Directional = std::nullopt, .Spots = std::vector<Quasar::SpotLight>(32, {.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 0.01f})};
+    CHECK(IsNear(fixture.Draw(*lit, spots), Gray(78)));
+    CHECK(countWarnings() == 1);
+    spots.Spots.push_back({.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 100.0f});
+    CHECK(IsNear(fixture.Draw(*lit, spots), Gray(78)));
+    CHECK(countWarnings() == 2);
 }

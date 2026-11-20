@@ -51,11 +51,28 @@ layout(std140, binding = 1) uniform Material
     float u_Shininess;
 };
 
-layout(std140, binding = 3) uniform Light
+struct PointLight
 {
-    vec3 u_LightDirection;
-    float u_LightAmbient;
-    vec3 u_LightColor;
+    vec4 PositionRange;
+    vec4 Color;
+};
+
+struct SpotLight
+{
+    vec4 PositionRange;
+    vec4 DirectionOuter;
+    vec4 ColorInner;
+};
+
+layout(std140, binding = 3) uniform Lights
+{
+    vec3 u_DirectionalDirection;
+    float u_DirectionalAmbient;
+    vec3 u_DirectionalColor;
+    int u_PointLightCount;
+    int u_SpotLightCount;
+    PointLight u_PointLights[32];
+    SpotLight u_SpotLights[32];
 };
 
 layout(binding = 0) uniform sampler2D u_Texture;
@@ -67,19 +84,50 @@ vec3 SrgbToLinear(vec3 color)
     return mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)), greaterThan(color, vec3(0.04045)));
 }
 
-void main()
+vec3 Shade(vec3 base, vec3 normal, vec3 toCamera, vec3 toLight, vec3 radiance)
 {
-    vec4 base = texture(u_Texture, v_TexCoord) * vec4(SrgbToLinear(u_Color.rgb), u_Color.a);
-    vec3 normal = normalize(v_Normal);
-    vec3 toLight = -u_LightDirection;
-    vec3 toCamera = normalize(u_CameraPosition.xyz - v_Position);
-
     float diffuse = max(dot(normal, toLight), 0.0);
     float specular = 0.0;
     if (diffuse > 0.0)
     {
         specular = u_Specular * pow(max(dot(normal, normalize(toLight + toCamera)), 0.0), u_Shininess);
     }
+    return radiance * (base * diffuse + specular);
+}
 
-    o_Color = vec4(u_LightColor * (base.rgb * (u_LightAmbient + diffuse) + specular), base.a);
+float Attenuate(vec3 toLight, float range)
+{
+    float distanceSquared = max(dot(toLight, toLight), 1e-4);
+    float fade = clamp(1.0 - pow(distanceSquared / (range * range), 2.0), 0.0, 1.0);
+    return fade * fade / distanceSquared;
+}
+
+void main()
+{
+    vec4 base = texture(u_Texture, v_TexCoord) * vec4(SrgbToLinear(u_Color.rgb), u_Color.a);
+    vec3 normal = normalize(v_Normal);
+    vec3 toCamera = normalize(u_CameraPosition.xyz - v_Position);
+
+    vec3 color = u_DirectionalColor * base.rgb * u_DirectionalAmbient;
+    color += Shade(base.rgb, normal, toCamera, -u_DirectionalDirection, u_DirectionalColor);
+
+    for (int index = 0; index < u_PointLightCount; ++index)
+    {
+        PointLight light = u_PointLights[index];
+        vec3 toLight = light.PositionRange.xyz - v_Position;
+        float attenuation = Attenuate(toLight, light.PositionRange.w);
+        color += Shade(base.rgb, normal, toCamera, normalize(toLight), light.Color.rgb * attenuation);
+    }
+
+    for (int index = 0; index < u_SpotLightCount; ++index)
+    {
+        SpotLight light = u_SpotLights[index];
+        vec3 toLight = light.PositionRange.xyz - v_Position;
+        vec3 direction = normalize(toLight);
+        float cone = clamp((dot(-direction, light.DirectionOuter.xyz) - light.DirectionOuter.w) / (light.ColorInner.w - light.DirectionOuter.w), 0.0, 1.0);
+        float attenuation = Attenuate(toLight, light.PositionRange.w) * cone * cone;
+        color += Shade(base.rgb, normal, toCamera, direction, light.ColorInner.rgb * attenuation);
+    }
+
+    o_Color = vec4(color, base.a);
 }

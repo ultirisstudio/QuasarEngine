@@ -39,7 +39,8 @@ namespace Quasar
     /// @brief Draws the entities of a scene that have a TransformComponent and a MeshRendererComponent.
     ///
     /// The scene is drawn from any camera, such as the camera of the editor, or from its primary camera, as in the
-    /// game. It is lit by its first DirectionalLightComponent, or by a default DirectionalLight if it has none.
+    /// game. It is lit by its first DirectionalLightComponent, if it has one, and by all its PointLightComponent and
+    /// SpotLightComponent, up to the maximums of the Renderer.
     ///
     /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F and of
     /// the size of the target, cleared with SceneRendererSettings::Background. A last pass then applies the exposure

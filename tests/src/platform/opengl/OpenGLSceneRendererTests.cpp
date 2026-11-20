@@ -6,7 +6,6 @@
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/Camera.h>
-#include <quasar/renderer/Color.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Material.h>
@@ -22,12 +21,13 @@
 #include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/DirectionalLightComponent.h>
 #include <quasar/scene/components/MeshRendererComponent.h>
+#include <quasar/scene/components/PointLightComponent.h>
+#include <quasar/scene/components/SpotLightComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <doctest/doctest.h>
 
 #include <glad/gl.h>
-#include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/vec2.hpp>
@@ -47,6 +47,8 @@ using Quasar::CameraComponent;
 using Quasar::DirectionalLightComponent;
 using Quasar::Entity;
 using Quasar::MeshRendererComponent;
+using Quasar::PointLightComponent;
+using Quasar::SpotLightComponent;
 using Quasar::TransformComponent;
 
 namespace
@@ -241,7 +243,7 @@ TEST_CASE("Without a primary camera, the scene renderer draws nothing and logs o
     CHECK(std::ranges::count_if(later, [](const Quasar::LogMessage& message) { return message.Level == Quasar::LogLevel::Error; }) == 2);
 }
 
-TEST_CASE("The scene renderer lights the scene with its directional light, or with the default light")
+TEST_CASE("The scene renderer lights the scene with its directional light, and without one the scene is dark")
 {
     const TestHelpers::ScopedLog log;
     Fixture fixture;
@@ -259,9 +261,7 @@ TEST_CASE("The scene renderer lights the scene with its directional light, or wi
         return fixture.ReadColor(4, 4);
     };
 
-    const Quasar::DirectionalLight light;
-    const int expected = static_cast<int>(std::lround(Quasar::LinearToSrgb(-glm::normalize(light.Direction).z + light.Ambient) * 255.0f));
-    CHECK(IsNear(render(), {expected, expected, expected, 255}));
+    CHECK(IsNear(render(), {0, 0, 0, 255}));
 
     Entity sun = fixture.GetScene().CreateEntity("Sun");
     auto& component = sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 0.0f});
@@ -371,5 +371,46 @@ TEST_CASE("The scene framebuffer takes the size of the target, or of the window,
     std::array<std::uint8_t, 4> pixel{};
     glReadPixels(static_cast<GLint>(window.x) - 1, static_cast<GLint>(window.y) - 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
     CHECK(IsNear({pixel[0], pixel[1], pixel[2], pixel[3]}, {0, 255, 0, 255}));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The scene renderer lights the scene with its point and spot lights, at their places in the world")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    Quasar::PipelineLibrary library(fixture.GetContext());
+    REQUIRE(library.AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = library.CreateMaterial(Quasar::PipelineLibrary::BlinnPhong);
+    REQUIRE(lit != nullptr);
+    lit->SetFloat("Specular", 0.0f);
+    fixture.AddQuad(*lit);
+    fixture.AddCamera({0.0f, 0.0f, 1.0f});
+    const auto render = [&fixture]
+    {
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        return fixture.ReadColor(4, 4);
+    };
+    constexpr Color fullyLit{250, 250, 250, 255};
+
+    const Entity holder = fixture.GetScene().CreateEntity("Holder");
+    Entity lamp = fixture.GetScene().CreateEntity("Lamp");
+    lamp.Get<TransformComponent>().Position = {0.0f, 0.0f, 1.0f};
+    auto& bulb = lamp.Add<PointLightComponent>(PointLightComponent{.Intensity = 0.5f});
+    REQUIRE(lamp.SetParent(holder, false));
+    CHECK(IsNear(render(), {184, 184, 184, 255}));
+    bulb.Intensity = 1.0f;
+    CHECK(IsNear(render(), fullyLit));
+    holder.Get<TransformComponent>().Position = {0.0f, 0.0f, 20.0f};
+    CHECK(IsNear(render(), Black));
+
+    const Entity rig = fixture.GetScene().CreateEntity("Rig");
+    rig.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    Entity torch = fixture.GetScene().CreateEntity("Torch");
+    torch.Get<TransformComponent>() = {.Position = {0.0f, 0.0f, -1.0f}, .Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))};
+    torch.Add<SpotLightComponent>();
+    REQUIRE(torch.SetParent(rig, false));
+    CHECK(IsNear(render(), fullyLit));
+    rig.Get<TransformComponent>().Rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    CHECK(IsNear(render(), Black));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
