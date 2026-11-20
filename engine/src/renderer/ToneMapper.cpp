@@ -8,8 +8,8 @@
 
 namespace Quasar
 {
-    ToneMapper::ToneMapper(GraphicsContext& context, Scope<Shader> shader, Scope<Pipeline> pipeline, Scope<VertexArray> emptyVertexArray)
-        : m_Context(&context), m_Shader(std::move(shader)), m_Pipeline(std::move(pipeline)), m_EmptyVertexArray(std::move(emptyVertexArray))
+    ToneMapper::ToneMapper(Scope<FullscreenPass> pass, Scope<Shader> shader, Scope<Pipeline> pipeline)
+        : m_Pass(std::move(pass)), m_Shader(std::move(shader)), m_Pipeline(std::move(pipeline))
     {
     }
 
@@ -28,36 +28,20 @@ namespace Quasar
         {
             pipeline = context.CreatePipeline({.Shader = shader.get(), .DepthTest = false, .DepthWrite = false, .Culling = CullMode::None});
         }
-        Scope<VertexArray> emptyVertexArray = context.CreateVertexArray();
-        if (pipeline == nullptr || emptyVertexArray == nullptr)
+        Scope<FullscreenPass> pass = FullscreenPass::Create(context);
+        if (pipeline == nullptr || pass == nullptr)
         {
             QUASAR_ENGINE_ERROR("Cannot create a tone mapper: its pipeline cannot be created");
             return nullptr;
         }
-        return Scope<ToneMapper>(new ToneMapper(context, std::move(shader), std::move(pipeline), std::move(emptyVertexArray)));
+        return Scope<ToneMapper>(new ToneMapper(std::move(pass), std::move(shader), std::move(pipeline)));
     }
 
     void ToneMapper::Apply(const Framebuffer& source, Framebuffer* target, float exposure, Tonemapping tonemapping)
     {
-        if (target != nullptr)
-        {
-            target->Bind();
-        }
-        else
-        {
-            m_Context->BindWindow();
-        }
-
         m_Shader->SetFloat("u_Exposure", exposure);
         m_Shader->SetInt("u_Tonemapping", static_cast<int>(tonemapping));
-        m_Pipeline->Bind();
         source.BindColorTexture(0, 0);
-        m_Context->Draw(*m_EmptyVertexArray, 3);
-
-        if (target != nullptr)
-        {
-            target->Unbind();
-            m_Context->BindWindow();
-        }
+        m_Pass->Draw(*m_Pipeline, target);
     }
 }

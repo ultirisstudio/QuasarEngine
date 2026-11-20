@@ -43,6 +43,7 @@ target_sources(QuasarEngine
         src/renderer/Camera.cpp
         src/renderer/Color.cpp
         src/renderer/Framebuffer.cpp
+        src/renderer/FullscreenPass.cpp
         src/renderer/GraphicsContext.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
@@ -108,6 +109,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Camera.h
             include/quasar/renderer/Color.h
             include/quasar/renderer/Framebuffer.h
+            include/quasar/renderer/FullscreenPass.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Image.h

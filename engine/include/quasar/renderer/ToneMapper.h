@@ -7,10 +7,10 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Framebuffer.h>
+#include <quasar/renderer/FullscreenPass.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/Shader.h>
-#include <quasar/renderer/VertexArray.h>
 
 #include <cstdint>
 
@@ -54,11 +54,10 @@ namespace Quasar
         void Apply(const Framebuffer& source, Framebuffer* target, float exposure, Tonemapping tonemapping);
 
     private:
-        ToneMapper(GraphicsContext& context, Scope<Shader> shader, Scope<Pipeline> pipeline, Scope<VertexArray> emptyVertexArray);
+        ToneMapper(Scope<FullscreenPass> pass, Scope<Shader> shader, Scope<Pipeline> pipeline);
 
-        GraphicsContext* m_Context;
+        Scope<FullscreenPass> m_Pass;
         Scope<Shader> m_Shader;
         Scope<Pipeline> m_Pipeline;
-        Scope<VertexArray> m_EmptyVertexArray;
     };
 }
