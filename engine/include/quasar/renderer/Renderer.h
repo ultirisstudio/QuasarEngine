@@ -97,6 +97,9 @@ namespace Quasar
         /// an engine error.
         void EndScene();
 
+        /// @brief Returns the context that the renderer draws with.
+        GraphicsContext& GetContext() const { return *m_Context; }
+
     private:
         Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<UniformBuffer> light);
 

@@ -15,6 +15,7 @@
 #include <quasar/renderer/VertexArray.h>
 #include <quasar/renderer/VertexLayout.h>
 
+#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include <cstddef>
@@ -103,6 +104,10 @@ namespace Quasar
 
         /// @brief Makes the next draws go into the window, on its whole area.
         virtual void BindWindow() = 0;
+
+        /// @brief Returns the size of the drawing area of the window, in pixels, which is the size of the images drawn
+        /// into the window. See Window::GetWidth().
+        virtual glm::uvec2 GetWindowSize() const = 0;
 
         /// @brief Fills the window with a color, and its depth and stencil with a value, whatever the pipeline bound.
         virtual void ClearWindow(glm::vec4 color, float depth = 1.0f, std::uint8_t stencil = 0) = 0;
