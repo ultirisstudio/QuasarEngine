@@ -257,7 +257,7 @@ TEST_CASE("The BlinnPhong pipeline lights a surface by the angle of the light, p
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.6f, 0.8f})), Gray(0)));
 }
 
-TEST_CASE("The BlinnPhong pipeline uses the color and the intensity of the light, and the color of the material")
+TEST_CASE("The BlinnPhong pipeline uses the color and the intensity of the light, and the color of the material, both converted to linear")
 {
     const TestHelpers::ScopedLog log;
     const Fixture fixture;
@@ -267,7 +267,10 @@ TEST_CASE("The BlinnPhong pipeline uses the color and the intensity of the light
     CHECK(IsNear(fixture.Draw(*lit, {.Direction = {0.0f, 0.0f, -1.0f}, .Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 0.0f}), {128, 0, 0, 255}));
 
     lit->SetVec4("Color", {0.0f, 1.0f, 0.5f, 0.5f});
-    CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, -1.0f})), {0, 255, 128, 128}));
+    CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, -1.0f})), {0, 255, 55, 128}));
+
+    lit->SetVec4("Color", glm::vec4(1.0f));
+    CHECK(IsNear(fixture.Draw(*lit, {.Direction = {0.0f, 0.0f, -1.0f}, .Color = glm::vec3(0.5f), .Ambient = 0.0f}), Gray(55)));
 }
 
 TEST_CASE("The BlinnPhong pipeline turns the normals with the mesh, and a zero light direction goes down")

@@ -38,7 +38,12 @@ layout(binding = 0) uniform sampler2D u_Texture;
 
 layout(location = 0) out vec4 o_Color;
 
+vec3 SrgbToLinear(vec3 color)
+{
+    return mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)), greaterThan(color, vec3(0.04045)));
+}
+
 void main()
 {
-    o_Color = texture(u_Texture, v_TexCoord) * u_Color;
+    o_Color = texture(u_Texture, v_TexCoord) * vec4(SrgbToLinear(u_Color.rgb), u_Color.a);
 }

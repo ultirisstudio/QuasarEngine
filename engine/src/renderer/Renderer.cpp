@@ -1,6 +1,7 @@
 #include <quasar/renderer/Renderer.h>
 
 #include <quasar/log/Log.h>
+#include <quasar/renderer/Color.h>
 
 #include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
@@ -34,7 +35,7 @@ namespace Quasar
             const float length = glm::length(light.Direction);
             return {.Direction = length > 0.0f ? light.Direction / length : glm::vec3(0.0f, -1.0f, 0.0f),
                     .Ambient = light.Ambient,
-                    .Color = light.Color * light.Intensity};
+                    .Color = SrgbToLinear(light.Color) * light.Intensity};
         }
     }
 

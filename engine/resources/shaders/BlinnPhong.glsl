@@ -62,9 +62,14 @@ layout(binding = 0) uniform sampler2D u_Texture;
 
 layout(location = 0) out vec4 o_Color;
 
+vec3 SrgbToLinear(vec3 color)
+{
+    return mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)), greaterThan(color, vec3(0.04045)));
+}
+
 void main()
 {
-    vec4 base = texture(u_Texture, v_TexCoord) * u_Color;
+    vec4 base = texture(u_Texture, v_TexCoord) * vec4(SrgbToLinear(u_Color.rgb), u_Color.a);
     vec3 normal = normalize(v_Normal);
     vec3 toLight = -u_LightDirection;
     vec3 toCamera = normalize(u_CameraPosition.xyz - v_Position);

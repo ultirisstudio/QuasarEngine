@@ -26,7 +26,7 @@ namespace Quasar
     {
         /// The direction in which the light goes, which does not need a length of 1. A zero direction goes down.
         glm::vec3 Direction{-0.4f, -1.0f, -0.6f};
-        glm::vec3 Color{1.0f};  ///< The color of the light.
+        glm::vec3 Color{1.0f};  ///< The color of the light, in sRGB as in a color picker.
         float Intensity = 1.0f; ///< The factor of the color.
         float Ambient = 0.1f;   ///< The part of the light that reaches every surface, even the ones that face away.
     };
@@ -52,7 +52,7 @@ namespace Quasar
     /// {
     ///     vec3 u_LightDirection; // The direction in which the light goes, with a length of 1.
     ///     float u_LightAmbient;
-    ///     vec3 u_LightColor;     // The color multiplied by the intensity.
+    ///     vec3 u_LightColor;     // The linear color multiplied by the intensity.
     /// };
     /// ```
     /// A scene is drawn between BeginScene() and EndScene(), and each Submit() draws one mesh at once. The target is not

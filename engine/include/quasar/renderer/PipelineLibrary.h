@@ -43,7 +43,8 @@ namespace Quasar
     ///   `Specular` (float) and of sharpness `Shininess` (float).
     ///
     /// Their materials read the texture `Texture` in the slot 0, and start white, with a `Specular` of 0.5 and a
-    /// `Shininess` of 32.
+    /// `Shininess` of 32. `Color` is in sRGB, as in a color picker, with a linear alpha. Both write linear colors, see
+    /// Renderer.
     class PipelineLibrary
     {
     public:

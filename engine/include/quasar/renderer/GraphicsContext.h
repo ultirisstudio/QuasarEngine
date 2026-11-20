@@ -92,7 +92,8 @@ namespace Quasar
         /// @brief Creates a 2D texture from the image of a PNG, JPEG, BMP or TGA file. See Image::FromFile().
         /// @param file The file.
         /// @param settings The settings of the texture, whose size is replaced by the size of the image. Its format must
-        /// be TextureFormat::Rgba8 or TextureFormat::Srgba8.
+        /// be TextureFormat::Srgba8, the default, for an image of colors, or TextureFormat::Rgba8 for an image of
+        /// data. See TextureSpecification::Format.
         /// @return The texture, or nullptr if the file cannot be decoded or if the texture cannot be created. The reason
         /// is logged as an engine error.
         [[nodiscard]] Scope<Texture2D> LoadTexture2D(const std::filesystem::path& file, TextureSpecification settings = {});
