@@ -69,11 +69,11 @@ namespace
             m_Camera.LookAt(target, up);
         }
 
-        Color Draw(Quasar::Material& material, const Quasar::DirectionalLight& light = {}, const glm::mat4& transform = glm::mat4(1.0f)) const
+        Color Draw(Quasar::Material& material, const Quasar::SceneLights& lights = {}, const glm::mat4& transform = glm::mat4(1.0f)) const
         {
             m_Framebuffer->ClearColor(0, {0.0f, 0.0f, 0.0f, 1.0f});
             m_Framebuffer->ClearDepthStencil();
-            m_Renderer->BeginScene(m_Camera, m_Framebuffer.get(), light);
+            m_Renderer->BeginScene(m_Camera, m_Framebuffer.get(), lights);
             m_Renderer->Submit(*m_Quad, material, transform);
             m_Renderer->EndScene();
 
@@ -126,9 +126,14 @@ namespace
         return material;
     }
 
-    Quasar::DirectionalLight Light(const glm::vec3& direction, float ambient = 0.0f)
+    Quasar::SceneLights Sun(const Quasar::DirectionalLight& light)
     {
-        return {.Direction = direction, .Ambient = ambient};
+        return {.Directional = light};
+    }
+
+    Quasar::SceneLights Light(const glm::vec3& direction, float ambient = 0.0f)
+    {
+        return Sun({.Direction = direction, .Ambient = ambient});
     }
 }
 
@@ -264,13 +269,14 @@ TEST_CASE("The BlinnPhong pipeline uses the color and the intensity of the light
     REQUIRE(fixture.GetLibrary().AddDefaults());
     const Quasar::Scope<Quasar::Material> lit = CreateLit(fixture.GetLibrary());
 
-    CHECK(IsNear(fixture.Draw(*lit, {.Direction = {0.0f, 0.0f, -1.0f}, .Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 0.0f}), {128, 0, 0, 255}));
+    CHECK(
+        IsNear(fixture.Draw(*lit, Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Color = {1.0f, 0.0f, 0.0f}, .Intensity = 0.5f, .Ambient = 0.0f})), {128, 0, 0, 255}));
 
     lit->SetVec4("Color", {0.0f, 1.0f, 0.5f, 0.5f});
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, -1.0f})), {0, 255, 55, 128}));
 
     lit->SetVec4("Color", glm::vec4(1.0f));
-    CHECK(IsNear(fixture.Draw(*lit, {.Direction = {0.0f, 0.0f, -1.0f}, .Color = glm::vec3(0.5f), .Ambient = 0.0f}), Gray(55)));
+    CHECK(IsNear(fixture.Draw(*lit, Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Color = glm::vec3(0.5f), .Ambient = 0.0f})), Gray(55)));
 }
 
 TEST_CASE("The BlinnPhong pipeline turns the normals with the mesh, and a zero light direction goes down")

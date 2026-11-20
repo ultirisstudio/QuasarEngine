@@ -8,6 +8,8 @@
 #include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/DirectionalLightComponent.h>
 #include <quasar/scene/components/MeshRendererComponent.h>
+#include <quasar/scene/components/PointLightComponent.h>
+#include <quasar/scene/components/SpotLightComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <glm/vec2.hpp>
@@ -21,19 +23,41 @@ namespace Quasar
 {
     namespace
     {
-        DirectionalLight FindLight(Scene& scene)
+        glm::vec3 GetForward(const TransformComponent& world)
         {
-            auto lights = scene.GetRegistry().view<TransformComponent, DirectionalLightComponent>();
-            if (lights.begin() == lights.end())
+            return world.Rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+        }
+
+        SceneLights GatherLights(Scene& scene)
+        {
+            SceneLights lights{.Directional = std::nullopt};
+            auto directionals = scene.GetRegistry().view<DirectionalLightComponent>();
+            if (directionals.begin() != directionals.end())
             {
-                return {};
+                const Entity entity(*directionals.begin(), &scene);
+                const DirectionalLightComponent& light = entity.Get<DirectionalLightComponent>();
+                lights.Directional = DirectionalLight{
+                    .Direction = GetForward(entity.GetWorldTransform()), .Color = light.Color, .Intensity = light.Intensity, .Ambient = light.Ambient};
             }
-            const Entity entity(*lights.begin(), &scene);
-            const DirectionalLightComponent& light = entity.Get<DirectionalLightComponent>();
-            return {.Direction = entity.GetWorldTransform().Rotation * glm::vec3(0.0f, 0.0f, -1.0f),
-                    .Color = light.Color,
-                    .Intensity = light.Intensity,
-                    .Ambient = light.Ambient};
+
+            scene.ForEach<PointLightComponent>(
+                [&lights](Entity entity, const PointLightComponent& light) {
+                    lights.Points.push_back(
+                        {.Position = glm::vec3(entity.GetWorldMatrix()[3]), .Color = light.Color, .Intensity = light.Intensity, .Range = light.Range});
+                });
+            scene.ForEach<SpotLightComponent>(
+                [&lights](Entity entity, const SpotLightComponent& light)
+                {
+                    const TransformComponent world = entity.GetWorldTransform();
+                    lights.Spots.push_back({.Position = world.Position,
+                                            .Direction = GetForward(world),
+                                            .Color = light.Color,
+                                            .Intensity = light.Intensity,
+                                            .Range = light.Range,
+                                            .InnerAngle = light.InnerAngle,
+                                            .OuterAngle = light.OuterAngle});
+                });
+            return lights;
         }
     }
 
@@ -80,7 +104,7 @@ namespace Quasar
         m_Framebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
         m_Framebuffer->ClearDepthStencil();
 
-        m_Renderer->BeginScene(camera, m_Framebuffer.get(), FindLight(scene));
+        m_Renderer->BeginScene(camera, m_Framebuffer.get(), GatherLights(scene));
         scene.ForEach<TransformComponent, MeshRendererComponent>(
             [this](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
             {

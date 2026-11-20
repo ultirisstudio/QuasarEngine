@@ -6,7 +6,6 @@
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/Camera.h>
-#include <quasar/renderer/Color.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Material.h>
@@ -27,7 +26,6 @@
 #include <doctest/doctest.h>
 
 #include <glad/gl.h>
-#include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/vec2.hpp>
@@ -241,7 +239,7 @@ TEST_CASE("Without a primary camera, the scene renderer draws nothing and logs o
     CHECK(std::ranges::count_if(later, [](const Quasar::LogMessage& message) { return message.Level == Quasar::LogLevel::Error; }) == 2);
 }
 
-TEST_CASE("The scene renderer lights the scene with its directional light, or with the default light")
+TEST_CASE("The scene renderer lights the scene with its directional light, and without one the scene is dark")
 {
     const TestHelpers::ScopedLog log;
     Fixture fixture;
@@ -259,9 +257,7 @@ TEST_CASE("The scene renderer lights the scene with its directional light, or wi
         return fixture.ReadColor(4, 4);
     };
 
-    const Quasar::DirectionalLight light;
-    const int expected = static_cast<int>(std::lround(Quasar::LinearToSrgb(-glm::normalize(light.Direction).z + light.Ambient) * 255.0f));
-    CHECK(IsNear(render(), {expected, expected, expected, 255}));
+    CHECK(IsNear(render(), {0, 0, 0, 255}));
 
     Entity sun = fixture.GetScene().CreateEntity("Sun");
     auto& component = sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 0.0f});
