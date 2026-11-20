@@ -3,7 +3,6 @@
 #include <quasar/log/Log.h>
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -51,8 +50,8 @@ namespace Quasar
         }
     }
 
-    Material::Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Scope<Texture2D> white)
-        : m_Specification(specification), m_UniformBuffer(std::move(uniforms)), m_Values(specification.Uniforms.GetSize()), m_White(std::move(white)),
+    Material::Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Texture2D* white)
+        : m_Specification(specification), m_UniformBuffer(std::move(uniforms)), m_Values(specification.Uniforms.GetSize()), m_White(white),
           m_Textures(specification.Textures.size(), nullptr)
     {
     }
@@ -89,17 +88,16 @@ namespace Quasar
             }
         }
 
-        Scope<Texture2D> white;
+        Texture2D* white = nullptr;
         if (!specification.Textures.empty())
         {
-            constexpr std::array<std::uint8_t, 4> pixel{255, 255, 255, 255};
-            white = context.CreateTexture2D({.Width = 1, .Height = 1, .Mipmaps = false}, std::as_bytes(std::span(pixel)));
+            white = context.GetWhiteTexture();
             if (white == nullptr)
             {
                 return nullptr;
             }
         }
-        return Scope<Material>(new Material(specification, std::move(uniforms), std::move(white)));
+        return Scope<Material>(new Material(specification, std::move(uniforms), white));
     }
 
     void Material::SetFloat(std::string_view name, float value)

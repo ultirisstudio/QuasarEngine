@@ -33,11 +33,6 @@ namespace Quasar
 {
     namespace
     {
-        glm::vec3 GetForward(const TransformComponent& world)
-        {
-            return world.Rotation * glm::vec3(0.0f, 0.0f, -1.0f);
-        }
-
         SceneLights GatherLights(Scene& scene, bool& castShadows)
         {
             SceneLights lights{.Directional = std::nullopt};
@@ -49,7 +44,7 @@ namespace Quasar
                 const DirectionalLightComponent& light = entity.Get<DirectionalLightComponent>();
                 castShadows = light.CastShadows;
                 lights.Directional = DirectionalLight{
-                    .Direction = GetForward(entity.GetWorldTransform()), .Color = light.Color, .Intensity = light.Intensity, .Ambient = light.Ambient};
+                    .Direction = entity.GetWorldTransform().GetForward(), .Color = light.Color, .Intensity = light.Intensity, .Ambient = light.Ambient};
             }
 
             scene.ForEach<PointLightComponent>(
@@ -62,7 +57,7 @@ namespace Quasar
                 {
                     const TransformComponent world = entity.GetWorldTransform();
                     lights.Spots.push_back({.Position = world.Position,
-                                            .Direction = GetForward(world),
+                                            .Direction = world.GetForward(),
                                             .Color = light.Color,
                                             .Intensity = light.Intensity,
                                             .Range = light.Range,

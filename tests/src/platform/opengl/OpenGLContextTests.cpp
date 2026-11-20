@@ -9,6 +9,8 @@
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/platform/opengl/OpenGLContext.h>
 #include <quasar/renderer/GraphicsAPI.h>
+#include <quasar/renderer/GraphicsContext.h>
+#include <quasar/renderer/Texture.h>
 
 #include <doctest/doctest.h>
 
@@ -17,6 +19,7 @@
 #include <glm/vec2.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <utility>
 
@@ -52,6 +55,30 @@ TEST_CASE("A window gets a current OpenGL 4.5 core context")
     GLfloat anisotropy = 0.0f;
     glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &anisotropy);
     CHECK(context->GetMaxAnisotropy() == std::max(anisotropy, 1.0f));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+}
+
+TEST_CASE("A context makes its white texture once, with one white pixel")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
+    REQUIRE(window != nullptr);
+    Quasar::GraphicsContext& context = *window->GetGraphicsContext();
+
+    Quasar::Texture2D* white = context.GetWhiteTexture();
+
+    REQUIRE(white != nullptr);
+    CHECK(context.GetWhiteTexture() == white);
+    CHECK(white->GetSpecification().Width == 1);
+    CHECK(white->GetSpecification().Height == 1);
+    white->Bind(3);
+    glActiveTexture(GL_TEXTURE3);
+    GLint texture = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
+    std::array<std::uint8_t, 4> pixel{};
+    glGetTextureImage(static_cast<GLuint>(texture), 0, GL_RGBA, GL_UNSIGNED_BYTE, static_cast<GLsizei>(pixel.size()), pixel.data());
+    CHECK(pixel == std::array<std::uint8_t, 4>{255, 255, 255, 255});
+    CHECK(glGetError() == GL_NO_ERROR);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 

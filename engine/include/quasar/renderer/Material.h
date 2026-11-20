@@ -52,7 +52,8 @@ namespace Quasar
 
     /// @brief The values and the textures of a material, with the pipeline that draws with them.
     ///
-    /// The values start at zero, and a texture that is not set is white. The Set functions only change the copy of the
+    /// The values start at zero, and a texture that is not set is the white texture of the context, see
+    /// GraphicsContext::GetWhiteTexture(). The Set functions only change the copy of the
     /// material, and Bind() sends the values that changed. A name that the description does not have, or a value of
     /// another type than the member, is refused with one engine warning per name.
     class Material
@@ -89,7 +90,7 @@ namespace Quasar
         const MaterialSpecification& GetSpecification() const { return m_Specification; }
 
     private:
-        Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Scope<Texture2D> white);
+        Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Texture2D* white);
 
         void SetValue(std::string_view name, UniformType type, std::span<const std::byte> value);
         void Report(std::string_view name, std::string_view problem);
@@ -98,7 +99,7 @@ namespace Quasar
         Scope<UniformBuffer> m_UniformBuffer;
         std::vector<std::byte> m_Values;
         bool m_ValuesChanged = false;
-        Scope<Texture2D> m_White;
+        Texture2D* m_White = nullptr;
         std::vector<Texture2D*> m_Textures;
         std::vector<std::string> m_ReportedNames;
     };

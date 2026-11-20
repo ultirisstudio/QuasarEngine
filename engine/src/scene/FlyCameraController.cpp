@@ -15,9 +15,8 @@ namespace Quasar
         transform.Rotation =
             glm::angleAxis(glm::radians(m_Yaw), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(glm::radians(m_Pitch), glm::vec3(1.0f, 0.0f, 0.0f));
 
-        const glm::vec3 right = transform.Rotation * glm::vec3(1.0f, 0.0f, 0.0f);
-        const glm::vec3 forward = transform.Rotation * glm::vec3(0.0f, 0.0f, -1.0f);
-        const glm::vec3 direction = (right * input.Move.x) + (glm::vec3(0.0f, 1.0f, 0.0f) * input.Move.y) + (forward * input.Move.z);
+        const glm::vec3 direction =
+            (transform.GetRight() * input.Move.x) + (glm::vec3(0.0f, 1.0f, 0.0f) * input.Move.y) + (transform.GetForward() * input.Move.z);
         const float speed = input.Fast ? m_Settings.FastSpeed : m_Settings.Speed;
         transform.Position += direction / std::max(glm::length(direction), 1.0f) * speed * timestep.GetSeconds();
     }

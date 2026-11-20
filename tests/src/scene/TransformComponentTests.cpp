@@ -39,6 +39,20 @@ TEST_CASE("A transform scales, then rotates, then moves a point")
     CHECK(IsNear(Apply(TransformComponent{}, {1.0f, 2.0f, 3.0f}), {1.0f, 2.0f, 3.0f}));
 }
 
+TEST_CASE("The forward, right and up directions of a transform are -Z, +X and +Y turned by its rotation, whatever its scale")
+{
+    TransformComponent transform;
+    CHECK(IsNear(transform.GetForward(), {0.0f, 0.0f, -1.0f}));
+    CHECK(IsNear(transform.GetRight(), {1.0f, 0.0f, 0.0f}));
+    CHECK(IsNear(transform.GetUp(), {0.0f, 1.0f, 0.0f}));
+
+    transform.Rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    transform.Scale = {2.0f, 3.0f, 4.0f};
+    CHECK(IsNear(transform.GetForward(), {0.0f, 1.0f, 0.0f}));
+    CHECK(IsNear(transform.GetRight(), {0.0f, 0.0f, -1.0f}));
+    CHECK(IsNear(transform.GetUp(), {1.0f, 0.0f, 0.0f}));
+}
+
 TEST_CASE("The rotation of a transform can be set and read as angles in radians")
 {
     TransformComponent transform;

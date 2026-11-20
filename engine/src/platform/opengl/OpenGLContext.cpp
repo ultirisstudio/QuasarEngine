@@ -84,6 +84,8 @@ namespace Quasar
 
     OpenGLContext::~OpenGLContext()
     {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        ReleaseResources();
         SDL_GL_DestroyContext(m_Context);
     }
 
