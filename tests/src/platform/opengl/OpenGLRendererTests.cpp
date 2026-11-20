@@ -288,6 +288,56 @@ TEST_CASE("The shaders read the camera and the object from the blocks of the ren
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
+TEST_CASE("Inside a scene, the renderer binds a pipeline or a material only when it changes, and each scene binds them again")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene;
+    const Quasar::Scope<Quasar::Pipeline> culled = scene.GetContext().CreatePipeline(
+        {.Shader = scene.GetRed().GetSpecification().Pipeline->GetSpecification().Shader, .Culling = Quasar::CullMode::Front});
+    REQUIRE(culled != nullptr);
+    const glm::mat4 left = glm::translate(glm::mat4(1.0f), {-0.5f, 0.0f, 0.0f});
+    const glm::mat4 right = glm::translate(glm::mat4(1.0f), {0.5f, 0.0f, 0.0f});
+    Quasar::Renderer& renderer = scene.GetRenderer();
+
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    scene.GetBlue().BindResources();
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(1, 3), RedPixel));
+    CHECK(IsNear(scene.ReadColor(6, 3), BluePixel));
+
+    scene.Clear();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    scene.GetBlue().BindResources();
+    scene.GetRed().SetVec4("Color", {1.0f, 0.0f, 0.0f, 1.0f});
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(6, 3), RedPixel));
+
+    scene.Clear();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    culled->Bind();
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(6, 3), BlackPixel));
+
+    scene.Clear();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    renderer.EndScene();
+    culled->Bind();
+    scene.GetBlue().BindResources();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(1, 3), RedPixel));
+    CHECK(IsNear(scene.ReadColor(6, 3), RedPixel));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
 TEST_CASE("The renderer refuses draws outside of a scene and scenes out of order")
 {
     const TestHelpers::ScopedLog log;

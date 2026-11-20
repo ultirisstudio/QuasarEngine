@@ -250,6 +250,53 @@ TEST_CASE("The values of a material reach its shader at the next Bind")
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
+TEST_CASE("BindResources sends the values of a material and binds its textures, but not its pipeline")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene(Quasar::FramebufferFormat::RedInteger);
+    const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
+    const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
+    const Quasar::Scope<Quasar::Material> material = scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 4, .Uniforms = GetValuesLayout()});
+    material->SetInt("d", 4);
+    glUseProgram(0);
+
+    material->BindResources();
+    GLint program = -1;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+    CHECK(program == 0);
+
+    pipeline->Bind();
+    scene.DrawTriangle();
+    CHECK(scene.ReadValue() == 4000);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("A material has changed until it is bound, and again when a value or a texture is set")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene(Quasar::FramebufferFormat::RedInteger);
+    const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
+    const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
+    const Quasar::Scope<Quasar::Material> material =
+        scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 4, .Uniforms = GetValuesLayout(), .Textures = {{.Name = "Albedo", .Slot = 0}}});
+
+    CHECK(material->HasChanged());
+    material->Bind();
+    CHECK_FALSE(material->HasChanged());
+    material->SetFloat("a", 1.0f);
+    CHECK(material->HasChanged());
+    material->BindResources();
+    CHECK_FALSE(material->HasChanged());
+    material->SetTexture("Albedo", nullptr);
+    CHECK(material->HasChanged());
+    material->Bind();
+
+    material->SetFloat("Missing", 1.0f);
+    material->SetInt("a", 1);
+    material->SetTexture("Missing", nullptr);
+    CHECK_FALSE(material->HasChanged());
+}
+
 TEST_CASE("Materials that share a description keep their own values")
 {
     const TestHelpers::ScopedLog log;

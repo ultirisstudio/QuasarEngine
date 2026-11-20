@@ -68,7 +68,10 @@ namespace Quasar
     /// logged once until the scene has few enough lights again.
     ///
     /// A scene is drawn between BeginScene() and EndScene(), and each Submit() draws one mesh at once. The target is not
-    /// cleared, so that several scenes can be drawn into it.
+    /// cleared, so that several scenes can be drawn into it. BeginScene() binds the blocks of the renderer, and each
+    /// Submit() binds a pipeline, or the values and the textures of a material, only when they differ from the previous
+    /// draw of the scene. So between BeginScene() and EndScene(), the pipelines and the materials submitted must stay
+    /// alive, and nothing else should bind pipelines, uniform blocks or textures.
     ///
     /// The shaders compute and write linear colors, which can go above 1, for example into a framebuffer of format
     /// FramebufferFormat::Rgba16F. The SceneRenderer turns them into the colors of the screen at the end.
@@ -121,13 +124,16 @@ namespace Quasar
     private:
         Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<LightsBuffer> lights);
 
-        void Draw(const Mesh& mesh);
+        void BindPipeline(Pipeline& pipeline);
+        void Draw(const Mesh& mesh, const glm::mat4& transform);
 
         GraphicsContext* m_Context;
         Scope<UniformBuffer> m_CameraBuffer;
         Scope<UniformBuffer> m_ObjectBuffer;
         Scope<LightsBuffer> m_LightsBuffer;
         Framebuffer* m_Target = nullptr;
+        const Pipeline* m_BoundPipeline = nullptr;
+        const Material* m_BoundMaterial = nullptr;
         bool m_InScene = false;
     };
 }

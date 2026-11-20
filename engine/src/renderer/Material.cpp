@@ -140,11 +140,17 @@ namespace Quasar
             return;
         }
         m_Textures[static_cast<std::size_t>(found - textures.begin())] = texture;
+        m_Changed = true;
     }
 
     void Material::Bind()
     {
         m_Specification.Pipeline->Bind();
+        BindResources();
+    }
+
+    void Material::BindResources()
+    {
         if (m_UniformBuffer != nullptr)
         {
             if (m_ValuesChanged)
@@ -159,6 +165,7 @@ namespace Quasar
             Texture2D& texture = m_Textures[index] != nullptr ? *m_Textures[index] : *m_White;
             texture.Bind(m_Specification.Textures[index].Slot);
         }
+        m_Changed = false;
     }
 
     void Material::SetValue(std::string_view name, UniformType type, std::span<const std::byte> value)
@@ -177,6 +184,7 @@ namespace Quasar
         }
         std::ranges::copy(value, std::next(m_Values.begin(), static_cast<std::ptrdiff_t>(layout.GetOffset(*member))));
         m_ValuesChanged = true;
+        m_Changed = true;
     }
 
     void Material::Report(std::string_view name, std::string_view problem)

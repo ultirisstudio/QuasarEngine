@@ -57,6 +57,11 @@ namespace Quasar
                                        .Projection = camera.GetProjection(),
                                        .Position = glm::vec4(camera.GetPosition(), 1.0f)});
         m_LightsBuffer->Set(lights);
+        m_CameraBuffer->Bind();
+        m_ObjectBuffer->Bind();
+        m_LightsBuffer->Bind();
+        m_BoundPipeline = nullptr;
+        m_BoundMaterial = nullptr;
         if (lights.Shadow.Map != nullptr)
         {
             lights.Shadow.Map->BindDepthTexture(ShaderBindings::ShadowMap);
@@ -78,9 +83,13 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
             return;
         }
-        m_ObjectBuffer->Set(transform);
-        material.Bind();
-        Draw(mesh);
+        BindPipeline(*material.GetSpecification().Pipeline);
+        if (&material != m_BoundMaterial || material.HasChanged())
+        {
+            material.BindResources();
+            m_BoundMaterial = &material;
+        }
+        Draw(mesh, transform);
     }
 
     void Renderer::Submit(const Mesh& mesh, Pipeline& pipeline, const glm::mat4& transform)
@@ -90,16 +99,22 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
             return;
         }
-        m_ObjectBuffer->Set(transform);
-        pipeline.Bind();
-        Draw(mesh);
+        BindPipeline(pipeline);
+        Draw(mesh, transform);
     }
 
-    void Renderer::Draw(const Mesh& mesh)
+    void Renderer::BindPipeline(Pipeline& pipeline)
     {
-        m_CameraBuffer->Bind();
-        m_ObjectBuffer->Bind();
-        m_LightsBuffer->Bind();
+        if (&pipeline != m_BoundPipeline)
+        {
+            pipeline.Bind();
+            m_BoundPipeline = &pipeline;
+        }
+    }
+
+    void Renderer::Draw(const Mesh& mesh, const glm::mat4& transform)
+    {
+        m_ObjectBuffer->Set(transform);
         m_Context->DrawIndexed(mesh.GetVertexArray());
     }
 

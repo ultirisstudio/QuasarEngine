@@ -86,6 +86,14 @@ namespace Quasar
         /// @brief Makes the next draws use the pipeline, the values and the textures of the material.
         void Bind();
 
+        /// @brief Makes the next draws use the values and the textures of the material, without binding its pipeline,
+        /// for example when the pipeline is already bound.
+        void BindResources();
+
+        /// @brief Returns whether a value or a texture was set since the last Bind() or BindResources(). A new material
+        /// counts as changed.
+        bool HasChanged() const { return m_Changed; }
+
         /// @brief Returns the description of the material.
         const MaterialSpecification& GetSpecification() const { return m_Specification; }
 
@@ -99,6 +107,7 @@ namespace Quasar
         Scope<UniformBuffer> m_UniformBuffer;
         std::vector<std::byte> m_Values;
         bool m_ValuesChanged = false;
+        bool m_Changed = true;
         Texture2D* m_White = nullptr;
         std::vector<Texture2D*> m_Textures;
         std::vector<std::string> m_ReportedNames;

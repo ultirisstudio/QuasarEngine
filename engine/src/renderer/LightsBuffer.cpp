@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -123,7 +124,15 @@ namespace Quasar
 
     void LightsBuffer::Set(const SceneLights& lights)
     {
-        m_Buffer->Set(ToLightsData(lights));
+        const LightsData data = ToLightsData(lights);
+        const std::span<const std::byte> bytes = std::as_bytes(std::span<const LightsData, 1>(&data, 1));
+        const auto pointCount = static_cast<std::size_t>(data.PointLightCount);
+        const auto spotCount = static_cast<std::size_t>(data.SpotLightCount);
+        m_Buffer->SetData(bytes.first(offsetof(LightsData, PointLights) + (pointCount * sizeof(PointLightData))));
+        if (spotCount > 0)
+        {
+            m_Buffer->SetData(bytes.subspan(offsetof(LightsData, SpotLights), spotCount * sizeof(SpotLightData)), offsetof(LightsData, SpotLights));
+        }
 
         const bool tooMany = lights.Points.size() > MaxPointLights || lights.Spots.size() > MaxSpotLights;
         if (tooMany && !m_ReportedTooManyLights)

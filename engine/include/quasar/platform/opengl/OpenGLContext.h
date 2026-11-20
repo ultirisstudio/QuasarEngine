@@ -96,10 +96,12 @@ namespace Quasar
         /// @brief Makes the context current, then fills the window. See GraphicsContext::ClearWindow().
         void ClearWindow(glm::vec4 color, float depth, std::uint8_t stencil) override;
 
-        /// @brief Makes the context current, then draws triangles. See GraphicsContext::Draw().
+        /// @brief Draws triangles with the current OpenGL context, which the functions that create objects, BindWindow()
+        /// and ClearWindow() make this one. See GraphicsContext::Draw().
         void Draw(const VertexArray& vertexArray, std::uint32_t vertexCount) override;
 
-        /// @brief Makes the context current, then draws indexed triangles. See GraphicsContext::DrawIndexed().
+        /// @brief Draws indexed triangles with the current OpenGL context, as Draw() does. See
+        /// GraphicsContext::DrawIndexed().
         void DrawIndexed(const VertexArray& vertexArray) override;
 
         /// @brief Returns the SDL OpenGL context, for the code that needs to call SDL or OpenGL directly.
