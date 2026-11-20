@@ -26,6 +26,7 @@
 #include <spdlog/fmt/fmt.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <utility>
 
@@ -34,6 +35,7 @@ namespace Quasar::Sandbox
     namespace
     {
         constexpr glm::vec4 White{1.0f};
+        constexpr glm::vec3 SkyColor{0.45f, 0.62f, 0.85f};
         constexpr float GroundSize = 30.0f;
         constexpr float GroundTiles = 15.0f;
         constexpr float StickLookSpeed = 1500.0f;
@@ -66,6 +68,11 @@ namespace Quasar::Sandbox
             QUASAR_ERROR("The sandbox scene cannot be created");
         }
         m_Scene.SetViewportSize(window.GetWidth(), window.GetHeight());
+
+        if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
+        {
+            renderer->SetSettings({.Background = SkyColor});
+        }
     }
 
     void SandboxLayer::OnDetach()
@@ -138,6 +145,18 @@ namespace Quasar::Sandbox
             if (yawChanged || pitchChanged)
             {
                 UpdateSun();
+            }
+
+            if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
+            {
+                ImGui::SeparatorText("Image");
+                SceneRendererSettings settings = renderer->GetSettings();
+                ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f, "%.2f");
+                constexpr std::array<const char*, 3> tonemaps{"None", "Reinhard", "ACES"};
+                int tonemap = static_cast<int>(settings.Tonemap);
+                ImGui::Combo("Tonemapping", &tonemap, tonemaps.data(), static_cast<int>(tonemaps.size()));
+                settings.Tonemap = static_cast<Tonemapping>(tonemap);
+                renderer->SetSettings(settings);
             }
 
             ImGui::SeparatorText("Controls");
