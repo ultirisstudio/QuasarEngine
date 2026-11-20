@@ -61,10 +61,24 @@ namespace Quasar
         float OuterAngle = glm::radians(30.0f); ///< The angle where the light ends, in radians, below 180 degrees.
     };
 
-    /// @brief The lights of a scene: at most one directional light, and point lights and spot lights.
+    /// @brief The shadows of the directional light: a map of the depth of the scene seen from the light, which the
+    /// shaders compare with the depth of each surface.
+    struct DirectionalShadow
+    {
+        /// The framebuffer of the map, with a depth attachment of format FramebufferFormat::Depth32F, or nullptr for no
+        /// shadows. It must stay alive until Renderer::EndScene().
+        const Framebuffer* Map = nullptr;
+
+        glm::mat4 ViewProjection{1.0f}; ///< The matrix of the camera of the light, which projects the world onto the map.
+        float DepthBias = 0.0f;         ///< The depth, from 0 to 1 in the map, removed from each surface before the test.
+        float NormalBias = 0.0f;        ///< The distance along its normal by which each surface is moved before the test.
+    };
+
+    /// @brief The lights of a scene: at most one directional light, with its shadows, and point lights and spot lights.
     struct SceneLights
     {
         std::optional<DirectionalLight> Directional = DirectionalLight{}; ///< The directional light, if the scene has one.
+        DirectionalShadow Shadow{};                                       ///< The shadows of the directional light.
         std::vector<PointLight> Points{};                                 ///< The point lights.
         std::vector<SpotLight> Spots{};                                   ///< The spot lights.
     };
@@ -104,11 +118,14 @@ namespace Quasar
     ///     vec3 u_DirectionalColor;     // The linear color multiplied by the intensity, black without a directional light.
     ///     int u_PointLightCount;
     ///     int u_SpotLightCount;
+    ///     mat4 u_ShadowViewProjection; // DirectionalShadow::ViewProjection.
+    ///     vec4 u_Shadow;               // 1 with shadows, the depth bias, the normal bias and 1 / the size of the map.
     ///     PointLight u_PointLights[32];
     ///     SpotLight u_SpotLights[32];
     /// };
     /// ```
-    /// A scene uses at most MaxPointLights point lights and MaxSpotLights spot lights. The next ones are not used, and an
+    /// The shadow map is read from the texture slot ShadowMapSlot, with `layout(binding = 15) uniform sampler2DShadow
+    /// u_ShadowMap;`. A scene uses at most MaxPointLights point lights and MaxSpotLights spot lights. The next ones are not used, and an
     /// engine warning is logged once until the scene has few enough lights again.
     /// A scene is drawn between BeginScene() and EndScene(), and each Submit() draws one mesh at once. The target is not
     /// cleared, so that several scenes can be drawn into it.
@@ -118,11 +135,12 @@ namespace Quasar
     class Renderer
     {
     public:
-        static constexpr std::uint32_t CameraBinding = 0; ///< The binding of the `Camera` block.
-        static constexpr std::uint32_t ObjectBinding = 2; ///< The binding of the `Object` block.
-        static constexpr std::uint32_t LightBinding = 3;  ///< The binding of the `Lights` block.
-        static constexpr std::size_t MaxPointLights = 32; ///< The size of the `u_PointLights` array of the shaders.
-        static constexpr std::size_t MaxSpotLights = 32;  ///< The size of the `u_SpotLights` array of the shaders.
+        static constexpr std::uint32_t CameraBinding = 0;  ///< The binding of the `Camera` block.
+        static constexpr std::uint32_t ObjectBinding = 2;  ///< The binding of the `Object` block.
+        static constexpr std::uint32_t LightBinding = 3;   ///< The binding of the `Lights` block.
+        static constexpr std::size_t MaxPointLights = 32;  ///< The size of the `u_PointLights` array of the shaders.
+        static constexpr std::size_t MaxSpotLights = 32;   ///< The size of the `u_SpotLights` array of the shaders.
+        static constexpr std::uint32_t ShadowMapSlot = 15; ///< The texture slot of the `u_ShadowMap` of the shaders.
 
         /// @brief Creates a renderer that draws with a context.
         /// @return The renderer, or nullptr if the context cannot create its uniform buffers. The reason is logged as
@@ -146,12 +164,20 @@ namespace Quasar
 
         /// @brief Draws a mesh with a material.
         /// @param mesh The mesh.
-        /// @param material The material, which must not use the bindings of the renderer.
+        /// @param material The material, which must not use the bindings nor the texture slot of the renderer.
         /// @param transform The matrix that places the mesh in the world.
         ///
-        /// A mesh submitted outside of a scene, or with a material on a binding of the renderer, is not drawn and logs
-        /// an engine error.
+        /// A mesh submitted outside of a scene, or with a material on a binding or the texture slot of the renderer, is
+        /// not drawn and logs an engine error.
         void Submit(const Mesh& mesh, Material& material, const glm::mat4& transform);
+
+        /// @brief Draws a mesh with a pipeline and no material, for example to draw only the depth of the scene.
+        /// @param mesh The mesh.
+        /// @param pipeline The pipeline, whose shader reads only the blocks of the renderer.
+        /// @param transform The matrix that places the mesh in the world.
+        ///
+        /// A mesh submitted outside of a scene is not drawn and logs an engine error.
+        void Submit(const Mesh& mesh, Pipeline& pipeline, const glm::mat4& transform);
 
         /// @brief Ends the scene, and makes the next draws go into the window. Ending without a scene is refused with
         /// an engine error.
@@ -162,6 +188,8 @@ namespace Quasar
 
     private:
         Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<UniformBuffer> light);
+
+        void Draw(const Mesh& mesh);
 
         GraphicsContext* m_Context;
         Scope<UniformBuffer> m_CameraBuffer;

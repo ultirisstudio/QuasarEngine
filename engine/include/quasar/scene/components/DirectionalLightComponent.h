@@ -16,8 +16,9 @@ namespace Quasar
     /// one has no directional light and no ambient light. See DirectionalLight.
     struct DirectionalLightComponent
     {
-        glm::vec3 Color{1.0f};  ///< The color of the light, in sRGB as in a color picker.
-        float Intensity = 1.0f; ///< The factor of the color.
-        float Ambient = 0.1f;   ///< The part of the light that reaches every surface, even the ones that face away.
+        glm::vec3 Color{1.0f};   ///< The color of the light, in sRGB as in a color picker.
+        float Intensity = 1.0f;  ///< The factor of the color.
+        float Ambient = 0.1f;    ///< The part of the light that reaches every surface, even the ones that face away.
+        bool CastShadows = true; ///< Whether the meshes cast shadows from this light. See ShadowSettings.
     };
 }

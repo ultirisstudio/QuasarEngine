@@ -49,11 +49,13 @@ namespace Quasar
             std::int32_t PointLightCount = 0;
             std::int32_t SpotLightCount = 0;
             std::array<std::int32_t, 3> Padding{};
+            glm::mat4 ShadowViewProjection{1.0f};
+            glm::vec4 Shadow{0.0f};
             std::array<PointLightData, Renderer::MaxPointLights> PointLights{};
             std::array<SpotLightData, Renderer::MaxSpotLights> SpotLights{};
         };
 
-        static_assert(sizeof(LightsData) == 48 + (32 * Renderer::MaxPointLights) + (48 * Renderer::MaxSpotLights), "The Lights block follows std140");
+        static_assert(sizeof(LightsData) == 128 + (32 * Renderer::MaxPointLights) + (48 * Renderer::MaxSpotLights), "The Lights block follows std140");
 
         glm::vec3 Normalize(const glm::vec3& direction, const glm::vec3& fallback)
         {
@@ -107,6 +109,12 @@ namespace Quasar
         {
             LightsData data;
             SetDirectional(data, lights.Directional);
+            if (lights.Shadow.Map != nullptr)
+            {
+                data.ShadowViewProjection = lights.Shadow.ViewProjection;
+                data.Shadow = {1.0f, lights.Shadow.DepthBias, lights.Shadow.NormalBias,
+                               1.0f / static_cast<float>(std::max(lights.Shadow.Map->GetSpecification().Width, 1U))};
+            }
             SetPoints(data, lights.Points);
             SetSpots(data, lights.Spots);
             return data;
@@ -145,6 +153,10 @@ namespace Quasar
                                        .Projection = camera.GetProjection(),
                                        .Position = glm::vec4(camera.GetPosition(), 1.0f)});
         m_LightBuffer->Set(ToLightsData(lights));
+        if (lights.Shadow.Map != nullptr)
+        {
+            lights.Shadow.Map->BindDepthTexture(ShadowMapSlot);
+        }
         const bool tooMany = lights.Points.size() > MaxPointLights || lights.Spots.size() > MaxSpotLights;
         if (tooMany && !m_ReportedTooManyLights)
         {
@@ -169,19 +181,47 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
             return;
         }
-        const std::uint32_t binding = material.GetSpecification().UniformBinding;
-        if (!material.GetSpecification().Uniforms.GetMembers().empty() && (binding == CameraBinding || binding == ObjectBinding || binding == LightBinding))
+        const MaterialSpecification& specification = material.GetSpecification();
+        const std::uint32_t binding = specification.UniformBinding;
+        const bool onBinding =
+            !specification.Uniforms.GetMembers().empty() && (binding == CameraBinding || binding == ObjectBinding || binding == LightBinding);
+        const bool onSlot = std::ranges::any_of(specification.Textures, [](const MaterialTexture& texture) { return texture.Slot == ShadowMapSlot; });
+        if (onBinding || onSlot)
         {
             if (std::ranges::find(m_ReportedMaterials, &material) == m_ReportedMaterials.end())
             {
                 m_ReportedMaterials.push_back(&material);
-                QUASAR_ENGINE_ERROR("Cannot draw with a material on the binding {}, which the renderer uses", binding);
+                if (onBinding)
+                {
+                    QUASAR_ENGINE_ERROR("Cannot draw with a material on the binding {}, which the renderer uses", binding);
+                }
+                else
+                {
+                    QUASAR_ENGINE_ERROR("Cannot draw with a material that reads a texture from the slot {}, which the renderer uses", ShadowMapSlot);
+                }
             }
             return;
         }
 
         m_ObjectBuffer->Set(transform);
         material.Bind();
+        Draw(mesh);
+    }
+
+    void Renderer::Submit(const Mesh& mesh, Pipeline& pipeline, const glm::mat4& transform)
+    {
+        if (!m_InScene)
+        {
+            QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
+            return;
+        }
+        m_ObjectBuffer->Set(transform);
+        pipeline.Bind();
+        Draw(mesh);
+    }
+
+    void Renderer::Draw(const Mesh& mesh)
+    {
         m_CameraBuffer->Bind();
         m_ObjectBuffer->Bind();
         m_LightBuffer->Bind();
