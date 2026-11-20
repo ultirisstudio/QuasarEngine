@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -27,6 +28,8 @@ namespace Quasar
                     return "RedInteger";
                 case FramebufferFormat::Depth24Stencil8:
                     return "Depth24Stencil8";
+                case FramebufferFormat::Depth32F:
+                    return "Depth32F";
             }
             return "unknown";
         }
@@ -43,6 +46,8 @@ namespace Quasar
                     return GL_R32I;
                 case FramebufferFormat::Depth24Stencil8:
                     return GL_DEPTH24_STENCIL8;
+                case FramebufferFormat::Depth32F:
+                    return GL_DEPTH_COMPONENT32F;
             }
             return GL_RGBA8;
         }
@@ -132,9 +137,9 @@ namespace Quasar
     {
         for (const FramebufferFormat format : specification.Attachments)
         {
-            if (format == FramebufferFormat::Depth24Stencil8)
+            if (format == FramebufferFormat::Depth24Stencil8 || format == FramebufferFormat::Depth32F)
             {
-                m_HasDepthStencil = true;
+                m_DepthFormat = format;
             }
             else
             {
@@ -215,7 +220,7 @@ namespace Quasar
 
     void OpenGLFramebuffer::ClearDepthStencil(float depth, std::uint8_t stencil)
     {
-        if (!m_HasDepthStencil)
+        if (!m_DepthFormat)
         {
             QUASAR_ENGINE_ERROR("Cannot fill the depth of a framebuffer that has no depth attachment");
             return;
@@ -245,6 +250,16 @@ namespace Quasar
         {
             glBindTextureUnit(slot, GetReadableTexture(*index));
         }
+    }
+
+    void OpenGLFramebuffer::BindDepthTexture(std::uint32_t slot) const
+    {
+        if (m_DepthFormat != FramebufferFormat::Depth32F)
+        {
+            QUASAR_ENGINE_ERROR("Cannot bind the depth of a framebuffer that has no Depth32F attachment");
+            return;
+        }
+        glBindTextureUnit(slot, m_DepthTexture);
     }
 
     ImTextureID OpenGLFramebuffer::GetImGuiTexture(std::uint32_t attachment) const
@@ -279,11 +294,25 @@ namespace Quasar
             glNamedFramebufferDrawBuffers(m_Framebuffer, static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
         }
 
-        if (m_HasDepthStencil)
+        if (m_DepthFormat == FramebufferFormat::Depth24Stencil8)
         {
             glCreateRenderbuffers(1, &m_DepthStencil);
             glNamedRenderbufferStorageMultisample(m_DepthStencil, samples > 1 ? samples : 0, GL_DEPTH24_STENCIL8, width, height);
             glNamedFramebufferRenderbuffer(m_Framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_DepthStencil);
+        }
+        else if (m_DepthFormat == FramebufferFormat::Depth32F)
+        {
+            constexpr std::array<GLfloat, 4> outside{1.0f, 1.0f, 1.0f, 1.0f};
+            glCreateTextures(GL_TEXTURE_2D, 1, &m_DepthTexture);
+            glTextureStorage2D(m_DepthTexture, 1, GL_DEPTH_COMPONENT32F, width, height);
+            glTextureParameteri(m_DepthTexture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTextureParameteri(m_DepthTexture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTextureParameteri(m_DepthTexture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTextureParameteri(m_DepthTexture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            glTextureParameterfv(m_DepthTexture, GL_TEXTURE_BORDER_COLOR, outside.data());
+            glTextureParameteri(m_DepthTexture, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+            glTextureParameteri(m_DepthTexture, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+            glNamedFramebufferTexture(m_Framebuffer, GL_DEPTH_ATTACHMENT, m_DepthTexture, 0);
         }
 
         if (IsMultisampled() && !m_ColorFormats.empty())
@@ -308,12 +337,14 @@ namespace Quasar
         glDeleteFramebuffers(1, &m_Framebuffer);
         glDeleteFramebuffers(1, &m_ResolveFramebuffer);
         glDeleteRenderbuffers(1, &m_DepthStencil);
+        glDeleteTextures(1, &m_DepthTexture);
         glDeleteTextures(static_cast<GLsizei>(m_ColorTextures.size()), m_ColorTextures.data());
         glDeleteTextures(static_cast<GLsizei>(m_ResolvedTextures.size()), m_ResolvedTextures.data());
 
         m_Framebuffer = 0;
         m_ResolveFramebuffer = 0;
         m_DepthStencil = 0;
+        m_DepthTexture = 0;
         m_ColorTextures.clear();
         m_ResolvedTextures.clear();
     }

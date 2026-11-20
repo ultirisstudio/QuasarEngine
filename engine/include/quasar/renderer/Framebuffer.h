@@ -18,10 +18,14 @@ namespace Quasar
     /// @brief Format of an attachment of a framebuffer.
     enum class FramebufferFormat : std::uint8_t
     {
-        Rgba8,          ///< Color with 8 bits per channel.
-        Rgba16F,        ///< Color with a 16-bit float per channel, for values above 1 such as HDR lighting.
-        RedInteger,     ///< One signed 32-bit integer per pixel, for example the id of the entity drawn there.
-        Depth24Stencil8 ///< Depth on 24 bits and stencil on 8 bits. A framebuffer has at most one.
+        Rgba8,           ///< Color with 8 bits per channel.
+        Rgba16F,         ///< Color with a 16-bit float per channel, for values above 1 such as HDR lighting.
+        RedInteger,      ///< One signed 32-bit integer per pixel, for example the id of the entity drawn there.
+        Depth24Stencil8, ///< Depth on 24 bits and stencil on 8 bits. A framebuffer has at most one depth attachment.
+
+        /// Depth on a 32-bit float, without stencil, that the shaders can read as a shadow map, see BindDepthTexture().
+        /// A framebuffer has at most one depth attachment, and this one needs one sample per pixel.
+        Depth32F
     };
 
     /// @brief Settings of a framebuffer.
@@ -99,6 +103,13 @@ namespace Quasar
         /// @param attachment The number of the color attachment.
         /// @param slot The N of the `layout(binding = N) uniform sampler2D` of the shader.
         virtual void BindColorTexture(std::uint32_t attachment, std::uint32_t slot) const = 0;
+
+        /// @brief Makes the shaders read the depth attachment of format Depth32F from a texture slot, as a
+        /// `sampler2DShadow`, for example a shadow map. A read compares a depth with the stored one, and gives 1 where it
+        /// is closer or equal and 0 where it is farther, blended between the closest pixels. Outside of the framebuffer, a
+        /// read gives 1. A framebuffer without such an attachment is refused with an engine error.
+        /// @param slot The N of the `layout(binding = N) uniform sampler2DShadow` of the shader.
+        virtual void BindDepthTexture(std::uint32_t slot) const = 0;
 
         /// @brief Returns the texture that ImGui::Image() draws for a color attachment of format Rgba8 or Rgba16F, or 0
         /// for another attachment. With several samples per pixel, the image comes from the last Unbind().
