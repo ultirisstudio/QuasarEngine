@@ -13,7 +13,7 @@ namespace Quasar
     /// @brief A light of a scene that shines from a point in a cone, such as a torch.
     ///
     /// The light shines from the position of its entity in the world, along its forward direction, the -Z axis turned by
-    /// its rotation. See SpotLight for how it fades, and Renderer::MaxSpotLights for the number of spot lights that a
+    /// its rotation. See SpotLight for how it fades, and MaxSpotLights for the number of spot lights that a
     /// scene can use.
     struct SpotLightComponent
     {

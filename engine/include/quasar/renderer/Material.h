@@ -9,6 +9,7 @@
 #include <quasar/renderer/Buffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Pipeline.h>
+#include <quasar/renderer/ShaderBindings.h>
 #include <quasar/renderer/Texture.h>
 #include <quasar/renderer/UniformBlockLayout.h>
 
@@ -41,9 +42,9 @@ namespace Quasar
         /// The pipeline of the draws. It must stay alive as long as the material, which does not own it.
         Quasar::Pipeline* Pipeline = nullptr;
 
-        /// The N of the `layout(std140, binding = N) uniform` block that holds the values. The bindings of the Renderer,
-        /// 0, 2 and 3, are left to it.
-        std::uint32_t UniformBinding = 1;
+        /// The N of the `layout(std140, binding = N) uniform` block that holds the values, which cannot be one that the
+        /// Renderer fills. See ShaderBindings.
+        std::uint32_t UniformBinding = ShaderBindings::Material;
 
         UniformBlockLayout Uniforms{};           ///< The members of the block, in the order of the GLSL block.
         std::vector<MaterialTexture> Textures{}; ///< The textures of the shader.
@@ -51,7 +52,8 @@ namespace Quasar
 
     /// @brief The values and the textures of a material, with the pipeline that draws with them.
     ///
-    /// The values start at zero, and a texture that is not set is white. The Set functions only change the copy of the
+    /// The values start at zero, and a texture that is not set is the white texture of the context, see
+    /// GraphicsContext::GetWhiteTexture(). The Set functions only change the copy of the
     /// material, and Bind() sends the values that changed. A name that the description does not have, or a value of
     /// another type than the member, is refused with one engine warning per name.
     class Material
@@ -59,8 +61,8 @@ namespace Quasar
     public:
         /// @brief Creates a material from its description.
         /// @return The material, or nullptr if the description has no pipeline, has two members or two textures with
-        /// the same name, has two textures in the same slot, or if the graphics API cannot create its buffer. The
-        /// reason is logged as an engine error.
+        /// the same name, has two textures in the same slot, uses a block or a texture slot that the Renderer fills, or
+        /// if the graphics API cannot create its buffer. The reason is logged as an engine error.
         static Scope<Material> Create(GraphicsContext& context, const MaterialSpecification& specification);
 
         ~Material() = default;
@@ -84,11 +86,19 @@ namespace Quasar
         /// @brief Makes the next draws use the pipeline, the values and the textures of the material.
         void Bind();
 
+        /// @brief Makes the next draws use the values and the textures of the material, without binding its pipeline,
+        /// for example when the pipeline is already bound.
+        void BindResources();
+
+        /// @brief Returns whether a value or a texture was set since the last Bind() or BindResources(). A new material
+        /// counts as changed.
+        bool HasChanged() const { return m_Changed; }
+
         /// @brief Returns the description of the material.
         const MaterialSpecification& GetSpecification() const { return m_Specification; }
 
     private:
-        Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Scope<Texture2D> white);
+        Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Texture2D* white);
 
         void SetValue(std::string_view name, UniformType type, std::span<const std::byte> value);
         void Report(std::string_view name, std::string_view problem);
@@ -97,7 +107,8 @@ namespace Quasar
         Scope<UniformBuffer> m_UniformBuffer;
         std::vector<std::byte> m_Values;
         bool m_ValuesChanged = false;
-        Scope<Texture2D> m_White;
+        bool m_Changed = true;
+        Texture2D* m_White = nullptr;
         std::vector<Texture2D*> m_Textures;
         std::vector<std::string> m_ReportedNames;
     };

@@ -1,3 +1,5 @@
+#include "helpers/MathHelpers.h"
+
 #include <quasar/renderer/Color.h>
 
 #include <doctest/doctest.h>
@@ -6,15 +8,7 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-#include <cmath>
-
-namespace
-{
-    bool IsNear(float value, float expected)
-    {
-        return std::abs(value - expected) < 1e-5f;
-    }
-}
+using TestHelpers::IsNear;
 
 TEST_CASE("A channel goes from sRGB to linear and back on the exact sRGB curve")
 {

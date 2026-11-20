@@ -4,7 +4,9 @@
 #include <quasar/log/MemoryLogSink.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace TestHelpers
@@ -31,5 +33,18 @@ namespace TestHelpers
 
         const std::vector<Quasar::LogMessage> messages = sink->GetMessages();
         return std::ranges::any_of(messages, [level](const Quasar::LogMessage& message) { return message.Level >= level; });
+    }
+
+    inline std::ptrdiff_t CountErrors(std::string_view text = {})
+    {
+        const std::shared_ptr<Quasar::MemoryLogSink> sink = Quasar::Log::GetMemorySink();
+        if (sink == nullptr)
+        {
+            return 0;
+        }
+
+        const std::vector<Quasar::LogMessage> messages = sink->GetMessages();
+        return std::ranges::count_if(messages, [text](const Quasar::LogMessage& message)
+                                     { return message.Level == Quasar::LogLevel::Error && message.Text.find(text) != std::string_view::npos; });
     }
 }

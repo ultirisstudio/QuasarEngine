@@ -34,5 +34,14 @@ namespace Quasar
 
         /// @brief Sets the rotation from angles around X, Y and Z, in radians.
         void SetEulerAngles(const glm::vec3& angles);
+
+        /// @brief Returns the direction in which the entity faces: -Z turned by the rotation. The scale is ignored.
+        glm::vec3 GetForward() const;
+
+        /// @brief Returns the direction to the right of the entity: +X turned by the rotation.
+        glm::vec3 GetRight() const;
+
+        /// @brief Returns the direction to the top of the entity: +Y turned by the rotation.
+        glm::vec3 GetUp() const;
     };
 }

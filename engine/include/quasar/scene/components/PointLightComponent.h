@@ -12,7 +12,7 @@ namespace Quasar
     /// @brief A light of a scene that shines from a point in every direction, such as a bulb.
     ///
     /// The light shines from the position of its entity in the world. See PointLight for how it fades with the
-    /// distance, and Renderer::MaxPointLights for the number of point lights that a scene can use.
+    /// distance, and MaxPointLights for the number of point lights that a scene can use.
     struct PointLightComponent
     {
         glm::vec3 Color{1.0f};  ///< The color of the light, in sRGB as in a color picker.

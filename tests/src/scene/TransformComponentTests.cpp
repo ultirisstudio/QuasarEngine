@@ -1,3 +1,5 @@
+#include "helpers/MathHelpers.h"
+
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <doctest/doctest.h>
@@ -12,14 +14,10 @@
 #include <cmath>
 
 using Quasar::TransformComponent;
+using TestHelpers::IsNear;
 
 namespace
 {
-    bool IsNear(const glm::vec3& value, const glm::vec3& expected, float tolerance = 1e-5f)
-    {
-        return glm::distance(value, expected) < tolerance;
-    }
-
     glm::vec3 Apply(const TransformComponent& transform, const glm::vec3& point)
     {
         return glm::vec3(transform.GetMatrix() * glm::vec4(point, 1.0f));
@@ -37,6 +35,20 @@ TEST_CASE("A transform scales, then rotates, then moves a point")
     CHECK(IsNear(Apply(transform, {0.0f, 1.0f, 0.0f}), {7.0f, 0.0f, 0.0f}));
     CHECK(IsNear(Apply(transform, {0.0f, 0.0f, 1.0f}), {10.0f, 0.0f, 4.0f}));
     CHECK(IsNear(Apply(TransformComponent{}, {1.0f, 2.0f, 3.0f}), {1.0f, 2.0f, 3.0f}));
+}
+
+TEST_CASE("The forward, right and up directions of a transform are -Z, +X and +Y turned by its rotation, whatever its scale")
+{
+    TransformComponent transform;
+    CHECK(IsNear(transform.GetForward(), {0.0f, 0.0f, -1.0f}));
+    CHECK(IsNear(transform.GetRight(), {1.0f, 0.0f, 0.0f}));
+    CHECK(IsNear(transform.GetUp(), {0.0f, 1.0f, 0.0f}));
+
+    transform.Rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    transform.Scale = {2.0f, 3.0f, 4.0f};
+    CHECK(IsNear(transform.GetForward(), {0.0f, 1.0f, 0.0f}));
+    CHECK(IsNear(transform.GetRight(), {0.0f, 0.0f, -1.0f}));
+    CHECK(IsNear(transform.GetUp(), {1.0f, 0.0f, 0.0f}));
 }
 
 TEST_CASE("The rotation of a transform can be set and read as angles in radians")

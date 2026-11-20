@@ -61,7 +61,8 @@ namespace Quasar
 
     Entity Entity::GetParent() const
     {
-        return m_Scene->FindEntity(Get<RelationshipComponent>().Parent);
+        const UUID parent = Get<RelationshipComponent>().Parent;
+        return parent.IsValid() ? m_Scene->FindEntity(parent) : Entity();
     }
 
     std::vector<Entity> Entity::GetChildren() const

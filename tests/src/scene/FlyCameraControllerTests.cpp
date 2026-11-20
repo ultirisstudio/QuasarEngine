@@ -1,3 +1,5 @@
+#include "helpers/MathHelpers.h"
+
 #include <quasar/scene/FlyCameraController.h>
 #include <quasar/scene/components/TransformComponent.h>
 #include <quasar/time/Timestep.h>
@@ -8,24 +10,13 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/vec3.hpp>
 
-#include <cmath>
-
 using Quasar::FlyCameraController;
 using Quasar::Timestep;
 using Quasar::TransformComponent;
+using TestHelpers::IsNear;
 
 namespace
 {
-    bool IsNear(const glm::vec3& value, const glm::vec3& expected)
-    {
-        return glm::length(value - expected) < 1e-4f;
-    }
-
-    bool IsNear(float value, float expected)
-    {
-        return std::abs(value - expected) < 1e-4f;
-    }
-
     glm::vec3 Forward(const TransformComponent& transform)
     {
         return transform.Rotation * glm::vec3(0.0f, 0.0f, -1.0f);

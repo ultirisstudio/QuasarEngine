@@ -4,18 +4,7 @@ layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec3 a_Normal;
 layout(location = 2) in vec2 a_TexCoord;
 
-layout(std140, binding = 0) uniform Camera
-{
-    mat4 u_ViewProjection;
-    mat4 u_View;
-    mat4 u_Projection;
-    vec4 u_CameraPosition;
-};
-
-layout(std140, binding = 2) uniform Object
-{
-    mat4 u_Model;
-};
+#include "include/Common.glsl"
 
 layout(location = 0) out vec2 v_TexCoord;
 
@@ -29,6 +18,8 @@ void main()
 #version 450 core
 layout(location = 0) in vec2 v_TexCoord;
 
+#include "include/Common.glsl"
+
 layout(std140, binding = 1) uniform Material
 {
     vec4 u_Color;
@@ -37,11 +28,6 @@ layout(std140, binding = 1) uniform Material
 layout(binding = 0) uniform sampler2D u_Texture;
 
 layout(location = 0) out vec4 o_Color;
-
-vec3 SrgbToLinear(vec3 color)
-{
-    return mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)), greaterThan(color, vec3(0.04045)));
-}
 
 void main()
 {

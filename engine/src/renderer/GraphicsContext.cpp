@@ -3,7 +3,11 @@
 #include <quasar/log/Log.h>
 #include <quasar/renderer/Image.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
+#include <span>
 
 namespace Quasar
 {
@@ -22,5 +26,20 @@ namespace Quasar
         settings.Width = image->Width;
         settings.Height = image->Height;
         return CreateTexture2D(settings, image->Pixels);
+    }
+
+    Texture2D* GraphicsContext::GetWhiteTexture()
+    {
+        if (m_WhiteTexture == nullptr)
+        {
+            constexpr std::array<std::uint8_t, 4> pixel{255, 255, 255, 255};
+            m_WhiteTexture = CreateTexture2D({.Width = 1, .Height = 1, .Mipmaps = false}, std::as_bytes(std::span(pixel)));
+        }
+        return m_WhiteTexture.get();
+    }
+
+    void GraphicsContext::ReleaseResources()
+    {
+        m_WhiteTexture.reset();
     }
 }

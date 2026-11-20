@@ -38,4 +38,19 @@ namespace Quasar
     {
         Rotation = glm::quat(angles);
     }
+
+    glm::vec3 TransformComponent::GetForward() const
+    {
+        return Rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+    }
+
+    glm::vec3 TransformComponent::GetRight() const
+    {
+        return Rotation * glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+
+    glm::vec3 TransformComponent::GetUp() const
+    {
+        return Rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+    }
 }

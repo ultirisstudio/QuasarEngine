@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -13,6 +14,7 @@
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/Primitives.h>
 #include <quasar/renderer/Shader.h>
+#include <quasar/renderer/ShaderBindings.h>
 #include <quasar/renderer/Texture.h>
 #include <quasar/renderer/UniformBlockLayout.h>
 
@@ -26,7 +28,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <optional>
 #include <span>
 #include <string>
@@ -34,6 +35,8 @@
 #include <vector>
 
 using Quasar::UniformType;
+using TestHelpers::Color;
+using TestHelpers::IsNear;
 
 namespace
 {
@@ -50,7 +53,7 @@ void main()
 
 #type fragment
 #version 450 core
-layout(std140, binding = 3) uniform Values
+layout(std140, binding = 4) uniform Values
 {
     float a;
     vec3 b;
@@ -94,8 +97,6 @@ void main()
         return {{"a", UniformType::Float}, {"b", UniformType::Vec3}, {"c", UniformType::Vec2},
                 {"d", UniformType::Int},   {"e", UniformType::Vec4}, {"f", UniformType::Mat4}};
     }
-
-    using Color = std::array<int, 4>;
 
     class Scene
     {
@@ -160,14 +161,7 @@ void main()
 
         int ReadValue() const { return m_Framebuffer->ReadInteger(0, 0, 0).value_or(-2); }
 
-        Color ReadColor(int x, int y) const
-        {
-            std::array<std::uint8_t, 4> pixel{};
-            m_Framebuffer->Bind();
-            glReadPixels(x, 1 - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-            m_Framebuffer->Unbind();
-            return {pixel[0], pixel[1], pixel[2], pixel[3]};
-        }
+        Color ReadColor(int x, int y) const { return TestHelpers::ReadColor(*m_Framebuffer, x, y); }
 
     private:
         Quasar::Scope<Quasar::Window> m_Window;
@@ -176,11 +170,6 @@ void main()
         Quasar::Scope<Quasar::UniformBuffer> m_Camera;
         Quasar::Scope<Quasar::UniformBuffer> m_Object;
     };
-
-    bool IsNear(const Color& color, const Color& expected)
-    {
-        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 1; });
-    }
 
     std::optional<Quasar::ShaderSpecification> ReadUnlitShader()
     {
@@ -221,7 +210,7 @@ TEST_CASE("The values of a material reach its shader at the next Bind")
     const Scene scene(Quasar::FramebufferFormat::RedInteger);
     const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
-    const Quasar::Scope<Quasar::Material> material = scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 3, .Uniforms = GetValuesLayout()});
+    const Quasar::Scope<Quasar::Material> material = scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 4, .Uniforms = GetValuesLayout()});
     glm::mat4 matrix(0.0f);
     matrix[3][2] = 6.0f;
 
@@ -249,13 +238,60 @@ TEST_CASE("The values of a material reach its shader at the next Bind")
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
+TEST_CASE("BindResources sends the values of a material and binds its textures, but not its pipeline")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene(Quasar::FramebufferFormat::RedInteger);
+    const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
+    const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
+    const Quasar::Scope<Quasar::Material> material = scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 4, .Uniforms = GetValuesLayout()});
+    material->SetInt("d", 4);
+    glUseProgram(0);
+
+    material->BindResources();
+    GLint program = -1;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+    CHECK(program == 0);
+
+    pipeline->Bind();
+    scene.DrawTriangle();
+    CHECK(scene.ReadValue() == 4000);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("A material has changed until it is bound, and again when a value or a texture is set")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene(Quasar::FramebufferFormat::RedInteger);
+    const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
+    const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
+    const Quasar::Scope<Quasar::Material> material =
+        scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 4, .Uniforms = GetValuesLayout(), .Textures = {{.Name = "Albedo", .Slot = 0}}});
+
+    CHECK(material->HasChanged());
+    material->Bind();
+    CHECK_FALSE(material->HasChanged());
+    material->SetFloat("a", 1.0f);
+    CHECK(material->HasChanged());
+    material->BindResources();
+    CHECK_FALSE(material->HasChanged());
+    material->SetTexture("Albedo", nullptr);
+    CHECK(material->HasChanged());
+    material->Bind();
+
+    material->SetFloat("Missing", 1.0f);
+    material->SetInt("a", 1);
+    material->SetTexture("Missing", nullptr);
+    CHECK_FALSE(material->HasChanged());
+}
+
 TEST_CASE("Materials that share a description keep their own values")
 {
     const TestHelpers::ScopedLog log;
     const Scene scene(Quasar::FramebufferFormat::RedInteger);
     const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
-    const Quasar::MaterialSpecification specification{.Pipeline = pipeline.get(), .UniformBinding = 3, .Uniforms = GetValuesLayout()};
+    const Quasar::MaterialSpecification specification{.Pipeline = pipeline.get(), .UniformBinding = 4, .Uniforms = GetValuesLayout()};
     const Quasar::Scope<Quasar::Material> first = scene.CreateMaterial(specification);
     const Quasar::Scope<Quasar::Material> second = scene.CreateMaterial(specification);
     first->SetInt("d", 1);
@@ -278,7 +314,7 @@ TEST_CASE("A value of another type or an unknown name is refused with one warnin
     const Scene scene(Quasar::FramebufferFormat::RedInteger);
     const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
-    const Quasar::Scope<Quasar::Material> material = scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 3, .Uniforms = GetValuesLayout()});
+    const Quasar::Scope<Quasar::Material> material = scene.CreateMaterial({.Pipeline = pipeline.get(), .UniformBinding = 4, .Uniforms = GetValuesLayout()});
     material->SetInt("d", 4);
 
     for (int call = 0; call < 3; ++call)
@@ -372,7 +408,7 @@ TEST_CASE("A material without values or textures only binds its pipeline")
     const Scene scene(Quasar::FramebufferFormat::RedInteger);
     const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
-    const Quasar::Scope<Quasar::UniformBuffer> values = scene.GetContext().CreateUniformBuffer(GetValuesLayout().GetSize(), 3);
+    const Quasar::Scope<Quasar::UniformBuffer> values = scene.GetContext().CreateUniformBuffer(GetValuesLayout().GetSize(), 4);
     REQUIRE(values != nullptr);
     values->Set(7.0f);
     values->Bind();
@@ -386,7 +422,7 @@ TEST_CASE("A material without values or textures only binds its pipeline")
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
-TEST_CASE("No material is created from a description without a pipeline, with names used twice or a slot used twice")
+TEST_CASE("No material is created without a pipeline, with names or slots used twice, or on what the renderer fills")
 {
     const Scene scene(Quasar::FramebufferFormat::RedInteger);
     const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Values", ValuesShader));
@@ -394,13 +430,17 @@ TEST_CASE("No material is created from a description without a pipeline, with na
     GLint bindings = 0;
     glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &bindings);
 
-    const std::array<Quasar::MaterialSpecification, 6> refused{{
+    const std::array<Quasar::MaterialSpecification, 10> refused{{
         {.Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .Uniforms = {{"a", UniformType::Float}, {"a", UniformType::Int}}},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "Albedo", .Slot = 0}, {.Name = "Albedo", .Slot = 1}}},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "Albedo", .Slot = 2}, {.Name = "Normal", .Slot = 2}}},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "", .Slot = 0}}},
         {.Pipeline = pipeline.get(), .UniformBinding = static_cast<std::uint32_t>(bindings), .Uniforms = GetValuesLayout()},
+        {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Camera, .Uniforms = GetValuesLayout()},
+        {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Object, .Uniforms = GetValuesLayout()},
+        {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Lights, .Uniforms = GetValuesLayout()},
+        {.Pipeline = pipeline.get(), .Textures = {{.Name = "Map", .Slot = Quasar::ShaderBindings::ShadowMap}}},
     }};
     for (std::size_t index = 0; index < refused.size(); ++index)
     {

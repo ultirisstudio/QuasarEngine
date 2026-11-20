@@ -5,6 +5,9 @@
 #include <quasar/log/Log.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
+#include <quasar/renderer/PipelineLibrary.h>
+#include <quasar/renderer/Renderer.h>
+#include <quasar/scene/SceneRenderer.h>
 
 #include <spdlog/fmt/std.h>
 

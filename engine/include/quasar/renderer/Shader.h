@@ -49,14 +49,21 @@ namespace Quasar
 
         /// @brief Reads a shader from text, where each stage starts with a line `#type vertex` or `#type fragment`.
         /// @param name The name of the shader.
-        /// @param text The text, in which only empty lines can come before the first `#type`.
+        /// @param text The text, in which only empty lines can come before the first `#type`. Its `#include` lines are
+        /// kept as they are: only FromFile() replaces them.
         /// @return The specification, or nothing if the text is not split into known stages. The reason is logged as an
         /// engine error.
         static std::optional<ShaderSpecification> Parse(std::string name, std::string_view text);
 
         /// @brief Reads a shader file, whose text is split as described in Parse(). The shader is named after the file,
         /// without its extension.
-        /// @return The specification, or nothing if the file cannot be read or split. The reason is logged as an engine
+        ///
+        /// A line `#include "File.glsl"` in a stage is replaced by the text of that file, found from the folder of the
+        /// file that includes it. Included files can include other files. A file is inserted only once in each stage,
+        /// so several files can include the same one, and the next includes of it are removed. `#line` directives are
+        /// added around the inserted text, so the line numbers in the GLSL errors stay the ones of each file.
+        /// @return The specification, or nothing if the file cannot be read or split, or if an include names no file,
+        /// a file that cannot be read or a file that is already being included. The reason is logged as an engine
         /// error.
         static std::optional<ShaderSpecification> FromFile(const std::filesystem::path& file);
     };

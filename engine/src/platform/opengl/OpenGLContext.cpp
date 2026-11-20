@@ -84,6 +84,8 @@ namespace Quasar
 
     OpenGLContext::~OpenGLContext()
     {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        ReleaseResources();
         SDL_GL_DestroyContext(m_Context);
     }
 
@@ -230,7 +232,6 @@ namespace Quasar
             }
         }
 
-        SDL_GL_MakeCurrent(m_Window, m_Context);
         GetOpenGLVertexArray(vertexArray).Bind();
         glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
     }
@@ -244,7 +245,6 @@ namespace Quasar
             return;
         }
 
-        SDL_GL_MakeCurrent(m_Window, m_Context);
         GetOpenGLVertexArray(vertexArray).Bind();
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexBuffer->GetCount()), GL_UNSIGNED_INT, nullptr);
     }

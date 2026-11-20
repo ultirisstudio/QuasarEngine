@@ -2,18 +2,7 @@
 #version 450 core
 layout(location = 0) in vec3 a_Position;
 
-layout(std140, binding = 0) uniform Camera
-{
-    mat4 u_ViewProjection;
-    mat4 u_View;
-    mat4 u_Projection;
-    vec4 u_CameraPosition;
-};
-
-layout(std140, binding = 2) uniform Object
-{
-    mat4 u_Model;
-};
+#include "include/Common.glsl"
 
 void main()
 {

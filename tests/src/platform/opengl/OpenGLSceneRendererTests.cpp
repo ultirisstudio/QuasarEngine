@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -15,6 +16,7 @@
 #include <quasar/renderer/Primitives.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
+#include <quasar/renderer/ShaderBindings.h>
 #include <quasar/scene/Entity.h>
 #include <quasar/scene/Scene.h>
 #include <quasar/scene/SceneRenderer.h>
@@ -35,7 +37,6 @@
 #include <glm/vec4.hpp>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -51,11 +52,12 @@ using Quasar::MeshRendererComponent;
 using Quasar::PointLightComponent;
 using Quasar::SpotLightComponent;
 using Quasar::TransformComponent;
+using TestHelpers::Color;
+using TestHelpers::IsNear;
+using TestHelpers::ReadWindowPixel;
 
 namespace
 {
-    using Color = std::array<int, 4>;
-
     constexpr Color Black{0, 0, 0, 255};
     constexpr Color Red{255, 0, 0, 255};
     constexpr Color Blue{0, 0, 255, 255};
@@ -129,14 +131,7 @@ namespace
             m_Framebuffer->ClearDepthStencil();
         }
 
-        Color ReadColor(int x, int y) const
-        {
-            std::array<std::uint8_t, 4> pixel{};
-            m_Framebuffer->Bind();
-            glReadPixels(x, 7 - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-            m_Framebuffer->Unbind();
-            return {pixel[0], pixel[1], pixel[2], pixel[3]};
-        }
+        Color ReadColor(int x, int y) const { return TestHelpers::ReadColor(*m_Framebuffer, x, y); }
 
         Quasar::Scope<Quasar::Material> CreateColor(glm::vec4 color) const
         {
@@ -160,11 +155,6 @@ namespace
         Quasar::Scope<Quasar::SceneRenderer> m_SceneRenderer;
         Quasar::Scene m_Scene;
     };
-
-    bool IsNear(const Color& color, const Color& expected)
-    {
-        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 1; });
-    }
 }
 
 TEST_CASE("The scene renderer draws the entities that have a mesh and a material, at their transforms")
@@ -369,9 +359,7 @@ TEST_CASE("The scene framebuffer takes the size of the target, or of the window,
     const glm::uvec2 window = fixture.GetContext().GetWindowSize();
     CHECK(scene().Width == window.x);
     CHECK(scene().Height == window.y);
-    std::array<std::uint8_t, 4> pixel{};
-    glReadPixels(static_cast<GLint>(window.x) - 1, static_cast<GLint>(window.y) - 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-    CHECK(IsNear({pixel[0], pixel[1], pixel[2], pixel[3]}, {0, 255, 0, 255}));
+    CHECK(IsNear(ReadWindowPixel(static_cast<int>(window.x) - 1, static_cast<int>(window.y) - 1), {0, 255, 0, 255}));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
@@ -445,11 +433,6 @@ namespace
 
     constexpr Color Shadowed{89, 89, 89, 255};
     constexpr Color White{255, 255, 255, 255};
-
-    bool IsAround(const Color& color, const Color& expected)
-    {
-        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 3; });
-    }
 }
 
 TEST_CASE("The meshes hide the directional light from the surfaces behind them, even out of the view of the camera")
@@ -463,8 +446,8 @@ TEST_CASE("The meshes hide the directional light from the surfaces behind them, 
         return fixture.ReadColor(x, y);
     };
 
-    CHECK(IsAround(render(4, 4), Shadowed));
-    CHECK(IsAround(render(1, 6), Shadowed));
+    CHECK(IsNear(render(4, 4), Shadowed, 3));
+    CHECK(IsNear(render(1, 6), Shadowed, 3));
     CHECK(fixture.GetSceneRenderer().GetShadowMap().GetSpecification().Width == 2048);
 
     scene.Occluder.Get<TransformComponent>().Position.x = 30.0f;
@@ -474,10 +457,12 @@ TEST_CASE("The meshes hide the directional light from the surfaces behind them, 
     scene.Occluder.Get<MeshRendererComponent>().CastShadows = false;
     CHECK(IsNear(render(4, 4), White));
     scene.Occluder.Get<MeshRendererComponent>().CastShadows = true;
+    CHECK(IsNear(render(4, 4), Shadowed, 3));
 
     scene.Sun.Get<DirectionalLightComponent>().CastShadows = false;
     CHECK(IsNear(render(4, 4), White));
     scene.Sun.Get<DirectionalLightComponent>().CastShadows = true;
+    CHECK(IsNear(render(4, 4), Shadowed, 3));
 
     Quasar::SceneRendererSettings settings = fixture.GetSceneRenderer().GetSettings();
     settings.Shadows.Enabled = false;
@@ -486,12 +471,12 @@ TEST_CASE("The meshes hide the directional light from the surfaces behind them, 
         fixture.GetContext().CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {Quasar::FramebufferFormat::Depth32F}});
     REQUIRE(closest != nullptr);
     closest->ClearDepthStencil(0.0f);
-    closest->BindDepthTexture(Quasar::Renderer::ShadowMapSlot);
+    closest->BindDepthTexture(Quasar::ShaderBindings::ShadowMap);
     CHECK(IsNear(render(4, 4), White));
 
     settings.Shadows = {.Resolution = 512};
     fixture.GetSceneRenderer().SetSettings(settings);
-    CHECK(IsAround(render(4, 4), Shadowed));
+    CHECK(IsNear(render(4, 4), Shadowed, 3));
     CHECK(fixture.GetSceneRenderer().GetShadowMap().GetSpecification().Width == 512);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
@@ -517,7 +502,7 @@ TEST_CASE("A surface lit at an angle does not shadow itself, and an orthographic
     scene.Sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     scene.Camera.Get<CameraComponent>().Camera.SetOrthographic({.Height = 2.0f, .Near = 0.1f, .Far = 10.0f});
     fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
-    CHECK(IsAround(fixture.ReadColor(4, 4), Shadowed));
+    CHECK(IsNear(fixture.ReadColor(4, 4), Shadowed, 3));
 }
 
 TEST_CASE("The shadow map moves by whole pixels when the camera moves or turns, so that the shadows do not shimmer")

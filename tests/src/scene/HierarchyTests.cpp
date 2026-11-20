@@ -1,4 +1,5 @@
 #include "helpers/LogHelpers.h"
+#include "helpers/MathHelpers.h"
 
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/scene/Entity.h>
@@ -8,15 +9,12 @@
 
 #include <doctest/doctest.h>
 
-#include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-#include <algorithm>
-#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -24,35 +22,14 @@ using Quasar::Entity;
 using Quasar::RelationshipComponent;
 using Quasar::Scene;
 using Quasar::TransformComponent;
+using TestHelpers::CountErrors;
+using TestHelpers::IsNear;
 
 namespace
 {
-    bool IsNear(const glm::vec3& value, const glm::vec3& expected)
-    {
-        return glm::distance(value, expected) < 1e-4f;
-    }
-
-    bool IsNear(const glm::mat4& value, const glm::mat4& expected)
-    {
-        for (int column = 0; column < 4; ++column)
-        {
-            if (glm::distance(value[column], expected[column]) > 1e-4f)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
     glm::vec3 WorldPosition(const Entity& entity)
     {
         return glm::vec3(entity.GetWorldMatrix()[3]);
-    }
-
-    std::ptrdiff_t CountErrors()
-    {
-        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Level == Quasar::LogLevel::Error; });
     }
 }
 

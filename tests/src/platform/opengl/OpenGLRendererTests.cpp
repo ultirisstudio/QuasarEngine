@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -14,6 +15,7 @@
 #include <quasar/renderer/Primitives.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
+#include <quasar/renderer/ShaderBindings.h>
 
 #include <doctest/doctest.h>
 
@@ -24,17 +26,16 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-#include <algorithm>
 #include <array>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
 using Quasar::UniformType;
+using TestHelpers::Color;
+using TestHelpers::CountErrors;
+using TestHelpers::IsNear;
+using TestHelpers::ReadWindowPixel;
 
 namespace
 {
@@ -71,8 +72,6 @@ void main()
               1000 * int(round(u_Projection[1][1])) + (product ? 10000 : 0);
 }
 )";
-
-    using Color = std::array<int, 4>;
 
     constexpr glm::vec4 Black{0.0f, 0.0f, 0.0f, 1.0f};
     constexpr Color BlackPixel{0, 0, 0, 255};
@@ -122,14 +121,7 @@ void main()
             m_Framebuffer->ClearDepthStencil();
         }
 
-        Color ReadColor(int x, int y) const
-        {
-            std::array<std::uint8_t, 4> pixel{};
-            m_Framebuffer->Bind();
-            glReadPixels(x, 7 - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-            m_Framebuffer->Unbind();
-            return {pixel[0], pixel[1], pixel[2], pixel[3]};
-        }
+        Color ReadColor(int x, int y) const { return TestHelpers::ReadColor(*m_Framebuffer, x, y); }
 
     private:
         Quasar::Scope<Quasar::Material> CreateColor(glm::vec4 color) const
@@ -151,25 +143,6 @@ void main()
         Quasar::Scope<Quasar::Material> m_Blue;
         Quasar::Camera m_Camera;
     };
-
-    bool IsNear(const Color& color, const Color& expected)
-    {
-        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 1; });
-    }
-
-    Color ReadWindowPixel(int x, int y)
-    {
-        std::array<std::uint8_t, 4> pixel{};
-        glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-        return {pixel[0], pixel[1], pixel[2], pixel[3]};
-    }
-
-    std::ptrdiff_t CountErrors(std::string_view text)
-    {
-        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::count_if(messages, [text](const Quasar::LogMessage& message)
-                                     { return message.Level == Quasar::LogLevel::Error && message.Text.find(text) != std::string::npos; });
-    }
 }
 
 TEST_CASE("The renderer draws a mesh with its material, seen from the camera, then goes back to the window")
@@ -271,7 +244,7 @@ TEST_CASE("The shaders read the camera and the object from the blocks of the ren
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.GetContext().CreatePipeline({.Shader = shader.get(), .DepthTest = false});
     REQUIRE(pipeline != nullptr);
     const Quasar::Scope<Quasar::Material> material =
-        Quasar::Material::Create(scene.GetContext(), {.Pipeline = pipeline.get(), .UniformBinding = Quasar::Renderer::ObjectBinding});
+        Quasar::Material::Create(scene.GetContext(), {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Object});
     const Quasar::Scope<Quasar::Framebuffer> values =
         scene.GetContext().CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {Quasar::FramebufferFormat::RedInteger}});
     REQUIRE(material != nullptr);
@@ -287,25 +260,60 @@ TEST_CASE("The shaders read the camera and the object from the blocks of the ren
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
-TEST_CASE("The renderer refuses draws outside of a scene, scenes out of order and materials on its bindings")
+TEST_CASE("Inside a scene, the renderer binds a pipeline or a material only when it changes, and each scene binds them again")
 {
     const TestHelpers::ScopedLog log;
     const Scene scene;
-    const Quasar::Scope<Quasar::Material> onObject = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::ObjectBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
-    const Quasar::Scope<Quasar::Material> onCamera = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::CameraBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
-    const Quasar::Scope<Quasar::Material> onLight = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::LightBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
-    const Quasar::Scope<Quasar::Material> onShadowSlot = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .Textures = {{.Name = "Map", .Slot = Quasar::Renderer::ShadowMapSlot}}});
-    REQUIRE(onObject != nullptr);
-    REQUIRE(onCamera != nullptr);
-    REQUIRE(onLight != nullptr);
-    REQUIRE(onShadowSlot != nullptr);
-    onObject->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
-    onCamera->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
-    onLight->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
+    const Quasar::Scope<Quasar::Pipeline> culled = scene.GetContext().CreatePipeline(
+        {.Shader = scene.GetRed().GetSpecification().Pipeline->GetSpecification().Shader, .Culling = Quasar::CullMode::Front});
+    REQUIRE(culled != nullptr);
+    const glm::mat4 left = glm::translate(glm::mat4(1.0f), {-0.5f, 0.0f, 0.0f});
+    const glm::mat4 right = glm::translate(glm::mat4(1.0f), {0.5f, 0.0f, 0.0f});
+    Quasar::Renderer& renderer = scene.GetRenderer();
+
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    scene.GetBlue().BindResources();
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(1, 3), RedPixel));
+    CHECK(IsNear(scene.ReadColor(6, 3), BluePixel));
+
+    scene.Clear();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    scene.GetBlue().BindResources();
+    scene.GetRed().SetVec4("Color", {1.0f, 0.0f, 0.0f, 1.0f});
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(6, 3), RedPixel));
+
+    scene.Clear();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    culled->Bind();
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(6, 3), BlackPixel));
+
+    scene.Clear();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), left);
+    renderer.EndScene();
+    culled->Bind();
+    scene.GetBlue().BindResources();
+    renderer.BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    renderer.Submit(scene.GetQuad(), scene.GetRed(), right);
+    renderer.EndScene();
+    CHECK(IsNear(scene.ReadColor(1, 3), RedPixel));
+    CHECK(IsNear(scene.ReadColor(6, 3), RedPixel));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The renderer refuses draws outside of a scene and scenes out of order")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene;
 
     scene.GetRenderer().Submit(scene.GetQuad(), scene.GetRed(), glm::mat4(1.0f));
     scene.GetRenderer().Submit(scene.GetQuad(), scene.GetPipeline(), glm::mat4(1.0f));
@@ -315,19 +323,8 @@ TEST_CASE("The renderer refuses draws outside of a scene, scenes out of order an
 
     scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
     scene.GetRenderer().BeginScene(scene.GetCamera(), nullptr);
-    for (int frame = 0; frame < 2; ++frame)
-    {
-        scene.GetRenderer().Submit(scene.GetQuad(), *onObject, glm::mat4(1.0f));
-        scene.GetRenderer().Submit(scene.GetQuad(), *onCamera, glm::mat4(1.0f));
-        scene.GetRenderer().Submit(scene.GetQuad(), *onLight, glm::mat4(1.0f));
-        scene.GetRenderer().Submit(scene.GetQuad(), *onShadowSlot, glm::mat4(1.0f));
-    }
     scene.GetRenderer().EndScene();
     CHECK(CountErrors("before the previous one ends") == 1);
-    CHECK(CountErrors("on the binding 2") == 1);
-    CHECK(CountErrors("on the binding 0") == 1);
-    CHECK(CountErrors("on the binding 3") == 1);
-    CHECK(CountErrors("from the slot 15") == 1);
     CHECK(IsNear(scene.ReadColor(3, 3), BlackPixel));
 
     scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());

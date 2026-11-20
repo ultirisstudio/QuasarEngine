@@ -3,7 +3,6 @@
 #include <quasar/log/Log.h>
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -51,8 +50,8 @@ namespace Quasar
         }
     }
 
-    Material::Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Scope<Texture2D> white)
-        : m_Specification(specification), m_UniformBuffer(std::move(uniforms)), m_Values(specification.Uniforms.GetSize()), m_White(std::move(white)),
+    Material::Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Texture2D* white)
+        : m_Specification(specification), m_UniformBuffer(std::move(uniforms)), m_Values(specification.Uniforms.GetSize()), m_White(white),
           m_Textures(specification.Textures.size(), nullptr)
     {
     }
@@ -68,6 +67,16 @@ namespace Quasar
         {
             return nullptr;
         }
+        if (!specification.Uniforms.GetMembers().empty() && ShaderBindings::IsFilledByRenderer(specification.UniformBinding))
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a material on the binding {}, which the Renderer fills", specification.UniformBinding);
+            return nullptr;
+        }
+        if (std::ranges::any_of(specification.Textures, [](const MaterialTexture& texture) { return texture.Slot == ShaderBindings::ShadowMap; }))
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a material that reads a texture from the slot {}, which the Renderer binds", ShaderBindings::ShadowMap);
+            return nullptr;
+        }
 
         Scope<UniformBuffer> uniforms;
         if (!specification.Uniforms.GetMembers().empty())
@@ -79,17 +88,16 @@ namespace Quasar
             }
         }
 
-        Scope<Texture2D> white;
+        Texture2D* white = nullptr;
         if (!specification.Textures.empty())
         {
-            constexpr std::array<std::uint8_t, 4> pixel{255, 255, 255, 255};
-            white = context.CreateTexture2D({.Width = 1, .Height = 1, .Mipmaps = false}, std::as_bytes(std::span(pixel)));
+            white = context.GetWhiteTexture();
             if (white == nullptr)
             {
                 return nullptr;
             }
         }
-        return Scope<Material>(new Material(specification, std::move(uniforms), std::move(white)));
+        return Scope<Material>(new Material(specification, std::move(uniforms), white));
     }
 
     void Material::SetFloat(std::string_view name, float value)
@@ -132,11 +140,17 @@ namespace Quasar
             return;
         }
         m_Textures[static_cast<std::size_t>(found - textures.begin())] = texture;
+        m_Changed = true;
     }
 
     void Material::Bind()
     {
         m_Specification.Pipeline->Bind();
+        BindResources();
+    }
+
+    void Material::BindResources()
+    {
         if (m_UniformBuffer != nullptr)
         {
             if (m_ValuesChanged)
@@ -151,6 +165,7 @@ namespace Quasar
             Texture2D& texture = m_Textures[index] != nullptr ? *m_Textures[index] : *m_White;
             texture.Bind(m_Specification.Textures[index].Slot);
         }
+        m_Changed = false;
     }
 
     void Material::SetValue(std::string_view name, UniformType type, std::span<const std::byte> value)
@@ -169,6 +184,7 @@ namespace Quasar
         }
         std::ranges::copy(value, std::next(m_Values.begin(), static_cast<std::ptrdiff_t>(layout.GetOffset(*member))));
         m_ValuesChanged = true;
+        m_Changed = true;
     }
 
     void Material::Report(std::string_view name, std::string_view problem)
