@@ -18,6 +18,8 @@
 #include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/DirectionalLightComponent.h>
 #include <quasar/scene/components/MeshRendererComponent.h>
+#include <quasar/scene/components/PointLightComponent.h>
+#include <quasar/scene/components/SpotLightComponent.h>
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
@@ -28,6 +30,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <tuple>
 #include <utility>
 
 namespace Quasar::Sandbox
@@ -146,6 +149,10 @@ namespace Quasar::Sandbox
             {
                 UpdateSun();
             }
+            if (m_Sun.IsValid())
+            {
+                ImGui::SliderFloat("Intensity", &m_Sun.Get<DirectionalLightComponent>().Intensity, 0.0f, 2.0f, "%.2f");
+            }
 
             if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
             {
@@ -243,6 +250,26 @@ namespace Quasar::Sandbox
         AddObject("Ball", *m_Sphere, *ballMaterial, {.Position = {-1.5f, 0.5f, 2.0f}}, 1.0f);
         AddObject("Green ball", *m_Sphere, *greenBall, {.Position = {2.0f, 1.0f, 2.0f}, .Scale = glm::vec3(2.0f)}, 0.3f);
         AddObject("Unlit ball", *m_Sphere, *unlitBall, {.Position = {0.0f, 0.75f, -5.0f}, .Scale = glm::vec3(1.5f)}, -0.6f);
+
+        Entity rig = m_Scene.CreateEntity("Lamp rig");
+        rig.Get<TransformComponent>().Position = {0.0f, 2.5f, 0.0f};
+        rig.Add<SpinComponent>(SpinComponent{.Speed = 0.7f});
+        for (const auto& [name, color, position] : {std::tuple{"Warm lamp", glm::vec3(1.0f, 0.6f, 0.3f), glm::vec3(4.0f, 0.0f, 0.0f)},
+                                                    std::tuple{"Cold lamp", glm::vec3(0.3f, 0.5f, 1.0f), glm::vec3(-4.0f, 0.0f, 0.0f)}})
+        {
+            Material* bulb = AddMaterial(*pipelines, PipelineLibrary::Unlit, nullptr, glm::vec4(color, 1.0f));
+            if (bulb == nullptr)
+            {
+                return false;
+            }
+            Entity lamp = AddObject(name, *m_Sphere, *bulb, {.Position = position, .Scale = glm::vec3(0.2f)});
+            lamp.Add<PointLightComponent>(PointLightComponent{.Color = color, .Intensity = 8.0f, .Range = 8.0f});
+            lamp.SetParent(rig, false);
+        }
+
+        Entity spot = m_Scene.CreateEntity("Spot");
+        spot.Get<TransformComponent>() = {.Position = {3.0f, 5.0f, -2.0f}, .Rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))};
+        spot.Add<SpotLightComponent>(SpotLightComponent{.Intensity = 20.0f, .Range = 10.0f});
 
         m_Sun = m_Scene.CreateEntity("Sun");
         m_Sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 0.25f});
