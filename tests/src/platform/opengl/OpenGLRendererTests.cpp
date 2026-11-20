@@ -14,6 +14,7 @@
 #include <quasar/renderer/Primitives.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
+#include <quasar/renderer/ShaderBindings.h>
 
 #include <doctest/doctest.h>
 
@@ -271,7 +272,7 @@ TEST_CASE("The shaders read the camera and the object from the blocks of the ren
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.GetContext().CreatePipeline({.Shader = shader.get(), .DepthTest = false});
     REQUIRE(pipeline != nullptr);
     const Quasar::Scope<Quasar::Material> material =
-        Quasar::Material::Create(scene.GetContext(), {.Pipeline = pipeline.get(), .UniformBinding = Quasar::Renderer::ObjectBinding});
+        Quasar::Material::Create(scene.GetContext(), {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Object});
     const Quasar::Scope<Quasar::Framebuffer> values =
         scene.GetContext().CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {Quasar::FramebufferFormat::RedInteger}});
     REQUIRE(material != nullptr);
@@ -287,25 +288,10 @@ TEST_CASE("The shaders read the camera and the object from the blocks of the ren
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
-TEST_CASE("The renderer refuses draws outside of a scene, scenes out of order and materials on its bindings")
+TEST_CASE("The renderer refuses draws outside of a scene and scenes out of order")
 {
     const TestHelpers::ScopedLog log;
     const Scene scene;
-    const Quasar::Scope<Quasar::Material> onObject = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::ObjectBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
-    const Quasar::Scope<Quasar::Material> onCamera = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::CameraBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
-    const Quasar::Scope<Quasar::Material> onLight = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::LightBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
-    const Quasar::Scope<Quasar::Material> onShadowSlot = Quasar::Material::Create(
-        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .Textures = {{.Name = "Map", .Slot = Quasar::Renderer::ShadowMapSlot}}});
-    REQUIRE(onObject != nullptr);
-    REQUIRE(onCamera != nullptr);
-    REQUIRE(onLight != nullptr);
-    REQUIRE(onShadowSlot != nullptr);
-    onObject->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
-    onCamera->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
-    onLight->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
 
     scene.GetRenderer().Submit(scene.GetQuad(), scene.GetRed(), glm::mat4(1.0f));
     scene.GetRenderer().Submit(scene.GetQuad(), scene.GetPipeline(), glm::mat4(1.0f));
@@ -315,19 +301,8 @@ TEST_CASE("The renderer refuses draws outside of a scene, scenes out of order an
 
     scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
     scene.GetRenderer().BeginScene(scene.GetCamera(), nullptr);
-    for (int frame = 0; frame < 2; ++frame)
-    {
-        scene.GetRenderer().Submit(scene.GetQuad(), *onObject, glm::mat4(1.0f));
-        scene.GetRenderer().Submit(scene.GetQuad(), *onCamera, glm::mat4(1.0f));
-        scene.GetRenderer().Submit(scene.GetQuad(), *onLight, glm::mat4(1.0f));
-        scene.GetRenderer().Submit(scene.GetQuad(), *onShadowSlot, glm::mat4(1.0f));
-    }
     scene.GetRenderer().EndScene();
     CHECK(CountErrors("before the previous one ends") == 1);
-    CHECK(CountErrors("on the binding 2") == 1);
-    CHECK(CountErrors("on the binding 0") == 1);
-    CHECK(CountErrors("on the binding 3") == 1);
-    CHECK(CountErrors("from the slot 15") == 1);
     CHECK(IsNear(scene.ReadColor(3, 3), BlackPixel));
 
     scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());

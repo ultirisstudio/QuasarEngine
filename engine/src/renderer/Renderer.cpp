@@ -1,20 +1,14 @@
 #include <quasar/renderer/Renderer.h>
 
-#include <quasar/log/Log.h>
-#include <quasar/renderer/Color.h>
+#include <renderer/LightsBuffer.h>
 
-#include <glm/geometric.hpp>
-#include <glm/vec3.hpp>
+#include <quasar/log/Log.h>
+#include <quasar/renderer/ShaderBindings.h>
+
+#include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <utility>
-#include <vector>
 
 namespace Quasar
 {
@@ -27,115 +21,25 @@ namespace Quasar
             glm::mat4 Projection{1.0f};
             glm::vec4 Position{0.0f};
         };
-
-        struct PointLightData
-        {
-            glm::vec4 PositionRange{0.0f};
-            glm::vec4 Color{0.0f};
-        };
-
-        struct SpotLightData
-        {
-            glm::vec4 PositionRange{0.0f};
-            glm::vec4 DirectionOuter{0.0f};
-            glm::vec4 ColorInner{0.0f};
-        };
-
-        struct LightsData
-        {
-            glm::vec3 DirectionalDirection{0.0f, -1.0f, 0.0f};
-            float DirectionalAmbient = 0.0f;
-            glm::vec3 DirectionalColor{0.0f};
-            std::int32_t PointLightCount = 0;
-            std::int32_t SpotLightCount = 0;
-            std::array<std::int32_t, 3> Padding{};
-            glm::mat4 ShadowViewProjection{1.0f};
-            glm::vec4 Shadow{0.0f};
-            std::array<PointLightData, Renderer::MaxPointLights> PointLights{};
-            std::array<SpotLightData, Renderer::MaxSpotLights> SpotLights{};
-        };
-
-        static_assert(sizeof(LightsData) == 128 + (32 * Renderer::MaxPointLights) + (48 * Renderer::MaxSpotLights), "The Lights block follows std140");
-
-        glm::vec3 Normalize(const glm::vec3& direction, const glm::vec3& fallback)
-        {
-            const float length = glm::length(direction);
-            return length > 0.0f ? direction / length : fallback;
-        }
-
-        glm::vec3 ToRadiance(const glm::vec3& color, float intensity)
-        {
-            return SrgbToLinear(color) * intensity;
-        }
-
-        void SetDirectional(LightsData& data, const std::optional<DirectionalLight>& light)
-        {
-            if (light)
-            {
-                data.DirectionalDirection = Normalize(light->Direction, glm::vec3(0.0f, -1.0f, 0.0f));
-                data.DirectionalAmbient = light->Ambient;
-                data.DirectionalColor = ToRadiance(light->Color, light->Intensity);
-            }
-        }
-
-        void SetPoints(LightsData& data, const std::vector<PointLight>& lights)
-        {
-            const std::size_t count = std::min(lights.size(), data.PointLights.size());
-            for (std::size_t index = 0; index < count; ++index)
-            {
-                const PointLight& light = lights[index];
-                data.PointLights.at(index) = {.PositionRange = glm::vec4(light.Position, light.Range),
-                                              .Color = glm::vec4(ToRadiance(light.Color, light.Intensity), 0.0f)};
-            }
-            data.PointLightCount = static_cast<std::int32_t>(count);
-        }
-
-        void SetSpots(LightsData& data, const std::vector<SpotLight>& lights)
-        {
-            const std::size_t count = std::min(lights.size(), data.SpotLights.size());
-            for (std::size_t index = 0; index < count; ++index)
-            {
-                const SpotLight& light = lights[index];
-                const float outer = std::cos(light.OuterAngle);
-                const float inner = std::max(std::cos(light.InnerAngle), outer + 1e-4f);
-                data.SpotLights.at(index) = {.PositionRange = glm::vec4(light.Position, light.Range),
-                                             .DirectionOuter = glm::vec4(Normalize(light.Direction, glm::vec3(0.0f, 0.0f, -1.0f)), outer),
-                                             .ColorInner = glm::vec4(ToRadiance(light.Color, light.Intensity), inner)};
-            }
-            data.SpotLightCount = static_cast<std::int32_t>(count);
-        }
-
-        LightsData ToLightsData(const SceneLights& lights)
-        {
-            LightsData data;
-            SetDirectional(data, lights.Directional);
-            if (lights.Shadow.Map != nullptr)
-            {
-                data.ShadowViewProjection = lights.Shadow.ViewProjection;
-                data.Shadow = {1.0f, lights.Shadow.DepthBias, lights.Shadow.NormalBias,
-                               1.0f / static_cast<float>(std::max(lights.Shadow.Map->GetSpecification().Width, 1U))};
-            }
-            SetPoints(data, lights.Points);
-            SetSpots(data, lights.Spots);
-            return data;
-        }
     }
 
-    Renderer::Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<UniformBuffer> light)
-        : m_Context(&context), m_CameraBuffer(std::move(camera)), m_ObjectBuffer(std::move(object)), m_LightBuffer(std::move(light))
+    Renderer::Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<LightsBuffer> lights)
+        : m_Context(&context), m_CameraBuffer(std::move(camera)), m_ObjectBuffer(std::move(object)), m_LightsBuffer(std::move(lights))
     {
     }
+
+    Renderer::~Renderer() = default;
 
     Scope<Renderer> Renderer::Create(GraphicsContext& context)
     {
-        Scope<UniformBuffer> camera = context.CreateUniformBuffer(sizeof(CameraData), CameraBinding);
-        Scope<UniformBuffer> object = context.CreateUniformBuffer(sizeof(glm::mat4), ObjectBinding);
-        Scope<UniformBuffer> light = context.CreateUniformBuffer(sizeof(LightsData), LightBinding);
-        if (camera == nullptr || object == nullptr || light == nullptr)
+        Scope<UniformBuffer> camera = context.CreateUniformBuffer(sizeof(CameraData), ShaderBindings::Camera);
+        Scope<UniformBuffer> object = context.CreateUniformBuffer(sizeof(glm::mat4), ShaderBindings::Object);
+        Scope<LightsBuffer> lights = LightsBuffer::Create(context);
+        if (camera == nullptr || object == nullptr || lights == nullptr)
         {
             return nullptr;
         }
-        return Scope<Renderer>(new Renderer(context, std::move(camera), std::move(object), std::move(light)));
+        return Scope<Renderer>(new Renderer(context, std::move(camera), std::move(object), std::move(lights)));
     }
 
     void Renderer::BeginScene(const Camera& camera, Framebuffer* target, const SceneLights& lights)
@@ -152,18 +56,11 @@ namespace Quasar
                                        .View = camera.GetView(),
                                        .Projection = camera.GetProjection(),
                                        .Position = glm::vec4(camera.GetPosition(), 1.0f)});
-        m_LightBuffer->Set(ToLightsData(lights));
+        m_LightsBuffer->Set(lights);
         if (lights.Shadow.Map != nullptr)
         {
-            lights.Shadow.Map->BindDepthTexture(ShadowMapSlot);
+            lights.Shadow.Map->BindDepthTexture(ShaderBindings::ShadowMap);
         }
-        const bool tooMany = lights.Points.size() > MaxPointLights || lights.Spots.size() > MaxSpotLights;
-        if (tooMany && !m_ReportedTooManyLights)
-        {
-            QUASAR_ENGINE_WARN("The scene has {} point lights and {} spot lights, but only the first {} and {} are used", lights.Points.size(),
-                               lights.Spots.size(), MaxPointLights, MaxSpotLights);
-        }
-        m_ReportedTooManyLights = tooMany;
         if (m_Target != nullptr)
         {
             m_Target->Bind();
@@ -181,28 +78,6 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
             return;
         }
-        const MaterialSpecification& specification = material.GetSpecification();
-        const std::uint32_t binding = specification.UniformBinding;
-        const bool onBinding =
-            !specification.Uniforms.GetMembers().empty() && (binding == CameraBinding || binding == ObjectBinding || binding == LightBinding);
-        const bool onSlot = std::ranges::any_of(specification.Textures, [](const MaterialTexture& texture) { return texture.Slot == ShadowMapSlot; });
-        if (onBinding || onSlot)
-        {
-            if (std::ranges::find(m_ReportedMaterials, &material) == m_ReportedMaterials.end())
-            {
-                m_ReportedMaterials.push_back(&material);
-                if (onBinding)
-                {
-                    QUASAR_ENGINE_ERROR("Cannot draw with a material on the binding {}, which the renderer uses", binding);
-                }
-                else
-                {
-                    QUASAR_ENGINE_ERROR("Cannot draw with a material that reads a texture from the slot {}, which the renderer uses", ShadowMapSlot);
-                }
-            }
-            return;
-        }
-
         m_ObjectBuffer->Set(transform);
         material.Bind();
         Draw(mesh);
@@ -224,7 +99,7 @@ namespace Quasar
     {
         m_CameraBuffer->Bind();
         m_ObjectBuffer->Bind();
-        m_LightBuffer->Bind();
+        m_LightsBuffer->Bind();
         m_Context->DrawIndexed(mesh.GetVertexArray());
     }
 

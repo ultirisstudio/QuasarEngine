@@ -68,6 +68,16 @@ namespace Quasar
         {
             return nullptr;
         }
+        if (!specification.Uniforms.GetMembers().empty() && ShaderBindings::IsFilledByRenderer(specification.UniformBinding))
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a material on the binding {}, which the Renderer fills", specification.UniformBinding);
+            return nullptr;
+        }
+        if (std::ranges::any_of(specification.Textures, [](const MaterialTexture& texture) { return texture.Slot == ShaderBindings::ShadowMap; }))
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a material that reads a texture from the slot {}, which the Renderer binds", ShaderBindings::ShadowMap);
+            return nullptr;
+        }
 
         Scope<UniformBuffer> uniforms;
         if (!specification.Uniforms.GetMembers().empty())

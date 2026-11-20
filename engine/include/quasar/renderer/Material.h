@@ -9,6 +9,7 @@
 #include <quasar/renderer/Buffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Pipeline.h>
+#include <quasar/renderer/ShaderBindings.h>
 #include <quasar/renderer/Texture.h>
 #include <quasar/renderer/UniformBlockLayout.h>
 
@@ -41,9 +42,9 @@ namespace Quasar
         /// The pipeline of the draws. It must stay alive as long as the material, which does not own it.
         Quasar::Pipeline* Pipeline = nullptr;
 
-        /// The N of the `layout(std140, binding = N) uniform` block that holds the values. The bindings of the Renderer,
-        /// 0, 2 and 3, are left to it.
-        std::uint32_t UniformBinding = 1;
+        /// The N of the `layout(std140, binding = N) uniform` block that holds the values, which cannot be one that the
+        /// Renderer fills. See ShaderBindings.
+        std::uint32_t UniformBinding = ShaderBindings::Material;
 
         UniformBlockLayout Uniforms{};           ///< The members of the block, in the order of the GLSL block.
         std::vector<MaterialTexture> Textures{}; ///< The textures of the shader.
@@ -59,8 +60,8 @@ namespace Quasar
     public:
         /// @brief Creates a material from its description.
         /// @return The material, or nullptr if the description has no pipeline, has two members or two textures with
-        /// the same name, has two textures in the same slot, or if the graphics API cannot create its buffer. The
-        /// reason is logged as an engine error.
+        /// the same name, has two textures in the same slot, uses a block or a texture slot that the Renderer fills, or
+        /// if the graphics API cannot create its buffer. The reason is logged as an engine error.
         static Scope<Material> Create(GraphicsContext& context, const MaterialSpecification& specification);
 
         ~Material() = default;

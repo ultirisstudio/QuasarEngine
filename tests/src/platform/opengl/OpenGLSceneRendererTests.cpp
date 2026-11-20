@@ -15,6 +15,7 @@
 #include <quasar/renderer/Primitives.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
+#include <quasar/renderer/ShaderBindings.h>
 #include <quasar/scene/Entity.h>
 #include <quasar/scene/Scene.h>
 #include <quasar/scene/SceneRenderer.h>
@@ -486,7 +487,7 @@ TEST_CASE("The meshes hide the directional light from the surfaces behind them, 
         fixture.GetContext().CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {Quasar::FramebufferFormat::Depth32F}});
     REQUIRE(closest != nullptr);
     closest->ClearDepthStencil(0.0f);
-    closest->BindDepthTexture(Quasar::Renderer::ShadowMapSlot);
+    closest->BindDepthTexture(Quasar::ShaderBindings::ShadowMap);
     CHECK(IsNear(render(4, 4), White));
 
     settings.Shadows = {.Resolution = 512};
