@@ -88,7 +88,7 @@ namespace Quasar
 
         /// @brief Returns the framebuffer where the scene is drawn in linear colors, before the last pass. A Render()
         /// with other SceneRendererSettings::Samples replaces it, so it should not be kept.
-        const Framebuffer& GetSceneFramebuffer() const { return *m_Framebuffer; }
+        const Framebuffer& GetSceneFramebuffer() const { return *m_SceneFramebuffer; }
 
         /// @brief Returns the framebuffer where the depth of the scene is drawn from the directional light.
         const Framebuffer& GetShadowMap() const { return *m_ShadowMap; }
@@ -124,7 +124,7 @@ namespace Quasar
         Renderer* m_Renderer;
         SceneRendererSettings m_Settings;
         Scope<ToneMapper> m_ToneMapper;
-        Scope<Framebuffer> m_Framebuffer;
+        Scope<Framebuffer> m_SceneFramebuffer;
         Scope<Shader> m_ShadowShader;
         Scope<Pipeline> m_ShadowPipeline;
         Scope<Framebuffer> m_ShadowMap;

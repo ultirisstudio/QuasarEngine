@@ -24,7 +24,7 @@
 namespace Quasar
 {
     SceneRenderer::SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings)
-        : m_Renderer(&renderer), m_Settings(settings), m_ToneMapper(std::move(resources.ToneMapper)), m_Framebuffer(std::move(resources.SceneFramebuffer)),
+        : m_Renderer(&renderer), m_Settings(settings), m_ToneMapper(std::move(resources.ToneMapper)), m_SceneFramebuffer(std::move(resources.SceneFramebuffer)),
           m_ShadowShader(std::move(resources.ShadowShader)), m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_ShadowMap(std::move(resources.ShadowMap))
     {
     }
@@ -119,30 +119,30 @@ namespace Quasar
         const glm::uvec2 size =
             target != nullptr ? glm::uvec2(target->GetSpecification().Width, target->GetSpecification().Height) : m_Renderer->GetContext().GetWindowSize();
         const std::uint32_t samples = std::clamp(m_Settings.Samples, 1U, m_Renderer->GetContext().GetMaxSamples());
-        if (m_Framebuffer->GetSpecification().Samples != samples)
+        if (m_SceneFramebuffer->GetSpecification().Samples != samples)
         {
-            FramebufferSpecification specification = m_Framebuffer->GetSpecification();
+            FramebufferSpecification specification = m_SceneFramebuffer->GetSpecification();
             specification.Samples = samples;
             if (Scope<Framebuffer> framebuffer = m_Renderer->GetContext().CreateFramebuffer(specification); framebuffer != nullptr)
             {
-                m_Framebuffer = std::move(framebuffer);
+                m_SceneFramebuffer = std::move(framebuffer);
             }
             else
             {
-                m_Settings.Samples = m_Framebuffer->GetSpecification().Samples;
+                m_Settings.Samples = m_SceneFramebuffer->GetSpecification().Samples;
             }
         }
-        m_Framebuffer->Resize(size.x, size.y);
-        m_Framebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
-        m_Framebuffer->ClearDepthStencil();
+        m_SceneFramebuffer->Resize(size.x, size.y);
+        m_SceneFramebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
+        m_SceneFramebuffer->ClearDepthStencil();
 
-        m_Renderer->BeginScene(camera, m_Framebuffer.get(), m_Lights);
+        m_Renderer->BeginScene(camera, m_SceneFramebuffer.get(), m_Lights);
         for (const DrawItem& item : m_DrawList)
         {
             m_Renderer->Submit(*item.Mesh, *item.Material, item.Transform);
         }
         m_Renderer->EndScene();
-        m_ToneMapper->Apply(*m_Framebuffer, target, m_Settings.Exposure, m_Settings.Tonemap);
+        m_ToneMapper->Apply(*m_SceneFramebuffer, target, m_Settings.Exposure, m_Settings.Tonemap);
     }
 
     DirectionalShadow SceneRenderer::RenderShadows(const Camera& camera, const DirectionalLight& light)

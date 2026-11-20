@@ -12,9 +12,6 @@
 #include <quasar/events/Event.h>
 #include <quasar/imgui/ImGuiLayer.h>
 #include <quasar/input/Gamepads.h>
-#include <quasar/renderer/PipelineLibrary.h>
-#include <quasar/renderer/Renderer.h>
-#include <quasar/scene/SceneRenderer.h>
 #include <quasar/time/Timer.h>
 
 #include <glm/vec4.hpp>
@@ -27,6 +24,10 @@
 
 namespace Quasar
 {
+    class PipelineLibrary;
+    class Renderer;
+    class SceneRenderer;
+
     /// @brief Settings used to create the application.
     struct ApplicationSpecification
     {
