@@ -297,16 +297,20 @@ TEST_CASE("The renderer refuses draws outside of a scene, scenes out of order an
         scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::CameraBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
     const Quasar::Scope<Quasar::Material> onLight = Quasar::Material::Create(
         scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .UniformBinding = Quasar::Renderer::LightBinding, .Uniforms = {{"Color", UniformType::Vec4}}});
+    const Quasar::Scope<Quasar::Material> onShadowSlot = Quasar::Material::Create(
+        scene.GetContext(), {.Pipeline = &scene.GetPipeline(), .Textures = {{.Name = "Map", .Slot = Quasar::Renderer::ShadowMapSlot}}});
     REQUIRE(onObject != nullptr);
     REQUIRE(onCamera != nullptr);
     REQUIRE(onLight != nullptr);
+    REQUIRE(onShadowSlot != nullptr);
     onObject->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
     onCamera->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
     onLight->SetVec4("Color", {0.0f, 1.0f, 0.0f, 1.0f});
 
     scene.GetRenderer().Submit(scene.GetQuad(), scene.GetRed(), glm::mat4(1.0f));
+    scene.GetRenderer().Submit(scene.GetQuad(), scene.GetPipeline(), glm::mat4(1.0f));
     scene.GetRenderer().EndScene();
-    CHECK(CountErrors("outside of a scene") == 1);
+    CHECK(CountErrors("outside of a scene") == 2);
     CHECK(CountErrors("did not begin") == 1);
 
     scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
@@ -316,12 +320,14 @@ TEST_CASE("The renderer refuses draws outside of a scene, scenes out of order an
         scene.GetRenderer().Submit(scene.GetQuad(), *onObject, glm::mat4(1.0f));
         scene.GetRenderer().Submit(scene.GetQuad(), *onCamera, glm::mat4(1.0f));
         scene.GetRenderer().Submit(scene.GetQuad(), *onLight, glm::mat4(1.0f));
+        scene.GetRenderer().Submit(scene.GetQuad(), *onShadowSlot, glm::mat4(1.0f));
     }
     scene.GetRenderer().EndScene();
     CHECK(CountErrors("before the previous one ends") == 1);
     CHECK(CountErrors("on the binding 2") == 1);
     CHECK(CountErrors("on the binding 0") == 1);
     CHECK(CountErrors("on the binding 3") == 1);
+    CHECK(CountErrors("from the slot 15") == 1);
     CHECK(IsNear(scene.ReadColor(3, 3), BlackPixel));
 
     scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
