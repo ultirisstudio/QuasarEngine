@@ -35,6 +35,7 @@ namespace Quasar
         std::uint32_t Width = 1280;
         std::uint32_t Height = 720; ///< Height of the window when it is created, in the same unit as Width.
         bool VSync = true;          ///< Whether vertical synchronization is enabled when it is created.
+        bool Fullscreen = false;    ///< Whether the window covers its whole monitor when it is created, see Window::SetFullscreen().
 
         /// Graphics API of the window, whose context is created with the window. A window with GraphicsAPI::None cannot
         /// draw anything: it is only meant for tests that run without a graphics driver.
@@ -100,6 +101,17 @@ namespace Quasar
         /// @brief Returns true if vertical synchronization is enabled.
         bool IsVSync() const;
 
+        /// @brief Makes the window cover its whole monitor, without a border and at the resolution of the desktop, or
+        /// puts it back in a window of its previous size.
+        ///
+        /// The drawing area changes size once the system has applied the change, which sends a WindowResizeEvent.
+        /// @return False if the system refuses the change, which is logged as an engine error, and the window keeps its
+        /// mode.
+        bool SetFullscreen(bool fullscreen);
+
+        /// @brief Returns true if the window covers its whole monitor, see SetFullscreen().
+        bool IsFullscreen() const;
+
         /// @brief Returns the width of the drawing area, in pixels.
         std::uint32_t GetWidth() const;
 
@@ -153,6 +165,7 @@ namespace Quasar
         Scope<GraphicsContext> m_Context;
         std::string m_Title;
         bool m_VSync = false;
+        bool m_Fullscreen = false;
         bool m_ShouldClose = false;
         bool m_Minimized = false;
         std::uint32_t m_Width = 0;
