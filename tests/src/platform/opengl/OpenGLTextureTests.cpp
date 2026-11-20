@@ -470,3 +470,25 @@ TEST_CASE("No texture is loaded from a file that cannot be decoded, or into a fo
     const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
     CHECK(std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Text.find("Rgba8 or Srgba8") != std::string::npos; }) == 1);
 }
+
+TEST_CASE("A texture reads at grazing angles with its anisotropy, lowered to the limit of the GPU and used only with linear mipmaps")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene;
+    const float limit = scene.GetContext().GetMaxAnisotropy();
+    const auto anisotropyOf = [&scene](const TextureSpecification& specification)
+    {
+        const Quasar::Scope<Quasar::Texture2D> texture = scene.CreateTexture(specification, {});
+        GLfloat value = 0.0f;
+        glGetTextureParameterfv(static_cast<GLuint>(texture->GetImGuiTexture()), GL_TEXTURE_MAX_ANISOTROPY, &value);
+        return value;
+    };
+
+    CHECK(anisotropyOf({.Width = 4, .Height = 4}) == std::min(16.0f, limit));
+    CHECK(anisotropyOf({.Width = 4, .Height = 4, .Anisotropy = 2.0f}) == std::min(2.0f, limit));
+    CHECK(anisotropyOf({.Width = 4, .Height = 4, .Anisotropy = 1000.0f}) == limit);
+    CHECK(anisotropyOf({.Width = 4, .Height = 4, .Anisotropy = 0.5f}) == 1.0f);
+    CHECK(anisotropyOf({.Width = 4, .Height = 4, .Filter = TextureFilter::Nearest}) == 1.0f);
+    CHECK(anisotropyOf({.Width = 4, .Height = 4, .Mipmaps = false}) == 1.0f);
+    CHECK(glGetError() == GL_NO_ERROR);
+}

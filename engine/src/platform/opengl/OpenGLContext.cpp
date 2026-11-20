@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string_view>
 
 namespace Quasar
 {
@@ -33,6 +34,42 @@ namespace Quasar
             // OpenGL returns its strings as unsigned characters, which hold the same bytes as characters
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
             return text != nullptr ? reinterpret_cast<const char*>(text) : "unknown";
+        }
+
+        bool HasExtension(std::string_view name)
+        {
+            GLint count = 0;
+            glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+            for (GLint index = 0; index < count; ++index)
+            {
+                const GLubyte* extension = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(index));
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+                if (extension != nullptr && name == reinterpret_cast<const char*>(extension))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        float ReadMaxAnisotropy()
+        {
+            if (GLAD_GL_VERSION_4_6 == 0 && !HasExtension("GL_ARB_texture_filter_anisotropic") && !HasExtension("GL_EXT_texture_filter_anisotropic"))
+            {
+                return 1.0f;
+            }
+            GLfloat value = 1.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &value);
+            return std::max(value, 1.0f);
+        }
+
+        std::uint32_t ReadMaxSamples()
+        {
+            GLint samples = 1;
+            GLint colorSamples = 1;
+            glGetIntegerv(GL_MAX_SAMPLES, &samples);
+            glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, &colorSamples);
+            return static_cast<std::uint32_t>(std::max(std::min(samples, colorSamples), 1));
         }
 
         const OpenGLVertexArray& GetOpenGLVertexArray(const VertexArray& vertexArray)
@@ -88,6 +125,8 @@ namespace Quasar
         }
 
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+        created->m_MaxSamples = ReadMaxSamples();
+        created->m_MaxAnisotropy = ReadMaxAnisotropy();
 
         QUASAR_ENGINE_INFO("OpenGL vendor: {}", GetString(GL_VENDOR));
         QUASAR_ENGINE_INFO("OpenGL renderer: {}", GetString(GL_RENDERER));
@@ -145,7 +184,7 @@ namespace Quasar
     Scope<Texture2D> OpenGLContext::CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLTexture2D::Create(specification, pixels);
+        return OpenGLTexture2D::Create(specification, pixels, m_MaxAnisotropy);
     }
 
     Scope<VertexArray> OpenGLContext::CreateVertexArray()

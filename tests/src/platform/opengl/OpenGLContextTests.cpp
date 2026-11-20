@@ -16,6 +16,8 @@
 #include <glad/gl.h>
 #include <glm/vec2.hpp>
 
+#include <algorithm>
+#include <cstdint>
 #include <utility>
 
 TEST_CASE("A window gets a current OpenGL 4.5 core context")
@@ -42,6 +44,14 @@ TEST_CASE("A window gets a current OpenGL 4.5 core context")
     CHECK(SDL_GL_GetCurrentContext() == context->GetNativeContext());
     CHECK(context->GetWindowSize() == glm::uvec2(window->GetWidth(), window->GetHeight()));
     CHECK(context->GetWindowSize().x > 0);
+    GLint samples = 0;
+    GLint colorSamples = 0;
+    glGetIntegerv(GL_MAX_SAMPLES, &samples);
+    glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, &colorSamples);
+    CHECK(context->GetMaxSamples() == static_cast<std::uint32_t>(std::min(samples, colorSamples)));
+    GLfloat anisotropy = 0.0f;
+    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &anisotropy);
+    CHECK(context->GetMaxAnisotropy() == std::max(anisotropy, 1.0f));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 

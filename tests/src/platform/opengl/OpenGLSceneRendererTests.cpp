@@ -351,24 +351,24 @@ TEST_CASE("The scene framebuffer takes the size of the target, or of the window,
     Fixture fixture;
     fixture.AddCamera({0.0f, 0.0f, 1.0f});
     fixture.GetSceneRenderer().SetSettings({.Background = {0.0f, 1.0f, 0.0f}, .Tonemap = Quasar::Tonemapping::None});
-    const Quasar::Framebuffer& scene = fixture.GetSceneRenderer().GetSceneFramebuffer();
-    CHECK(scene.GetSpecification().Attachments.front() == Quasar::FramebufferFormat::Rgba16F);
+    const auto scene = [&fixture]() -> const Quasar::FramebufferSpecification& { return fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification(); };
+    CHECK(scene().Attachments.front() == Quasar::FramebufferFormat::Rgba16F);
 
     fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
-    CHECK(scene.GetSpecification().Width == 8);
-    CHECK(scene.GetSpecification().Height == 8);
+    CHECK(scene().Width == 8);
+    CHECK(scene().Height == 8);
 
     const Quasar::Scope<Quasar::Framebuffer> wide = fixture.GetContext().CreateFramebuffer({.Width = 16, .Height = 4});
     REQUIRE(wide != nullptr);
     fixture.GetSceneRenderer().Render(fixture.GetScene(), wide.get());
-    CHECK(scene.GetSpecification().Width == 16);
-    CHECK(scene.GetSpecification().Height == 4);
+    CHECK(scene().Width == 16);
+    CHECK(scene().Height == 4);
 
     fixture.GetContext().ClearWindow({1.0f, 0.0f, 0.0f, 1.0f});
     fixture.GetSceneRenderer().Render(fixture.GetScene());
     const glm::uvec2 window = fixture.GetContext().GetWindowSize();
-    CHECK(scene.GetSpecification().Width == window.x);
-    CHECK(scene.GetSpecification().Height == window.y);
+    CHECK(scene().Width == window.x);
+    CHECK(scene().Height == window.y);
     std::array<std::uint8_t, 4> pixel{};
     glReadPixels(static_cast<GLint>(window.x) - 1, static_cast<GLint>(window.y) - 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
     CHECK(IsNear({pixel[0], pixel[1], pixel[2], pixel[3]}, {0, 255, 0, 255}));
@@ -637,4 +637,43 @@ TEST_CASE("The shadows have soft edges, over a few pixels of the shadow map")
     CHECK(between >= 10);
     CHECK(row[0] < Shadowed[0] + 10);
     CHECK(row[std::size_t{63} * 4] > 245);
+}
+
+TEST_CASE("Several samples per pixel smooth the edges of the meshes, up to the limit of the GPU")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const Quasar::Scope<Quasar::Material> white = fixture.CreateColor(glm::vec4(1.0f));
+    fixture.AddQuad(*white, {.Rotation = glm::angleAxis(glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)), .Scale = glm::vec3(1.2f)});
+    fixture.AddCamera({0.0f, 0.0f, 1.0f});
+    const auto partlyCovered = [&fixture](std::uint32_t samples)
+    {
+        fixture.GetSceneRenderer().SetSettings({.Background = glm::vec3(0.0f), .Tonemap = Quasar::Tonemapping::None, .Samples = samples});
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        int count = 0;
+        for (int y = 0; y < 8; ++y)
+        {
+            for (int x = 0; x < 8; ++x)
+            {
+                const int red = fixture.ReadColor(x, y)[0];
+                count += red > 10 && red < 245 ? 1 : 0;
+            }
+        }
+        return count;
+    };
+    const std::uint32_t limit = fixture.GetContext().GetMaxSamples();
+
+    CHECK(partlyCovered(1) == 0);
+    CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == 1);
+    CHECK(partlyCovered(0) == 0);
+    CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == 1);
+    if (limit >= 4)
+    {
+        CHECK(partlyCovered(4) > 4);
+        CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == 4);
+    }
+    CHECK(partlyCovered(1000) > 0);
+    CHECK(fixture.GetSceneRenderer().GetSceneFramebuffer().GetSpecification().Samples == limit);
+    CHECK(fixture.GetSceneRenderer().GetSettings().Samples == 1000);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }

@@ -109,6 +109,14 @@ namespace Quasar
         /// into the window. See Window::GetWidth().
         virtual glm::uvec2 GetWindowSize() const = 0;
 
+        /// @brief Returns the most samples per pixel of a framebuffer with color and depth attachments, for antialiasing.
+        /// See FramebufferSpecification::Samples.
+        virtual std::uint32_t GetMaxSamples() const = 0;
+
+        /// @brief Returns the most anisotropy of a texture, or 1 if the graphics driver does not support anisotropic
+        /// filtering. See TextureSpecification::Anisotropy.
+        virtual float GetMaxAnisotropy() const = 0;
+
         /// @brief Fills the window with a color, and its depth and stencil with a value, whatever the pipeline bound.
         virtual void ClearWindow(glm::vec4 color, float depth = 1.0f, std::uint8_t stencil = 0) = 0;
 

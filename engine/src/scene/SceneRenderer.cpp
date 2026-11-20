@@ -128,6 +128,20 @@ namespace Quasar
 
         const glm::uvec2 size =
             target != nullptr ? glm::uvec2(target->GetSpecification().Width, target->GetSpecification().Height) : m_Renderer->GetContext().GetWindowSize();
+        const std::uint32_t samples = std::clamp(m_Settings.Samples, 1U, m_Renderer->GetContext().GetMaxSamples());
+        if (m_Framebuffer->GetSpecification().Samples != samples)
+        {
+            FramebufferSpecification specification = m_Framebuffer->GetSpecification();
+            specification.Samples = samples;
+            if (Scope<Framebuffer> framebuffer = m_Renderer->GetContext().CreateFramebuffer(specification); framebuffer != nullptr)
+            {
+                m_Framebuffer = std::move(framebuffer);
+            }
+            else
+            {
+                m_Settings.Samples = m_Framebuffer->GetSpecification().Samples;
+            }
+        }
         m_Framebuffer->Resize(size.x, size.y);
         m_Framebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
         m_Framebuffer->ClearDepthStencil();

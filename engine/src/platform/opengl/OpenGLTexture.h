@@ -12,7 +12,7 @@ namespace Quasar
     class OpenGLTexture2D final : public Texture2D
     {
     public:
-        static Scope<OpenGLTexture2D> Create(const TextureSpecification& specification, std::span<const std::byte> pixels);
+        static Scope<OpenGLTexture2D> Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy);
 
         ~OpenGLTexture2D() override;
 
@@ -25,7 +25,7 @@ namespace Quasar
         ImTextureID GetImGuiTexture() const override;
 
     private:
-        OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount);
+        OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy);
 
         void Write(std::span<const std::byte> pixels) override;
         void Clear();

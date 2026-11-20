@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cctype>
 #include <tuple>
 #include <utility>
@@ -163,6 +164,12 @@ namespace Quasar::Sandbox
                 int tonemap = static_cast<int>(settings.Tonemap);
                 ImGui::Combo("Tonemapping", &tonemap, tonemaps.data(), static_cast<int>(tonemaps.size()));
                 settings.Tonemap = static_cast<Tonemapping>(tonemap);
+                constexpr std::array<const char*, 4> antialiasing{"Off", "2x", "4x", "8x"};
+                int level = std::min(std::countr_zero(settings.Samples), 3);
+                if (ImGui::Combo("Antialiasing", &level, antialiasing.data(), static_cast<int>(antialiasing.size())))
+                {
+                    settings.Samples = 1U << static_cast<unsigned>(level);
+                }
 
                 ImGui::SeparatorText("Shadows");
                 ImGui::Checkbox("Enabled", &settings.Shadows.Enabled);
