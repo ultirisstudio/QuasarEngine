@@ -1,4 +1,5 @@
 #include "helpers/LogHelpers.h"
+#include "helpers/MathHelpers.h"
 
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/Camera.h>
@@ -20,6 +21,7 @@
 
 using Quasar::Camera;
 using Quasar::PerspectiveProjection;
+using TestHelpers::IsNear;
 
 namespace
 {
@@ -44,16 +46,6 @@ namespace
     {
         const std::optional<glm::vec3> projected = Project(camera, point);
         return projected && std::abs(projected->x) < 1e-4f && std::abs(projected->y) < 1e-4f;
-    }
-
-    bool IsNear(const glm::vec3& value, const glm::vec3& expected)
-    {
-        return glm::distance(value, expected) < 1e-4f;
-    }
-
-    bool IsNear(float value, float expected)
-    {
-        return std::abs(value - expected) < 1e-4f;
     }
 }
 

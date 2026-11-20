@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Layer.h>
@@ -19,10 +20,10 @@
 #include <optional>
 #include <utility>
 
+using TestHelpers::Color;
+
 namespace
 {
-    using Color = std::array<int, 4>;
-
     class PixelLayer : public Quasar::Layer
     {
     public:

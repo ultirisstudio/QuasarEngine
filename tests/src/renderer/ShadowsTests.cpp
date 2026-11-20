@@ -1,4 +1,5 @@
 #include "helpers/LogHelpers.h"
+#include "helpers/MathHelpers.h"
 
 #include <quasar/renderer/Camera.h>
 #include <quasar/renderer/Shadows.h>
@@ -17,14 +18,10 @@
 using Quasar::Camera;
 using Quasar::ComputeShadowCamera;
 using Quasar::ShadowCamera;
+using TestHelpers::IsNear;
 
 namespace
 {
-    bool IsNear(const glm::vec3& value, const glm::vec3& expected, float tolerance = 1e-4f)
-    {
-        return glm::distance(value, expected) < tolerance;
-    }
-
     Camera CreateViewCamera()
     {
         Camera camera;

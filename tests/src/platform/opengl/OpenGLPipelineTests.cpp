@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -16,8 +17,6 @@
 #include <glm/vec4.hpp>
 
 #include <array>
-#include <cstdint>
-#include <cstdlib>
 #include <optional>
 #include <string_view>
 
@@ -25,6 +24,9 @@ using Quasar::BlendMode;
 using Quasar::CullMode;
 using Quasar::DepthCompare;
 using Quasar::PipelineSpecification;
+using TestHelpers::Color;
+using TestHelpers::IsNear;
+using TestHelpers::ReadWindowPixel;
 
 namespace
 {
@@ -54,8 +56,6 @@ void main()
     o_Value = u_Value;
 }
 )";
-
-    using Color = std::array<int, 4>;
 
     struct Triangle
     {
@@ -135,14 +135,7 @@ void main()
             GetContext().Draw(*m_VertexArray, 3);
         }
 
-        Color ReadColor() const
-        {
-            std::array<std::uint8_t, 4> pixel{};
-            m_Framebuffer->Bind();
-            glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-            m_Framebuffer->Unbind();
-            return {pixel[0], pixel[1], pixel[2], pixel[3]};
-        }
+        Color ReadColor() const { return TestHelpers::ReadColor(*m_Framebuffer, 0, 0); }
 
     private:
         Quasar::Scope<Quasar::Window> m_Window;
@@ -150,25 +143,6 @@ void main()
         Quasar::Scope<Quasar::Framebuffer> m_Framebuffer;
         Quasar::Scope<Quasar::VertexArray> m_VertexArray;
     };
-
-    bool IsNear(const Color& color, const Color& expected)
-    {
-        for (std::size_t channel = 0; channel < color.size(); ++channel)
-        {
-            if (std::abs(color.at(channel) - expected.at(channel)) > 1)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    Color ReadWindowPixel(int x, int y)
-    {
-        std::array<std::uint8_t, 4> pixel{};
-        glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-        return {pixel[0], pixel[1], pixel[2], pixel[3]};
-    }
 }
 
 TEST_CASE("Bind makes the draws use the shader of the pipeline")

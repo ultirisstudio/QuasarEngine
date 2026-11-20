@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -15,34 +16,14 @@
 #include <glm/vec4.hpp>
 
 #include <array>
-#include <cstdint>
-#include <cstdlib>
+
+using TestHelpers::Color;
+using TestHelpers::IsNear;
+using TestHelpers::ReadColor;
+using TestHelpers::ReadWindowPixel;
 
 namespace
 {
-    using Color = std::array<int, 4>;
-
-    bool IsNear(const Color& value, const Color& expected)
-    {
-        for (std::size_t channel = 0; channel < value.size(); ++channel)
-        {
-            if (std::abs(value.at(channel) - expected.at(channel)) > 1)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    Color ReadColor(Quasar::Framebuffer& framebuffer)
-    {
-        std::array<std::uint8_t, 4> pixel{};
-        framebuffer.Bind();
-        glReadPixels(1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-        framebuffer.Unbind();
-        return {pixel[0], pixel[1], pixel[2], pixel[3]};
-    }
-
     class Fixture
     {
     public:
@@ -66,7 +47,7 @@ namespace
             m_Source->ClearColor(0, linear);
             m_Source->ClearColor(1, glm::vec4(0.0f));
             m_ToneMapper->Apply(*m_Source, m_Target.get(), exposure, tonemapping);
-            return ReadColor(*m_Target);
+            return ReadColor(*m_Target, 1, 1);
         }
 
         Quasar::ToneMapper& GetToneMapper() const { return *m_ToneMapper; }
@@ -118,9 +99,7 @@ TEST_CASE("The tone mapper draws into the window without a target, and leaves th
     fixture.GetToneMapper().Apply(fixture.GetSource(), nullptr, 1.0f, Quasar::Tonemapping::None);
     CHECK(isWindowBound());
 
-    std::array<std::uint8_t, 4> pixel{};
-    glReadPixels(1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-    CHECK(IsNear({pixel[0], pixel[1], pixel[2], pixel[3]}, {0, 188, 0, 255}));
+    CHECK(IsNear(ReadWindowPixel(1, 1), {0, 188, 0, 255}));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
@@ -136,6 +115,6 @@ TEST_CASE("The tone mapper resolves a multisampled target, so its image can be r
     fixture.GetToneMapper().Apply(fixture.GetSource(), multisampled.get(), 1.0f, Quasar::Tonemapping::None);
     fixture.GetToneMapper().Apply(*multisampled, &fixture.GetTarget(), 1.0f, Quasar::Tonemapping::None);
 
-    CHECK(IsNear(ReadColor(fixture.GetTarget()), {223, 0, 0, 255}));
+    CHECK(IsNear(ReadColor(fixture.GetTarget(), 1, 1), {223, 0, 0, 255}));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }

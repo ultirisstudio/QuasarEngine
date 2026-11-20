@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -25,17 +26,16 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-#include <algorithm>
 #include <array>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
 using Quasar::UniformType;
+using TestHelpers::Color;
+using TestHelpers::CountErrors;
+using TestHelpers::IsNear;
+using TestHelpers::ReadWindowPixel;
 
 namespace
 {
@@ -72,8 +72,6 @@ void main()
               1000 * int(round(u_Projection[1][1])) + (product ? 10000 : 0);
 }
 )";
-
-    using Color = std::array<int, 4>;
 
     constexpr glm::vec4 Black{0.0f, 0.0f, 0.0f, 1.0f};
     constexpr Color BlackPixel{0, 0, 0, 255};
@@ -123,14 +121,7 @@ void main()
             m_Framebuffer->ClearDepthStencil();
         }
 
-        Color ReadColor(int x, int y) const
-        {
-            std::array<std::uint8_t, 4> pixel{};
-            m_Framebuffer->Bind();
-            glReadPixels(x, 7 - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-            m_Framebuffer->Unbind();
-            return {pixel[0], pixel[1], pixel[2], pixel[3]};
-        }
+        Color ReadColor(int x, int y) const { return TestHelpers::ReadColor(*m_Framebuffer, x, y); }
 
     private:
         Quasar::Scope<Quasar::Material> CreateColor(glm::vec4 color) const
@@ -152,25 +143,6 @@ void main()
         Quasar::Scope<Quasar::Material> m_Blue;
         Quasar::Camera m_Camera;
     };
-
-    bool IsNear(const Color& color, const Color& expected)
-    {
-        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 1; });
-    }
-
-    Color ReadWindowPixel(int x, int y)
-    {
-        std::array<std::uint8_t, 4> pixel{};
-        glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-        return {pixel[0], pixel[1], pixel[2], pixel[3]};
-    }
-
-    std::ptrdiff_t CountErrors(std::string_view text)
-    {
-        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::count_if(messages, [text](const Quasar::LogMessage& message)
-                                     { return message.Level == Quasar::LogLevel::Error && message.Text.find(text) != std::string::npos; });
-    }
 }
 
 TEST_CASE("The renderer draws a mesh with its material, seen from the camera, then goes back to the window")

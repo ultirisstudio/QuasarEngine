@@ -1,3 +1,5 @@
+#include "helpers/MathHelpers.h"
+
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <doctest/doctest.h>
@@ -12,14 +14,10 @@
 #include <cmath>
 
 using Quasar::TransformComponent;
+using TestHelpers::IsNear;
 
 namespace
 {
-    bool IsNear(const glm::vec3& value, const glm::vec3& expected, float tolerance = 1e-5f)
-    {
-        return glm::distance(value, expected) < tolerance;
-    }
-
     glm::vec3 Apply(const TransformComponent& transform, const glm::vec3& point)
     {
         return glm::vec3(transform.GetMatrix() * glm::vec4(point, 1.0f));

@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -27,7 +28,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <optional>
 #include <span>
 #include <string>
@@ -35,6 +35,8 @@
 #include <vector>
 
 using Quasar::UniformType;
+using TestHelpers::Color;
+using TestHelpers::IsNear;
 
 namespace
 {
@@ -95,8 +97,6 @@ void main()
         return {{"a", UniformType::Float}, {"b", UniformType::Vec3}, {"c", UniformType::Vec2},
                 {"d", UniformType::Int},   {"e", UniformType::Vec4}, {"f", UniformType::Mat4}};
     }
-
-    using Color = std::array<int, 4>;
 
     class Scene
     {
@@ -161,14 +161,7 @@ void main()
 
         int ReadValue() const { return m_Framebuffer->ReadInteger(0, 0, 0).value_or(-2); }
 
-        Color ReadColor(int x, int y) const
-        {
-            std::array<std::uint8_t, 4> pixel{};
-            m_Framebuffer->Bind();
-            glReadPixels(x, 1 - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-            m_Framebuffer->Unbind();
-            return {pixel[0], pixel[1], pixel[2], pixel[3]};
-        }
+        Color ReadColor(int x, int y) const { return TestHelpers::ReadColor(*m_Framebuffer, x, y); }
 
     private:
         Quasar::Scope<Quasar::Window> m_Window;
@@ -177,11 +170,6 @@ void main()
         Quasar::Scope<Quasar::UniformBuffer> m_Camera;
         Quasar::Scope<Quasar::UniformBuffer> m_Object;
     };
-
-    bool IsNear(const Color& color, const Color& expected)
-    {
-        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 1; });
-    }
 
     std::optional<Quasar::ShaderSpecification> ReadUnlitShader()
     {

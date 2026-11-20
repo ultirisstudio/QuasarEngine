@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -28,9 +29,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -38,11 +37,12 @@
 
 using Quasar::PipelineLibrary;
 using Quasar::UniformType;
+using TestHelpers::Color;
+using TestHelpers::CountErrors;
+using TestHelpers::IsNear;
 
 namespace
 {
-    using Color = std::array<int, 4>;
-
     class Fixture
     {
     public:
@@ -93,21 +93,9 @@ namespace
         Quasar::Camera m_Camera;
     };
 
-    bool IsNear(const Color& color, const Color& expected)
-    {
-        return std::ranges::equal(color, expected, [](int value, int other) { return std::abs(value - other) <= 2; });
-    }
-
     Color Gray(int value)
     {
         return {value, value, value, 255};
-    }
-
-    std::ptrdiff_t CountErrors(std::string_view text)
-    {
-        const std::vector<Quasar::LogMessage> messages = Quasar::Log::GetMemorySink()->GetMessages();
-        return std::ranges::count_if(messages, [text](const Quasar::LogMessage& message)
-                                     { return message.Level == Quasar::LogLevel::Error && message.Text.find(text) != std::string::npos; });
     }
 
     Quasar::ShaderSpecification ReadShader(std::string_view name)

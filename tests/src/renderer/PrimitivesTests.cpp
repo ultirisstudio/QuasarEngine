@@ -1,4 +1,5 @@
 #include "helpers/LogHelpers.h"
+#include "helpers/MathHelpers.h"
 
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/Mesh.h>
@@ -14,20 +15,15 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <initializer_list>
 #include <limits>
 
 using Quasar::MeshData;
 using Quasar::Vertex;
+using TestHelpers::IsNear;
 
 namespace
 {
-    bool IsNear(float value, float expected)
-    {
-        return std::abs(value - expected) < 1e-4f;
-    }
-
     std::array<const Vertex*, 3> GetTriangle(const MeshData& data, std::size_t triangle)
     {
         return {&data.Vertices.at(data.Indices.at(triangle * 3)), &data.Vertices.at(data.Indices.at(triangle * 3 + 1)),
