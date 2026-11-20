@@ -85,6 +85,14 @@ namespace Quasar
         /// @brief Returns the size of the drawing area of the window, in pixels. See GraphicsContext::GetWindowSize().
         glm::uvec2 GetWindowSize() const override;
 
+        /// @brief Returns the most samples per pixel of a framebuffer, read when the context is created. See
+        /// GraphicsContext::GetMaxSamples().
+        std::uint32_t GetMaxSamples() const override { return m_MaxSamples; }
+
+        /// @brief Returns the most anisotropy of a texture, read when the context is created. See
+        /// GraphicsContext::GetMaxAnisotropy().
+        float GetMaxAnisotropy() const override { return m_MaxAnisotropy; }
+
         /// @brief Makes the context current, then fills the window. See GraphicsContext::ClearWindow().
         void ClearWindow(glm::vec4 color, float depth, std::uint8_t stencil) override;
 
@@ -102,5 +110,7 @@ namespace Quasar
 
         SDL_Window* m_Window = nullptr;
         SDL_GLContextState* m_Context = nullptr;
+        std::uint32_t m_MaxSamples = 1;
+        float m_MaxAnisotropy = 1.0f;
     };
 }

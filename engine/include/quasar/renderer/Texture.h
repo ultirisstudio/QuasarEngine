@@ -53,6 +53,12 @@ namespace Quasar
         TextureFilter Filter = TextureFilter::Linear; ///< How the texture is read between its pixels.
         TextureWrap Wrap = TextureWrap::Repeat;       ///< How the texture is read outside of the coordinates 0 to 1.
         bool Mipmaps = true;                          ///< Keeps smaller copies of the image, which avoid flickering when the texture is far.
+
+        /// How many samples a read takes along the direction in which the texture is seen at a grazing angle, such as a
+        /// ground far away, so that it stays sharp without flickering. It goes from 1, for none, to
+        /// GraphicsContext::GetMaxAnisotropy(), to which a higher value is lowered. It is used only with
+        /// TextureFilter::Linear and mipmaps.
+        float Anisotropy = 16.0f;
     };
 
     /// @brief An image that the shaders read with a `sampler2D`.

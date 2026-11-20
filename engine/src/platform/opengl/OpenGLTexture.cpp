@@ -68,7 +68,7 @@ namespace Quasar
         }
     }
 
-    OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount)
+    OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy)
         : Texture2D(specification),
           m_Levels(specification.Mipmaps ? static_cast<std::uint32_t>(std::bit_width(std::max(specification.Width, specification.Height))) : 1),
           m_SlotCount(slotCount)
@@ -80,6 +80,10 @@ namespace Quasar
         glTextureParameteri(m_Texture, GL_TEXTURE_MAG_FILTER, specification.Filter == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR);
         glTextureParameteri(m_Texture, GL_TEXTURE_WRAP_S, GetWrap(specification.Wrap));
         glTextureParameteri(m_Texture, GL_TEXTURE_WRAP_T, GetWrap(specification.Wrap));
+        if (maxAnisotropy > 1.0f && specification.Filter == TextureFilter::Linear && specification.Mipmaps)
+        {
+            glTextureParameterf(m_Texture, GL_TEXTURE_MAX_ANISOTROPY, specification.Anisotropy > 1.0f ? specification.Anisotropy : 1.0f);
+        }
     }
 
     OpenGLTexture2D::~OpenGLTexture2D()
@@ -87,7 +91,7 @@ namespace Quasar
         glDeleteTextures(1, &m_Texture);
     }
 
-    Scope<OpenGLTexture2D> OpenGLTexture2D::Create(const TextureSpecification& specification, std::span<const std::byte> pixels)
+    Scope<OpenGLTexture2D> OpenGLTexture2D::Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy)
     {
         if (!IsValid(specification))
         {
@@ -110,7 +114,7 @@ namespace Quasar
             return nullptr;
         }
 
-        Scope<OpenGLTexture2D> texture(new OpenGLTexture2D(specification, GetLimit(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS)));
+        Scope<OpenGLTexture2D> texture(new OpenGLTexture2D(specification, GetLimit(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS), maxAnisotropy));
         if (pixels.empty())
         {
             texture->Clear();
