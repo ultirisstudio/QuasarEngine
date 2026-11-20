@@ -54,6 +54,7 @@ target_sources(QuasarEngine
         src/renderer/Mesh.cpp
         src/renderer/Pipeline.cpp
         src/renderer/PipelineLibrary.cpp
+        src/renderer/PostProcessing.cpp
         src/renderer/Primitives.cpp
         src/renderer/Renderer.cpp
         src/renderer/Shader.cpp
@@ -118,6 +119,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Mesh.h
             include/quasar/renderer/Pipeline.h
             include/quasar/renderer/PipelineLibrary.h
+            include/quasar/renderer/PostProcessing.h
             include/quasar/renderer/Primitives.h
             include/quasar/renderer/Renderer.h
             include/quasar/renderer/Shader.h
