@@ -12,6 +12,7 @@
 #include <quasar/input/MouseCodes.h>
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/Log.h>
+#include <quasar/renderer/Bloom.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/PipelineLibrary.h>
@@ -47,6 +48,7 @@ namespace Quasar::Sandbox
         constexpr float GroundSize = 30.0f;
         constexpr float GroundTiles = 15.0f;
         constexpr float StickLookSpeed = 1500.0f;
+        constexpr float BulbBrightness = 3.0f;
         constexpr GamepadId Gamepad{0};
 
         struct SpinComponent
@@ -108,6 +110,18 @@ namespace Quasar::Sandbox
             settings.Tonemap = static_cast<Tonemapping>(tonemap);
         }
 
+        void DrawBloomOptions(Bloom& bloom)
+        {
+            ImGui::Indent();
+            BloomSettings settings = bloom.GetSettings();
+            ImGui::SliderFloat("Bloom intensity", &settings.Intensity, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Bloom threshold", &settings.Threshold, 0.0f, 4.0f, "%.2f");
+            ImGui::SliderFloat("Bloom soft knee", &settings.SoftKnee, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Bloom radius", &settings.Radius, 0.0f, 2.0f, "%.2f");
+            bloom.SetSettings(settings);
+            ImGui::Unindent();
+        }
+
         void DrawEffectOptions(const PostProcessStack& effects)
         {
             ImGui::SeparatorText("Effects");
@@ -123,6 +137,10 @@ namespace Quasar::Sandbox
                 if (ImGui::Checkbox(effect->GetName().c_str(), &enabled))
                 {
                     effect->SetEnabled(enabled);
+                }
+                if (auto* bloom = dynamic_cast<Bloom*>(effect.get()); bloom != nullptr && enabled)
+                {
+                    DrawBloomOptions(*bloom);
                 }
             }
         }
@@ -163,6 +181,7 @@ namespace Quasar::Sandbox
         if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
         {
             renderer->SetSettings({.Background = SkyColor});
+            renderer->GetPostProcessing().Add(Bloom::Create(*window.GetGraphicsContext()));
         }
     }
 
@@ -357,7 +376,7 @@ namespace Quasar::Sandbox
         for (const auto& [name, color, position] : {std::tuple{"Warm lamp", glm::vec3(1.0f, 0.6f, 0.3f), glm::vec3(4.0f, 0.0f, 0.0f)},
                                                     std::tuple{"Cold lamp", glm::vec3(0.3f, 0.5f, 1.0f), glm::vec3(-4.0f, 0.0f, 0.0f)}})
         {
-            Material* bulb = AddMaterial(*pipelines, PipelineLibrary::Unlit, nullptr, glm::vec4(color, 1.0f));
+            Material* bulb = AddMaterial(*pipelines, PipelineLibrary::Unlit, nullptr, glm::vec4(color * BulbBrightness, 1.0f));
             if (bulb == nullptr)
             {
                 return false;
