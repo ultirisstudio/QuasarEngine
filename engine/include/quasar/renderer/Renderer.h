@@ -58,12 +58,15 @@ namespace Quasar
     ///     int u_SpotLightCount;
     ///     mat4 u_ShadowViewProjection; // DirectionalShadow::ViewProjection.
     ///     vec4 u_Shadow;               // 1 with shadows, the depth bias, the normal bias and 1 / the size of the map.
+    ///     vec4 u_AmbientOcclusion;     // 1 with ambient occlusion and the share applied to the direct lights.
     ///     PointLight u_PointLights[32];
     ///     SpotLight u_SpotLights[32];
     /// };
     /// ```
     /// The bindings are the ones of ShaderBindings, and the shadow map is read from the texture slot
-    /// ShaderBindings::ShadowMap, with `layout(binding = 15) uniform sampler2DShadow u_ShadowMap;`. A scene uses at most
+    /// ShaderBindings::ShadowMap, with `layout(binding = 15) uniform sampler2DShadow u_ShadowMap;`. The ambient
+    /// occlusion is read from the slot ShaderBindings::AmbientOcclusionMap, with
+    /// `layout(binding = 14) uniform sampler2D u_AmbientOcclusionMap;`, at the pixel being drawn. A scene uses at most
     /// MaxPointLights point lights and MaxSpotLights spot lights. The next ones are not used, and an engine warning is
     /// logged once until the scene has few enough lights again.
     ///

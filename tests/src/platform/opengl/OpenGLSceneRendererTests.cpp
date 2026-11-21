@@ -662,3 +662,56 @@ TEST_CASE("Several samples per pixel smooth the edges of the meshes, up to the l
     CHECK(fixture.GetSceneRenderer().GetSettings().Samples == 1000);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
+
+TEST_CASE("The ambient occlusion darkens the ambient light where surfaces meet, and the direct lights only when asked")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    Quasar::PipelineLibrary library(fixture.GetContext());
+    REQUIRE(library.AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = library.CreateMaterial(Quasar::PipelineLibrary::BlinnPhong);
+    REQUIRE(lit != nullptr);
+    lit->SetFloat("Specular", 0.0f);
+    const glm::quat facingUp = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    fixture.AddQuad(*lit, {.Rotation = facingUp, .Scale = glm::vec3(20.0f)});
+    fixture.AddQuad(*lit, {.Position = {0.0f, 1.0f, 0.0f}, .Scale = glm::vec3(2.0f)});
+    Entity camera = fixture.AddCamera({0.0f, 1.5f, 2.5f});
+    camera.Get<CameraComponent>().Camera.SetViewportSize(64, 64);
+    camera.Get<TransformComponent>().Rotation =
+        glm::quatLookAtRH(glm::normalize(glm::vec3(0.0f, 0.3f, 0.0f) - glm::vec3(0.0f, 1.5f, 2.5f)), {0.0f, 1.0f, 0.0f});
+    Entity sun = fixture.GetScene().CreateEntity("Sun");
+    auto& light = sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 1.0f});
+    sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    const Quasar::Scope<Quasar::Framebuffer> target = fixture.GetContext().CreateFramebuffer({.Width = 64, .Height = 64});
+    REQUIRE(target != nullptr);
+    const Quasar::Camera& view = camera.Get<CameraComponent>().Camera;
+    const auto render = [&](const Quasar::AmbientOcclusionSettings& occlusion, const glm::vec3& point)
+    {
+        fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Enabled = false}, .AmbientOcclusion = occlusion});
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), target.get());
+        Quasar::Camera placed = view;
+        placed.SetPosition(camera.Get<TransformComponent>().Position);
+        placed.SetOrientation(camera.Get<TransformComponent>().Rotation);
+        const glm::vec4 clip = placed.GetViewProjection() * glm::vec4(point, 1.0f);
+        const glm::vec2 pixel = (glm::vec2(clip) / clip.w * 0.5f + 0.5f) * 64.0f;
+        return TestHelpers::ReadColor(*target, static_cast<int>(pixel.x), 63 - static_cast<int>(pixel.y))[0];
+    };
+    const glm::vec3 crease(0.0f, 0.0f, 0.08f);
+    const glm::vec3 open(0.0f, 0.0f, 1.6f);
+
+    const int ambient = render({.Enabled = false}, open);
+    CHECK(ambient > 200);
+    CHECK(std::abs(render({.Enabled = false}, crease) - ambient) <= 2);
+    CHECK(render({}, crease) < ambient - 20);
+    CHECK(std::abs(render({}, open) - ambient) <= 3);
+    CHECK(std::abs(render({.Enabled = false}, crease) - ambient) <= 2);
+
+    light.Ambient = 0.0f;
+    sun.Get<TransformComponent>().Rotation = facingUp;
+    const int direct = render({.Enabled = false}, crease);
+    CHECK(direct > 200);
+    CHECK(std::abs(render({.DirectLightingStrength = 0.0f}, crease) - direct) <= 2);
+    CHECK(render({.DirectLightingStrength = 1.0f}, crease) < direct - 20);
+    CHECK(render({.DirectLightingStrength = 3.0f}, crease) == render({.DirectLightingStrength = 1.0f}, crease));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}

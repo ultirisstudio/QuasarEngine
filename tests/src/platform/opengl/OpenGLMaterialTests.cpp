@@ -430,7 +430,7 @@ TEST_CASE("No material is created without a pipeline, with names or slots used t
     GLint bindings = 0;
     glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &bindings);
 
-    const std::array<Quasar::MaterialSpecification, 10> refused{{
+    const std::array<Quasar::MaterialSpecification, 11> refused{{
         {.Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .Uniforms = {{"a", UniformType::Float}, {"a", UniformType::Int}}},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "Albedo", .Slot = 0}, {.Name = "Albedo", .Slot = 1}}},
@@ -441,6 +441,7 @@ TEST_CASE("No material is created without a pipeline, with names or slots used t
         {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Object, .Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Lights, .Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "Map", .Slot = Quasar::ShaderBindings::ShadowMap}}},
+        {.Pipeline = pipeline.get(), .Textures = {{.Name = "Albedo", .Slot = 0}, {.Name = "Occlusion", .Slot = Quasar::ShaderBindings::AmbientOcclusionMap}}},
     }};
     for (std::size_t index = 0; index < refused.size(); ++index)
     {

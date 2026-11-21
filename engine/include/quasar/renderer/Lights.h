@@ -71,6 +71,18 @@ namespace Quasar
         float NormalBias = 0.0f;        ///< The distance along its normal by which each surface is moved before the test.
     };
 
+    /// @brief The ambient occlusion of a scene: the share of the ambient light that reaches each pixel of the target.
+    struct SceneAmbientOcclusion
+    {
+        /// The framebuffer that holds the share in red in its first color attachment, of the size of the target, such as
+        /// AmbientOcclusion::GetResult(), or nullptr for no ambient occlusion. It must stay alive until Renderer::EndScene().
+        const Framebuffer* Map = nullptr;
+
+        /// The share of the ambient occlusion also applied to the direct lights, from 0 to 1. See
+        /// AmbientOcclusionSettings::DirectLightingStrength.
+        float DirectLightingStrength = 0.0f;
+    };
+
     /// @brief The lights of a scene: at most one directional light, with its shadows, and point lights and spot lights.
     struct SceneLights
     {
@@ -78,5 +90,6 @@ namespace Quasar
         DirectionalShadow Shadow{};                                       ///< The shadows of the directional light.
         std::vector<PointLight> Points{};                                 ///< The point lights.
         std::vector<SpotLight> Spots{};                                   ///< The spot lights.
+        SceneAmbientOcclusion AmbientOcclusion{};                         ///< How much ambient light reaches each pixel.
     };
 }

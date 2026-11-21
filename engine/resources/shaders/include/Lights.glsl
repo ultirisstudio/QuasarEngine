@@ -20,11 +20,23 @@ layout(std140, binding = 3) uniform Lights
     int u_SpotLightCount;
     mat4 u_ShadowViewProjection;
     vec4 u_Shadow;
+    vec4 u_AmbientOcclusion;
     PointLight u_PointLights[32];
     SpotLight u_SpotLights[32];
 };
 
+layout(binding = 14) uniform sampler2D u_AmbientOcclusionMap;
 layout(binding = 15) uniform sampler2DShadow u_ShadowMap;
+
+float ReadAmbientOcclusion()
+{
+    return u_AmbientOcclusion.x == 0.0 ? 1.0 : texelFetch(u_AmbientOcclusionMap, ivec2(gl_FragCoord.xy), 0).r;
+}
+
+float GetDirectOcclusion(float occlusion)
+{
+    return mix(1.0, occlusion, u_AmbientOcclusion.y);
+}
 
 float Attenuate(vec3 toLight, float range)
 {
