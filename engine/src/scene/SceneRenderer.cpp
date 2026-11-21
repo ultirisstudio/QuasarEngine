@@ -24,8 +24,9 @@
 namespace Quasar
 {
     SceneRenderer::SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings)
-        : m_Renderer(&renderer), m_Settings(settings), m_ToneMapper(std::move(resources.ToneMapper)), m_SceneFramebuffer(std::move(resources.SceneFramebuffer)),
-          m_ShadowShader(std::move(resources.ShadowShader)), m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_ShadowMap(std::move(resources.ShadowMap))
+        : m_Renderer(&renderer), m_Settings(settings), m_PostProcessing(std::move(resources.PostProcessing)),
+          m_SceneFramebuffer(std::move(resources.SceneFramebuffer)), m_ShadowShader(std::move(resources.ShadowShader)),
+          m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_ShadowMap(std::move(resources.ShadowMap))
     {
     }
 
@@ -40,7 +41,7 @@ namespace Quasar
         }
 
         Resources resources;
-        resources.ToneMapper = ToneMapper::Create(context);
+        resources.PostProcessing = PostProcessStack::Create(context);
         resources.ShadowShader = context.CreateShader(*shadow);
         if (resources.ShadowShader != nullptr)
         {
@@ -49,9 +50,10 @@ namespace Quasar
         resources.SceneFramebuffer =
             context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Rgba16F, FramebufferFormat::Depth24Stencil8}});
         resources.ShadowMap = context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Depth32F}});
-        if (resources.ToneMapper == nullptr || resources.ShadowPipeline == nullptr || resources.SceneFramebuffer == nullptr || resources.ShadowMap == nullptr)
+        if (resources.PostProcessing == nullptr || resources.ShadowPipeline == nullptr || resources.SceneFramebuffer == nullptr ||
+            resources.ShadowMap == nullptr)
         {
-            QUASAR_ENGINE_ERROR("Cannot create a scene renderer: its tone mapper, its pipelines or its framebuffers cannot be created");
+            QUASAR_ENGINE_ERROR("Cannot create a scene renderer: its post-processing, its pipelines or its framebuffers cannot be created");
             return nullptr;
         }
         return Scope<SceneRenderer>(new SceneRenderer(renderer, std::move(resources), settings));
@@ -142,7 +144,7 @@ namespace Quasar
             m_Renderer->Submit(*item.Mesh, *item.Material, item.Transform);
         }
         m_Renderer->EndScene();
-        m_ToneMapper->Apply(*m_SceneFramebuffer, target, m_Settings.Exposure, m_Settings.Tonemap);
+        m_PostProcessing->Apply(*m_SceneFramebuffer, target, camera, m_Settings.Exposure, m_Settings.Tonemap);
     }
 
     DirectionalShadow SceneRenderer::RenderShadows(const Camera& camera, const DirectionalLight& light)

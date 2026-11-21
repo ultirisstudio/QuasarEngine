@@ -12,10 +12,10 @@
 #include <quasar/renderer/Material.h>
 #include <quasar/renderer/Mesh.h>
 #include <quasar/renderer/Pipeline.h>
+#include <quasar/renderer/PostProcessing.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
 #include <quasar/renderer/Shadows.h>
-#include <quasar/renderer/ToneMapper.h>
 #include <quasar/scene/Scene.h>
 
 #include <glm/mat4x4.hpp>
@@ -48,15 +48,15 @@ namespace Quasar
     /// ShadowSettings.
     ///
     /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F, of the
-    /// size of the target and with SceneRendererSettings::Samples, cleared with SceneRendererSettings::Background. A
-    /// ToneMapper then applies the exposure and the tonemapping, converts the colors to sRGB and writes them over the
-    /// whole first color attachment of the target, which must be of format Rgba8 or Rgba16F. Each view, such as a viewport of the editor, should have its
-    /// own SceneRenderer, which keeps a framebuffer of its size.
+    /// size of the target and with SceneRendererSettings::Samples, cleared with SceneRendererSettings::Background. Its
+    /// PostProcessStack then applies the post-processing effects and the tone mapping, converts the colors to sRGB and
+    /// writes them over the whole first color attachment of the target, which must be of format Rgba8 or Rgba16F. Each
+    /// view, such as a viewport of the editor, should have its own SceneRenderer, which keeps framebuffers of its size.
     class SceneRenderer
     {
     public:
         /// @brief Creates a scene renderer that draws with a renderer, which must outlive it.
-        /// @return The scene renderer, or nullptr if the shaders of its shadows or of its ToneMapper cannot be read from
+        /// @return The scene renderer, or nullptr if the shaders of its shadows or of its tone mapping cannot be read from
         /// the engine resources, or if its framebuffers or its pipelines cannot be created. The reason is logged as an
         /// engine error.
         static Scope<SceneRenderer> Create(Renderer& renderer, const SceneRendererSettings& settings = {});
@@ -86,7 +86,11 @@ namespace Quasar
         /// @brief Replaces the settings of the image, used from the next Render().
         void SetSettings(const SceneRendererSettings& settings) { m_Settings = settings; }
 
-        /// @brief Returns the framebuffer where the scene is drawn in linear colors, before the last pass. A Render()
+        /// @brief Returns the post-processing effects applied to the image of the scene, to add, remove, enable or
+        /// disable them.
+        PostProcessStack& GetPostProcessing() const { return *m_PostProcessing; }
+
+        /// @brief Returns the framebuffer where the scene is drawn in linear colors, before the post-processing. A Render()
         /// with other SceneRendererSettings::Samples replaces it, so it should not be kept.
         const Framebuffer& GetSceneFramebuffer() const { return *m_SceneFramebuffer; }
 
@@ -100,7 +104,7 @@ namespace Quasar
     private:
         struct Resources
         {
-            Scope<Quasar::ToneMapper> ToneMapper;
+            Scope<PostProcessStack> PostProcessing;
             Scope<Framebuffer> SceneFramebuffer;
             Scope<Shader> ShadowShader;
             Scope<Pipeline> ShadowPipeline;
@@ -123,7 +127,7 @@ namespace Quasar
 
         Renderer* m_Renderer;
         SceneRendererSettings m_Settings;
-        Scope<ToneMapper> m_ToneMapper;
+        Scope<PostProcessStack> m_PostProcessing;
         Scope<Framebuffer> m_SceneFramebuffer;
         Scope<Shader> m_ShadowShader;
         Scope<Pipeline> m_ShadowPipeline;

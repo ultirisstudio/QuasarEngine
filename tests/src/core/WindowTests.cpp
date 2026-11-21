@@ -11,6 +11,7 @@
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_scancode.h>
+#include <SDL3/SDL_video.h>
 #include <doctest/doctest.h>
 #include <glm/vec2.hpp>
 
@@ -54,6 +55,27 @@ TEST_CASE("A window is created with the settings of its specification")
     CHECK_FALSE(window->IsVSync());
     CHECK_FALSE(window->ShouldClose());
     CHECK(window->GetNativeWindow() != nullptr);
+}
+
+TEST_CASE("A window enters and leaves the fullscreen mode, and can be created in it")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateNullWindow();
+    REQUIRE(window != nullptr);
+    CHECK_FALSE(window->IsFullscreen());
+
+    CHECK(window->SetFullscreen(true));
+    CHECK(window->IsFullscreen());
+    CHECK((SDL_GetWindowFlags(window->GetNativeWindow()) & SDL_WINDOW_FULLSCREEN) != 0);
+    CHECK(window->SetFullscreen(false));
+    CHECK_FALSE(window->IsFullscreen());
+    CHECK((SDL_GetWindowFlags(window->GetNativeWindow()) & SDL_WINDOW_FULLSCREEN) == 0);
+
+    const Quasar::Scope<Quasar::Window> fullscreen = TestHelpers::CreateNullWindow({.Fullscreen = true});
+    REQUIRE(fullscreen != nullptr);
+    CHECK(fullscreen->IsFullscreen());
+    CHECK((SDL_GetWindowFlags(fullscreen->GetNativeWindow()) & SDL_WINDOW_FULLSCREEN) != 0);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
 TEST_CASE("Closing a window only asks it to close")

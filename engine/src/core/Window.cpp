@@ -52,7 +52,8 @@ namespace Quasar
         }
     }
 
-    Window::Window(SDL_Window* handle, const WindowSpecification& specification) : m_Handle(handle), m_Title(specification.Title)
+    Window::Window(SDL_Window* handle, const WindowSpecification& specification)
+        : m_Handle(handle), m_Title(specification.Title), m_Fullscreen(specification.Fullscreen)
     {
         SDL_SetPointerProperty(SDL_GetWindowProperties(handle), WindowProperty, this);
 
@@ -91,6 +92,10 @@ namespace Quasar
         if (!specification.Visible)
         {
             flags |= SDL_WINDOW_HIDDEN;
+        }
+        if (specification.Fullscreen)
+        {
+            flags |= SDL_WINDOW_FULLSCREEN;
         }
         flags |= PrepareGraphicsWindow(specification.Graphics);
 
@@ -185,6 +190,22 @@ namespace Quasar
     bool Window::IsVSync() const
     {
         return m_VSync;
+    }
+
+    bool Window::SetFullscreen(bool fullscreen)
+    {
+        if (!SDL_SetWindowFullscreen(m_Handle, fullscreen))
+        {
+            QUASAR_ENGINE_ERROR("Cannot {} the fullscreen mode of the window '{}': {}", fullscreen ? "enter" : "leave", m_Title, SDL_GetError());
+            return false;
+        }
+        m_Fullscreen = fullscreen;
+        return true;
+    }
+
+    bool Window::IsFullscreen() const
+    {
+        return m_Fullscreen;
     }
 
     std::uint32_t Window::GetWidth() const

@@ -3,6 +3,7 @@
 #include <quasar/core/Application.h>
 #include <quasar/events/Event.h>
 #include <quasar/events/EventDispatcher.h>
+#include <quasar/events/KeyEvent.h>
 #include <quasar/events/MouseEvent.h>
 #include <quasar/events/WindowEvent.h>
 #include <quasar/input/GamepadCodes.h>
@@ -11,8 +12,10 @@
 #include <quasar/input/MouseCodes.h>
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/Log.h>
+#include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/PipelineLibrary.h>
+#include <quasar/renderer/PostProcessing.h>
 #include <quasar/renderer/Primitives.h>
 #include <quasar/scene/SceneRenderer.h>
 #include <quasar/scene/components/CameraComponent.h>
@@ -33,6 +36,7 @@
 #include <cctype>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 namespace Quasar::Sandbox
 {
@@ -56,6 +60,90 @@ namespace Quasar::Sandbox
             std::ranges::transform(name, name.begin(), [](unsigned char character) { return static_cast<char>(std::toupper(character)); });
             return name;
         }
+        void DrawVideoOptions()
+        {
+            Window& window = Application::Get().GetWindow();
+            ImGui::SeparatorText("Video");
+            bool fullscreen = window.IsFullscreen();
+            if (ImGui::Checkbox("Fullscreen", &fullscreen))
+            {
+                window.SetFullscreen(fullscreen);
+            }
+            bool vsync = window.IsVSync();
+            if (ImGui::Checkbox("VSync", &vsync))
+            {
+                window.SetVSync(vsync);
+            }
+        }
+
+        void DrawQualityOptions(SceneRendererSettings& settings)
+        {
+            ImGui::SeparatorText("Quality");
+            constexpr std::array<const char*, 4> antialiasing{"Off", "2x", "4x", "8x"};
+            int level = std::min(std::countr_zero(settings.Samples), 3);
+            if (ImGui::Combo("Antialiasing", &level, antialiasing.data(), static_cast<int>(antialiasing.size())))
+            {
+                settings.Samples = 1U << static_cast<unsigned>(level);
+            }
+            ImGui::Checkbox("Shadows", &settings.Shadows.Enabled);
+            constexpr std::array<const char*, 4> resolutions{"512", "1024", "2048", "4096"};
+            int resolution = std::clamp(std::countr_zero(settings.Shadows.Resolution) - 9, 0, 3);
+            if (ImGui::Combo("Shadow quality", &resolution, resolutions.data(), static_cast<int>(resolutions.size())))
+            {
+                settings.Shadows.Resolution = 512U << static_cast<unsigned>(resolution);
+            }
+            ImGui::SliderFloat("Shadow distance", &settings.Shadows.Distance, 5.0f, 100.0f, "%.0f");
+            if (ImGui::TreeNode("Shadow biases"))
+            {
+                ImGui::SliderFloat("Depth bias", &settings.Shadows.DepthBias, 0.0f, 0.005f, "%.4f");
+                ImGui::SliderFloat("Normal bias", &settings.Shadows.NormalBias, 0.0f, 4.0f, "%.2f");
+                ImGui::TreePop();
+            }
+
+            ImGui::SeparatorText("Image");
+            ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f, "%.2f");
+            constexpr std::array<const char*, 3> tonemaps{"None", "Reinhard", "ACES"};
+            int tonemap = static_cast<int>(settings.Tonemap);
+            ImGui::Combo("Tonemapping", &tonemap, tonemaps.data(), static_cast<int>(tonemaps.size()));
+            settings.Tonemap = static_cast<Tonemapping>(tonemap);
+        }
+
+        void DrawEffectOptions(const PostProcessStack& effects)
+        {
+            ImGui::SeparatorText("Effects");
+            if (effects.GetEffects().empty())
+            {
+                ImGui::BeginDisabled();
+                ImGui::TextUnformatted("No effects");
+                ImGui::EndDisabled();
+            }
+            for (const Scope<PostProcessEffect>& effect : effects.GetEffects())
+            {
+                bool enabled = effect->IsEnabled();
+                if (ImGui::Checkbox(effect->GetName().c_str(), &enabled))
+                {
+                    effect->SetEnabled(enabled);
+                }
+            }
+        }
+
+        void DrawGraphicsPanel()
+        {
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos({viewport->WorkPos.x + viewport->WorkSize.x - 10.0f, viewport->WorkPos.y + 10.0f}, ImGuiCond_FirstUseEver, {1.0f, 0.0f});
+            if (ImGui::Begin("Graphics", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                DrawVideoOptions();
+                if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
+                {
+                    SceneRendererSettings settings = renderer->GetSettings();
+                    DrawQualityOptions(settings);
+                    DrawEffectOptions(renderer->GetPostProcessing());
+                    renderer->SetSettings(settings);
+                }
+            }
+            ImGui::End();
+        }
     }
 
     SandboxLayer::SandboxLayer() : Layer("Sandbox") {}
@@ -63,7 +151,6 @@ namespace Quasar::Sandbox
     void SandboxLayer::OnAttach()
     {
         const Window& window = Application::Get().GetWindow();
-        m_VSync = window.IsVSync();
         m_CameraController.SetRotation(0.0f, -10.0f);
 
         m_Ready = CreateScene();
@@ -127,10 +214,26 @@ namespace Quasar::Sandbox
 
     void SandboxLayer::OnImGuiRender()
     {
+        DrawScenePanel();
+        DrawGraphicsPanel();
+    }
+
+    void SandboxLayer::DrawScenePanel()
+    {
         ImGui::SetNextWindowPos({10.0f, 10.0f}, ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Debug", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
+            ImGui::SeparatorText("Rendering");
             ImGui::TextUnformatted(fmt::format("{:.0f} frames per second ({:.2f} ms)", ImGui::GetIO().Framerate, m_FrameTime).c_str());
+            if (const SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
+            {
+                const FramebufferSpecification& image = renderer->GetSceneFramebuffer().GetSpecification();
+                ImGui::TextUnformatted(fmt::format("Image: {}x{}, {} samples per pixel", image.Width, image.Height, image.Samples).c_str());
+                const FramebufferSpecification& shadows = renderer->GetShadowMap().GetSpecification();
+                ImGui::TextUnformatted(fmt::format("Shadow map: {}x{}", shadows.Width, shadows.Height).c_str());
+            }
+
+            ImGui::SeparatorText("Scene");
             ImGui::TextUnformatted(fmt::format("{} entities", m_Scene.GetEntityCount()).c_str());
             if (m_Camera.IsValid())
             {
@@ -138,10 +241,6 @@ namespace Quasar::Sandbox
                 ImGui::TextUnformatted(fmt::format("Camera: {:.1f}, {:.1f}, {:.1f}", position.x, position.y, position.z).c_str());
             }
             ImGui::TextUnformatted(fmt::format("Yaw {:.0f}, pitch {:.0f}", m_CameraController.GetYaw(), m_CameraController.GetPitch()).c_str());
-            if (ImGui::Checkbox("VSync", &m_VSync))
-            {
-                Application::Get().GetWindow().SetVSync(m_VSync);
-            }
 
             ImGui::SeparatorText("Sun");
             const bool yawChanged = ImGui::SliderFloat("Yaw", &m_SunAngles.x, -180.0f, 180.0f, "%.0f");
@@ -155,35 +254,12 @@ namespace Quasar::Sandbox
                 ImGui::SliderFloat("Intensity", &m_Sun.Get<DirectionalLightComponent>().Intensity, 0.0f, 2.0f, "%.2f");
             }
 
-            if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
-            {
-                ImGui::SeparatorText("Image");
-                SceneRendererSettings settings = renderer->GetSettings();
-                ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f, "%.2f");
-                constexpr std::array<const char*, 3> tonemaps{"None", "Reinhard", "ACES"};
-                int tonemap = static_cast<int>(settings.Tonemap);
-                ImGui::Combo("Tonemapping", &tonemap, tonemaps.data(), static_cast<int>(tonemaps.size()));
-                settings.Tonemap = static_cast<Tonemapping>(tonemap);
-                constexpr std::array<const char*, 4> antialiasing{"Off", "2x", "4x", "8x"};
-                int level = std::min(std::countr_zero(settings.Samples), 3);
-                if (ImGui::Combo("Antialiasing", &level, antialiasing.data(), static_cast<int>(antialiasing.size())))
-                {
-                    settings.Samples = 1U << static_cast<unsigned>(level);
-                }
-
-                ImGui::SeparatorText("Shadows");
-                ImGui::Checkbox("Enabled", &settings.Shadows.Enabled);
-                ImGui::SliderFloat("Distance", &settings.Shadows.Distance, 5.0f, 100.0f, "%.0f");
-                ImGui::SliderFloat("Depth bias", &settings.Shadows.DepthBias, 0.0f, 0.005f, "%.4f");
-                ImGui::SliderFloat("Normal bias", &settings.Shadows.NormalBias, 0.0f, 4.0f, "%.2f");
-                renderer->SetSettings(settings);
-            }
-
             ImGui::SeparatorText("Controls");
             ImGui::TextUnformatted(fmt::format("Move: {} {} {} {}", KeyLabel(Key::W), KeyLabel(Key::A), KeyLabel(Key::S), KeyLabel(Key::D)).c_str());
             ImGui::TextUnformatted("Up and down: Space and Left Ctrl");
             ImGui::TextUnformatted("Faster: Left Shift");
             ImGui::TextUnformatted("Look around: hold the right mouse button");
+            ImGui::TextUnformatted("Fullscreen: F11");
             ImGui::TextUnformatted("Gamepad: left stick to move, right stick to look");
             ImGui::TextUnformatted("Triggers to go up and down, left stick click to go faster");
         }
@@ -198,6 +274,17 @@ namespace Quasar::Sandbox
             {
                 m_Scene.SetViewportSize(resize.GetWidth(), resize.GetHeight());
                 return false;
+            });
+        dispatcher.Dispatch<KeyPressedEvent>(
+            [](const KeyPressedEvent& pressed)
+            {
+                if (pressed.GetKey() != Key::F11 || pressed.IsRepeat())
+                {
+                    return false;
+                }
+                Window& window = Application::Get().GetWindow();
+                window.SetFullscreen(!window.IsFullscreen());
+                return true;
             });
         dispatcher.Dispatch<MouseButtonPressedEvent>(
             [this](const MouseButtonPressedEvent& pressed)
