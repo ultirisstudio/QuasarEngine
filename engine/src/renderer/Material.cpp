@@ -72,9 +72,11 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot create a material on the binding {}, which the Renderer fills", specification.UniformBinding);
             return nullptr;
         }
-        if (std::ranges::any_of(specification.Textures, [](const MaterialTexture& texture) { return texture.Slot == ShaderBindings::ShadowMap; }))
+        if (const auto bound =
+                std::ranges::find_if(specification.Textures, [](const MaterialTexture& texture) { return ShaderBindings::IsBoundByRenderer(texture.Slot); });
+            bound != specification.Textures.end())
         {
-            QUASAR_ENGINE_ERROR("Cannot create a material that reads a texture from the slot {}, which the Renderer binds", ShaderBindings::ShadowMap);
+            QUASAR_ENGINE_ERROR("Cannot create a material that reads a texture from the slot {}, which the Renderer binds", bound->Slot);
             return nullptr;
         }
 

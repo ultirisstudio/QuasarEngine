@@ -66,6 +66,10 @@ namespace Quasar
         {
             lights.Shadow.Map->BindDepthTexture(ShaderBindings::ShadowMap);
         }
+        if (lights.AmbientOcclusion.Map != nullptr)
+        {
+            lights.AmbientOcclusion.Map->BindColorTexture(0, ShaderBindings::AmbientOcclusionMap);
+        }
         if (m_Target != nullptr)
         {
             m_Target->Bind();

@@ -6,6 +6,7 @@
 /// \date 2026-11-19
 
 #include <quasar/core/Base.h>
+#include <quasar/renderer/AmbientOcclusion.h>
 #include <quasar/renderer/Camera.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/Lights.h>
@@ -19,6 +20,7 @@
 #include <quasar/scene/Scene.h>
 
 #include <glm/mat4x4.hpp>
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
 #include <cstdint>
@@ -29,10 +31,11 @@ namespace Quasar
     /// @brief Settings of the image of a SceneRenderer.
     struct SceneRendererSettings
     {
-        glm::vec3 Background{0.1f};              ///< The color behind the entities, in sRGB as in a color picker.
-        float Exposure = 1.0f;                   ///< The factor of the linear colors, applied before the tonemapping.
-        Tonemapping Tonemap = Tonemapping::Aces; ///< How the colors above 1 are brought to the screen.
-        ShadowSettings Shadows{};                ///< The shadows of the directional light.
+        glm::vec3 Background{0.1f};                  ///< The color behind the entities, in sRGB as in a color picker.
+        float Exposure = 1.0f;                       ///< The factor of the linear colors, applied before the tonemapping.
+        Tonemapping Tonemap = Tonemapping::Aces;     ///< How the colors above 1 are brought to the screen.
+        ShadowSettings Shadows{};                    ///< The shadows of the directional light.
+        AmbientOcclusionSettings AmbientOcclusion{}; ///< The darkening of the ambient light in corners and creases.
 
         /// Samples per pixel of the scene, which smooth the edges of the meshes (MSAA). 1 turns it off, and a value above
         /// GraphicsContext::GetMaxSamples() is lowered to it. If the framebuffer cannot be created with them, the
@@ -46,6 +49,9 @@ namespace Quasar
     /// game. It is lit by its first DirectionalLightComponent, if it has one, and by all its PointLightComponent and
     /// SpotLightComponent, up to the maximums of the Renderer. The meshes cast shadows from the directional light, see
     /// ShadowSettings.
+    ///
+    /// With SceneRendererSettings::AmbientOcclusion, the depth of the scene is first drawn alone, and an AmbientOcclusion
+    /// computes from it how much ambient light reaches each pixel, which the shaders read from the Renderer.
     ///
     /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F, of the
     /// size of the target and with SceneRendererSettings::Samples, cleared with SceneRendererSettings::Background. Its
@@ -109,6 +115,8 @@ namespace Quasar
             Scope<Shader> ShadowShader;
             Scope<Pipeline> ShadowPipeline;
             Scope<Framebuffer> ShadowMap;
+            Scope<Framebuffer> DepthPrepass;
+            Scope<Quasar::AmbientOcclusion> AmbientOcclusion;
         };
 
         struct DrawItem
@@ -124,6 +132,7 @@ namespace Quasar
         bool GatherLights(Scene& scene);
         void GatherDrawList(Scene& scene);
         DirectionalShadow RenderShadows(const Camera& camera, const DirectionalLight& light);
+        SceneAmbientOcclusion RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size);
 
         Renderer* m_Renderer;
         SceneRendererSettings m_Settings;
@@ -132,6 +141,8 @@ namespace Quasar
         Scope<Shader> m_ShadowShader;
         Scope<Pipeline> m_ShadowPipeline;
         Scope<Framebuffer> m_ShadowMap;
+        Scope<Framebuffer> m_DepthPrepass;
+        Scope<AmbientOcclusion> m_AmbientOcclusion;
         SceneLights m_Lights;
         std::vector<DrawItem> m_DrawList;
         glm::mat4 m_ShadowViewProjection{1.0f};

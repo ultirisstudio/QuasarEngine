@@ -57,8 +57,7 @@ void main()
     vec3 normal = normalize(v_Normal);
     vec3 toCamera = normalize(u_CameraPosition.xyz - v_Position);
 
-    vec3 color = u_DirectionalColor * base.rgb * u_DirectionalAmbient;
-    color += Shade(base.rgb, normal, toCamera, -u_DirectionalDirection, u_DirectionalColor * ReadShadow(v_Position, normal));
+    vec3 color = Shade(base.rgb, normal, toCamera, -u_DirectionalDirection, u_DirectionalColor * ReadShadow(v_Position, normal));
 
     for (int index = 0; index < u_PointLightCount; ++index)
     {
@@ -77,6 +76,9 @@ void main()
         float attenuation = Attenuate(toLight, light.PositionRange.w) * cone * cone;
         color += Shade(base.rgb, normal, toCamera, direction, light.ColorInner.rgb * attenuation);
     }
+
+    float occlusion = ReadAmbientOcclusion();
+    color = color * GetDirectOcclusion(occlusion) + u_DirectionalColor * base.rgb * u_DirectionalAmbient * occlusion;
 
     o_Color = vec4(color, base.a);
 }

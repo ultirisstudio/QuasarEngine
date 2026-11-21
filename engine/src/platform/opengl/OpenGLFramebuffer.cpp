@@ -254,12 +254,28 @@ namespace Quasar
 
     void OpenGLFramebuffer::BindDepthTexture(std::uint32_t slot) const
     {
+        if (HasDepthTexture())
+        {
+            glBindTextureUnit(slot, m_DepthTexture);
+        }
+    }
+
+    void OpenGLFramebuffer::BindDepthValues(std::uint32_t slot) const
+    {
+        if (HasDepthTexture())
+        {
+            glBindTextureUnit(slot, m_DepthValues);
+        }
+    }
+
+    bool OpenGLFramebuffer::HasDepthTexture() const
+    {
         if (m_DepthFormat != FramebufferFormat::Depth32F)
         {
             QUASAR_ENGINE_ERROR("Cannot bind the depth of a framebuffer that has no Depth32F attachment");
-            return;
+            return false;
         }
-        glBindTextureUnit(slot, m_DepthTexture);
+        return true;
     }
 
     ImTextureID OpenGLFramebuffer::GetImGuiTexture(std::uint32_t attachment) const
@@ -313,6 +329,14 @@ namespace Quasar
             glTextureParameteri(m_DepthTexture, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
             glTextureParameteri(m_DepthTexture, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
             glNamedFramebufferTexture(m_Framebuffer, GL_DEPTH_ATTACHMENT, m_DepthTexture, 0);
+
+            // A view shares the storage of the depth with other settings, so that it is read as values
+            glGenTextures(1, &m_DepthValues);
+            glTextureView(m_DepthValues, GL_TEXTURE_2D, m_DepthTexture, GL_DEPTH_COMPONENT32F, 0, 1, 0, 1);
+            glTextureParameteri(m_DepthValues, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTextureParameteri(m_DepthValues, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTextureParameteri(m_DepthValues, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTextureParameteri(m_DepthValues, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         }
 
         if (IsMultisampled() && !m_ColorFormats.empty())
@@ -337,6 +361,7 @@ namespace Quasar
         glDeleteFramebuffers(1, &m_Framebuffer);
         glDeleteFramebuffers(1, &m_ResolveFramebuffer);
         glDeleteRenderbuffers(1, &m_DepthStencil);
+        glDeleteTextures(1, &m_DepthValues);
         glDeleteTextures(1, &m_DepthTexture);
         glDeleteTextures(static_cast<GLsizei>(m_ColorTextures.size()), m_ColorTextures.data());
         glDeleteTextures(static_cast<GLsizei>(m_ResolvedTextures.size()), m_ResolvedTextures.data());
@@ -345,6 +370,7 @@ namespace Quasar
         m_ResolveFramebuffer = 0;
         m_DepthStencil = 0;
         m_DepthTexture = 0;
+        m_DepthValues = 0;
         m_ColorTextures.clear();
         m_ResolvedTextures.clear();
     }

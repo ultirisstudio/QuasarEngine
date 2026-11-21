@@ -46,11 +46,12 @@ namespace Quasar
             std::array<std::int32_t, 3> Padding{};
             glm::mat4 ShadowViewProjection{1.0f};
             glm::vec4 Shadow{0.0f};
+            glm::vec4 AmbientOcclusion{0.0f};
             std::array<PointLightData, MaxPointLights> PointLights{};
             std::array<SpotLightData, MaxSpotLights> SpotLights{};
         };
 
-        static_assert(sizeof(LightsData) == 128 + (32 * MaxPointLights) + (48 * MaxSpotLights), "The Lights block follows std140");
+        static_assert(sizeof(LightsData) == 144 + (32 * MaxPointLights) + (48 * MaxSpotLights), "The Lights block follows std140");
 
         glm::vec3 Normalize(const glm::vec3& direction, const glm::vec3& fallback)
         {
@@ -109,6 +110,10 @@ namespace Quasar
                 data.ShadowViewProjection = lights.Shadow.ViewProjection;
                 data.Shadow = {1.0f, lights.Shadow.DepthBias, lights.Shadow.NormalBias,
                                1.0f / static_cast<float>(std::max(lights.Shadow.Map->GetSpecification().Width, 1U))};
+            }
+            if (lights.AmbientOcclusion.Map != nullptr)
+            {
+                data.AmbientOcclusion = {1.0f, std::clamp(lights.AmbientOcclusion.DirectLightingStrength, 0.0f, 1.0f), 0.0f, 0.0f};
             }
             SetPoints(data, lights.Points);
             SetSpots(data, lights.Spots);

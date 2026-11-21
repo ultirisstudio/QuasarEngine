@@ -26,7 +26,8 @@ namespace Quasar
     SceneRenderer::SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings)
         : m_Renderer(&renderer), m_Settings(settings), m_PostProcessing(std::move(resources.PostProcessing)),
           m_SceneFramebuffer(std::move(resources.SceneFramebuffer)), m_ShadowShader(std::move(resources.ShadowShader)),
-          m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_ShadowMap(std::move(resources.ShadowMap))
+          m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_ShadowMap(std::move(resources.ShadowMap)), m_DepthPrepass(std::move(resources.DepthPrepass)),
+          m_AmbientOcclusion(std::move(resources.AmbientOcclusion))
     {
     }
 
@@ -50,8 +51,10 @@ namespace Quasar
         resources.SceneFramebuffer =
             context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Rgba16F, FramebufferFormat::Depth24Stencil8}});
         resources.ShadowMap = context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Depth32F}});
+        resources.DepthPrepass = context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Depth32F}});
+        resources.AmbientOcclusion = AmbientOcclusion::Create(context);
         if (resources.PostProcessing == nullptr || resources.ShadowPipeline == nullptr || resources.SceneFramebuffer == nullptr ||
-            resources.ShadowMap == nullptr)
+            resources.ShadowMap == nullptr || resources.DepthPrepass == nullptr || resources.AmbientOcclusion == nullptr)
         {
             QUASAR_ENGINE_ERROR("Cannot create a scene renderer: its post-processing, its pipelines or its framebuffers cannot be created");
             return nullptr;
@@ -64,6 +67,7 @@ namespace Quasar
         bool castShadows = false;
         m_Lights.Directional.reset();
         m_Lights.Shadow = {};
+        m_Lights.AmbientOcclusion = {};
         m_Lights.Points.clear();
         m_Lights.Spots.clear();
         auto directionals = scene.GetRegistry().view<DirectionalLightComponent>();
@@ -120,6 +124,10 @@ namespace Quasar
 
         const glm::uvec2 size =
             target != nullptr ? glm::uvec2(target->GetSpecification().Width, target->GetSpecification().Height) : m_Renderer->GetContext().GetWindowSize();
+        if (m_Settings.AmbientOcclusion.Enabled)
+        {
+            m_Lights.AmbientOcclusion = RenderAmbientOcclusion(camera, size);
+        }
         const std::uint32_t samples = std::clamp(m_Settings.Samples, 1U, m_Renderer->GetContext().GetMaxSamples());
         if (m_SceneFramebuffer->GetSpecification().Samples != samples)
         {
@@ -145,6 +153,21 @@ namespace Quasar
         }
         m_Renderer->EndScene();
         m_PostProcessing->Apply(*m_SceneFramebuffer, target, camera, m_Settings.Exposure, m_Settings.Tonemap);
+    }
+
+    SceneAmbientOcclusion SceneRenderer::RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size)
+    {
+        m_DepthPrepass->Resize(size.x, size.y);
+        m_DepthPrepass->ClearDepthStencil();
+        m_Renderer->BeginScene(camera, m_DepthPrepass.get(), SceneLights{.Directional = std::nullopt});
+        for (const DrawItem& item : m_DrawList)
+        {
+            m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Transform);
+        }
+        m_Renderer->EndScene();
+
+        m_AmbientOcclusion->Compute(*m_DepthPrepass, camera, m_Settings.AmbientOcclusion);
+        return {.Map = &m_AmbientOcclusion->GetResult(), .DirectLightingStrength = m_Settings.AmbientOcclusion.DirectLightingStrength};
     }
 
     DirectionalShadow SceneRenderer::RenderShadows(const Camera& camera, const DirectionalLight& light)

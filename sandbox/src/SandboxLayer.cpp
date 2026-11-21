@@ -78,6 +78,26 @@ namespace Quasar::Sandbox
             }
         }
 
+        void DrawAmbientOcclusionOptions(AmbientOcclusionSettings& settings)
+        {
+            ImGui::Checkbox("Ambient occlusion", &settings.Enabled);
+            if (!settings.Enabled)
+            {
+                return;
+            }
+            ImGui::Indent();
+            constexpr std::array<const char*, 4> samples{"8", "16", "32", "64"};
+            int quality = std::clamp(std::countr_zero(settings.Samples) - 3, 0, 3);
+            if (ImGui::Combo("AO samples", &quality, samples.data(), static_cast<int>(samples.size())))
+            {
+                settings.Samples = 8U << static_cast<unsigned>(quality);
+            }
+            ImGui::SliderFloat("AO radius", &settings.Radius, 0.1f, 2.0f, "%.2f");
+            ImGui::SliderFloat("AO intensity", &settings.Intensity, 0.0f, 4.0f, "%.2f");
+            ImGui::SliderFloat("AO on direct light", &settings.DirectLightingStrength, 0.0f, 1.0f, "%.2f");
+            ImGui::Unindent();
+        }
+
         void DrawQualityOptions(SceneRendererSettings& settings)
         {
             ImGui::SeparatorText("Quality");
@@ -101,6 +121,7 @@ namespace Quasar::Sandbox
                 ImGui::SliderFloat("Normal bias", &settings.Shadows.NormalBias, 0.0f, 4.0f, "%.2f");
                 ImGui::TreePop();
             }
+            DrawAmbientOcclusionOptions(settings.AmbientOcclusion);
 
             ImGui::SeparatorText("Image");
             ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f, "%.2f");
@@ -148,7 +169,8 @@ namespace Quasar::Sandbox
         void DrawGraphicsPanel()
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos({viewport->WorkPos.x + viewport->WorkSize.x - 10.0f, viewport->WorkPos.y + 10.0f}, ImGuiCond_FirstUseEver, {1.0f, 0.0f});
+            const ImGuiCond placement = ImGui::GetFrameCount() < 3 ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+            ImGui::SetNextWindowPos({viewport->WorkPos.x + viewport->WorkSize.x - 10.0f, viewport->WorkPos.y + 10.0f}, placement, {1.0f, 0.0f});
             if (ImGui::Begin("Graphics", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
             {
                 DrawVideoOptions();
