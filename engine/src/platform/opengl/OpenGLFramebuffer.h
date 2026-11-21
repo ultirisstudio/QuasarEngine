@@ -35,6 +35,7 @@ namespace Quasar
         std::optional<int> ReadInteger(std::uint32_t attachment, std::uint32_t x, std::uint32_t y) override;
         void BindColorTexture(std::uint32_t attachment, std::uint32_t slot) const override;
         void BindDepthTexture(std::uint32_t slot) const override;
+        void BindDepthValues(std::uint32_t slot) const override;
         ImTextureID GetImGuiTexture(std::uint32_t attachment) const override;
 
     private:
@@ -44,6 +45,7 @@ namespace Quasar
         void DestroyTargets();
         void Resolve();
         bool IsMultisampled() const;
+        bool HasDepthTexture() const;
         std::optional<std::size_t> FindColor(std::uint32_t attachment, bool integer, const char* action) const;
         std::uint32_t GetReadableTexture(std::size_t index) const;
 
@@ -54,6 +56,7 @@ namespace Quasar
         std::vector<std::uint32_t> m_ColorTextures;
         std::uint32_t m_DepthStencil = 0;
         std::uint32_t m_DepthTexture = 0;
+        std::uint32_t m_DepthValues = 0;
         std::uint32_t m_ResolveFramebuffer = 0;
         std::vector<std::uint32_t> m_ResolvedTextures;
     };

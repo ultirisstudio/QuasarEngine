@@ -312,3 +312,69 @@ void main()
     CHECK(std::ranges::count_if(messages, [](const Quasar::LogMessage& message) { return message.Text.find("no Depth32F attachment") != std::string::npos; }) ==
           2);
 }
+
+TEST_CASE("A Depth32F attachment is read as values from the closest pixel, and still as a shadow map")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
+    REQUIRE(window != nullptr);
+    Quasar::GraphicsContext& context = *window->GetGraphicsContext();
+    const Quasar::Scope<Quasar::Framebuffer> map = CreateFramebuffer(*window, {.Width = 4, .Height = 1, .Attachments = {FramebufferFormat::Depth32F}});
+    const Quasar::Scope<Quasar::Framebuffer> target = CreateFramebuffer(*window, {.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::RedInteger}});
+    const std::optional<Quasar::ShaderSpecification> specification = Quasar::ShaderSpecification::Parse("Depth", R"(
+#type vertex
+#version 450 core
+void main()
+{
+    const vec2 positions[3] = vec2[](vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
+    gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
+}
+#type fragment
+#version 450 core
+layout(binding = 3) uniform sampler2D u_Values;
+layout(binding = 4) uniform sampler2DShadow u_Map;
+uniform vec2 u_Coordinates;
+layout(location = 0) out int o_Value;
+void main()
+{
+    o_Value = int(round(texture(u_Values, u_Coordinates).r * 1000.0)) + 10000 * int(round(texture(u_Map, vec3(u_Coordinates, 0.5))));
+}
+)");
+    REQUIRE(map != nullptr);
+    REQUIRE(target != nullptr);
+    REQUIRE(specification.has_value());
+    const Quasar::Scope<Quasar::Shader> shader = context.CreateShader(*specification);
+    const Quasar::Scope<Quasar::VertexArray> vertexArray = context.CreateVertexArray();
+    REQUIRE(shader != nullptr);
+    REQUIRE(vertexArray != nullptr);
+    map->ClearDepthStencil(0.25f);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(3, 0, 1, 1);
+    map->ClearDepthStencil(0.75f);
+    glDisable(GL_SCISSOR_TEST);
+    map->BindDepthValues(3);
+    map->BindDepthTexture(4);
+    const auto read = [&](const glm::vec2& coordinates)
+    {
+        shader->SetVec2("u_Coordinates", coordinates);
+        target->Bind();
+        shader->Bind();
+        context.Draw(*vertexArray, 3);
+        target->Unbind();
+        return target->ReadInteger(0, 0, 0).value_or(-1);
+    };
+
+    CHECK(read({0.1f, 0.5f}) == 250);
+    CHECK(read({0.74f, 0.5f}) == 250);
+    CHECK(read({0.76f, 0.5f}) == 10750);
+    CHECK(read({1.5f, 0.5f}) == 10750);
+    CHECK(read({-0.5f, 0.5f}) == 10250);
+    CHECK(glGetError() == GL_NO_ERROR);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+
+    const Quasar::Scope<Quasar::Framebuffer> stencil = CreateFramebuffer(*window, {.Width = 1, .Height = 1});
+    REQUIRE(stencil != nullptr);
+    target->BindDepthValues(3);
+    stencil->BindDepthValues(3);
+    CHECK(TestHelpers::CountErrors("no Depth32F attachment") == 2);
+}

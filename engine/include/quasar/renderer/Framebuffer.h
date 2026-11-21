@@ -23,8 +23,9 @@ namespace Quasar
         RedInteger,      ///< One signed 32-bit integer per pixel, for example the id of the entity drawn there.
         Depth24Stencil8, ///< Depth on 24 bits and stencil on 8 bits. A framebuffer has at most one depth attachment.
 
-        /// Depth on a 32-bit float, without stencil, that the shaders can read as a shadow map, see BindDepthTexture().
-        /// A framebuffer has at most one depth attachment, and this one needs one sample per pixel.
+        /// Depth on a 32-bit float, without stencil, that the shaders can read as a shadow map, see BindDepthTexture(), or
+        /// as values, see BindDepthValues(). A framebuffer has at most one depth attachment, and this one needs one sample
+        /// per pixel.
         Depth32F
     };
 
@@ -110,6 +111,13 @@ namespace Quasar
         /// read gives 1. A framebuffer without such an attachment is refused with an engine error.
         /// @param slot The N of the `layout(binding = N) uniform sampler2DShadow` of the shader.
         virtual void BindDepthTexture(std::uint32_t slot) const = 0;
+
+        /// @brief Makes the shaders read the depth attachment of format Depth32F from a texture slot as values, from 0 at
+        /// the near plane to 1 at the far plane, with a `sampler2D`, for example to find the positions of the surfaces
+        /// of a scene. A read gives the value of the closest pixel, without blending, and the edge pixels outside of the
+        /// framebuffer. A framebuffer without such an attachment is refused with an engine error.
+        /// @param slot The N of the `layout(binding = N) uniform sampler2D` of the shader.
+        virtual void BindDepthValues(std::uint32_t slot) const = 0;
 
         /// @brief Returns the texture that ImGui::Image() draws for a color attachment of format Rgba8 or Rgba16F, or 0
         /// for another attachment. With several samples per pixel, the image comes from the last Unbind().
