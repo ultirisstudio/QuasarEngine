@@ -39,6 +39,7 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLVertexArray.h
         src/platform/opengl/OpenGLImGuiBackend.cpp
         src/platform/opengl/OpenGLImGuiBackend.h
+        src/renderer/Bloom.cpp
         src/renderer/Buffer.cpp
         src/renderer/Camera.cpp
         src/renderer/Color.cpp
@@ -106,6 +107,7 @@ target_sources(QuasarEngine
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
             include/quasar/platform/opengl/OpenGLContext.h
+            include/quasar/renderer/Bloom.h
             include/quasar/renderer/Buffer.h
             include/quasar/renderer/Camera.h
             include/quasar/renderer/Color.h
