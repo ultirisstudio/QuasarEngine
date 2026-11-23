@@ -7,12 +7,17 @@ target_sources(QuasarEditorLibrary PRIVATE
     src/EditorLayer.cpp
     src/EditorLayer.h
     src/EditorContext.h
+    src/Project.cpp
+    src/Project.h
+    src/ProjectPopups.cpp
+    src/ProjectPopups.h
     src/panels/EditorPanel.cpp
     src/panels/EditorPanel.h
     src/panels/ConsolePanel.cpp
     src/panels/ConsolePanel.h
     src/panels/GamepadPanel.cpp
     src/panels/GamepadPanel.h
+    
 )
 
 target_include_directories(QuasarEditorLibrary PUBLIC src)

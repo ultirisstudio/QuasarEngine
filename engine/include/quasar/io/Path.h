@@ -40,4 +40,13 @@ namespace Quasar
     /// @param text The path, in UTF-8.
     /// @return The path.
     std::filesystem::path PathFromUtf8(std::string_view text);
+
+    /// @brief Gives the UTF-8 text of a path, such as the text shown by ImGui, written in the logs or given to SDL.
+    ///
+    /// On Windows, `std::filesystem::path::string()` writes the text in the code page of the system, not in UTF-8, so a
+    /// path with characters outside this code page would be wrong. This function writes UTF-8 on every platform, and is
+    /// the opposite of PathFromUtf8().
+    /// @param path The path.
+    /// @return The path in UTF-8, with the separators of the platform.
+    std::string PathToUtf8(const std::filesystem::path& path);
 }
