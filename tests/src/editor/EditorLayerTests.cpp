@@ -4,7 +4,7 @@
 
 #include <EditorContext.h>
 #include <EditorLayer.h>
-#include <panels/EditorPanel.h>
+#include <EditorPanel.h>
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Base.h>

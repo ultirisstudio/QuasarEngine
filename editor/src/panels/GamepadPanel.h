@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EditorPanel.h"
+#include <EditorPanel.h>
 
 #include <quasar/input/GamepadCodes.h>
 #include <quasar/input/GamepadState.h>

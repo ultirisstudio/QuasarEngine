@@ -4,20 +4,19 @@ add_library(Quasar::EditorLibrary ALIAS QuasarEditorLibrary)
 target_sources(QuasarEditorLibrary PRIVATE
     src/EditorApplication.cpp
     src/EditorApplication.h
+    src/EditorContext.h
     src/EditorLayer.cpp
     src/EditorLayer.h
-    src/EditorContext.h
+    src/EditorPanel.cpp
+    src/EditorPanel.h
     src/Project.cpp
     src/Project.h
     src/ProjectPopups.cpp
     src/ProjectPopups.h
-    src/panels/EditorPanel.cpp
-    src/panels/EditorPanel.h
     src/panels/ConsolePanel.cpp
     src/panels/ConsolePanel.h
     src/panels/GamepadPanel.cpp
     src/panels/GamepadPanel.h
-    
 )
 
 target_include_directories(QuasarEditorLibrary PUBLIC src)
@@ -34,7 +33,7 @@ set_target_properties(QuasarEditorLibrary PROPERTIES FOLDER "Editor")
 add_executable(QuasarEditor)
 
 target_sources(QuasarEditor PRIVATE
-    src/main.cpp
+    src/editor.cpp
 )
 
 target_link_libraries(QuasarEditor PRIVATE

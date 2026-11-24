@@ -1,8 +1,8 @@
 #pragma once
 
 #include "EditorContext.h"
+#include "EditorPanel.h"
 #include "ProjectPopups.h"
-#include "panels/EditorPanel.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Layer.h>
