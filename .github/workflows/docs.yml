@@ -170,17 +170,11 @@ jobs:
             build/coverage/badges
 
   # The site gathers the documentation, its badges, the coverage report and the coverage badges
-  publish:
-    name: Publish documentation
+  site:
+    name: Build the site
     if: github.ref == 'refs/heads/master'
     needs: [check, coverage]
     runs-on: ubuntu-24.04
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download the documentation
         uses: actions/download-artifact@v8
@@ -199,6 +193,19 @@ jobs:
         with:
           path: site
 
+  # In its own job, like in the GitHub starter workflows: right after the upload in the same job, the artifact list
+  # can still miss the site. A rerun of this job alone also keeps a single site artifact in the run.
+  publish:
+    name: Publish documentation
+    needs: site
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
