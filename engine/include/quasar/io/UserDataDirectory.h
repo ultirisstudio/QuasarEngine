@@ -5,6 +5,7 @@
 /// \author Kurogenshi
 /// \date 2026-11-07
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string_view>
@@ -34,4 +35,22 @@ namespace Quasar
     /// @return The absolute path of the folder, or no value if a name is not valid or if the folder cannot be found or
     /// created. The reason is logged as an engine error.
     std::optional<std::filesystem::path> GetUserDataDirectory(std::string_view organization, std::string_view application);
+
+    /// @brief A folder of the current user that the system knows, as found by GetUserFolder().
+    enum class UserFolder : std::uint8_t
+    {
+        /// @brief The folder of the user, such as `C:\Users\<user>` on Windows or `$HOME` on Linux.
+        Home,
+        /// @brief The documents of the user. On Windows, OneDrive can move it into its own folder.
+        Documents
+    };
+
+    /// @brief Returns a folder of the current user, as the system gives it. The folder is not created.
+    ///
+    /// On Linux, the documents folder comes from `~/.config/user-dirs.dirs`, so a system without this file may have
+    /// no documents folder.
+    /// @param folder The folder to find.
+    /// @return The absolute path of the folder, or no value if the system does not give it. The reason is logged as an
+    /// engine error.
+    std::optional<std::filesystem::path> GetUserFolder(UserFolder folder);
 }

@@ -89,3 +89,23 @@ TEST_CASE("A path is read as UTF-8 on every platform")
     CHECK(path == std::filesystem::path(u8"Projects/\u65E5\u672C/sc\u00E8ne.txt"));
     CHECK(path.filename() == std::filesystem::path(u8"sc\u00E8ne.txt"));
 }
+
+TEST_CASE("A path is written as UTF-8 on every platform")
+{
+    const std::filesystem::path path(u8"Projects/\u65E5\u672C/sc\u00E8ne.txt");
+
+    CHECK(Quasar::PathToUtf8(path) == "Projects/\xE6\x97\xA5\xE6\x9C\xAC/sc\xC3\xA8ne.txt");
+    CHECK(Quasar::PathToUtf8(path.filename()) == "sc\xC3\xA8ne.txt");
+}
+
+TEST_CASE("A path written as UTF-8 and read back is the same path")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / std::filesystem::path(u8"Quasar \u00C9quipe") / "Assets";
+
+    CHECK(Quasar::PathFromUtf8(Quasar::PathToUtf8(path)) == path);
+}
+
+TEST_CASE("An empty path gives an empty UTF-8 text")
+{
+    CHECK(Quasar::PathToUtf8({}).empty());
+}

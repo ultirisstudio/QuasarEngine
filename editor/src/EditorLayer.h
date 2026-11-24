@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EditorContext.h"
+#include "ProjectPopups.h"
 #include "panels/EditorPanel.h"
 
 #include <quasar/core/Base.h>
@@ -8,6 +9,7 @@
 #include <quasar/time/Timestep.h>
 
 #include <concepts>
+#include <filesystem>
 #include <utility>
 #include <vector>
 
@@ -46,8 +48,10 @@ namespace Quasar::Editor
 
     private:
         void DrawMenuBar();
+        void SetProject(const std::filesystem::path& directory);
 
         EditorContext m_Context;
         std::vector<Scope<EditorPanel>> m_Panels;
+        ProjectPopups m_ProjectPopups;
     };
 }

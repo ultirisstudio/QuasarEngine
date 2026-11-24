@@ -53,4 +53,12 @@ namespace Quasar
         std::ranges::transform(text, utf8.begin(), [](char character) { return static_cast<char8_t>(character); });
         return {utf8};
     }
+
+    std::string PathToUtf8(const std::filesystem::path& path)
+    {
+        const std::u8string utf8 = path.u8string();
+        std::string text(utf8.size(), '\0');
+        std::ranges::transform(utf8, text.begin(), [](char8_t character) { return static_cast<char>(character); });
+        return text;
+    }
 }

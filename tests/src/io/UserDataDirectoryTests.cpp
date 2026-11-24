@@ -56,3 +56,32 @@ TEST_CASE("No user data directory is given for a name that is not valid")
     CHECK_FALSE(Quasar::GetUserDataDirectory(TestOrganization, "../Other").has_value());
     CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
+
+TEST_CASE("The home folder of the user is an absolute folder that exists")
+{
+    const TestHelpers::ScopedLog log;
+
+    const std::optional<std::filesystem::path> home = Quasar::GetUserFolder(Quasar::UserFolder::Home);
+
+    REQUIRE(home.has_value());
+    CHECK(home->is_absolute());
+    CHECK(home->has_filename());
+    CHECK(std::filesystem::is_directory(*home));
+}
+
+TEST_CASE("The documents folder of the user is absolute when the system gives one")
+{
+    const TestHelpers::ScopedLog log;
+
+    const std::optional<std::filesystem::path> documents = Quasar::GetUserFolder(Quasar::UserFolder::Documents);
+
+    if (documents.has_value())
+    {
+        CHECK(documents->is_absolute());
+        CHECK(documents->has_filename());
+    }
+    else
+    {
+        CHECK(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+    }
+}
