@@ -21,6 +21,8 @@ namespace Quasar
         Rgba8,           ///< Color with 8 bits per channel.
         Rgba16F,         ///< Color with a 16-bit float per channel, for values above 1 such as HDR lighting.
         RedInteger,      ///< One signed 32-bit integer per pixel, for example the id of the entity drawn there.
+        Red8,            ///< One channel of 8 bits, from 0 to 1, for example a share of light.
+        Red32F,          ///< One 32-bit float per pixel, for example a distance.
         Depth24Stencil8, ///< Depth on 24 bits and stencil on 8 bits. A framebuffer has at most one depth attachment.
 
         /// Depth on a 32-bit float, without stencil, that the shaders can read as a shadow map, see BindDepthTexture(), or

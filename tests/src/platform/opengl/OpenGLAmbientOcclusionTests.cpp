@@ -25,6 +25,10 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
 #include <optional>
 
 using Quasar::AmbientOcclusionSettings;
@@ -68,7 +72,7 @@ namespace
         Quasar::AmbientOcclusion& GetOcclusion() const { return *m_Occlusion; }
         const Quasar::Framebuffer& GetDepth() const { return *m_Depth; }
 
-        void Draw(bool ground, bool cube) const
+        void Draw(bool ground, bool cube, bool front = false) const
         {
             m_Depth->ClearDepthStencil();
             m_Renderer->BeginScene(m_Camera, m_Depth.get());
@@ -80,6 +84,10 @@ namespace
             if (cube)
             {
                 m_Renderer->Submit(*m_Cube, *m_Pipeline, glm::translate(glm::mat4(1.0f), {0.0f, 0.5f, 0.0f}));
+            }
+            if (front)
+            {
+                m_Renderer->Submit(*m_Quad, *m_Pipeline, glm::scale(glm::translate(glm::mat4(1.0f), {0.0f, 0.93f, 2.0f}), {1.2f, 0.6f, 1.0f}));
             }
             m_Renderer->EndScene();
         }
@@ -129,7 +137,7 @@ TEST_CASE("Nothing is darkened where nothing was drawn, nor on an open floor")
     fixture.Draw(false, false);
     CHECK(fixture.Compute({}, {0.0f, 0.0f, 0.0f}) == 1.0f);
     CHECK(fixture.GetOcclusion().GetResult().GetSpecification().Width == Size);
-    CHECK(fixture.GetOcclusion().GetResult().GetSpecification().Attachments.front() == Quasar::FramebufferFormat::Rgba8);
+    CHECK(fixture.GetOcclusion().GetResult().GetSpecification().Attachments.front() == Quasar::FramebufferFormat::Red8);
 
     fixture.Draw(true, false);
     fixture.GetOcclusion().Compute(fixture.GetDepth(), fixture.GetCamera(), {});
@@ -201,5 +209,58 @@ TEST_CASE("The ambient occlusion works with an orthographic camera and with any 
     CHECK(fixture.Compute({}, crease) < 0.85f);
     CHECK(fixture.Read({2.0f, 0.0f, 1.5f}) > 0.97f);
     CHECK(glGetError() == GL_NO_ERROR);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The ambient occlusion at half resolution is close to the full one, and keeps the edges of the objects")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    fixture.Draw(true, true);
+    const std::array<glm::vec3, 5> points{glm::vec3(0.0f, 0.0f, 0.55f), glm::vec3(0.55f, 0.0f, 0.3f), glm::vec3(2.0f, 0.0f, 1.5f), glm::vec3(0.0f, 1.0f, 0.0f),
+                                          glm::vec3(0.0f, 0.999f, 0.49f)};
+
+    std::array<float, points.size()> full{};
+    fixture.GetOcclusion().Compute(fixture.GetDepth(), fixture.GetCamera(), {.HalfResolution = false});
+    for (std::size_t index = 0; index < points.size(); ++index)
+    {
+        full.at(index) = fixture.Read(points.at(index));
+    }
+    fixture.GetOcclusion().Compute(fixture.GetDepth(), fixture.GetCamera(), {.HalfResolution = true});
+
+    CHECK(fixture.GetOcclusion().GetResult().GetSpecification().Width == Size);
+    CHECK(full.front() < 0.85f);
+    for (std::size_t index = 0; index < points.size(); ++index)
+    {
+        CAPTURE(index);
+        CAPTURE(full.at(index));
+        CHECK(std::abs(fixture.Read(points.at(index)) - full.at(index)) < 0.1f);
+    }
+    CHECK(glGetError() == GL_NO_ERROR);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("At half resolution, the darkening of a crease does not spread to an object in front of it")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    fixture.Draw(true, true, true);
+
+    for (const bool half : {false, true})
+    {
+        CAPTURE(half);
+        fixture.GetOcclusion().Compute(fixture.GetDepth(), fixture.GetCamera(), {.HalfResolution = half});
+        float darkest = 1.0f;
+        for (int row = 0; row <= 56; ++row)
+        {
+            for (int column = 0; column <= 10; ++column)
+            {
+                darkest = std::min(darkest, fixture.Read({(static_cast<float>(column) * 0.1f) - 0.5f, 0.65f + (static_cast<float>(row) * 0.01f), 2.0f}));
+            }
+        }
+        CHECK(darkest > 0.97f);
+    }
+    fixture.Draw(true, true);
+    CHECK(fixture.Compute({}, {0.0f, 0.0f, 0.55f}) < 0.85f);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }

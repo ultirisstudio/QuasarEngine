@@ -7,28 +7,33 @@
 #include "include/ViewPosition.glsl"
 
 layout(binding = 0) uniform sampler2D u_Occlusion;
-layout(binding = 1) uniform sampler2D u_Depth;
-uniform mat4 u_InverseProjection;
+layout(binding = 1) uniform sampler2D u_LinearDepth;
+uniform int u_Vertical;
+uniform int u_Radius;
 
-layout(location = 0) out vec4 o_Color;
+layout(location = 0) out float o_Occlusion;
 
+// Averages 5 pixels along a line, without mixing surfaces at different depths
 void main()
 {
-    vec2 texel = 1.0 / vec2(textureSize(u_Depth, 0));
-    vec2 uv = gl_FragCoord.xy * texel;
-    float depth = GetViewPosition(u_Depth, u_InverseProjection, uv).z;
+    ivec2 last = textureSize(u_LinearDepth, 0) - 1;
+    ivec2 pixel = ivec2(gl_FragCoord.xy);
+    ivec2 step = u_Vertical != 0 ? ivec2(0, 1) : ivec2(1, 0);
+    float depth = texelFetch(u_LinearDepth, pixel, 0).r;
+    if (isinf(depth))
+    {
+        o_Occlusion = 1.0;
+        return;
+    }
+
     float sum = 0.0;
     float weight = 0.0;
-    for (int y = -2; y <= 2; ++y)
+    for (int offset = -u_Radius; offset <= u_Radius; ++offset)
     {
-        for (int x = -2; x <= 2; ++x)
-        {
-            vec2 offset = vec2(x, y) * texel;
-            float other = GetViewPosition(u_Depth, u_InverseProjection, uv + offset).z;
-            float near = abs(other - depth) <= 0.05 * abs(depth) ? 1.0 : 0.0;
-            sum += texture(u_Occlusion, uv + offset).r * near;
-            weight += near;
-        }
+        ivec2 other = clamp(pixel + step * offset, ivec2(0), last);
+        float near = IsSameSurface(depth, texelFetch(u_LinearDepth, other, 0).r) ? 1.0 : 0.0;
+        sum += texelFetch(u_Occlusion, other, 0).r * near;
+        weight += near;
     }
-    o_Color = vec4(vec3(weight > 0.0 ? sum / weight : 1.0), 1.0);
+    o_Occlusion = sum / weight;
 }
