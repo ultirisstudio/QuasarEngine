@@ -3,6 +3,7 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/TemporaryFiles.h"
 
+#include <quasar/Version.h>
 #include <quasar/io/File.h>
 #include <quasar/io/Path.h>
 
@@ -24,6 +25,7 @@ using Quasar::Editor::GetDefaultProjectLocation;
 using Quasar::Editor::GetProjectFile;
 using Quasar::Editor::OpenProject;
 using Quasar::Editor::ProjectFileExtension;
+using Quasar::Editor::ProjectFormatVersion;
 using Quasar::Editor::ProjectResult;
 using Quasar::Editor::ResolveProjectDirectory;
 
@@ -51,10 +53,17 @@ namespace
         return directory / PathFromUtf8(std::string(name) + std::string(ProjectFileExtension));
     }
 
+    constexpr std::string_view ValidProjectFile = "Name: MyGame\nFormatVersion: 1\nEngineVersion: 0.1.0\n";
+
+    void WriteProjectFile(const std::filesystem::path& file, std::string_view text = ValidProjectFile)
+    {
+        REQUIRE(Quasar::WriteTextFile(file, text));
+    }
+
     void MakeProjectFolder(const std::filesystem::path& directory)
     {
         REQUIRE(Quasar::CreateDirectories(GetAssetsDirectory(directory)));
-        REQUIRE(Quasar::WriteTextFile(GetProjectFile(directory), ""));
+        WriteProjectFile(GetProjectFile(directory));
     }
 
     bool MakeLinkToItself(const std::filesystem::path& link)
@@ -205,8 +214,10 @@ TEST_SUITE("Project")
 
         REQUIRE_MESSAGE(result.IsValid(), result.Error);
         CHECK(result.Directory == (folder.GetPath() / "MyGame").lexically_normal());
-        CHECK(std::filesystem::is_regular_file(ProjectFileOf(result.Directory, "MyGame")));
-        CHECK(std::filesystem::is_empty(ProjectFileOf(result.Directory, "MyGame")));
+        CHECK(result.ProjectFile == ProjectFileOf(result.Directory, "MyGame"));
+        CHECK(result.Name == "MyGame");
+        CHECK(Quasar::ReadTextFile(result.ProjectFile) ==
+              "Name: MyGame\nFormatVersion: " + std::to_string(ProjectFormatVersion) + "\nEngineVersion: " + Quasar::GetVersionString() + "\n");
         REQUIRE(std::filesystem::is_directory(GetAssetsDirectory(result.Directory)));
         CHECK(std::filesystem::is_empty(GetAssetsDirectory(result.Directory)));
     }
@@ -292,15 +303,14 @@ TEST_SUITE("Project")
     {
         const TestHelpers::TemporaryFolder folder("quasar_create_over_file");
         REQUIRE(Quasar::WriteTextFile(folder.GetPath() / "file.txt", "content"));
-        const std::filesystem::path assets = GetAssetsDirectory(folder.GetPath() / "file.txt" / "MyGame");
         std::error_code expected;
-        std::filesystem::create_directories(assets, expected);
+        std::filesystem::create_directories(folder.GetPath() / "file.txt", expected);
         REQUIRE(expected);
 
         const ProjectResult result = CreateProject(folder.GetPath() / "file.txt", "MyGame");
 
         CheckFailed(result);
-        CHECK(MentionsPath(result, assets));
+        CHECK(MentionsPath(result, folder.GetPath() / "file.txt"));
         CHECK(Contains(result.Error, expected.message()));
         CHECK(std::filesystem::is_regular_file(folder.GetPath() / "file.txt"));
     }
@@ -328,6 +338,40 @@ TEST_SUITE("Project")
         CHECK(std::filesystem::is_empty(folder.GetPath()));
     }
 
+    TEST_CASE("CreateProject removes the folders of the location that it created when the project fails")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_remove_parents");
+        const std::filesystem::path location = folder.GetPath() / "Projects" / "Games";
+
+        std::string name;
+
+        SUBCASE("the project folder cannot be created")
+        {
+            name = std::string(256, 'c');
+        }
+        SUBCASE("the project file cannot be written")
+        {
+            name = std::string(250, 'c');
+        }
+
+        const ProjectResult result = CreateProject(location, name);
+
+        CheckFailed(result);
+        CHECK(std::filesystem::is_empty(folder.GetPath()));
+    }
+
+    TEST_CASE("CreateProject keeps the folders of the location that existed before")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_create_keep_parents");
+        REQUIRE(Quasar::CreateDirectories(folder.GetPath() / "Projects"));
+
+        const ProjectResult result = CreateProject(folder.GetPath() / "Projects" / "Games", std::string(250, 'd'));
+
+        CheckFailed(result);
+        CHECK(std::filesystem::is_directory(folder.GetPath() / "Projects"));
+        CHECK(std::filesystem::is_empty(folder.GetPath() / "Projects"));
+    }
+
     TEST_CASE("CreateProject gives the reason when the location cannot be read")
     {
         const TestHelpers::TemporaryFolder folder("quasar_create_loop");
@@ -340,7 +384,7 @@ TEST_SUITE("Project")
         const ProjectResult result = CreateProject(loop, "MyGame");
 
         CheckFailed(result);
-        CHECK(MentionsPath(result, loop / "MyGame"));
+        CHECK(MentionsPath(result, loop));
     }
 
     TEST_CASE("OpenProject gives the normalized full path of a project folder")
@@ -371,11 +415,106 @@ TEST_SUITE("Project")
     {
         const TestHelpers::TemporaryFolder folder("quasar_open_renamed");
         REQUIRE(Quasar::CreateDirectories(GetAssetsDirectory(folder.GetPath() / "Renamed")));
-        REQUIRE(Quasar::WriteTextFile(ProjectFileOf(folder.GetPath() / "Renamed", "MyGame"), ""));
+        WriteProjectFile(ProjectFileOf(folder.GetPath() / "Renamed", "MyGame"));
 
         const ProjectResult result = OpenProject(folder.GetPath() / "Renamed");
 
         REQUIRE_MESSAGE(result.IsValid(), result.Error);
+        CHECK(result.ProjectFile == ProjectFileOf(folder.GetPath() / "Renamed", "MyGame"));
+        CHECK(result.Name == "MyGame");
+    }
+
+    TEST_CASE("OpenProject refuses a folder with several project files")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_open_two_files");
+        const std::filesystem::path project = folder.GetPath() / "MyGame";
+        MakeProjectFolder(project);
+        WriteProjectFile(ProjectFileOf(project, "Other"));
+
+        const ProjectResult result = OpenProject(project);
+
+        CheckFailed(result);
+        CHECK(Contains(result.Error, "several"));
+        CHECK(MentionsPath(result, project));
+    }
+
+    TEST_CASE("OpenProject refuses a project file that this editor cannot read")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_open_bad_file");
+        const std::filesystem::path project = folder.GetPath() / "MyGame";
+        MakeProjectFolder(project);
+        std::string_view reason;
+
+        SUBCASE("an empty file")
+        {
+            WriteProjectFile(GetProjectFile(project), "");
+            reason = "must contain";
+        }
+        SUBCASE("a file that is not YAML")
+        {
+            WriteProjectFile(GetProjectFile(project), "Name: [MyGame\n");
+            reason = "not valid YAML";
+        }
+        SUBCASE("a list instead of a map")
+        {
+            WriteProjectFile(GetProjectFile(project), "- Name\n- FormatVersion\n");
+            reason = "must contain";
+        }
+        SUBCASE("no name")
+        {
+            WriteProjectFile(GetProjectFile(project), "FormatVersion: 1\n");
+            reason = "Name is missing";
+        }
+        SUBCASE("an empty name")
+        {
+            WriteProjectFile(GetProjectFile(project), "Name: \"\"\nFormatVersion: 1\n");
+            reason = "Name is missing";
+        }
+        SUBCASE("a name that is a list")
+        {
+            WriteProjectFile(GetProjectFile(project), "Name: [A, B]\nFormatVersion: 1\n");
+            reason = "Name is missing";
+        }
+        SUBCASE("no format version")
+        {
+            WriteProjectFile(GetProjectFile(project), "Name: MyGame\n");
+            reason = "FormatVersion must be";
+        }
+        SUBCASE("a format version that is not a number")
+        {
+            WriteProjectFile(GetProjectFile(project), "Name: MyGame\nFormatVersion: one\n");
+            reason = "FormatVersion must be";
+        }
+        SUBCASE("a format version of zero")
+        {
+            WriteProjectFile(GetProjectFile(project), "Name: MyGame\nFormatVersion: 0\n");
+            reason = "FormatVersion must be";
+        }
+        SUBCASE("a format version newer than the editor")
+        {
+            WriteProjectFile(GetProjectFile(project), "Name: MyGame\nFormatVersion: " + std::to_string(ProjectFormatVersion + 1) + "\n");
+            reason = "newer version of Quasar";
+        }
+
+        const ProjectResult result = OpenProject(project);
+
+        CheckFailed(result);
+        CHECK_MESSAGE(Contains(result.Error, reason), result.Error);
+        CHECK(MentionsPath(result, GetProjectFile(project)));
+    }
+
+    TEST_CASE("OpenProject reads the name of the project file, not of the folder")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_open_name");
+        const std::filesystem::path project = folder.GetPath() / "Folder";
+        REQUIRE(Quasar::CreateDirectories(GetAssetsDirectory(project)));
+        WriteProjectFile(GetProjectFile(project), "Name: My Game\nFormatVersion: 1\nEngineVersion: 9.9.9\nFuture: kept\n");
+
+        const ProjectResult result = OpenProject(project);
+
+        REQUIRE_MESSAGE(result.IsValid(), result.Error);
+        CHECK(result.Name == "My Game");
+        CHECK(result.ProjectFile == GetProjectFile(project));
     }
 
     TEST_CASE("OpenProject refuses a folder that is not a project")
@@ -394,11 +533,11 @@ TEST_SUITE("Project")
         }
         SUBCASE("the project has no Assets folder")
         {
-            REQUIRE(Quasar::WriteTextFile(ProjectFileOf(project, "MyGame"), ""));
+            WriteProjectFile(ProjectFileOf(project, "MyGame"));
         }
         SUBCASE("Assets is a file instead of a folder")
         {
-            REQUIRE(Quasar::WriteTextFile(ProjectFileOf(project, "MyGame"), ""));
+            WriteProjectFile(ProjectFileOf(project, "MyGame"));
             REQUIRE(Quasar::WriteTextFile(GetAssetsDirectory(project), "content"));
         }
         SUBCASE("the path is a file")
@@ -456,7 +595,7 @@ TEST_SUITE("Project")
     {
         const TestHelpers::TemporaryFolder folder("quasar_open_assets_loop");
         const std::filesystem::path project = folder.GetPath() / "MyGame";
-        REQUIRE(Quasar::WriteTextFile(ProjectFileOf(project, "MyGame"), ""));
+        WriteProjectFile(ProjectFileOf(project, "MyGame"));
         if (!MakeLinkToItself(GetAssetsDirectory(project)))
         {
             return;

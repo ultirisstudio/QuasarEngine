@@ -1,10 +1,12 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/TemporaryFiles.h"
 #include "helpers/TestLayers.h"
 
 #include <EditorContext.h>
 #include <EditorLayer.h>
 #include <EditorPanel.h>
+#include <EditorSettings.h>
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Base.h>
@@ -196,4 +198,23 @@ TEST_CASE("Removing the editor layer destroys its panels while the context they 
 
     const std::vector<std::string> expected{"A destroyed in Game", "B destroyed in Game"};
     CHECK(calls == expected);
+}
+
+TEST_CASE("The editor layer reads the recent projects from its settings file and opens no project at start")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder folder("quasar_editor_settings");
+    const std::filesystem::path file = folder.GetPath() / "EditorSettings.yaml";
+    Quasar::Editor::EditorSettings(file).RememberProject(folder.GetPath() / "Game");
+    const Quasar::Scope<Quasar::Application> application = CreateEditorApplication();
+    REQUIRE(application != nullptr);
+    auto layer = Quasar::CreateScope<Quasar::Editor::EditorLayer>(file);
+    const Quasar::Editor::EditorLayer& editor = *layer;
+    application->PushLayer(std::move(layer));
+
+    RunFrames(*application, 2);
+
+    CHECK(editor.GetSettings().GetRecentProjects() == std::vector{folder.GetPath() / "Game"});
+    CHECK(editor.GetContext().ProjectDirectory.empty());
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }

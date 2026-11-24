@@ -9,6 +9,10 @@ target_sources(QuasarEditorLibrary PRIVATE
     src/EditorLayer.h
     src/EditorPanel.cpp
     src/EditorPanel.h
+    src/EditorSettings.cpp
+    src/EditorSettings.h
+    src/EditorUI.cpp
+    src/EditorUI.h
     src/Project.cpp
     src/Project.h
     src/ProjectPopups.cpp
@@ -26,6 +30,7 @@ target_link_libraries(QuasarEditorLibrary
         Quasar::Engine
     PRIVATE
         Quasar::CompileOptions
+        yaml-cpp::yaml-cpp
 )
 
 set_target_properties(QuasarEditorLibrary PROPERTIES FOLDER "Editor")

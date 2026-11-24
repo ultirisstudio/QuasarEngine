@@ -1,11 +1,14 @@
 #pragma once
 
 // Changes an environment variable during a test, then puts back its previous value. Only on Linux: changing the
-// environment needs POSIX functions.
+// environment needs POSIX functions. SDL keeps its own copy of the environment once it has read it, so the copy is
+// changed too.
 
 #include <quasar/core/PlatformDetection.h>
 
 #ifdef QUASAR_PLATFORM_LINUX
+
+#include <SDL3/SDL_stdinc.h>
 
 #include <cstdlib>
 #include <optional>
@@ -40,11 +43,13 @@ namespace TestHelpers
             {
                 // NOLINTNEXTLINE(concurrency-mt-unsafe)
                 setenv(m_Name.c_str(), value->c_str(), 1);
+                SDL_SetEnvironmentVariable(SDL_GetEnvironment(), m_Name.c_str(), value->c_str(), true);
             }
             else
             {
                 // NOLINTNEXTLINE(concurrency-mt-unsafe)
                 unsetenv(m_Name.c_str());
+                SDL_UnsetEnvironmentVariable(SDL_GetEnvironment(), m_Name.c_str());
             }
         }
 

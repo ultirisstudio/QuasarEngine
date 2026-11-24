@@ -2,6 +2,7 @@
 
 #include "EditorContext.h"
 #include "EditorPanel.h"
+#include "EditorSettings.h"
 #include "ProjectPopups.h"
 
 #include <quasar/core/Base.h>
@@ -23,7 +24,12 @@ namespace Quasar::Editor
     class EditorLayer final : public Layer
     {
     public:
-        EditorLayer();
+        // The recent projects and the last location are saved in this file. An empty path keeps them in memory only.
+        explicit EditorLayer(std::filesystem::path settingsFile = {});
+
+        const EditorContext& GetContext() const { return m_Context; }
+
+        const EditorSettings& GetSettings() const { return m_Settings; }
 
         void OnAttach() override;
 
@@ -48,10 +54,12 @@ namespace Quasar::Editor
 
     private:
         void DrawMenuBar();
-        void SetProject(const std::filesystem::path& directory);
+        void DrawRecentProjectsMenu();
+        void SetProject(const ProjectResult& project);
 
         EditorContext m_Context;
         std::vector<Scope<EditorPanel>> m_Panels;
+        EditorSettings m_Settings;
         ProjectPopups m_ProjectPopups;
     };
 }

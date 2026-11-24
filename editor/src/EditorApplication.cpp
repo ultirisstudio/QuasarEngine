@@ -1,5 +1,6 @@
 #include "EditorApplication.h"
 #include "EditorLayer.h"
+#include "EditorSettings.h"
 
 #include <utility>
 
@@ -15,7 +16,7 @@ namespace Quasar::Editor
         Scope<Application> application = Application::Create(GetEditorSpecification(std::move(arguments)));
         if (application)
         {
-            application->PushLayer(CreateScope<EditorLayer>());
+            application->PushLayer(CreateScope<EditorLayer>(GetEditorSettingsFile()));
         }
 
         return application;

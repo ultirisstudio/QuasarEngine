@@ -1,3 +1,4 @@
+#include "helpers/HeadlessImGui.h"
 #include "helpers/LogHelpers.h"
 #include "helpers/MathHelpers.h"
 #include "helpers/NullWindow.h"
@@ -16,6 +17,10 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <imgui.h>
+#include <imgui_stdlib.h>
+
+#include <string>
 
 using TestHelpers::Color;
 using TestHelpers::IsNear;
@@ -91,4 +96,37 @@ TEST_CASE("The test helpers read the colors of a framebuffer from its top row, a
     GLint bound = -1;
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
     CHECK(bound == 0);
+}
+
+TEST_CASE("The headless ImGui helper types text and presses keys without a window, then restores the previous context")
+{
+    ImGuiContext* previous = ImGui::GetCurrentContext();
+    std::string text;
+    int enterPresses = 0;
+    {
+        const TestHelpers::HeadlessImGui imgui(
+            [&]
+            {
+                ImGui::Begin("Test");
+                if (ImGui::IsWindowAppearing())
+                {
+                    ImGui::SetKeyboardFocusHere();
+                }
+                ImGui::InputText("##Text", &text);
+                enterPresses += ImGui::IsKeyPressed(ImGuiKey_Enter, false) ? 1 : 0;
+                ImGui::End();
+            });
+        CHECK(ImGui::GetCurrentContext() != previous);
+        CHECK(ImGui::GetIO().Fonts->TexData->Status == ImTextureStatus_OK);
+
+        imgui.Frame();
+        imgui.Type("abc");
+        imgui.Press(ImGuiKey_Backspace);
+        imgui.Press(ImGuiKey_Enter);
+
+        CHECK(text == "ab");
+        CHECK(enterPresses == 1);
+        CHECK_FALSE(TestHelpers::HeadlessImGui::IsPopupOpen());
+    }
+    CHECK(ImGui::GetCurrentContext() == previous);
 }

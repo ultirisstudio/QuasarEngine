@@ -12,9 +12,15 @@ namespace Quasar::Editor
 
     inline constexpr std::string_view DefaultProjectsDirectoryName = "Quasar Projects";
 
+    // Version of the content of the .qproject file. Increase it when the content changes in a way that older editors
+    // cannot read.
+    inline constexpr int ProjectFormatVersion = 1;
+
     struct ProjectResult
     {
         std::filesystem::path Directory;
+        std::filesystem::path ProjectFile;
+        std::string Name;
         std::string Error;
 
         bool IsValid() const { return Error.empty(); }
