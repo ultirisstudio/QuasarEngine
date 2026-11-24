@@ -378,3 +378,34 @@ void main()
     stencil->BindDepthValues(3);
     CHECK(TestHelpers::CountErrors("no Depth32F attachment") == 2);
 }
+
+TEST_CASE("A framebuffer has attachments of one channel, of 8 bits from 0 to 1 or of a 32-bit float")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
+    REQUIRE(window != nullptr);
+    const Quasar::Scope<Quasar::Framebuffer> framebuffer =
+        CreateFramebuffer(*window, {.Width = 4, .Height = 4, .Attachments = {FramebufferFormat::Red8, FramebufferFormat::Red32F}});
+    REQUIRE(framebuffer != nullptr);
+    const auto readTexture = [&framebuffer](std::uint32_t attachment)
+    {
+        framebuffer->BindColorTexture(attachment, 5);
+        glActiveTexture(GL_TEXTURE5);
+        GLint texture = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
+        return static_cast<GLuint>(texture);
+    };
+
+    framebuffer->ClearColor(0, {0.6f, 0.0f, 0.0f, 1.0f});
+    framebuffer->ClearColor(1, {-1234.5f, 0.0f, 0.0f, 1.0f});
+
+    GLubyte share = 0;
+    glGetTextureSubImage(readTexture(0), 0, 3, 3, 0, 1, 1, 1, GL_RED, GL_UNSIGNED_BYTE, 1, &share);
+    GLfloat distance = 0.0f;
+    glGetTextureSubImage(readTexture(1), 0, 3, 3, 0, 1, 1, 1, GL_RED, GL_FLOAT, sizeof(distance), &distance);
+    CHECK(share == 153);
+    CHECK(distance == -1234.5f);
+    CHECK(framebuffer->GetSpecification().Attachments == std::vector{FramebufferFormat::Red8, FramebufferFormat::Red32F});
+    CHECK(glGetError() == GL_NO_ERROR);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+}

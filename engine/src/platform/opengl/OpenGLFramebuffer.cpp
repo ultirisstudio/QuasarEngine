@@ -26,6 +26,10 @@ namespace Quasar
                     return "Rgba16F";
                 case FramebufferFormat::RedInteger:
                     return "RedInteger";
+                case FramebufferFormat::Red8:
+                    return "Red8";
+                case FramebufferFormat::Red32F:
+                    return "Red32F";
                 case FramebufferFormat::Depth24Stencil8:
                     return "Depth24Stencil8";
                 case FramebufferFormat::Depth32F:
@@ -44,6 +48,10 @@ namespace Quasar
                     return GL_RGBA16F;
                 case FramebufferFormat::RedInteger:
                     return GL_R32I;
+                case FramebufferFormat::Red8:
+                    return GL_R8;
+                case FramebufferFormat::Red32F:
+                    return GL_R32F;
                 case FramebufferFormat::Depth24Stencil8:
                     return GL_DEPTH24_STENCIL8;
                 case FramebufferFormat::Depth32F:
