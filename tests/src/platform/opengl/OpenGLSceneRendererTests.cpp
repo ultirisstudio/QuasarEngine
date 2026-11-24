@@ -705,7 +705,9 @@ TEST_CASE("The ambient occlusion darkens the ambient light where surfaces meet, 
     const int ambient = render({.Enabled = false}, open);
     CHECK(ambient > 200);
     CHECK(std::abs(render({.Enabled = false}, crease) - ambient) <= 2);
-    CHECK(render({}, crease) < ambient - 20);
+    CHECK(render({.HalfResolution = false}, crease) < ambient - 20);
+    CHECK(std::abs(render({.HalfResolution = false}, open) - ambient) <= 3);
+    CHECK(render({}, crease) < ambient - 15);
     CHECK(std::abs(render({}, open) - ambient) <= 3);
     CHECK(std::abs(render({.Enabled = false}, crease) - ambient) <= 2);
 
@@ -714,7 +716,7 @@ TEST_CASE("The ambient occlusion darkens the ambient light where surfaces meet, 
     const int direct = render({.Enabled = false}, crease);
     CHECK(direct > 200);
     CHECK(std::abs(render({.DirectLightingStrength = 0.0f}, crease) - direct) <= 2);
-    CHECK(render({.DirectLightingStrength = 1.0f}, crease) < direct - 20);
+    CHECK(render({.HalfResolution = false, .DirectLightingStrength = 1.0f}, crease) < direct - 20);
     CHECK(render({.DirectLightingStrength = 3.0f}, crease) == render({.DirectLightingStrength = 1.0f}, crease));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
@@ -742,8 +744,9 @@ TEST_CASE("The scene renderer measures each of its steps on the graphics card")
         sections.emplace_back(timing.Name, timing.Depth);
         CHECK(timing.Milliseconds >= 0.0);
     }
-    const std::vector<std::pair<std::string, std::uint32_t>> expected{{"Shadows", 0},         {"Depth prepass", 0}, {"Ambient occlusion", 0}, {"Scene", 0},
-                                                                      {"Post-processing", 0}, {"Bloom", 1},         {"Tone mapping", 1}};
+    const std::vector<std::pair<std::string, std::uint32_t>> expected{
+        {"Shadows", 0},  {"Depth prepass", 0}, {"Ambient occlusion", 0}, {"Occlusion", 1}, {"Blur", 1},
+        {"Upsample", 1}, {"Scene", 0},         {"Post-processing", 0},   {"Bloom", 1},     {"Tone mapping", 1}};
     CHECK(sections == expected);
     CHECK(profiler.GetFrameMilliseconds() > 0.0);
     profiler.SetEnabled(false);
