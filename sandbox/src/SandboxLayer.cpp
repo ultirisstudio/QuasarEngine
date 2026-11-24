@@ -128,6 +128,7 @@ namespace Quasar::Sandbox
             {
                 settings.Samples = 8U << static_cast<unsigned>(quality);
             }
+            ImGui::Checkbox("AO half resolution", &settings.HalfResolution);
             ImGui::SliderFloat("AO radius", &settings.Radius, 0.1f, 2.0f, "%.2f");
             ImGui::SliderFloat("AO intensity", &settings.Intensity, 0.0f, 4.0f, "%.2f");
             ImGui::SliderFloat("AO on direct light", &settings.DirectLightingStrength, 0.0f, 1.0f, "%.2f");
