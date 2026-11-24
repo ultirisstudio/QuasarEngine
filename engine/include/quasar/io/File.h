@@ -24,6 +24,14 @@ namespace Quasar
     /// reason is logged as an engine error.
     std::optional<std::string> ReadTextFile(const std::filesystem::path& path);
 
+    /// @brief Reads a whole text file like ReadTextFile(), but gives the reason of a failure to the caller instead of
+    /// logging it, for example to show it in a window.
+    /// @param path Path of the file to read.
+    /// @param error Receives the reason when the file cannot be read, such as "Cannot read '<path>': the file does
+    /// not exist". It is not changed when the file is read.
+    /// @return The content of the file, or no value if it cannot be read.
+    std::optional<std::string> ReadTextFile(const std::filesystem::path& path, std::string& error);
+
     /// @brief Reads a whole binary file, byte for byte.
     ///
     /// An empty file gives an empty vector.
@@ -40,6 +48,15 @@ namespace Quasar
     /// @param text Content of the file.
     /// @return True if the file was written. Otherwise the reason is logged as an engine error.
     bool WriteTextFile(const std::filesystem::path& path, std::string_view text);
+
+    /// @brief Writes a whole text file like WriteTextFile(), but gives the reason of a failure to the caller instead of
+    /// logging it, for example to show it in a window.
+    /// @param path Path of the file to write.
+    /// @param text Content of the file.
+    /// @param error Receives the reason when the file cannot be written, such as "Cannot open '<path>' for writing".
+    /// It is not changed when the file is written.
+    /// @return True if the file was written.
+    bool WriteTextFile(const std::filesystem::path& path, std::string_view text, std::string& error);
 
     /// @brief Writes a whole binary file, byte for byte, replacing its content if it already exists.
     ///

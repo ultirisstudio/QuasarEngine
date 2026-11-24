@@ -49,4 +49,19 @@ namespace Quasar
     /// @param path The path.
     /// @return The path in UTF-8, with the separators of the platform.
     std::string PathToUtf8(const std::filesystem::path& path);
+
+    /// @brief Tells if a text can be the name of a file or a folder on every platform that the engine supports.
+    ///
+    /// A name is refused if it is empty, `.` or `..`, ends with a space or a dot, contains one of `< > : " / \ | ? *`
+    /// or a control character, or is a name that Windows keeps for its devices, such as `CON`, `NUL`, `COM1` or `LPT9`,
+    /// in any case and even with an extension. Other UTF-8 characters are allowed.
+    /// @param name The name, in UTF-8, without a folder.
+    bool IsValidFileName(std::string_view name);
+
+    /// @brief Returns a folder that exists: the path itself if it is a folder, or its closest parent that is one.
+    ///
+    /// For example to open a dialog on the folder that a user is typing, before it exists.
+    /// @param path The path, which does not need to exist.
+    /// @return The folder, or an empty path if no part of the path is an existing folder.
+    std::filesystem::path FindExistingDirectory(std::filesystem::path path);
 }

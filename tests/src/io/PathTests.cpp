@@ -1,3 +1,6 @@
+#include "helpers/TemporaryFiles.h"
+
+#include <quasar/io/File.h>
 #include <quasar/io/Path.h>
 
 #include <doctest/doctest.h>
@@ -108,4 +111,31 @@ TEST_CASE("A path written as UTF-8 and read back is the same path")
 TEST_CASE("An empty path gives an empty UTF-8 text")
 {
     CHECK(Quasar::PathToUtf8({}).empty());
+}
+
+TEST_CASE("A file name is valid on every platform unless Windows or Linux would refuse it")
+{
+    for (const char* name : {"MyGame", "My Game", "Proj\xC3\xA9t", "game.v2", "Console", "COM10", ".hidden", "LPT"})
+    {
+        CAPTURE(name);
+        CHECK(Quasar::IsValidFileName(name));
+    }
+    for (const char* name : {"",      ".",     "..",    "My/Game",   "My\\Game", "Game.", "Game ", "Ga:me", "Ga*me", "Ga?me", "Ga\"me",
+                             "Ga<me", "Ga>me", "Ga|me", "Tab\tName", "CON",      "nul",   "Aux",   "PRN",   "COM1",  "lpt9",  "CON.txt"})
+    {
+        CAPTURE(name);
+        CHECK_FALSE(Quasar::IsValidFileName(name));
+    }
+}
+
+TEST_CASE("The existing folder of a path is the path itself or its closest existing parent")
+{
+    const TestHelpers::TemporaryFolder folder("quasar_existing_folder");
+    REQUIRE(Quasar::WriteTextFile(folder.GetPath() / "file.txt", "content"));
+
+    CHECK(Quasar::FindExistingDirectory(folder.GetPath()) == folder.GetPath());
+    CHECK(Quasar::FindExistingDirectory(folder.GetPath() / "missing" / "inside") == folder.GetPath());
+    CHECK(Quasar::FindExistingDirectory(folder.GetPath() / "file.txt") == folder.GetPath());
+    CHECK(Quasar::FindExistingDirectory("quasar_missing_relative_folder").empty());
+    CHECK(Quasar::FindExistingDirectory({}).empty());
 }

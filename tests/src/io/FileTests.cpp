@@ -180,3 +180,50 @@ TEST_CASE("A directory cannot be created where a file exists")
 
     CHECK_FALSE(Quasar::CreateDirectories(path));
 }
+
+TEST_CASE("A file that cannot be written gives its reason to the caller without logging it")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder folder;
+    REQUIRE(Quasar::WriteTextFile(folder.GetPath() / "file.txt", "content"));
+    std::string error = "unchanged";
+
+    CHECK(Quasar::WriteTextFile(folder.GetPath() / "written.txt", "text", error));
+    CHECK(error == "unchanged");
+    CHECK(Quasar::ReadTextFile(folder.GetPath() / "written.txt") == "text");
+
+    CHECK_FALSE(Quasar::WriteTextFile(folder.GetPath() / "file.txt" / "inside.txt", "text", error));
+    CHECK(error.find("its directory cannot be created") != std::string::npos);
+    CHECK(error.find("file.txt") != std::string::npos);
+
+    error.clear();
+    CHECK_FALSE(Quasar::WriteTextFile(folder.GetPath(), "text", error));
+    CHECK(error.find("for writing") != std::string::npos);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+
+    CHECK_FALSE(Quasar::WriteTextFile(folder.GetPath() / "file.txt" / "inside.txt", "text"));
+    CHECK(TestHelpers::CountErrors("its directory cannot be created") == 1);
+}
+
+TEST_CASE("A file that cannot be read gives its reason to the caller without logging it")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder folder;
+    const std::string byteOrderMark = "\xEF\xBB\xBF";
+    REQUIRE(Quasar::WriteTextFile(folder.GetPath() / "file.txt", byteOrderMark + "content"));
+    std::string error = "unchanged";
+
+    CHECK(Quasar::ReadTextFile(folder.GetPath() / "file.txt", error) == "content");
+    CHECK(error == "unchanged");
+
+    CHECK_FALSE(Quasar::ReadTextFile(folder.GetPath() / "missing.txt", error).has_value());
+    CHECK(error.find("does not exist") != std::string::npos);
+    CHECK(error.find("missing.txt") != std::string::npos);
+
+    CHECK_FALSE(Quasar::ReadTextFile(folder.GetPath(), error).has_value());
+    CHECK(error.find("not a regular file") != std::string::npos);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+
+    CHECK_FALSE(Quasar::ReadTextFile(folder.GetPath() / "missing.txt").has_value());
+    CHECK(TestHelpers::CountErrors("does not exist") == 1);
+}
