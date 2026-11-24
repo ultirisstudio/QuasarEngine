@@ -3,6 +3,7 @@
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/Log.h>
 #include <quasar/renderer/Color.h>
+#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/scene/Entity.h>
 #include <quasar/scene/components/CameraComponent.h>
@@ -143,29 +144,40 @@ namespace Quasar
             }
         }
         m_SceneFramebuffer->Resize(size.x, size.y);
-        m_SceneFramebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
-        m_SceneFramebuffer->ClearDepthStencil();
 
-        m_Renderer->BeginScene(camera, m_SceneFramebuffer.get(), m_Lights);
-        for (const DrawItem& item : m_DrawList)
+        GpuProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
         {
-            m_Renderer->Submit(*item.Mesh, *item.Material, item.Transform);
+            const GpuSection section(profiler, "Scene");
+            m_SceneFramebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
+            m_SceneFramebuffer->ClearDepthStencil();
+            m_Renderer->BeginScene(camera, m_SceneFramebuffer.get(), m_Lights);
+            for (const DrawItem& item : m_DrawList)
+            {
+                m_Renderer->Submit(*item.Mesh, *item.Material, item.Transform);
+            }
+            m_Renderer->EndScene();
         }
-        m_Renderer->EndScene();
+
+        const GpuSection section(profiler, "Post-processing");
         m_PostProcessing->Apply(*m_SceneFramebuffer, target, camera, m_Settings.Exposure, m_Settings.Tonemap);
     }
 
     SceneAmbientOcclusion SceneRenderer::RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size)
     {
+        GpuProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
         m_DepthPrepass->Resize(size.x, size.y);
-        m_DepthPrepass->ClearDepthStencil();
-        m_Renderer->BeginScene(camera, m_DepthPrepass.get(), SceneLights{.Directional = std::nullopt});
-        for (const DrawItem& item : m_DrawList)
         {
-            m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Transform);
+            const GpuSection section(profiler, "Depth prepass");
+            m_DepthPrepass->ClearDepthStencil();
+            m_Renderer->BeginScene(camera, m_DepthPrepass.get(), SceneLights{.Directional = std::nullopt});
+            for (const DrawItem& item : m_DrawList)
+            {
+                m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Transform);
+            }
+            m_Renderer->EndScene();
         }
-        m_Renderer->EndScene();
 
+        const GpuSection section(profiler, "Ambient occlusion");
         m_AmbientOcclusion->Compute(*m_DepthPrepass, camera, m_Settings.AmbientOcclusion);
         return {.Map = &m_AmbientOcclusion->GetResult(), .DirectLightingStrength = m_Settings.AmbientOcclusion.DirectLightingStrength};
     }
@@ -173,6 +185,7 @@ namespace Quasar
     DirectionalShadow SceneRenderer::RenderShadows(const Camera& camera, const DirectionalLight& light)
     {
         const ShadowCamera shadow = ComputeShadowCamera(camera, light.Direction, m_Settings.Shadows);
+        const GpuSection section(&m_Renderer->GetContext().GetProfiler(), "Shadows");
         m_ShadowMap->Resize(shadow.Resolution, shadow.Resolution);
 
         m_ShadowMap->ClearDepthStencil();

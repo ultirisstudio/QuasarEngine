@@ -14,6 +14,7 @@
 #include <quasar/log/Log.h>
 #include <quasar/renderer/Bloom.h>
 #include <quasar/renderer/Framebuffer.h>
+#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/PipelineLibrary.h>
 #include <quasar/renderer/PostProcessing.h>
@@ -55,6 +56,41 @@ namespace Quasar::Sandbox
         {
             float Speed = 0.0f;
         };
+
+        void DrawGpuTimings(GpuProfiler& profiler)
+        {
+            bool enabled = profiler.IsEnabled();
+            if (ImGui::Checkbox("GPU timings", &enabled))
+            {
+                profiler.SetEnabled(enabled);
+            }
+            if (!enabled || profiler.GetTimings().empty())
+            {
+                return;
+            }
+
+            constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
+            if (!ImGui::BeginTable("GpuTimings", 2, flags))
+            {
+                return;
+            }
+            const float indent = ImGui::GetStyle().IndentSpacing;
+            for (const GpuTiming& timing : profiler.GetTimings())
+            {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (indent * static_cast<float>(timing.Depth)));
+                ImGui::TextUnformatted(timing.Name.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(fmt::format("{:.3f} ms", timing.Milliseconds).c_str());
+            }
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted("Whole frame");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextUnformatted(fmt::format("{:.3f} ms", profiler.GetFrameMilliseconds()).c_str());
+            ImGui::EndTable();
+        }
 
         std::string KeyLabel(Key key)
         {
@@ -205,11 +241,19 @@ namespace Quasar::Sandbox
             renderer->SetSettings({.Background = SkyColor});
             renderer->GetPostProcessing().Add(Bloom::Create(*window.GetGraphicsContext()));
         }
+        if (GraphicsContext* context = window.GetGraphicsContext(); context != nullptr)
+        {
+            context->GetProfiler().SetEnabled(true);
+        }
     }
 
     void SandboxLayer::OnDetach()
     {
         SetLooking(false);
+        if (GraphicsContext* context = Application::Get().GetWindow().GetGraphicsContext(); context != nullptr)
+        {
+            context->GetProfiler().SetEnabled(false);
+        }
     }
 
     void SandboxLayer::OnUpdate(Timestep timestep)
@@ -272,6 +316,10 @@ namespace Quasar::Sandbox
                 ImGui::TextUnformatted(fmt::format("Image: {}x{}, {} samples per pixel", image.Width, image.Height, image.Samples).c_str());
                 const FramebufferSpecification& shadows = renderer->GetShadowMap().GetSpecification();
                 ImGui::TextUnformatted(fmt::format("Shadow map: {}x{}", shadows.Width, shadows.Height).c_str());
+            }
+            if (GraphicsContext* context = Application::Get().GetWindow().GetGraphicsContext(); context != nullptr)
+            {
+                DrawGpuTimings(context->GetProfiler());
             }
 
             ImGui::SeparatorText("Scene");

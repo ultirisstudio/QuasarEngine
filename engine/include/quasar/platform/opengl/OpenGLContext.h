@@ -78,6 +78,10 @@ namespace Quasar
         /// @brief Makes the context current, then creates an OpenGL vertex array. See GraphicsContext::CreateVertexArray().
         [[nodiscard]] Scope<VertexArray> CreateVertexArray() override;
 
+        /// @brief Makes the context current, then creates an OpenGL timestamp query. See
+        /// GraphicsContext::CreateTimestampQuery().
+        [[nodiscard]] Scope<TimestampQuery> CreateTimestampQuery() override;
+
         /// @brief Makes the context current, then makes the next draws go into the window. See
         /// GraphicsContext::BindWindow().
         void BindWindow() override;

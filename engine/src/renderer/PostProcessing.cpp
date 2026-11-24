@@ -5,11 +5,15 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <string_view>
+#include <utility>
 
 namespace Quasar
 {
     namespace
     {
+        constexpr std::string_view ToneMappingSection = "Tone mapping";
+
         std::array<Scope<Framebuffer>, 2> CreateBuffers(GraphicsContext& context, FramebufferFormat format, bool& created)
         {
             std::array<Scope<Framebuffer>, 2> buffers;
@@ -22,8 +26,8 @@ namespace Quasar
         }
     }
 
-    PostProcessStack::PostProcessStack(Scope<ToneMapper> toneMapper, Buffers linear, Buffers display)
-        : m_ToneMapper(std::move(toneMapper)), m_LinearBuffers(std::move(linear)), m_DisplayBuffers(std::move(display))
+    PostProcessStack::PostProcessStack(GpuProfiler& profiler, Scope<ToneMapper> toneMapper, Buffers linear, Buffers display)
+        : m_Profiler(&profiler), m_ToneMapper(std::move(toneMapper)), m_LinearBuffers(std::move(linear)), m_DisplayBuffers(std::move(display))
     {
     }
 
@@ -38,7 +42,7 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot create a post-processing stack: its tone mapper or its framebuffers cannot be created");
             return nullptr;
         }
-        return Scope<PostProcessStack>(new PostProcessStack(std::move(toneMapper), std::move(linear), std::move(display)));
+        return Scope<PostProcessStack>(new PostProcessStack(context.GetProfiler(), std::move(toneMapper), std::move(linear), std::move(display)));
     }
 
     bool PostProcessStack::AddEffect(Scope<PostProcessEffect> effect)
@@ -79,6 +83,7 @@ namespace Quasar
                 output = buffers.at((first + index) % buffers.size()).get();
                 output->Resize(input.Size.x, input.Size.y);
             }
+            const GpuSection section(m_Profiler, m_Enabled[index]->GetName());
             m_Enabled[index]->Apply(input, output);
             input.Source = output;
         }
@@ -95,12 +100,16 @@ namespace Quasar
         GatherEnabled(PostProcessStage::AfterToneMapping);
         if (m_Enabled.empty())
         {
+            const GpuSection section(m_Profiler, ToneMappingSection);
             m_ToneMapper->Apply(*linear, target, exposure, tonemapping);
             return;
         }
         Framebuffer& display = *m_DisplayBuffers[0];
         display.Resize(input.Size.x, input.Size.y);
-        m_ToneMapper->Apply(*linear, &display, exposure, tonemapping);
+        {
+            const GpuSection section(m_Profiler, ToneMappingSection);
+            m_ToneMapper->Apply(*linear, &display, exposure, tonemapping);
+        }
         input.Source = &display;
         ApplyStage(input, m_DisplayBuffers, 1, true, target);
     }

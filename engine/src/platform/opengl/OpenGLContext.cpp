@@ -5,6 +5,7 @@
 #include <platform/opengl/OpenGLPipeline.h>
 #include <platform/opengl/OpenGLShader.h>
 #include <platform/opengl/OpenGLTexture.h>
+#include <platform/opengl/OpenGLTimestampQuery.h>
 #include <platform/opengl/OpenGLVertexArray.h>
 
 #include <glad/gl.h>
@@ -193,6 +194,12 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         return OpenGLVertexArray::Create();
+    }
+
+    Scope<TimestampQuery> OpenGLContext::CreateTimestampQuery()
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLTimestampQuery::Create();
     }
 
     void OpenGLContext::BindWindow()

@@ -8,10 +8,12 @@
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Buffer.h>
 #include <quasar/renderer/Framebuffer.h>
+#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/Shader.h>
 #include <quasar/renderer/Texture.h>
+#include <quasar/renderer/TimestampQuery.h>
 #include <quasar/renderer/VertexArray.h>
 #include <quasar/renderer/VertexLayout.h>
 
@@ -108,6 +110,14 @@ namespace Quasar
         /// @brief Creates a vertex array without buffers.
         [[nodiscard]] virtual Scope<VertexArray> CreateVertexArray() = 0;
 
+        /// @brief Creates a query that reads the clock of the graphics card, to measure the time of its commands.
+        /// @return The query, or nullptr if the graphics API cannot create it. The reason is logged as an engine error.
+        [[nodiscard]] virtual Scope<TimestampQuery> CreateTimestampQuery() = 0;
+
+        /// @brief Returns the profiler of the commands of this context, made at the first call and owned by the
+        /// context. It is off until GpuProfiler::SetEnabled() turns it on.
+        GpuProfiler& GetProfiler();
+
         /// @brief Makes the next draws go into the window, on its whole area.
         virtual void BindWindow() = 0;
 
@@ -140,11 +150,13 @@ namespace Quasar
         virtual void DrawIndexed(const VertexArray& vertexArray) = 0;
 
     protected:
-        /// @brief Destroys the objects that the context made for itself, such as the white texture. The context of each
+        /// @brief Destroys the objects that the context made for itself, such as the white texture and the queries of the
+        /// profiler. The context of each
         /// graphics API calls it at the start of its destructor, while the API can still free them.
         void ReleaseResources();
 
     private:
         Scope<Texture2D> m_WhiteTexture;
+        Scope<GpuProfiler> m_Profiler;
     };
 }

@@ -4,13 +4,17 @@
 #include "helpers/TestLayers.h"
 
 #include <quasar/core/Application.h>
+#include <quasar/core/Layer.h>
 #include <quasar/core/PlatformDetection.h>
 #include <quasar/core/Window.h>
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/platform/opengl/OpenGLContext.h>
+#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Texture.h>
+#include <quasar/renderer/TimestampQuery.h>
+#include <quasar/time/Timestep.h>
 
 #include <doctest/doctest.h>
 
@@ -21,7 +25,10 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <optional>
+#include <string>
 #include <utility>
+#include <vector>
 
 TEST_CASE("A window gets a current OpenGL 4.5 core context")
 {
@@ -121,5 +128,72 @@ TEST_CASE("An application runs its main loop with an OpenGL context")
     application->Run();
 
     CHECK(closing.GetUpdates() == 3);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+}
+
+TEST_CASE("A timestamp query gives the time of the graphics card once the graphics card reaches it")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
+    REQUIRE(window != nullptr);
+    Quasar::GraphicsContext& context = *window->GetGraphicsContext();
+    const Quasar::Scope<Quasar::TimestampQuery> first = context.CreateTimestampQuery();
+    const Quasar::Scope<Quasar::TimestampQuery> second = context.CreateTimestampQuery();
+    REQUIRE(first != nullptr);
+    REQUIRE(second != nullptr);
+    CHECK_FALSE(first->GetNanoseconds().has_value());
+
+    first->Record();
+    context.ClearWindow({0.0f, 0.0f, 0.0f, 1.0f});
+    second->Record();
+    glFinish();
+
+    const std::optional<std::uint64_t> begin = first->GetNanoseconds();
+    const std::optional<std::uint64_t> end = second->GetNanoseconds();
+    REQUIRE(begin.has_value());
+    REQUIRE(end.has_value());
+    CHECK(*end >= *begin);
+    CHECK(glGetError() == GL_NO_ERROR);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+}
+
+namespace
+{
+    // Waits for the graphics card at the start of each frame, so that the times of the previous frame are ready
+    class MeasuredLayer final : public Quasar::Layer
+    {
+    public:
+        MeasuredLayer() : Layer("Measured") {}
+
+        void OnUpdate(Quasar::Timestep /*timestep*/) override { glFinish(); }
+
+        void OnRender() override
+        {
+            const Quasar::GpuSection section(&Quasar::Application::Get().GetWindow().GetGraphicsContext()->GetProfiler(), "Layer");
+            Quasar::Application::Get().GetWindow().GetGraphicsContext()->ClearWindow({0.0f, 0.0f, 0.0f, 1.0f});
+        }
+    };
+}
+
+TEST_CASE("The application measures each rendered frame on the graphics card, with its ImGui windows")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateApplicationWithContext();
+    REQUIRE(application != nullptr);
+    Quasar::GpuProfiler& profiler = application->GetWindow().GetGraphicsContext()->GetProfiler();
+    profiler.SetEnabled(true);
+    application->PushLayer(Quasar::CreateScope<MeasuredLayer>());
+    application->PushLayer(Quasar::CreateScope<TestHelpers::ClosingLayer>(3));
+
+    application->Run();
+
+    std::vector<std::string> sections;
+    for (const Quasar::GpuTiming& timing : profiler.GetTimings())
+    {
+        sections.push_back(timing.Name);
+    }
+    const bool hasImGui = application->GetImGuiLayer() != nullptr;
+    CHECK(sections == (hasImGui ? std::vector<std::string>{"Layer", "ImGui"} : std::vector<std::string>{"Layer"}));
+    CHECK(profiler.GetFrameMilliseconds() > 0.0);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
