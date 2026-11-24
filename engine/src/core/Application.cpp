@@ -3,6 +3,7 @@
 #include <quasar/events/WindowEvent.h>
 #include <quasar/io/UserDataDirectory.h>
 #include <quasar/log/Log.h>
+#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/PipelineLibrary.h>
@@ -136,24 +137,7 @@ namespace Quasar
             const bool canRender = !m_Minimized && m_Window->GetWidth() > 0 && m_Window->GetHeight() > 0;
             if (canRender)
             {
-                if (GraphicsContext* context = m_Window->GetGraphicsContext(); context != nullptr && m_Specification.ClearColor)
-                {
-                    context->ClearWindow(*m_Specification.ClearColor);
-                }
-                for (Scope<Layer>& layer : m_LayerStack)
-                {
-                    layer->OnRender();
-                }
-
-                if (m_ImGuiLayer)
-                {
-                    m_ImGuiLayer->Begin();
-                    for (Scope<Layer>& layer : m_LayerStack)
-                    {
-                        layer->OnImGuiRender();
-                    }
-                    m_ImGuiLayer->End();
-                }
+                RenderFrame();
             }
 
             m_Window->Update();
@@ -163,6 +147,41 @@ namespace Quasar
 
         m_DeferLayerChanges = false;
         m_Running = false;
+    }
+
+    void Application::RenderFrame()
+    {
+        GraphicsContext* context = m_Window->GetGraphicsContext();
+        GpuProfiler* profiler = context != nullptr ? &context->GetProfiler() : nullptr;
+        if (profiler != nullptr)
+        {
+            profiler->BeginFrame();
+        }
+
+        if (context != nullptr && m_Specification.ClearColor)
+        {
+            context->ClearWindow(*m_Specification.ClearColor);
+        }
+        for (Scope<Layer>& layer : m_LayerStack)
+        {
+            layer->OnRender();
+        }
+
+        if (m_ImGuiLayer)
+        {
+            m_ImGuiLayer->Begin();
+            for (Scope<Layer>& layer : m_LayerStack)
+            {
+                layer->OnImGuiRender();
+            }
+            const GpuSection section(profiler, "ImGui");
+            m_ImGuiLayer->End();
+        }
+
+        if (profiler != nullptr)
+        {
+            profiler->EndFrame();
+        }
     }
 
     void Application::OnEvent(Event& event)

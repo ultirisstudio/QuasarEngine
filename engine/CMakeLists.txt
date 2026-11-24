@@ -36,6 +36,8 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLShader.h
         src/platform/opengl/OpenGLTexture.cpp
         src/platform/opengl/OpenGLTexture.h
+        src/platform/opengl/OpenGLTimestampQuery.cpp
+        src/platform/opengl/OpenGLTimestampQuery.h
         src/platform/opengl/OpenGLVertexArray.cpp
         src/platform/opengl/OpenGLVertexArray.h
         src/platform/opengl/OpenGLImGuiBackend.cpp
@@ -47,6 +49,7 @@ target_sources(QuasarEngine
         src/renderer/Color.cpp
         src/renderer/Framebuffer.cpp
         src/renderer/FullscreenPass.cpp
+        src/renderer/GpuProfiler.cpp
         src/renderer/GraphicsContext.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
@@ -117,6 +120,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Color.h
             include/quasar/renderer/Framebuffer.h
             include/quasar/renderer/FullscreenPass.h
+            include/quasar/renderer/GpuProfiler.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Image.h
@@ -132,6 +136,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/ShaderBindings.h
             include/quasar/renderer/Shadows.h
             include/quasar/renderer/Texture.h
+            include/quasar/renderer/TimestampQuery.h
             include/quasar/renderer/ToneMapper.h
             include/quasar/renderer/UniformBlockLayout.h
             include/quasar/renderer/VertexArray.h

@@ -6,8 +6,10 @@
 #include <quasar/core/Window.h>
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/MemoryLogSink.h>
+#include <quasar/renderer/Bloom.h>
 #include <quasar/renderer/Camera.h>
 #include <quasar/renderer/Framebuffer.h>
+#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Material.h>
 #include <quasar/renderer/Mesh.h>
@@ -38,6 +40,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
@@ -714,4 +717,35 @@ TEST_CASE("The ambient occlusion darkens the ambient light where surfaces meet, 
     CHECK(render({.DirectLightingStrength = 1.0f}, crease) < direct - 20);
     CHECK(render({.DirectLightingStrength = 3.0f}, crease) == render({.DirectLightingStrength = 1.0f}, crease));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The scene renderer measures each of its steps on the graphics card")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    const ShadowScene scene(fixture);
+    Quasar::GpuProfiler& profiler = fixture.GetContext().GetProfiler();
+    profiler.SetEnabled(true);
+    REQUIRE(fixture.GetSceneRenderer().GetPostProcessing().Add(Quasar::Bloom::Create(fixture.GetContext())) != nullptr);
+
+    for (std::size_t frame = 0; frame <= Quasar::GpuProfiler::FramesInFlight && profiler.GetTimings().empty(); ++frame)
+    {
+        profiler.BeginFrame();
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), &fixture.GetFramebuffer());
+        profiler.EndFrame();
+        glFinish();
+    }
+
+    std::vector<std::pair<std::string, std::uint32_t>> sections;
+    for (const Quasar::GpuTiming& timing : profiler.GetTimings())
+    {
+        sections.emplace_back(timing.Name, timing.Depth);
+        CHECK(timing.Milliseconds >= 0.0);
+    }
+    const std::vector<std::pair<std::string, std::uint32_t>> expected{{"Shadows", 0},         {"Depth prepass", 0}, {"Ambient occlusion", 0}, {"Scene", 0},
+                                                                      {"Post-processing", 0}, {"Bloom", 1},         {"Tone mapping", 1}};
+    CHECK(sections == expected);
+    CHECK(profiler.GetFrameMilliseconds() > 0.0);
+    profiler.SetEnabled(false);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
