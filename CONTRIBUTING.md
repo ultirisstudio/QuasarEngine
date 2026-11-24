@@ -166,7 +166,7 @@ conditions. The summary of each run shows the three percentages, and the detaile
 in the `coverage` artifact of the run. The report of `master` is published at
 https://ultirisstudio.github.io/QuasarEngine/coverage/, next to the badges of the README.
 
-The entry points of the programs, `engine/src/core/EntryPoint.cpp` and `editor/src/main.cpp`, are not measured: only
+The entry points of the programs, `engine/src/core/EntryPoint.cpp` and `editor/src/editor.cpp`, are not measured: only
 the programs run them, never the tests. A line of a template counts as run when one of its instances runs it, so an
 instance that only the sandbox uses does not lower the coverage of the engine. The conditions of
 `QUASAR_ENGINE_ASSERT` are not measured either, because a test cannot make an assertion fail, nor the ones that GCC

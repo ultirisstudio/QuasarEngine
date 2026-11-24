@@ -1,58 +1,30 @@
 #include "Project.h"
 
+#include <quasar/Version.h>
+#include <quasar/io/File.h>
 #include <quasar/io/Path.h>
-#include <quasar/io/UserDataDirectory.h>
+#include <quasar/io/UserFolders.h>
+
+#include <yaml-cpp/yaml.h>
 
 #include <algorithm>
-#include <array>
-#include <cctype>
-#include <cerrno>
-#include <fstream>
 #include <optional>
+#include <string>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace Quasar::Editor
 {
     namespace
     {
-        constexpr std::string_view ForbiddenCharacters = "<>:\"/\\|?*";
-        constexpr unsigned char FirstPrintableCharacter = 0x20U;
-        constexpr std::array<std::string_view, 22> ReservedNames = {"CON",  "PRN",  "AUX",  "NUL",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-                                                                    "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
-
-        bool IsReservedName(std::string_view name)
-        {
-            const std::string_view stem = name.substr(0, name.find('.'));
-            return std::ranges::any_of(ReservedNames,
-                                       [stem](std::string_view reserved)
-                                       {
-                                           return std::ranges::equal(
-                                               stem, reserved, [](char left, char right)
-                                               { return std::toupper(static_cast<unsigned char>(left)) == static_cast<unsigned char>(right); });
-                                       });
-        }
-
-        bool IsValidProjectName(std::string_view name)
-        {
-            if (name.empty() || name == "." || name == "..")
-            {
-                return false;
-            }
-            if (name.back() == ' ' || name.back() == '.')
-            {
-                return false;
-            }
-            if (name.find_first_of(ForbiddenCharacters) != std::string_view::npos || IsReservedName(name))
-            {
-                return false;
-            }
-            return std::ranges::none_of(name, [](char character) { return static_cast<unsigned char>(character) < FirstPrintableCharacter; });
-        }
+        constexpr std::string_view NameKey = "Name";
+        constexpr std::string_view FormatVersionKey = "FormatVersion";
+        constexpr std::string_view EngineVersionKey = "EngineVersion";
 
         ProjectResult Fail(std::string error)
         {
-            return {.Directory = {}, .Error = std::move(error)};
+            return {.Directory = {}, .ProjectFile = {}, .Name = {}, .Error = std::move(error)};
         }
 
         std::string Quote(const std::filesystem::path& path)
@@ -80,8 +52,9 @@ namespace Quasar::Editor
             return type;
         }
 
-        std::optional<std::filesystem::path> FindProjectFile(const std::filesystem::path& projectDirectory, std::error_code& error)
+        std::vector<std::filesystem::path> FindProjectFiles(const std::filesystem::path& projectDirectory, std::error_code& error)
         {
+            std::vector<std::filesystem::path> files;
             for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(projectDirectory, error))
             {
                 if (entry.path().extension() != ProjectFileExtension)
@@ -91,41 +64,112 @@ namespace Quasar::Editor
                 const std::filesystem::file_type type = GetFileType(entry.path(), error);
                 if (error)
                 {
-                    return std::nullopt;
+                    return {};
                 }
                 if (type == std::filesystem::file_type::regular)
                 {
-                    return entry.path();
+                    files.push_back(entry.path());
                 }
             }
-            return std::nullopt;
+            return files;
         }
 
-        std::string GetWriteError()
+        std::string WriteProjectFile(std::string_view name)
         {
-            return errno != 0 ? std::generic_category().message(errno) : std::string("the file cannot be written");
+            YAML::Emitter out;
+            out << YAML::BeginMap;
+            out << YAML::Key << std::string(NameKey) << YAML::Value << std::string(name);
+            out << YAML::Key << std::string(FormatVersionKey) << YAML::Value << ProjectFormatVersion;
+            out << YAML::Key << std::string(EngineVersionKey) << YAML::Value << std::string(GetVersionString());
+            out << YAML::EndMap;
+            return std::string(out.c_str()) + "\n";
         }
 
-        std::string WriteEmptyFile(const std::filesystem::path& path)
+        ProjectResult ReadProjectFile(const std::filesystem::path& file)
         {
-            errno = 0;
-            std::ofstream stream(path, std::ios::binary);
-            if (!stream)
+            std::string error;
+            const std::optional<std::string> text = ReadTextFile(file, error);
+            if (!text)
             {
-                return GetWriteError();
+                return Fail(error);
             }
-            stream.close();
-            if (!stream)
+
+            YAML::Node root;
+            try
             {
-                return GetWriteError();
+                root = YAML::Load(*text);
             }
-            return {};
+            catch (const YAML::Exception& exception)
+            {
+                return Fail("The project file " + Quote(file) + " is not valid YAML: " + exception.msg);
+            }
+
+            const std::string invalid = "The project file " + Quote(file) + " is not valid: ";
+            if (!root.IsMap())
+            {
+                return Fail(invalid + "it must contain " + std::string(NameKey) + " and " + std::string(FormatVersionKey));
+            }
+
+            const YAML::Node version = root[std::string(FormatVersionKey)];
+            int formatVersion = 0;
+            if (!version.IsScalar() || !YAML::convert<int>::decode(version, formatVersion) || formatVersion < 1)
+            {
+                return Fail(invalid + std::string(FormatVersionKey) + " must be a positive whole number");
+            }
+            if (formatVersion > ProjectFormatVersion)
+            {
+                return Fail("The project " + Quote(file) + " was saved by a newer version of Quasar (format " + std::to_string(formatVersion) +
+                            ", this editor reads up to " + std::to_string(ProjectFormatVersion) + ")");
+            }
+
+            const YAML::Node name = root[std::string(NameKey)];
+            if (!name.IsScalar() || name.Scalar().empty())
+            {
+                return Fail(invalid + std::string(NameKey) + " is missing");
+            }
+
+            return {.Directory = {}, .ProjectFile = file, .Name = name.Scalar(), .Error = {}};
         }
 
-        ProjectResult FailAndRemove(const std::filesystem::path& directory, std::string error)
+        std::filesystem::path FindTopmostMissingDirectory(const std::filesystem::path& path, std::error_code& error)
+        {
+            std::filesystem::path missing;
+            for (std::filesystem::path current = path; !current.empty(); current = current.parent_path())
+            {
+                const bool exists = std::filesystem::exists(current, error);
+                if (exists || error)
+                {
+                    break;
+                }
+                missing = current;
+                if (current.parent_path() == current)
+                {
+                    break;
+                }
+            }
+            return missing;
+        }
+
+        // Folders that something else filled in the meantime are kept
+        void RemoveCreatedDirectories(const std::filesystem::path& path, const std::filesystem::path& topmostCreated)
+        {
+            if (topmostCreated.empty())
+            {
+                return;
+            }
+            std::error_code ignored;
+            for (std::filesystem::path current = path; current != topmostCreated && current.has_parent_path(); current = current.parent_path())
+            {
+                std::filesystem::remove(current, ignored);
+            }
+            std::filesystem::remove(topmostCreated, ignored);
+        }
+
+        ProjectResult FailAndRemove(const std::filesystem::path& directory, const std::filesystem::path& topmostCreated, std::string error)
         {
             std::error_code ignored;
             std::filesystem::remove_all(directory, ignored);
+            RemoveCreatedDirectories(directory.parent_path(), topmostCreated);
             return Fail(std::move(error));
         }
     }
@@ -169,7 +213,7 @@ namespace Quasar::Editor
 
     std::filesystem::path ResolveProjectDirectory(const std::filesystem::path& location, std::string_view name)
     {
-        if (!location.is_absolute() || !IsValidProjectName(name))
+        if (!location.is_absolute() || !IsValidFileName(name))
         {
             return {};
         }
@@ -178,7 +222,7 @@ namespace Quasar::Editor
 
     ProjectResult CreateProject(const std::filesystem::path& location, std::string_view name)
     {
-        if (!IsValidProjectName(name))
+        if (!IsValidFileName(name))
         {
             return Fail("\"" + std::string(name) + "\" is not a valid project name");
         }
@@ -192,31 +236,43 @@ namespace Quasar::Editor
         }
 
         const std::filesystem::path directory = ResolveProjectDirectory(location, name);
+        const std::filesystem::path parent = directory.parent_path();
         std::error_code error;
-        const bool exists = std::filesystem::exists(directory, error);
+        const std::filesystem::path topmostCreated = FindTopmostMissingDirectory(parent, error);
         if (error)
         {
-            return Fail("Cannot check the folder " + Quote(directory) + ": " + error.message());
+            return Fail("Cannot check the folder " + Quote(parent) + ": " + error.message());
         }
-        if (exists)
+        std::filesystem::create_directories(parent, error);
+        if (error)
         {
-            return Fail("The folder " + Quote(directory) + " already exists");
+            RemoveCreatedDirectories(parent, topmostCreated);
+            return Fail("Cannot create the folder " + Quote(parent) + ": " + error.message());
+        }
+
+        // create_directory() checks and creates in one step, so a folder made at the same time by another program is
+        // never taken as the new project
+        const bool created = std::filesystem::create_directory(directory, error);
+        if (error || !created)
+        {
+            RemoveCreatedDirectories(parent, topmostCreated);
+            return Fail(error ? "Cannot create the folder " + Quote(directory) + ": " + error.message() : "The folder " + Quote(directory) + " already exists");
         }
 
         const std::filesystem::path assets = GetAssetsDirectory(directory);
-        std::filesystem::create_directories(assets, error);
+        std::filesystem::create_directory(assets, error);
         if (error)
         {
-            return FailAndRemove(directory, "Cannot create the folder " + Quote(assets) + ": " + error.message());
+            return FailAndRemove(directory, topmostCreated, "Cannot create the folder " + Quote(assets) + ": " + error.message());
         }
 
         const std::filesystem::path projectFile = GetProjectFile(directory);
-        if (const std::string reason = WriteEmptyFile(projectFile); !reason.empty())
+        if (std::string reason; !WriteTextFile(projectFile, WriteProjectFile(name), reason))
         {
-            return FailAndRemove(directory, "Cannot create the file " + Quote(projectFile) + ": " + reason);
+            return FailAndRemove(directory, topmostCreated, std::move(reason));
         }
 
-        return {.Directory = directory, .Error = {}};
+        return {.Directory = directory, .ProjectFile = projectFile, .Name = std::string(name), .Error = {}};
     }
 
     ProjectResult OpenProject(const std::filesystem::path& projectDirectory)
@@ -251,14 +307,24 @@ namespace Quasar::Editor
             return Fail(Quote(directory) + " is not a folder");
         }
 
-        const std::optional<std::filesystem::path> projectFile = FindProjectFile(directory, error);
+        const std::vector<std::filesystem::path> projectFiles = FindProjectFiles(directory, error);
         if (error)
         {
             return Fail("Cannot read the folder " + Quote(directory) + ": " + error.message());
         }
-        if (!projectFile)
+        if (projectFiles.empty())
         {
             return Fail("The folder " + Quote(directory) + " is not a project: it has no " + std::string(ProjectFileExtension) + " file");
+        }
+        if (projectFiles.size() > 1)
+        {
+            return Fail("The folder " + Quote(directory) + " has several " + std::string(ProjectFileExtension) + " files: keep only one");
+        }
+
+        ProjectResult project = ReadProjectFile(projectFiles.front());
+        if (!project.IsValid())
+        {
+            return project;
         }
 
         const bool hasAssets = GetFileType(GetAssetsDirectory(directory), error) == std::filesystem::file_type::directory;
@@ -271,6 +337,7 @@ namespace Quasar::Editor
             return Fail("The project " + Quote(directory) + " has no " + std::string(AssetsDirectoryName) + " folder");
         }
 
-        return {.Directory = std::move(directory), .Error = {}};
+        project.Directory = std::move(directory);
+        return project;
     }
 }

@@ -11,14 +11,17 @@
 #include <imgui.h>
 
 #include <optional>
+#include <utility>
+#include <vector>
 
 namespace Quasar::Editor
 {
-    EditorLayer::EditorLayer() : Layer("Editor") {}
+    EditorLayer::EditorLayer(std::filesystem::path settingsFile) : Layer("Editor"), m_Settings(std::move(settingsFile)), m_ProjectPopups(m_Settings) {}
 
     void EditorLayer::OnAttach()
     {
         QUASAR_INFO("Editor started");
+        m_ProjectPopups.SetParentWindow(&Application::Get().GetWindow());
         AddPanel<ConsolePanel>();
         AddPanel<GamepadPanel>(Application::Get().GetGamepads());
     }
@@ -26,6 +29,7 @@ namespace Quasar::Editor
     void EditorLayer::OnDetach()
     {
         m_Panels.clear();
+        m_ProjectPopups.SetParentWindow(nullptr);
         QUASAR_INFO("Editor stopped");
     }
 
@@ -48,7 +52,7 @@ namespace Quasar::Editor
     void EditorLayer::OnImGuiRender()
     {
         DrawMenuBar();
-        if (const std::optional<std::filesystem::path> project = m_ProjectPopups.Draw())
+        if (const std::optional<ProjectResult> project = m_ProjectPopups.Draw())
         {
             SetProject(*project);
         }
@@ -89,6 +93,7 @@ namespace Quasar::Editor
             {
                 m_ProjectPopups.RequestOpenProject();
             }
+            DrawRecentProjectsMenu();
             ImGui::Separator();
             if (ImGui::MenuItem("Quit"))
             {
@@ -113,9 +118,26 @@ namespace Quasar::Editor
         ImGui::EndMainMenuBar();
     }
 
-    void EditorLayer::SetProject(const std::filesystem::path& directory)
+    void EditorLayer::DrawRecentProjectsMenu()
     {
-        m_Context.ProjectDirectory = directory;
-        QUASAR_INFO("Project opened: {}", PathToUtf8(directory));
+        const std::vector<std::filesystem::path>& projects = m_Settings.GetRecentProjects();
+        if (!ImGui::BeginMenu("Open Recent", !projects.empty()))
+        {
+            return;
+        }
+        for (const std::filesystem::path& project : projects)
+        {
+            if (ImGui::MenuItem(PathToUtf8(project).c_str()))
+            {
+                m_ProjectPopups.RequestOpenProject(project);
+            }
+        }
+        ImGui::EndMenu();
+    }
+
+    void EditorLayer::SetProject(const ProjectResult& project)
+    {
+        m_Context.ProjectDirectory = project.Directory;
+        QUASAR_INFO("Project opened: {} ({})", project.Name, PathToUtf8(project.Directory));
     }
 }

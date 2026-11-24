@@ -20,11 +20,14 @@ target_sources(QuasarEngine
         src/io/ExecutableDirectory.cpp
         src/io/ExecutableDirectory.h
         src/io/File.cpp
+        src/io/FileDialog.cpp
         src/io/Path.cpp
+        src/io/SdlFileDialogBackend.cpp
+        src/io/SdlFileDialogBackend.h
         src/io/UserDataDirectory.cpp
+        src/io/UserFolders.cpp
         src/log/Log.cpp
         src/log/MemoryLogSink.cpp
-        src/platform/FileDialog.cpp
         src/platform/opengl/OpenGLBuffer.cpp
         src/platform/opengl/OpenGLBuffer.h
         src/platform/opengl/OpenGLContext.cpp
@@ -107,11 +110,12 @@ target_sources(QuasarEngine
             include/quasar/input/MouseCodes.h
             include/quasar/io/EngineResources.h
             include/quasar/io/File.h
+            include/quasar/io/FileDialog.h
             include/quasar/io/Path.h
             include/quasar/io/UserDataDirectory.h
+            include/quasar/io/UserFolders.h
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
-            include/quasar/platform/FileDialog.h
             include/quasar/platform/opengl/OpenGLContext.h
             include/quasar/renderer/AmbientOcclusion.h
             include/quasar/renderer/Bloom.h

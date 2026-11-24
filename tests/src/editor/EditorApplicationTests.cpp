@@ -1,12 +1,16 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/ScopedEnvironmentVariable.h"
+#include "helpers/TemporaryFiles.h"
 #include "helpers/TestLayers.h"
 
 #include <EditorApplication.h>
 #include <EditorLayer.h>
+#include <EditorSettings.h>
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Layer.h>
+#include <quasar/core/PlatformDetection.h>
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/GraphicsAPI.h>
 
@@ -15,6 +19,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
 #include <utility>
 #include <vector>
@@ -54,3 +59,17 @@ TEST_CASE("The editor application opens its window and runs the editor layer")
     CHECK(closing.GetUpdates() == 3);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
+
+#ifdef QUASAR_PLATFORM_LINUX
+TEST_CASE("The editor keeps its settings in the user data folder of the editor")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder folder("quasar_editor_user_data");
+    const TestHelpers::ScopedEnvironmentVariable dataHome("XDG_DATA_HOME", folder.GetPath().string());
+    TestHelpers::UseTestVideoDriver();
+    const Quasar::Scope<Quasar::Application> application = Quasar::Editor::CreateEditorApplication({});
+    REQUIRE(application != nullptr);
+
+    CHECK(Quasar::Editor::GetEditorSettingsFile() == folder.GetPath() / "Ultiris Studio" / "Quasar Editor" / "EditorSettings.yaml");
+}
+#endif

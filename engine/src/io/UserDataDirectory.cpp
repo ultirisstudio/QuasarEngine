@@ -70,23 +70,4 @@ namespace Quasar
 
         return PathFromUtf8(directory.get()).parent_path();
     }
-
-    std::optional<std::filesystem::path> GetUserFolder(UserFolder folder)
-    {
-        const SDL_Folder sdlFolder = folder == UserFolder::Home ? SDL_FOLDER_HOME : SDL_FOLDER_DOCUMENTS;
-        const char* name = folder == UserFolder::Home ? "home" : "documents";
-        const char* path = SDL_GetUserFolder(sdlFolder);
-        if (path == nullptr || *path == '\0')
-        {
-            QUASAR_ENGINE_ERROR("Cannot find the {} folder of the user: {}", name, SDL_GetError());
-            return std::nullopt;
-        }
-
-        std::filesystem::path directory = PathFromUtf8(path).lexically_normal();
-        if (!directory.has_filename())
-        {
-            directory = directory.parent_path();
-        }
-        return directory;
-    }
 }
