@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <limits>
 #include <optional>
+#include <string_view>
 #include <system_error>
 #include <vector>
 
@@ -152,25 +153,25 @@ namespace Quasar::ImGuiTheme
                                                            { return std::memcmp(data.data(), signature.data(), 4) == 0; });
         }
 
-        std::optional<std::vector<std::byte>> ReadFontFile(const std::filesystem::path& file)
+        std::optional<std::vector<std::byte>> ReadFontFile(const std::filesystem::path& file, std::string_view consequence)
         {
             std::error_code error;
             if (file.empty() || !std::filesystem::is_regular_file(file, error))
             {
-                QUASAR_ENGINE_WARN("Cannot find the font '{}', so ImGui uses its embedded font", file);
+                QUASAR_ENGINE_WARN("Cannot find the font '{}', so {}", file, consequence);
                 return std::nullopt;
             }
 
             std::optional<std::vector<std::byte>> data = ReadBinaryFile(file);
             if (!data)
             {
-                QUASAR_ENGINE_WARN("Cannot read the font '{}', so ImGui uses its embedded font", file);
+                QUASAR_ENGINE_WARN("Cannot read the font '{}', so {}", file, consequence);
                 return std::nullopt;
             }
 
             if (!HasFontSignature(*data) || data->size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
             {
-                QUASAR_ENGINE_WARN("'{}' is not a TrueType or OpenType font, so ImGui uses its embedded font", file);
+                QUASAR_ENGINE_WARN("'{}' is not a TrueType or OpenType font, so {}", file, consequence);
                 return std::nullopt;
             }
 
@@ -203,7 +204,7 @@ namespace Quasar::ImGuiTheme
 
     bool LoadFont(ImFontAtlas& atlas, const std::filesystem::path& file)
     {
-        if (const std::optional<std::vector<std::byte>> data = ReadFontFile(file))
+        if (const std::optional<std::vector<std::byte>> data = ReadFontFile(file, "ImGui uses its embedded font"))
         {
             const int dataSize = static_cast<int>(data->size());
             void* fontData = ImGui::MemAlloc(data->size());
@@ -221,5 +222,38 @@ namespace Quasar::ImGuiTheme
         config.SizePixels = FontSize;
         atlas.AddFontDefaultVector(&config);
         return false;
+    }
+
+    std::vector<FallbackFont> GetFallbackFonts()
+    {
+        const std::filesystem::path directory = GetEngineResourcesDirectory();
+        if (directory.empty())
+        {
+            return {};
+        }
+        constexpr float arabicScale = 1.15f;
+        return {{.File = directory / "fonts" / "NotoSansArabic" / "NotoSansArabicUI-Regular.ttf", .Scale = arabicScale},
+                {.File = directory / "fonts" / "NotoSansJP" / "NotoSansJP-Regular.otf", .Scale = 1.0f}};
+    }
+
+    bool MergeFont(ImFontAtlas& atlas, const FallbackFont& font)
+    {
+        const std::optional<std::vector<std::byte>> data = ReadFontFile(font.File, "its characters are not drawn");
+        if (!data)
+        {
+            return false;
+        }
+
+        void* fontData = ImGui::MemAlloc(data->size());
+        std::memcpy(fontData, data->data(), data->size());
+        ImFontConfig config;
+        config.MergeMode = true;
+        config.ExtraSizeScale = font.Scale > 0.0f ? font.Scale : 1.0f;
+        if (atlas.AddFontFromMemoryTTF(fontData, static_cast<int>(data->size()), FontSize, &config) == nullptr)
+        {
+            QUASAR_ENGINE_WARN("ImGui cannot load the font '{}', so its characters are not drawn", font.File);
+            return false;
+        }
+        return true;
     }
 }
