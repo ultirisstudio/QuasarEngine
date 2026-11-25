@@ -21,6 +21,23 @@ namespace Quasar::Editor::UI
         return {Scaled(size.x), Scaled(size.y)};
     }
 
+    std::string JoinList(std::span<const char* const> items)
+    {
+        const Localization& localization = GetLocalization();
+        const bool rightToLeft = localization.GetDirection() == TextDirection::RightToLeft;
+        std::string separator = rightToLeft ? " ," : ", ";
+        if (localization.Contains(ListSeparatorKey))
+        {
+            separator = localization.Get(ListSeparatorKey);
+        }
+        std::string text;
+        for (std::size_t index = 0; index < items.size(); ++index)
+        {
+            text += (index == 0 ? "" : separator) + std::string(items[rightToLeft ? items.size() - 1 - index : index]);
+        }
+        return text;
+    }
+
     std::vector<std::string> WrapRightToLeft(std::string_view text, float width, const std::function<float(std::string_view)>& measure)
     {
         std::vector<std::string> lines;

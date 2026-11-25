@@ -572,19 +572,7 @@ namespace Quasar::Editor
                 DisabledText(Tr("gamepad.none"));
                 return;
             }
-            const bool rightToLeft = GetLocalization().GetDirection() == TextDirection::RightToLeft;
-            std::vector<const char*> ordered = names;
-            if (rightToLeft)
-            {
-                std::ranges::reverse(ordered);
-            }
-            const char* separator = rightToLeft ? " ," : ", ";
-            std::string text;
-            for (const char* name : ordered)
-            {
-                text += text.empty() ? std::string(name) : separator + std::string(name);
-            }
-            UI::DrawText(text);
+            UI::DrawText(UI::JoinList(names));
         }
 
         void DrawSticks(const GamepadState& state)
