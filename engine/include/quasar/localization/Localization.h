@@ -100,6 +100,10 @@ namespace Quasar
         /// @brief Returns the direction in which the language of the locale used is written.
         TextDirection GetDirection() const { return m_Texts != nullptr ? m_Texts->Direction : TextDirection::LeftToRight; }
 
+        /// @brief Returns true if the locale used has a text for a key, for example to use a default text in place of a
+        /// text that a translation does not have yet, without logging a warning.
+        bool Contains(std::string_view key) const { return Find(key) != nullptr; }
+
         /// @brief Returns the text of a key, or the key itself if the locale has no text for it.
         const char* Get(std::string_view key) const;
 

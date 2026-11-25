@@ -105,6 +105,22 @@ TEST_SUITE("Localization")
         CHECK(TestHelpers::CountWarnings("menu.missing") == 2);
     }
 
+    TEST_CASE("A locale tells if it has a text for a key, without a warning when it does not")
+    {
+        const TestHelpers::ScopedLog log;
+        const Locales files;
+        Localization localization;
+        REQUIRE(localization.LoadDirectory(files.GetPath()));
+        CHECK_FALSE(localization.Contains("menu.file"));
+
+        REQUIRE(localization.SetLocale("fr_FR"));
+        CHECK(localization.Contains("menu.file"));
+        CHECK(localization.Contains("project.entities"));
+        CHECK_FALSE(localization.Contains("menu.new_project"));
+        CHECK_FALSE(localization.Contains("menu"));
+        CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+    }
+
     TEST_CASE("The values of the arguments replace their names between braces")
     {
         const Locales files;
