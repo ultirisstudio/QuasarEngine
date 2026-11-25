@@ -1,4 +1,5 @@
 language: "العربية"
+list_separator: "، "
 
 menu:
   file: "ملف"

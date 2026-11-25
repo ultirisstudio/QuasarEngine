@@ -1,4 +1,5 @@
 language: "Français"
+list_separator: ", "
 
 menu:
   file: "Fichier"
