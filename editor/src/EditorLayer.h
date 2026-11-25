@@ -55,6 +55,7 @@ namespace Quasar::Editor
     private:
         void DrawMenuBar();
         void DrawRecentProjectsMenu();
+        void DrawLanguageMenu();
         void SetProject(const ProjectResult& project);
 
         EditorContext m_Context;

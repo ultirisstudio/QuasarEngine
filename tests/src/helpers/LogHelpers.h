@@ -35,7 +35,7 @@ namespace TestHelpers
         return std::ranges::any_of(messages, [level](const Quasar::LogMessage& message) { return message.Level >= level; });
     }
 
-    inline std::ptrdiff_t CountErrors(std::string_view text = {})
+    inline std::ptrdiff_t CountLogs(Quasar::LogLevel level, std::string_view text = {})
     {
         const std::shared_ptr<Quasar::MemoryLogSink> sink = Quasar::Log::GetMemorySink();
         if (sink == nullptr)
@@ -44,7 +44,17 @@ namespace TestHelpers
         }
 
         const std::vector<Quasar::LogMessage> messages = sink->GetMessages();
-        return std::ranges::count_if(messages, [text](const Quasar::LogMessage& message)
-                                     { return message.Level == Quasar::LogLevel::Error && message.Text.find(text) != std::string_view::npos; });
+        return std::ranges::count_if(messages, [level, text](const Quasar::LogMessage& message)
+                                     { return message.Level == level && message.Text.find(text) != std::string_view::npos; });
+    }
+
+    inline std::ptrdiff_t CountErrors(std::string_view text = {})
+    {
+        return CountLogs(Quasar::LogLevel::Error, text);
+    }
+
+    inline std::ptrdiff_t CountWarnings(std::string_view text = {})
+    {
+        return CountLogs(Quasar::LogLevel::Warning, text);
     }
 }

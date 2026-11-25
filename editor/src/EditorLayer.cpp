@@ -1,5 +1,7 @@
 #include "EditorLayer.h"
 
+#include "EditorText.h"
+
 #include "panels/ConsolePanel.h"
 #include "panels/GamepadPanel.h"
 
@@ -11,12 +13,16 @@
 #include <imgui.h>
 
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
 namespace Quasar::Editor
 {
-    EditorLayer::EditorLayer(std::filesystem::path settingsFile) : Layer("Editor"), m_Settings(std::move(settingsFile)), m_ProjectPopups(m_Settings) {}
+    EditorLayer::EditorLayer(std::filesystem::path settingsFile) : Layer("Editor"), m_Settings(std::move(settingsFile)), m_ProjectPopups(m_Settings)
+    {
+        LoadLocales(m_Settings.GetLanguage());
+    }
 
     void EditorLayer::OnAttach()
     {
@@ -83,35 +89,37 @@ namespace Quasar::Editor
             return;
         }
 
-        if (ImGui::BeginMenu("File"))
+        if (ImGui::BeginMenu(TrLabel("menu.file").c_str()))
         {
-            if (ImGui::MenuItem("New Project..."))
+            if (ImGui::MenuItem(TrLabel("menu.new_project").c_str()))
             {
                 m_ProjectPopups.RequestNewProject();
             }
-            if (ImGui::MenuItem("Open Project..."))
+            if (ImGui::MenuItem(TrLabel("menu.open_project").c_str()))
             {
                 m_ProjectPopups.RequestOpenProject();
             }
             DrawRecentProjectsMenu();
             ImGui::Separator();
-            if (ImGui::MenuItem("Quit"))
+            if (ImGui::MenuItem(TrLabel("menu.quit").c_str()))
             {
                 Application::Get().Close();
             }
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("View"))
+        if (ImGui::BeginMenu(TrLabel("menu.view").c_str()))
         {
             for (const Scope<EditorPanel>& panel : m_Panels)
             {
                 bool open = panel->IsOpen();
-                if (ImGui::MenuItem(panel->GetName().c_str(), nullptr, &open))
+                if (ImGui::MenuItem(panel->GetLabel().c_str(), nullptr, &open))
                 {
                     panel->SetOpen(open);
                 }
             }
+            ImGui::Separator();
+            DrawLanguageMenu();
             ImGui::EndMenu();
         }
 
@@ -121,7 +129,7 @@ namespace Quasar::Editor
     void EditorLayer::DrawRecentProjectsMenu()
     {
         const std::vector<std::filesystem::path>& projects = m_Settings.GetRecentProjects();
-        if (!ImGui::BeginMenu("Open Recent", !projects.empty()))
+        if (!ImGui::BeginMenu(TrLabel("menu.open_recent").c_str(), !projects.empty()))
         {
             return;
         }
@@ -130,6 +138,24 @@ namespace Quasar::Editor
             if (ImGui::MenuItem(PathToUtf8(project).c_str()))
             {
                 m_ProjectPopups.RequestOpenProject(project);
+            }
+        }
+        ImGui::EndMenu();
+    }
+
+    void EditorLayer::DrawLanguageMenu()
+    {
+        Localization& localization = GetLocalization();
+        if (!ImGui::BeginMenu(TrLabel("menu.language").c_str(), !localization.GetLocales().empty()))
+        {
+            return;
+        }
+        for (const std::string& locale : localization.GetLocales())
+        {
+            const std::string label = std::string(localization.GetLanguageName(locale)) + "###" + locale;
+            if (ImGui::MenuItem(label.c_str(), nullptr, locale == localization.GetLocale()) && localization.SetLocale(locale))
+            {
+                m_Settings.SetLanguage(locale);
             }
         }
         ImGui::EndMenu();

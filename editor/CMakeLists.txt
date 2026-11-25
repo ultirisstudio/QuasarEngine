@@ -11,6 +11,8 @@ target_sources(QuasarEditorLibrary PRIVATE
     src/EditorPanel.h
     src/EditorSettings.cpp
     src/EditorSettings.h
+    src/EditorText.cpp
+    src/EditorText.h
     src/EditorUI.cpp
     src/EditorUI.h
     src/Project.cpp
@@ -33,7 +35,13 @@ target_link_libraries(QuasarEditorLibrary
         yaml-cpp::yaml-cpp
 )
 
-set_target_properties(QuasarEditorLibrary PROPERTIES FOLDER "Editor")
+add_custom_target(QuasarEditorResources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources/editor"
+    VERBATIM
+)
+add_dependencies(QuasarEditorLibrary QuasarEditorResources)
+
+set_target_properties(QuasarEditorLibrary QuasarEditorResources PROPERTIES FOLDER "Editor")
 
 add_executable(QuasarEditor)
 

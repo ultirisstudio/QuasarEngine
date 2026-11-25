@@ -1,3 +1,5 @@
+#include "helpers/EditorLocale.h"
+
 #include <EditorContext.h>
 #include <panels/GamepadPanel.h>
 
@@ -65,6 +67,7 @@ namespace
             : m_Gamepads(Quasar::CreateScope<FakeBackend>(m_Readings, m_Rumbles, m_CanRumble)), m_Panel(m_Context, m_Gamepads),
               m_Previous(ImGui::GetCurrentContext()), m_ImGui(ImGui::CreateContext())
         {
+            TestHelpers::UseEditorLocale();
             ImGui::SetCurrentContext(m_ImGui);
             ImGuiIO& io = ImGui::GetIO();
             io.DisplaySize = ImVec2(1600.0f, 1000.0f);
@@ -137,7 +140,7 @@ namespace
         {
             for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows)
             {
-                if (std::string_view(window->Name).starts_with("Gamepad/Details"))
+                if (std::string_view(window->Name).find("/Details") != std::string_view::npos)
                 {
                     return window;
                 }
@@ -162,7 +165,7 @@ TEST_CASE("The gamepad panel opens at its initial size and draws without a gamep
 
     test.Frame(false);
 
-    const ImGuiWindow* window = ImGui::FindWindowByName("Gamepad");
+    const ImGuiWindow* window = ImGui::FindWindowByName("###panel.gamepad");
     REQUIRE(window != nullptr);
     CHECK(window->Size.x > 1000.0f);
     CHECK(window->Size.y > 300.0f);
@@ -174,9 +177,9 @@ TEST_CASE("The rumble buttons of the gamepad panel rumble the first connected ga
     test.Connect(Second, "Second gamepad");
     test.Connect(Third, "Third gamepad");
 
-    test.ClickButton("Light");
-    test.ClickButton("Strong");
-    test.ClickButton("Stop");
+    test.ClickButton("###gamepad.light");
+    test.ClickButton("###gamepad.strong");
+    test.ClickButton("###gamepad.stop");
 
     const std::vector<RecordedRumble>& rumbles = test.GetRumbles();
     REQUIRE(rumbles.size() == 3);
@@ -200,7 +203,7 @@ TEST_CASE("The gamepad panel selects another connected gamepad when the selected
     test.Frame();
 
     test.Disconnect(First);
-    test.ClickButton("Light");
+    test.ClickButton("###gamepad.light");
     test.Disconnect(Fourth);
     test.Frame();
 

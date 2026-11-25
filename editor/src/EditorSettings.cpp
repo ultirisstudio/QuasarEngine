@@ -21,6 +21,7 @@ namespace Quasar::Editor
         constexpr const char* SettingsFileName = "EditorSettings.yaml";
         constexpr const char* LastLocationKey = "LastLocation";
         constexpr const char* RecentProjectsKey = "RecentProjects";
+        constexpr const char* LanguageKey = "Language";
 
         std::filesystem::path ReadPath(const YAML::Node& node)
         {
@@ -60,6 +61,15 @@ namespace Quasar::Editor
         }
     }
 
+    void EditorSettings::SetLanguage(std::string language)
+    {
+        if (language != m_Language)
+        {
+            m_Language = std::move(language);
+            Save();
+        }
+    }
+
     void EditorSettings::Load()
     {
         std::error_code error;
@@ -90,6 +100,10 @@ namespace Quasar::Editor
         }
 
         m_LastLocation = ReadPath(root[LastLocationKey]);
+        if (const YAML::Node language = root[LanguageKey]; language.IsScalar())
+        {
+            m_Language = language.Scalar();
+        }
         const YAML::Node recent = root[RecentProjectsKey];
         if (!recent.IsSequence())
         {
@@ -115,6 +129,7 @@ namespace Quasar::Editor
         YAML::Emitter out;
         out << YAML::BeginMap;
         out << YAML::Key << LastLocationKey << YAML::Value << PathToUtf8(m_LastLocation);
+        out << YAML::Key << LanguageKey << YAML::Value << m_Language;
         out << YAML::Key << RecentProjectsKey << YAML::Value << YAML::BeginSeq;
         for (const std::filesystem::path& project : m_RecentProjects)
         {

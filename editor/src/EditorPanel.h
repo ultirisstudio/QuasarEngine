@@ -31,14 +31,18 @@ namespace Quasar::Editor
         virtual void OnRender() {}
         virtual void OnEvent([[maybe_unused]] Event& event) {}
 
-        const std::string& GetName() const { return m_Name; }
+        // The key of the title in the texts of the editor, which also identifies the window
+        const std::string& GetKey() const { return m_Key; }
+
+        // The title in the language of the editor, followed by ### and the key
+        std::string GetLabel() const;
         bool IsOpen() const { return m_Open; }
         void SetOpen(bool open) { m_Open = open; }
         bool IsFocused() const { return m_Focused; }
         bool IsHovered() const { return m_Hovered; }
 
     protected:
-        EditorPanel(std::string name, EditorContext& context, ImGuiWindowFlags flags = ImGuiWindowFlags_None);
+        EditorPanel(std::string key, EditorContext& context, ImGuiWindowFlags flags = ImGuiWindowFlags_None);
 
         virtual void OnImGuiRender() = 0;
 
@@ -46,7 +50,7 @@ namespace Quasar::Editor
         void SetInitialSize(ImVec2 size) { m_InitialSize = size; }
 
     private:
-        std::string m_Name;
+        std::string m_Key;
         EditorContext* m_Context;
         ImGuiWindowFlags m_Flags;
         ImVec2 m_InitialSize{0.0f, 0.0f};

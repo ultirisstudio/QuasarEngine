@@ -1,3 +1,4 @@
+#include "helpers/EditorLocale.h"
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
 #include "helpers/TemporaryFiles.h"
@@ -7,6 +8,7 @@
 #include <EditorLayer.h>
 #include <EditorPanel.h>
 #include <EditorSettings.h>
+#include <EditorText.h>
 
 #include <quasar/core/Application.h>
 #include <quasar/core/Base.h>
@@ -23,6 +25,7 @@
 #include <filesystem>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -70,7 +73,7 @@ namespace
         }
 
     private:
-        void Record(const std::string& call) { m_Calls->push_back(GetName() + " " + call); }
+        void Record(const std::string& call) { m_Calls->push_back(GetKey() + " " + call); }
 
         std::vector<std::string>* m_Calls;
         bool m_HandlesEvents = false;
@@ -134,7 +137,7 @@ TEST_CASE("A closed panel is still updated, but it is not drawn and has neither 
     auto& closed = editor.AddPanel<RecordingPanel>("Closed", calls);
     auto& open = editor.AddPanel<RecordingPanel>("Open", calls);
     closed.SetOpen(false);
-    open.SetImGuiAction([] { ImGui::SetWindowFocus("Closed"); });
+    open.SetImGuiAction([] { ImGui::SetWindowFocus("###Closed"); });
 
     RunFrames(*application, 2);
 
@@ -155,7 +158,7 @@ TEST_CASE("A panel knows when its window has the focus")
     Quasar::Editor::EditorLayer& editor = AddEditorLayer(*application);
     const auto& focused = editor.AddPanel<RecordingPanel>("Focused", calls);
     auto& other = editor.AddPanel<RecordingPanel>("Other", calls);
-    other.SetImGuiAction([] { ImGui::SetWindowFocus("Focused"); });
+    other.SetImGuiAction([] { ImGui::SetWindowFocus("###Focused"); });
 
     RunFrames(*application, 2);
 
@@ -217,4 +220,19 @@ TEST_CASE("The editor layer reads the recent projects from its settings file and
     CHECK(editor.GetSettings().GetRecentProjects() == std::vector{folder.GetPath() / "Game"});
     CHECK(editor.GetContext().ProjectDirectory.empty());
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
+}
+
+TEST_CASE("The editor layer shows its texts in the language saved in its settings")
+{
+    const TestHelpers::ScopedLog log;
+    const TestHelpers::TemporaryFolder folder("quasar_editor_language");
+    const std::filesystem::path file = folder.GetPath() / "EditorSettings.yaml";
+    Quasar::Editor::EditorSettings(file).SetLanguage("fr_FR");
+
+    const Quasar::Editor::EditorLayer editor(file);
+
+    CHECK(Quasar::Editor::GetLocalization().GetLocale() == "fr_FR");
+    CHECK(std::string_view(Quasar::Editor::Tr("menu.file")) == "Fichier");
+    TestHelpers::UseEditorLocale();
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }

@@ -1,5 +1,7 @@
 #include "GamepadPanel.h"
 
+#include "EditorText.h"
+
 #include <quasar/input/GamepadCodes.h>
 #include <quasar/input/GamepadState.h>
 #include <quasar/input/Gamepads.h>
@@ -36,34 +38,35 @@ namespace Quasar::Editor
         constexpr float TouchSensorAlpha = 0.35f;
         constexpr float DetailsWidth = 290.0f;
 
-        constexpr std::array<const char*, GamepadButtonCount> ButtonNames{"A",
-                                                                          "B",
-                                                                          "X",
-                                                                          "Y",
-                                                                          "Back",
-                                                                          "Guide",
-                                                                          "Start",
-                                                                          "Left stick",
-                                                                          "Right stick",
-                                                                          "Left bumper",
-                                                                          "Right bumper",
-                                                                          "D-pad up",
-                                                                          "D-pad down",
-                                                                          "D-pad left",
-                                                                          "D-pad right",
-                                                                          "Misc 1",
-                                                                          "Right paddle 1",
-                                                                          "Left paddle 1",
-                                                                          "Right paddle 2",
-                                                                          "Left paddle 2",
-                                                                          "Touchpad",
-                                                                          "Misc 2",
-                                                                          "Misc 3",
-                                                                          "Misc 4",
-                                                                          "Misc 5",
-                                                                          "Misc 6"};
+        constexpr std::array<const char*, GamepadButtonCount> ButtonKeys{"gamepad.button.a",
+                                                                         "gamepad.button.b",
+                                                                         "gamepad.button.x",
+                                                                         "gamepad.button.y",
+                                                                         "gamepad.button.back",
+                                                                         "gamepad.button.guide",
+                                                                         "gamepad.button.start",
+                                                                         "gamepad.button.left_stick",
+                                                                         "gamepad.button.right_stick",
+                                                                         "gamepad.button.left_bumper",
+                                                                         "gamepad.button.right_bumper",
+                                                                         "gamepad.button.dpad_up",
+                                                                         "gamepad.button.dpad_down",
+                                                                         "gamepad.button.dpad_left",
+                                                                         "gamepad.button.dpad_right",
+                                                                         "gamepad.button.misc1",
+                                                                         "gamepad.button.right_paddle1",
+                                                                         "gamepad.button.left_paddle1",
+                                                                         "gamepad.button.right_paddle2",
+                                                                         "gamepad.button.left_paddle2",
+                                                                         "gamepad.button.touchpad",
+                                                                         "gamepad.button.misc2",
+                                                                         "gamepad.button.misc3",
+                                                                         "gamepad.button.misc4",
+                                                                         "gamepad.button.misc5",
+                                                                         "gamepad.button.misc6"};
 
-        constexpr std::array<const char*, GamepadTouchSensorCount> TouchSensorNames{"Left stick", "Right stick", "Left grip", "Right grip"};
+        constexpr std::array<const char*, GamepadTouchSensorCount> TouchSensorKeys{"gamepad.sensor.left_stick", "gamepad.sensor.right_stick",
+                                                                                   "gamepad.sensor.left_grip", "gamepad.sensor.right_grip"};
 
         constexpr std::array<ImVec2, 30> FrontOutline{{{0.0f, 2.5f},      {-77.0f, 2.5f},    {-119.0f, 1.5f},   {-141.0f, 4.0f},   {-159.0f, 12.0f},
                                                        {-172.0f, 24.0f},  {-181.0f, 35.0f},  {-188.0f, 50.0f},  {-195.0f, 72.0f},  {-203.0f, 100.0f},
@@ -520,7 +523,7 @@ namespace Quasar::Editor
             switch (type)
             {
                 case GamepadType::Standard:
-                    return "Standard";
+                    return Tr("gamepad.types.standard");
                 case GamepadType::Xbox360:
                     return "Xbox 360";
                 case GamepadType::XboxOne:
@@ -534,11 +537,11 @@ namespace Quasar::Editor
                 case GamepadType::SwitchPro:
                     return "Switch Pro";
                 case GamepadType::JoyConLeft:
-                    return "Left Joy-Con";
+                    return Tr("gamepad.types.joycon_left");
                 case GamepadType::JoyConRight:
-                    return "Right Joy-Con";
+                    return Tr("gamepad.types.joycon_right");
                 case GamepadType::JoyConPair:
-                    return "Pair of Joy-Cons";
+                    return Tr("gamepad.types.joycon_pair");
                 case GamepadType::GameCube:
                     return "GameCube";
                 case GamepadType::SteamController:
@@ -546,12 +549,12 @@ namespace Quasar::Editor
                 case GamepadType::Unknown:
                     break;
             }
-            return "Unknown";
+            return Tr("gamepad.types.unknown");
         }
 
-        std::string GetLabel(const Gamepads& gamepads, GamepadId gamepad)
+        std::string GetGamepadLabel(const Gamepads& gamepads, GamepadId gamepad)
         {
-            return fmt::format("Gamepad {}: {}", static_cast<unsigned>(gamepad), gamepads.GetName(gamepad));
+            return Tr("gamepad.label", {{"number", std::to_string(static_cast<unsigned>(gamepad))}, {"name", gamepads.GetName(gamepad)}});
         }
 
         void DisabledText(const char* text)
@@ -565,7 +568,7 @@ namespace Quasar::Editor
         {
             if (names.empty())
             {
-                DisabledText("None");
+                DisabledText(Tr("gamepad.none"));
                 return;
             }
             std::string text;
@@ -580,7 +583,7 @@ namespace Quasar::Editor
 
         void DrawSticks(const GamepadState& state)
         {
-            ImGui::SeparatorText("Sticks");
+            ImGui::SeparatorText(Tr("gamepad.sticks"));
             if (!ImGui::BeginTable("Sticks", 3, ImGuiTableFlags_SizingStretchSame))
             {
                 return;
@@ -590,11 +593,11 @@ namespace Quasar::Editor
             ImGui::TableSetupColumn("Y");
             ImGui::TableHeadersRow();
             for (const auto& [name, x, y] :
-                 {std::tuple{"Left", GamepadAxis::LeftX, GamepadAxis::LeftY}, std::tuple{"Right", GamepadAxis::RightX, GamepadAxis::RightY}})
+                 {std::tuple{"gamepad.left", GamepadAxis::LeftX, GamepadAxis::LeftY}, std::tuple{"gamepad.right", GamepadAxis::RightX, GamepadAxis::RightY}})
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(name);
+                ImGui::TextUnformatted(Tr(name));
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(fmt::format("{:+.2f}", state.GetAxis(x)).c_str());
                 ImGui::TableNextColumn();
@@ -605,16 +608,16 @@ namespace Quasar::Editor
 
         void DrawTriggers(const GamepadState& state)
         {
-            ImGui::SeparatorText("Triggers");
+            ImGui::SeparatorText(Tr("gamepad.triggers"));
             if (!ImGui::BeginTable("Triggers", 2, ImGuiTableFlags_SizingStretchSame))
             {
                 return;
             }
-            for (const auto& [name, axis] : {std::pair{"Left", GamepadAxis::LeftTrigger}, std::pair{"Right", GamepadAxis::RightTrigger}})
+            for (const auto& [name, axis] : {std::pair{"gamepad.left", GamepadAxis::LeftTrigger}, std::pair{"gamepad.right", GamepadAxis::RightTrigger}})
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(name);
+                ImGui::TextUnformatted(Tr(name));
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(fmt::format("{:.2f}", state.GetAxis(axis)).c_str());
             }
@@ -623,13 +626,13 @@ namespace Quasar::Editor
 
         void DrawButtons(const GamepadState& state)
         {
-            ImGui::SeparatorText("Buttons");
+            ImGui::SeparatorText(Tr("gamepad.buttons"));
             std::vector<const char*> pressed;
             for (std::size_t button = 0; button < GamepadButtonCount; ++button)
             {
                 if (state.Buttons.at(button))
                 {
-                    pressed.push_back(ButtonNames.at(button));
+                    pressed.push_back(Tr(ButtonKeys.at(button)));
                 }
             }
             WrappedList(pressed);
@@ -637,13 +640,13 @@ namespace Quasar::Editor
 
         void DrawTouchSensors(const GamepadState& state)
         {
-            ImGui::SeparatorText("Touch sensors");
+            ImGui::SeparatorText(Tr("gamepad.touch_sensors"));
             std::vector<const char*> touched;
             for (std::size_t sensor = 0; sensor < GamepadTouchSensorCount; ++sensor)
             {
                 if (state.TouchSensors.at(sensor))
                 {
-                    touched.push_back(TouchSensorNames.at(sensor));
+                    touched.push_back(Tr(TouchSensorKeys.at(sensor)));
                 }
             }
             WrappedList(touched);
@@ -651,11 +654,11 @@ namespace Quasar::Editor
 
         void DrawTouchpads(const GamepadState& state, std::size_t touchpadCount)
         {
-            ImGui::SeparatorText("Touchpads");
+            ImGui::SeparatorText(Tr("gamepad.touchpads"));
             bool anyFinger = false;
             if (ImGui::BeginTable("Fingers", 5, ImGuiTableFlags_SizingStretchSame))
             {
-                for (const char* header : {"Pad", "Finger", "X", "Y", "Pressure"})
+                for (const char* header : {Tr("gamepad.pad"), Tr("gamepad.finger"), "X", "Y", Tr("gamepad.pressure")})
                 {
                     ImGui::TableSetupColumn(header);
                 }
@@ -683,7 +686,7 @@ namespace Quasar::Editor
             }
             if (!anyFinger)
             {
-                DisabledText("No finger on the touchpads");
+                DisabledText(Tr("gamepad.no_finger"));
             }
         }
 
@@ -738,7 +741,7 @@ namespace Quasar::Editor
     }
 
     GamepadPanel::GamepadPanel(EditorContext& context, Gamepads& gamepads)
-        : EditorPanel("Gamepad", context, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse), m_Gamepads(&gamepads)
+        : EditorPanel("panel.gamepad", context, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse), m_Gamepads(&gamepads)
     {
         SetInitialSize({DetailsWidth + (TotalWidth * 0.75f), ViewHeight * 0.95f});
     }
@@ -753,8 +756,8 @@ namespace Quasar::Editor
         {
             return;
         }
-        ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthFixed, DetailsWidth);
-        ImGui::TableSetupColumn("Drawing", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn(Tr("gamepad.details"), ImGuiTableColumnFlags_WidthFixed, DetailsWidth);
+        ImGui::TableSetupColumn(Tr("gamepad.drawing"), ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
         ImGui::TableNextRow();
 
@@ -766,7 +769,7 @@ namespace Quasar::Editor
         }
         else
         {
-            DisabledText("No gamepad connected");
+            DisabledText(Tr("gamepad.no_gamepad"));
         }
         ImGui::EndChild();
 
@@ -798,12 +801,12 @@ namespace Quasar::Editor
         }
 
         ImGui::SetNextItemWidth(-1.0f);
-        if (ImGui::BeginCombo("##Gamepad", GetLabel(gamepads, m_Selected).c_str()))
+        if (ImGui::BeginCombo("##Gamepad", GetGamepadLabel(gamepads, m_Selected).c_str()))
         {
             for (std::size_t index = 0; index < MaxGamepads; ++index)
             {
                 const auto gamepad = static_cast<GamepadId>(index);
-                if (gamepads.IsConnected(gamepad) && ImGui::Selectable(GetLabel(gamepads, gamepad).c_str(), gamepad == m_Selected))
+                if (gamepads.IsConnected(gamepad) && ImGui::Selectable(GetGamepadLabel(gamepads, gamepad).c_str(), gamepad == m_Selected))
                 {
                     m_Selected = gamepad;
                     m_RumbleFailed = false;
@@ -817,7 +820,7 @@ namespace Quasar::Editor
     void GamepadPanel::DrawDetails(GamepadId gamepad, const GamepadState& state)
     {
         Gamepads& gamepads = *m_Gamepads;
-        ImGui::TextUnformatted(fmt::format("Type: {}", GetTypeName(gamepads.GetType(gamepad))).c_str());
+        ImGui::TextUnformatted(Tr("gamepad.type", {{"type", GetTypeName(gamepads.GetType(gamepad))}}).c_str());
 
         DrawSticks(state);
         DrawTriggers(state);
@@ -831,24 +834,24 @@ namespace Quasar::Editor
             DrawTouchpads(state, gamepads.GetTouchpadCount(gamepad));
         }
 
-        ImGui::SeparatorText("Rumble");
-        if (ImGui::Button("Light"))
+        ImGui::SeparatorText(Tr("gamepad.rumble"));
+        if (ImGui::Button(TrLabel("gamepad.light").c_str()))
         {
             m_RumbleFailed = !gamepads.Rumble(gamepad, {.LowFrequency = 0.25f, .HighFrequency = 0.25f, .Duration = std::chrono::milliseconds(300)});
         }
         ImGui::SameLine();
-        if (ImGui::Button("Strong"))
+        if (ImGui::Button(TrLabel("gamepad.strong").c_str()))
         {
             m_RumbleFailed = !gamepads.Rumble(gamepad, {.LowFrequency = 1.0f, .HighFrequency = 1.0f, .Duration = std::chrono::milliseconds(1000)});
         }
         ImGui::SameLine();
-        if (ImGui::Button("Stop"))
+        if (ImGui::Button(TrLabel("gamepad.stop").c_str()))
         {
             m_RumbleFailed = !gamepads.Rumble(gamepad, {});
         }
         if (m_RumbleFailed)
         {
-            DisabledText("This gamepad cannot rumble");
+            DisabledText(Tr("gamepad.cannot_rumble"));
         }
     }
 }

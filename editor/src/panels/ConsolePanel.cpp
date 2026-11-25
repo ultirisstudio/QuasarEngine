@@ -1,5 +1,7 @@
 #include "panels/ConsolePanel.h"
 
+#include "EditorText.h"
+
 #include <quasar/log/Log.h>
 
 #include <imgui.h>
@@ -85,13 +87,13 @@ namespace Quasar::Editor
             switch (category)
             {
                 case ConsoleCategory::Debug:
-                    return "Debug";
+                    return Tr("console.category.debug");
                 case ConsoleCategory::Warning:
-                    return "Warnings";
+                    return Tr("console.category.warning");
                 case ConsoleCategory::Error:
-                    return "Errors";
+                    return Tr("console.category.error");
             }
-            return "Debug";
+            return Tr("console.category.debug");
         }
 
         const char* GetFilterButtonId(ConsoleCategory category)
@@ -108,6 +110,7 @@ namespace Quasar::Editor
             return "##DebugFilter";
         }
 
+        // The copied texts keep the English names, like the logs
         const char* GetLevelName(LogLevel level)
         {
             switch (level)
@@ -126,6 +129,26 @@ namespace Quasar::Editor
                     return "Critical";
             }
             return "Unknown";
+        }
+
+        const char* GetLevelLabel(LogLevel level)
+        {
+            switch (level)
+            {
+                case LogLevel::Trace:
+                    return Tr("console.level.trace");
+                case LogLevel::Debug:
+                    return Tr("console.level.debug");
+                case LogLevel::Info:
+                    return Tr("console.level.info");
+                case LogLevel::Warning:
+                    return Tr("console.level.warning");
+                case LogLevel::Error:
+                    return Tr("console.level.error");
+                case LogLevel::Critical:
+                    return Tr("console.level.critical");
+            }
+            return Tr("console.level.unknown");
         }
 
         void DrawMark(ImDrawList* drawList, ImVec2 center, ConsoleCategory category)
@@ -237,7 +260,7 @@ namespace Quasar::Editor
         }
     }
 
-    ConsolePanel::ConsolePanel(EditorContext& context) : EditorPanel("Console", context), m_Sink(Log::GetMemorySink()) {}
+    ConsolePanel::ConsolePanel(EditorContext& context) : EditorPanel("panel.console", context), m_Sink(Log::GetMemorySink()) {}
 
     void ConsolePanel::OnImGuiRender()
     {
@@ -332,12 +355,12 @@ namespace Quasar::Editor
 
     void ConsolePanel::DrawToolbar(const ConsoleCounts& counts, const std::vector<LogMessage>& shown)
     {
-        if (ImGui::Button("Clear"))
+        if (ImGui::Button(TrLabel("console.clear").c_str()))
         {
             Clear();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Copy all"))
+        if (ImGui::Button(TrLabel("console.copy_all").c_str()))
         {
             ImGui::SetClipboardText(FormatMessages(shown).c_str());
         }
@@ -461,7 +484,7 @@ namespace Quasar::Editor
         ImGui::Dummy(ImVec2(lineHeight, lineHeight));
 
         ImGui::TableSetColumnIndex(LevelColumn);
-        ImGui::TextUnformatted(GetLevelName(message.Level));
+        ImGui::TextUnformatted(GetLevelLabel(message.Level));
         ImGui::TableSetColumnIndex(LoggerColumn);
         ImGui::TextUnformatted(message.LoggerName.c_str());
 
@@ -480,12 +503,12 @@ namespace Quasar::Editor
         }
         if (ImGui::BeginPopupContextItem("MessageMenu"))
         {
-            if (ImGui::MenuItem("Copy"))
+            if (ImGui::MenuItem(TrLabel("console.copy").c_str()))
             {
                 ImGui::SetClipboardText(FormatMessage(message).c_str());
             }
 
-            if (ImGui::MenuItem("Copy all"))
+            if (ImGui::MenuItem(TrLabel("console.copy_all").c_str()))
             {
                 ImGui::SetClipboardText(FormatMessages(FilterShown(GetMessages())).c_str());
             }

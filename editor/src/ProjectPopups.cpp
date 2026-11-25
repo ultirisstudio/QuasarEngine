@@ -1,5 +1,6 @@
 #include "ProjectPopups.h"
 
+#include "EditorText.h"
 #include "EditorUI.h"
 
 #include <quasar/io/Path.h>
@@ -27,8 +28,8 @@ namespace Quasar::Editor
 
     namespace
     {
-        constexpr const char* NewProjectPopupName = "New Project";
-        constexpr const char* OpenErrorPopupName = "Cannot Open Project";
+        constexpr const char* NewProjectPopupKey = "project.new.title";
+        constexpr const char* OpenErrorPopupKey = "project.open_error.title";
         constexpr const char* BrowseLabel = "...";
         constexpr const char* PlaceholderName = "MyGame";
 
@@ -51,7 +52,7 @@ namespace Quasar::Editor
             const char* Description;
         };
 
-        constexpr ProjectTemplate BlankTemplate{.Name = "Blank", .Description = "An empty project, with only an Assets folder for its files."};
+        constexpr ProjectTemplate BlankTemplate{.Name = "project.template.blank.name", .Description = "project.template.blank.description"};
 
         bool BeginNewProjectPopup()
         {
@@ -64,7 +65,8 @@ namespace Quasar::Editor
             ImGui::SetNextWindowSizeConstraints(minimumSize, ImVec2(FLT_MAX, FLT_MAX));
 
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Scaled(UI::PopupPadding));
-            const bool open = ImGui::BeginPopupModal(NewProjectPopupName, nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar);
+            const bool open =
+                ImGui::BeginPopupModal(TrLabel(NewProjectPopupKey).c_str(), nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar);
             ImGui::PopStyleVar();
             return open;
         }
@@ -103,22 +105,23 @@ namespace Quasar::Editor
             const ImVec2 iconCenter{(min.x + max.x) / 2.0f, min.y + ((cardSize.y - labelHeight) / 2.0f)};
             DrawFolderIcon(drawList, iconCenter, cardSize.x * 0.45f, ImGui::GetColorU32(ImGuiCol_TextDisabled));
 
-            const ImVec2 labelSize = ImGui::CalcTextSize(projectTemplate.Name);
+            const char* name = Tr(projectTemplate.Name);
+            const ImVec2 labelSize = ImGui::CalcTextSize(name);
             const ImVec2 labelPosition{(min.x + max.x - labelSize.x) / 2.0f, max.y - labelHeight + ((labelHeight - labelSize.y) / 2.0f)};
-            drawList->AddText(labelPosition, ImGui::GetColorU32(ImGuiCol_Text), projectTemplate.Name);
+            drawList->AddText(labelPosition, ImGui::GetColorU32(ImGuiCol_Text), name);
 
             return clicked;
         }
 
         void DrawTemplateDetails(const ProjectTemplate& projectTemplate, std::string_view projectName)
         {
-            DrawScaledText(projectTemplate.Name, HeadingScale);
+            DrawScaledText(Tr(projectTemplate.Name), HeadingScale);
             ImGui::Spacing();
-            DrawText(projectTemplate.Description);
+            DrawText(Tr(projectTemplate.Description));
 
             ImGui::Spacing();
             ImGui::Spacing();
-            DrawSection("CREATES");
+            DrawSection(Tr("project.new.creates"));
             const std::string name(projectName.empty() ? std::string_view(PlaceholderName) : projectName);
             ImGui::TextUnformatted((name + "/").c_str());
             ImGui::Indent();
@@ -159,7 +162,7 @@ namespace Quasar::Editor
     {
         if (m_NewProjectRequested)
         {
-            ImGui::OpenPopup(NewProjectPopupName);
+            ImGui::OpenPopup(TrLabel(NewProjectPopupKey).c_str());
             m_NewProjectRequested = false;
         }
         ReceiveDialogFolder();
@@ -229,8 +232,8 @@ namespace Quasar::Editor
     }
     void ProjectPopups::DrawNewProjectHeader()
     {
-        DrawScaledText("New Project", TitleScale);
-        DrawDisabledText("Choose a template, a name and a location");
+        DrawScaledText(Tr(NewProjectPopupKey), TitleScale);
+        DrawDisabledText(Tr("project.new.subtitle"));
         DrawSeparator();
     }
 
@@ -247,7 +250,7 @@ namespace Quasar::Editor
         ImGui::TableNextRow();
 
         ImGui::TableSetColumnIndex(0);
-        DrawSection("TEMPLATES");
+        DrawSection(Tr("project.new.templates"));
         DrawTemplateCard(BlankTemplate, true);
 
         ImGui::TableSetColumnIndex(1);
@@ -268,9 +271,9 @@ namespace Quasar::Editor
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted("Project location");
+            ImGui::TextUnformatted(Tr("project.new.location"));
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted("Project name");
+            ImGui::TextUnformatted(Tr("project.new.name"));
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -289,7 +292,7 @@ namespace Quasar::Editor
             ImGui::EndDisabled();
             if (ImGui::BeginItemTooltip())
             {
-                ImGui::TextUnformatted("Browse");
+                ImGui::TextUnformatted(Tr("project.new.browse"));
                 ImGui::EndTooltip();
             }
 
@@ -308,7 +311,7 @@ namespace Quasar::Editor
         }
 
         const std::filesystem::path directory = ResolveProjectDirectory(PathFromUtf8(m_Location), m_Name);
-        DrawDisabledText(directory.empty() ? std::string("Enter a name and the full path of the location") : PathToUtf8(directory));
+        DrawDisabledText(directory.empty() ? std::string(Tr("project.new.no_path")) : PathToUtf8(directory));
 
         if (m_NewProjectError.empty())
         {
@@ -321,14 +324,14 @@ namespace Quasar::Editor
 
         std::optional<ProjectResult> created;
         AlignButtonsRight(2, Scaled(ButtonWidth));
-        if (ImGui::Button("Cancel", ImVec2(Scaled(ButtonWidth), 0.0f)) || IsCancelPressed())
+        if (ImGui::Button(TrLabel("project.new.cancel").c_str(), ImVec2(Scaled(ButtonWidth), 0.0f)) || IsCancelPressed())
         {
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
         const bool canCreate = !m_Name.empty();
         ImGui::BeginDisabled(!canCreate);
-        const bool createClicked = ImGui::Button("Create", ImVec2(Scaled(ButtonWidth), 0.0f));
+        const bool createClicked = ImGui::Button(TrLabel("project.new.create").c_str(), ImVec2(Scaled(ButtonWidth), 0.0f));
         ImGui::EndDisabled();
 
         if (canCreate && (createClicked || IsConfirmPressed()))
@@ -360,7 +363,7 @@ namespace Quasar::Editor
             m_Settings->ForgetProject(*m_ProjectToOpen);
             m_ProjectToOpen.reset();
             m_OpenError = std::move(result.Error);
-            ImGui::OpenPopup(OpenErrorPopupName);
+            ImGui::OpenPopup(TrLabel(OpenErrorPopupKey).c_str());
             return std::nullopt;
         }
 
@@ -370,7 +373,7 @@ namespace Quasar::Editor
 
     void ProjectPopups::DrawOpenErrorPopup()
     {
-        if (!UI::BeginMessagePopup(OpenErrorPopupName, Scaled(MessagePopupWidth)))
+        if (!UI::BeginMessagePopup(TrLabel(OpenErrorPopupKey).c_str(), Scaled(MessagePopupWidth)))
         {
             return;
         }
@@ -379,7 +382,7 @@ namespace Quasar::Editor
         DrawSeparator();
 
         AlignButtonsRight(1, Scaled(ButtonWidth));
-        if (ImGui::Button("OK", ImVec2(Scaled(ButtonWidth), 0.0f)) || IsConfirmPressed() || IsCancelPressed())
+        if (ImGui::Button(TrLabel("project.open_error.ok").c_str(), ImVec2(Scaled(ButtonWidth), 0.0f)) || IsConfirmPressed() || IsCancelPressed())
         {
             ImGui::CloseCurrentPopup();
         }

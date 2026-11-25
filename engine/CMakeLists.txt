@@ -28,6 +28,7 @@ target_sources(QuasarEngine
         src/io/UserFolders.cpp
         src/log/Log.cpp
         src/log/MemoryLogSink.cpp
+        src/localization/Localization.cpp
         src/platform/opengl/OpenGLBuffer.cpp
         src/platform/opengl/OpenGLBuffer.h
         src/platform/opengl/OpenGLContext.cpp
@@ -116,6 +117,7 @@ target_sources(QuasarEngine
             include/quasar/io/UserFolders.h
             include/quasar/log/Log.h
             include/quasar/log/MemoryLogSink.h
+            include/quasar/localization/Localization.h
             include/quasar/platform/opengl/OpenGLContext.h
             include/quasar/renderer/AmbientOcclusion.h
             include/quasar/renderer/Bloom.h
@@ -192,6 +194,7 @@ target_link_libraries(QuasarEngine
         SDL3::SDL3
         glad::glad
         stb::image
+        yaml-cpp::yaml-cpp
 )
 
 target_compile_definitions(QuasarEngine PRIVATE

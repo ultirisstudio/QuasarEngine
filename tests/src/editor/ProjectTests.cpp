@@ -1,5 +1,6 @@
 #include <Project.h>
 
+#include "helpers/EditorLocale.h"
 #include "helpers/LogHelpers.h"
 #include "helpers/TemporaryFiles.h"
 
@@ -426,6 +427,7 @@ TEST_SUITE("Project")
 
     TEST_CASE("OpenProject refuses a folder with several project files")
     {
+        TestHelpers::UseEditorLocale();
         const TestHelpers::TemporaryFolder folder("quasar_open_two_files");
         const std::filesystem::path project = folder.GetPath() / "MyGame";
         MakeProjectFolder(project);
@@ -440,6 +442,7 @@ TEST_SUITE("Project")
 
     TEST_CASE("OpenProject refuses a project file that this editor cannot read")
     {
+        TestHelpers::UseEditorLocale();
         const TestHelpers::TemporaryFolder folder("quasar_open_bad_file");
         const std::filesystem::path project = folder.GetPath() / "MyGame";
         MakeProjectFolder(project);
@@ -606,5 +609,21 @@ TEST_SUITE("Project")
         CheckFailed(result);
         CHECK(MentionsPath(result, GetAssetsDirectory(project)));
         CHECK(Contains(result.Error, GetStatusError(GetAssetsDirectory(project))));
+    }
+
+    TEST_CASE("The errors of the projects are written in the language of the editor")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_open_language");
+        const std::filesystem::path missing = folder.GetPath() / "Missing";
+
+        TestHelpers::UseEditorLocale("fr_FR");
+        const ProjectResult french = OpenProject(missing);
+        TestHelpers::UseEditorLocale("en_US");
+        const ProjectResult english = OpenProject(missing);
+
+        CHECK(Contains(french.Error, "n'existe pas"));
+        CHECK(MentionsPath(french, missing));
+        CHECK(Contains(english.Error, "does not exist"));
+        CHECK(MentionsPath(english, missing));
     }
 }
