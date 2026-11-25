@@ -146,4 +146,20 @@ TEST_SUITE("EditorSettings")
         CHECK(settings.GetLastLocation().empty());
         CHECK(settings.GetRecentProjects() == std::vector{folder.GetPath() / "Game"});
     }
+
+    TEST_CASE("The language chosen is kept between sessions")
+    {
+        const TestHelpers::TemporaryFolder folder("quasar_settings_language");
+        const std::filesystem::path file = folder.GetPath() / "EditorSettings.yaml";
+        {
+            EditorSettings settings(file);
+            CHECK(settings.GetLanguage().empty());
+            settings.SetLanguage("fr_FR");
+        }
+
+        EditorSettings settings(file);
+        CHECK(settings.GetLanguage() == "fr_FR");
+        settings.SetLanguage("");
+        CHECK(EditorSettings(file).GetLanguage().empty());
+    }
 }

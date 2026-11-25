@@ -1,3 +1,4 @@
+#include "helpers/EditorLocale.h"
 #include "helpers/LogHelpers.h"
 
 #include <EditorContext.h>
@@ -34,8 +35,8 @@ namespace
     constexpr std::size_t CopyItem = 0;
     constexpr std::size_t CopyAllItem = 1;
 
-    constexpr const char* ClearButton = "Clear";
-    constexpr const char* CopyAllButton = "Copy all";
+    constexpr const char* ClearButton = "###console.clear";
+    constexpr const char* CopyAllButton = "###console.copy_all";
     constexpr const char* DebugButton = "##DebugFilter";
     constexpr const char* WarningButton = "##WarningFilter";
     constexpr const char* ErrorButton = "##ErrorFilter";
@@ -82,6 +83,7 @@ namespace
     public:
         explicit HeadlessImGui(ConsolePanel& panel) : m_Panel(&panel), m_Previous(ImGui::GetCurrentContext()), m_Context(ImGui::CreateContext())
         {
+            TestHelpers::UseEditorLocale();
             ImGui::SetCurrentContext(m_Context);
             ImGuiIO& io = ImGui::GetIO();
             io.DisplaySize = ImVec2(ConsoleWidth * 2.0f, ConsoleHeight * 2.0f);
@@ -152,7 +154,7 @@ namespace
     private:
         static ImGuiWindow* GetConsoleWindow()
         {
-            ImGuiWindow* window = ImGui::FindWindowByName("Console");
+            ImGuiWindow* window = ImGui::FindWindowByName("###panel.console");
             REQUIRE(window != nullptr);
             return window;
         }

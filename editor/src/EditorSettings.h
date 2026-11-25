@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 namespace Quasar::Editor
@@ -24,6 +25,11 @@ namespace Quasar::Editor
 
         void ForgetProject(const std::filesystem::path& projectDirectory);
 
+        // The locale chosen by the user, such as "fr_FR", or an empty string to follow the system
+        const std::string& GetLanguage() const { return m_Language; }
+
+        void SetLanguage(std::string language);
+
     private:
         void Load();
         void Save() const;
@@ -31,6 +37,7 @@ namespace Quasar::Editor
         std::filesystem::path m_File;
         std::filesystem::path m_LastLocation;
         std::vector<std::filesystem::path> m_RecentProjects;
+        std::string m_Language;
     };
 
     std::filesystem::path GetEditorSettingsFile();
