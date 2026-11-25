@@ -4,6 +4,7 @@
 #include <EditorText.h>
 
 #include <quasar/localization/Localization.h>
+#include <quasar/localization/TextLayout.h>
 #include <quasar/log/MemoryLogSink.h>
 
 #include <doctest/doctest.h>
@@ -52,5 +53,27 @@ TEST_SUITE("EditorText")
         LoadLocales("");
         CHECK(GetLocalization().GetLocale() == chosen);
         TestHelpers::UseEditorLocale();
+    }
+
+    TEST_CASE("The Arabic texts of the editor are shaped and ordered, and the Japanese ones are kept as they are")
+    {
+        const TestHelpers::ScopedLog log;
+        TestHelpers::UseEditorLocale("ar_SY");
+
+        CHECK(GetLocalization().GetDirection() == Quasar::TextDirection::RightToLeft);
+        CHECK(std::string_view(Tr("menu.file")) == Quasar::PrepareForDisplay("\u0645\u0644\u0641", Quasar::TextDirection::RightToLeft));
+        CHECK(Tr("gamepad.label", {{"number", "1"}, {"name", "Pad"}}) ==
+              Quasar::PrepareForDisplay("\u064A\u062F \u0627\u0644\u062A\u062D\u0643\u0645 1: Pad", Quasar::TextDirection::RightToLeft));
+        CHECK_FALSE(Quasar::HasRightToLeftText(Quasar::Editor::PathForDisplay("C:/Games/MyGame")));
+        CHECK(Quasar::Editor::PathForDisplay("C:/\u0645\u0644\u0641") == "C:/\uFED2\uFEE0\uFEE3");
+
+        TestHelpers::UseEditorLocale("ja_JP");
+        CHECK(GetLocalization().GetDirection() == Quasar::TextDirection::LeftToRight);
+        CHECK(std::string_view(Tr("menu.file")) == "\u30D5\u30A1\u30A4\u30EB");
+        CHECK(GetLocalization().GetLanguageName("ja_JP") == "\u65E5\u672C\u8A9E");
+
+        TestHelpers::UseEditorLocale();
+        CHECK(GetLocalization().GetDirection() == Quasar::TextDirection::LeftToRight);
+        CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
     }
 }

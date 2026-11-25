@@ -1,6 +1,13 @@
 #include "EditorUI.h"
 
+#include "EditorText.h"
+
+#include <quasar/localization/TextLayout.h>
+
 #include <algorithm>
+#include <cstddef>
+#include <ranges>
+#include <utility>
 
 namespace Quasar::Editor::UI
 {
@@ -14,12 +21,60 @@ namespace Quasar::Editor::UI
         return {Scaled(size.x), Scaled(size.y)};
     }
 
+    std::vector<std::string> WrapRightToLeft(std::string_view text, float width, const std::function<float(std::string_view)>& measure)
+    {
+        std::vector<std::string> lines;
+        std::size_t start = 0;
+        while (start <= text.size())
+        {
+            const std::size_t end = std::min(text.find('\n', start), text.size());
+            std::vector<std::string_view> words;
+            for (std::size_t word = start; word <= end;)
+            {
+                const std::size_t space = std::min(text.find(' ', word), end);
+                words.push_back(text.substr(word, space - word));
+                word = space + 1;
+            }
+
+            std::string line;
+            for (const std::string_view word : std::views::reverse(words))
+            {
+                std::string candidate = line.empty() ? std::string(word) : std::string(word) + " " + line;
+                if (!line.empty() && measure(candidate) > width)
+                {
+                    lines.push_back(std::move(line));
+                    line = std::string(word);
+                }
+                else
+                {
+                    line = std::move(candidate);
+                }
+            }
+            lines.push_back(std::move(line));
+            start = end + 1;
+        }
+        return lines;
+    }
+
     void DrawWrappedText(const ImVec4& color, std::string_view text)
     {
         ImGui::PushStyleColor(ImGuiCol_Text, color);
-        ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextUnformatted(text.data(), text.data() + text.size());
-        ImGui::PopTextWrapPos();
+        if (GetLocalization().GetDirection() == TextDirection::RightToLeft && HasRightToLeftText(text))
+        {
+            const float width = ImGui::GetContentRegionAvail().x;
+            const auto measure = [](std::string_view line) { return ImGui::CalcTextSize(line.data(), line.data() + line.size()).x; };
+            for (const std::string& line : WrapRightToLeft(text, width, measure))
+            {
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, width - measure(line)));
+                ImGui::TextUnformatted(line.c_str());
+            }
+        }
+        else
+        {
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted(text.data(), text.data() + text.size());
+            ImGui::PopTextWrapPos();
+        }
         ImGui::PopStyleColor();
     }
 

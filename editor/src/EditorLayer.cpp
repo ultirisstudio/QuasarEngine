@@ -135,7 +135,7 @@ namespace Quasar::Editor
         }
         for (const std::filesystem::path& project : projects)
         {
-            if (ImGui::MenuItem(PathToUtf8(project).c_str()))
+            if (ImGui::MenuItem((PathForDisplay(PathToUtf8(project)) + "###" + PathToUtf8(project)).c_str()))
             {
                 m_ProjectPopups.RequestOpenProject(project);
             }

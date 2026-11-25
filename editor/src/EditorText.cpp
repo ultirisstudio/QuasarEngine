@@ -1,6 +1,7 @@
 #include "EditorText.h"
 
 #include <quasar/io/EngineResources.h>
+#include <quasar/localization/TextLayout.h>
 
 #include <string>
 #include <vector>
@@ -42,6 +43,11 @@ namespace Quasar::Editor
     std::string TrCount(std::string_view key, std::int64_t count, std::initializer_list<TextArgument> arguments)
     {
         return GetLocalization().FormatCount(key, count, arguments);
+    }
+
+    std::string PathForDisplay(std::string_view text)
+    {
+        return PrepareForDisplay(text, TextDirection::LeftToRight);
     }
 
     std::string TrLabel(std::string_view key)
