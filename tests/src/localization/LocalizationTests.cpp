@@ -3,6 +3,7 @@
 
 #include <quasar/io/File.h>
 #include <quasar/localization/Localization.h>
+#include <quasar/localization/TextLayout.h>
 #include <quasar/log/MemoryLogSink.h>
 
 #include <doctest/doctest.h>
@@ -244,5 +245,32 @@ TEST_SUITE("Localization")
             CHECK(locale == Quasar::NormalizeLocale(locale));
             CHECK_FALSE(locale.empty());
         }
+    }
+
+    TEST_CASE("The texts of a language written from right to left are given shaped and in drawing order")
+    {
+        const Locales files;
+        files.Write("ar_SY.yaml", "language: \"\u0627\u0644\u0639\u0631\u0628\u064A\u0629\"\nmenu:\n  file: \"\u0645\u0644\u0641\"\nproject:\n  created: "
+                                  "\"\u0627\u0644\u0645\u0634\u0631\u0648\u0639 {name}\"\n");
+        files.Write("ja_JP.yaml", "menu:\n  file: \"\u30D5\u30A1\u30A4\u30EB\"\n");
+        Localization localization;
+        REQUIRE(localization.LoadDirectory(files.GetPath()));
+
+        REQUIRE(localization.SetLocale("ar_SY"));
+        CHECK(localization.GetDirection() == Quasar::TextDirection::RightToLeft);
+        CHECK(std::string_view(localization.Get("menu.file")) == Quasar::PrepareForDisplay("\u0645\u0644\u0641", Quasar::TextDirection::RightToLeft));
+        CHECK(std::string_view(localization.Get("menu.file")) == "\uFED2\uFEE0\uFEE3");
+        CHECK(localization.Format("project.created", {{"name", "Galaxy 2"}}) ==
+              Quasar::PrepareForDisplay("\u0627\u0644\u0645\u0634\u0631\u0648\u0639 Galaxy 2", Quasar::TextDirection::RightToLeft));
+        CHECK(localization.GetLabel("menu.file") == "\uFED2\uFEE0\uFEE3###menu.file");
+        CHECK(localization.GetLanguageName("ar_SY") ==
+              Quasar::PrepareForDisplay("\u0627\u0644\u0639\u0631\u0628\u064A\u0629", Quasar::TextDirection::RightToLeft));
+
+        REQUIRE(localization.SetLocale("ja_JP"));
+        CHECK(localization.GetDirection() == Quasar::TextDirection::LeftToRight);
+        CHECK(std::string_view(localization.Get("menu.file")) == "\u30D5\u30A1\u30A4\u30EB");
+        REQUIRE(localization.SetLocale("fr_FR"));
+        CHECK(localization.GetDirection() == Quasar::TextDirection::LeftToRight);
+        CHECK(localization.GetLanguageName("ar_SY") != "ar_SY");
     }
 }

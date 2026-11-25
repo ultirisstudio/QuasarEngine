@@ -128,12 +128,12 @@ namespace Quasar
                 const YAML::Node& value = entry.second;
                 if (value.IsScalar())
                 {
-                    locale.Texts[key] = {.Other = value.Scalar(), .One = std::nullopt};
+                    locale.Texts[key] = {.Other = value.Scalar(), .One = std::nullopt, .Display = {}};
                 }
                 else if (IsPluralMap(value))
                 {
                     const YAML::Node one = value["one"];
-                    locale.Texts[key] = {.Other = value["other"].Scalar(), .One = IsText(one) ? std::optional(one.Scalar()) : std::nullopt};
+                    locale.Texts[key] = {.Other = value["other"].Scalar(), .One = IsText(one) ? std::optional(one.Scalar()) : std::nullopt, .Display = {}};
                 }
                 else if (value.IsMap())
                 {
@@ -186,11 +186,20 @@ namespace Quasar
 
             Locale locale;
             ReadTexts(locale, root, file);
-            if (const auto name = locale.Texts.find(LanguageKey); name != locale.Texts.end())
+            std::string name = NormalizeLocale(PathToUtf8(file.stem()));
+            locale.Direction = GetTextDirection(name);
+            if (locale.Direction == TextDirection::RightToLeft)
             {
-                locale.LanguageName = name->second.Other;
+                for (auto& [key, value] : locale.Texts)
+                {
+                    value.Display = PrepareForDisplay(value.Other, locale.Direction);
+                }
             }
-            m_Locales.insert_or_assign(NormalizeLocale(PathToUtf8(file.stem())), std::move(locale));
+            if (const auto language = locale.Texts.find(LanguageKey); language != locale.Texts.end())
+            {
+                locale.LanguageName = PrepareForDisplay(language->second.Other, locale.Direction);
+            }
+            m_Locales.insert_or_assign(std::move(name), std::move(locale));
         }
         if (error)
         {
@@ -292,7 +301,11 @@ namespace Quasar
     const char* Localization::Get(std::string_view key) const
     {
         const Text* text = Find(key);
-        return text != nullptr ? text->Other.c_str() : Missing(key).c_str();
+        if (text == nullptr)
+        {
+            return Missing(key).c_str();
+        }
+        return text->Display.empty() ? text->Other.c_str() : text->Display.c_str();
     }
 
     std::string Localization::Format(std::string_view key, std::initializer_list<TextArgument> arguments) const
@@ -304,7 +317,7 @@ namespace Quasar
         }
         std::string result;
         Append(result, text->Other, std::span(arguments.begin(), arguments.size()));
-        return result;
+        return ForDisplay(std::move(result));
     }
 
     std::string Localization::FormatCount(std::string_view key, std::int64_t count, std::initializer_list<TextArgument> arguments) const
@@ -319,7 +332,16 @@ namespace Quasar
         const std::string& form = text->One && IsOne(GetLanguage(m_Current), count) ? *text->One : text->Other;
         std::string result;
         Append(result, form, all);
-        return result;
+        return ForDisplay(std::move(result));
+    }
+
+    std::string Localization::ForDisplay(std::string text) const
+    {
+        if (GetDirection() == TextDirection::RightToLeft)
+        {
+            return PrepareForDisplay(text, TextDirection::RightToLeft);
+        }
+        return text;
     }
 
     std::string Localization::GetLabel(std::string_view key) const
