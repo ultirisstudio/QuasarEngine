@@ -5,6 +5,8 @@
 /// \author Kurogenshi
 /// \date 2026-11-25
 
+#include <quasar/localization/TextLayout.h>
+
 #include <cstdint>
 #include <filesystem>
 #include <initializer_list>
@@ -49,6 +51,10 @@ namespace Quasar
     /// Here `menu.file` gives "Fichier". The `language` key holds the name of the language, written in it. A map of
     /// `one` and `other` is a text that depends on a number, see FormatCount().
     ///
+    /// The texts of a language written from right to left, such as Arabic in `ar_SY.yaml`, are given ready to draw from left
+    /// to right, as ImGui does: shaped and in drawing order, see PrepareForDisplay(). The values of the arguments are
+    /// placed first. The name of each language is ready to draw too.
+    ///
     /// A key missing in the locale gives the key itself, followed by the values of its arguments, so that the missing text
     /// is seen without losing them, and a warning is logged once.
     /// The texts stay valid until the locale changes or the files are loaded again. A Localization is used from one
@@ -91,6 +97,13 @@ namespace Quasar
         /// @brief Returns the name of the locale used, or an empty string if none is used yet.
         const std::string& GetLocale() const { return m_Current; }
 
+        /// @brief Returns the direction in which the language of the locale used is written.
+        TextDirection GetDirection() const { return m_Texts != nullptr ? m_Texts->Direction : TextDirection::LeftToRight; }
+
+        /// @brief Returns true if the locale used has a text for a key, for example to use a default text in place of a
+        /// text that a translation does not have yet, without logging a warning.
+        bool Contains(std::string_view key) const { return Find(key) != nullptr; }
+
         /// @brief Returns the text of a key, or the key itself if the locale has no text for it.
         const char* Get(std::string_view key) const;
 
@@ -115,16 +128,19 @@ namespace Quasar
         {
             std::string Other;
             std::optional<std::string> One;
+            std::string Display;
         };
 
         struct Locale
         {
             std::string LanguageName;
+            TextDirection Direction = TextDirection::LeftToRight;
             std::map<std::string, Text, std::less<>> Texts;
         };
 
         static void ReadTexts(Locale& locale, const YAML::Node& root, const std::filesystem::path& file);
         const Text* Find(std::string_view key) const;
+        std::string ForDisplay(std::string text) const;
         const std::string& Missing(std::string_view key) const;
 
         std::map<std::string, Locale, std::less<>> m_Locales;

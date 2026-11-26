@@ -1,6 +1,7 @@
 #include "GamepadPanel.h"
 
 #include "EditorText.h"
+#include "EditorUI.h"
 
 #include <quasar/input/GamepadCodes.h>
 #include <quasar/input/GamepadState.h>
@@ -571,14 +572,7 @@ namespace Quasar::Editor
                 DisabledText(Tr("gamepad.none"));
                 return;
             }
-            std::string text;
-            for (const char* name : names)
-            {
-                text += text.empty() ? name : fmt::format(", {}", name);
-            }
-            ImGui::PushTextWrapPos(0.0f);
-            ImGui::TextUnformatted(text.c_str());
-            ImGui::PopTextWrapPos();
+            UI::DrawText(UI::JoinList(names));
         }
 
         void DrawSticks(const GamepadState& state)

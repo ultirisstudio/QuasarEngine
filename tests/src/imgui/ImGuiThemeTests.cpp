@@ -9,6 +9,7 @@
 #include <imgui.h>
 
 #include <filesystem>
+#include <vector>
 
 namespace
 {
@@ -52,6 +53,51 @@ TEST_CASE("The engine font is loaded as the default ImGui font")
     REQUIRE(atlas.Fonts.Size == 1);
     CHECK(atlas.Fonts[0]->LegacySize == Quasar::ImGuiTheme::FontSize);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The fonts merged into the engine font draw Arabic and Japanese")
+{
+    const TestHelpers::ScopedLog log;
+    const ScopedImGuiContext context;
+    ImFontAtlas& atlas = *ImGui::GetIO().Fonts;
+    REQUIRE(Quasar::ImGuiTheme::LoadFont(atlas, Quasar::ImGuiTheme::GetFontPath()));
+    ImFont& font = *atlas.Fonts[0];
+    CHECK_FALSE(font.IsGlyphInFont(0x0645));
+    CHECK_FALSE(font.IsGlyphInFont(0x30D5));
+
+    const std::vector<Quasar::ImGuiTheme::FallbackFont> fallbacks = Quasar::ImGuiTheme::GetFallbackFonts();
+    REQUIRE(fallbacks.size() == 2);
+    for (const Quasar::ImGuiTheme::FallbackFont& fallback : fallbacks)
+    {
+        CAPTURE(fallback.File.string());
+        CHECK(std::filesystem::is_regular_file(fallback.File));
+        CHECK(Quasar::ImGuiTheme::MergeFont(atlas, fallback));
+    }
+
+    REQUIRE(atlas.Fonts.Size == 1);
+    CHECK(font.Sources.Size == 3);
+    for (const ImWchar character :
+         {ImWchar{'A'}, ImWchar{0x00E9}, ImWchar{0x0645}, ImWchar{0xFEE3}, ImWchar{0xFEFB}, ImWchar{0x30D5}, ImWchar{0x6F22}, ImWchar{0x3002}})
+    {
+        CAPTURE(static_cast<int>(character));
+        CHECK(font.IsGlyphInFont(character));
+    }
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("A fallback font that is missing or that is not a font is not merged")
+{
+    const TestHelpers::ScopedLog log;
+    const ScopedImGuiContext context;
+    const TestHelpers::TemporaryFile text("not_a_font.otf", "This is not a font");
+    ImFontAtlas& atlas = *ImGui::GetIO().Fonts;
+    REQUIRE(Quasar::ImGuiTheme::LoadFont(atlas, Quasar::ImGuiTheme::GetFontPath()));
+
+    CHECK_FALSE(Quasar::ImGuiTheme::MergeFont(atlas, {.File = text.GetPath(), .Scale = 1.0f}));
+    CHECK_FALSE(Quasar::ImGuiTheme::MergeFont(atlas, {.File = text.GetPath().parent_path() / "missing.ttf", .Scale = 1.0f}));
+
+    CHECK(atlas.Fonts[0]->Sources.Size == 1);
+    CHECK(TestHelpers::CountWarnings("its characters are not drawn") == 2);
 }
 
 TEST_CASE("A missing font is replaced by the font embedded in ImGui")

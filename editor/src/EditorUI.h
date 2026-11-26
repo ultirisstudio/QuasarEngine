@@ -2,7 +2,11 @@
 
 #include <imgui.h>
 
+#include <functional>
+#include <span>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace Quasar::Editor::UI
 {
@@ -12,6 +16,12 @@ namespace Quasar::Editor::UI
     ImVec2 Scaled(ImVec2 size);
 
     void DrawWrappedText(const ImVec4& color, std::string_view text);
+
+    inline constexpr std::string_view ListSeparatorKey = "list_separator";
+
+    std::string JoinList(std::span<const char* const> items);
+
+    std::vector<std::string> WrapRightToLeft(std::string_view text, float width, const std::function<float(std::string_view)>& measure);
     void DrawText(std::string_view text);
     void DrawDisabledText(std::string_view text);
     void DrawScaledText(std::string_view text, float scale);

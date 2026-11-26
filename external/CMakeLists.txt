@@ -98,6 +98,8 @@ endforeach()
 # stb image: image loading library
 add_subdirectory(stb-cmake EXCLUDE_FROM_ALL)
 
+add_subdirectory(sheenbidi-cmake EXCLUDE_FROM_ALL)
+
 function(quasar_mark_external directory)
     get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
     foreach(target IN LISTS targets)

@@ -123,7 +123,7 @@ namespace Quasar::Editor
             ImGui::Spacing();
             DrawSection(Tr("project.new.creates"));
             const std::string name(projectName.empty() ? std::string_view(PlaceholderName) : projectName);
-            ImGui::TextUnformatted((name + "/").c_str());
+            ImGui::TextUnformatted(PathForDisplay(name + "/").c_str());
             ImGui::Indent();
             ImGui::TextUnformatted((std::string(AssetsDirectoryName) + "/").c_str());
             ImGui::Unindent();
@@ -311,7 +311,7 @@ namespace Quasar::Editor
         }
 
         const std::filesystem::path directory = ResolveProjectDirectory(PathFromUtf8(m_Location), m_Name);
-        DrawDisabledText(directory.empty() ? std::string(Tr("project.new.no_path")) : PathToUtf8(directory));
+        DrawDisabledText(directory.empty() ? std::string(Tr("project.new.no_path")) : PathForDisplay(PathToUtf8(directory)));
 
         if (m_NewProjectError.empty())
         {

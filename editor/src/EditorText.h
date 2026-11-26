@@ -26,6 +26,8 @@ namespace Quasar::Editor
 
     std::string TrCount(std::string_view key, std::int64_t count, std::initializer_list<TextArgument> arguments = {});
 
+    std::string PathForDisplay(std::string_view text);
+
     // For every window, popup, menu and button: ImGui identifies them by the key, whatever the language
     std::string TrLabel(std::string_view key);
 }

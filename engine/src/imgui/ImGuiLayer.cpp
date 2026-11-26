@@ -50,6 +50,10 @@ namespace Quasar
         const float dpiScale = SDL_GetWindowDisplayScale(nativeWindow);
         ImGuiTheme::ApplyStyle(ImGui::GetStyle(), dpiScale);
         ImGuiTheme::LoadFont(*io.Fonts, ImGuiTheme::GetFontPath());
+        for (const ImGuiTheme::FallbackFont& font : ImGuiTheme::GetFallbackFonts())
+        {
+            ImGuiTheme::MergeFont(*io.Fonts, font);
+        }
 
         if (m_Specification.Viewports && (io.BackendFlags & ImGuiBackendFlags_PlatformHasViewports) == 0)
         {
