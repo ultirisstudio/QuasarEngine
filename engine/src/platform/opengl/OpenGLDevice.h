@@ -7,9 +7,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace Quasar
 {
+    bool HasOpenGLExtension(std::string_view name);
+
     struct OpenGLLimits
     {
         std::uint32_t TextureSize = 0;

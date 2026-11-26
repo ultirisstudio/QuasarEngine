@@ -121,6 +121,10 @@ namespace Quasar
         /// GraphicsContext::DrawIndexed().
         void DrawIndexed(const VertexArray& vertexArray) override;
 
+        /// @brief Draws instances of indexed triangles with the current OpenGL context, as Draw() does. See
+        /// GraphicsContext::DrawInstances().
+        void DrawInstances(const VertexArray& vertexArray, std::uint32_t instanceCount, std::uint32_t firstInstance) override;
+
         /// @brief Returns the SDL OpenGL context, for the code that needs to call SDL or OpenGL directly.
         SDL_GLContextState* GetNativeContext() const { return m_Context; }
 

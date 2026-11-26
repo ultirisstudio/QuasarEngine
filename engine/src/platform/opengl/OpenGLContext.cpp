@@ -92,6 +92,12 @@ namespace Quasar
             return nullptr;
         }
 
+        if (GLAD_GL_VERSION_4_6 == 0 && !HasOpenGLExtension("GL_ARB_shader_draw_parameters"))
+        {
+            QUASAR_ENGINE_ERROR("OpenGL 4.6 or the extension GL_ARB_shader_draw_parameters is required to draw instances: update the graphics driver");
+            return nullptr;
+        }
+
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
         created->m_Device = CreateScope<OpenGLDevice>(created->GetCurrentStatistics());
 
@@ -245,17 +251,27 @@ namespace Quasar
 
     void OpenGLContext::DrawIndexed(const VertexArray& vertexArray)
     {
+        DrawInstances(vertexArray, 1, 0);
+    }
+
+    void OpenGLContext::DrawInstances(const VertexArray& vertexArray, std::uint32_t instanceCount, std::uint32_t firstInstance)
+    {
         const IndexBuffer* indexBuffer = vertexArray.GetIndexBuffer();
         if (indexBuffer == nullptr)
         {
             QUASAR_ENGINE_ERROR("Cannot draw the indices of a vertex array that has no index buffer");
             return;
         }
+        if (instanceCount == 0)
+        {
+            return;
+        }
 
         RenderStatistics& statistics = GetCurrentStatistics();
         ++statistics.Draws;
-        statistics.Triangles += indexBuffer->GetCount() / 3;
+        statistics.Triangles += std::uint64_t{indexBuffer->GetCount() / 3} * instanceCount;
         GetOpenGLVertexArray(vertexArray).Bind();
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexBuffer->GetCount()), GL_UNSIGNED_INT, nullptr);
+        glDrawElementsInstancedBaseInstance(GL_TRIANGLES, static_cast<GLsizei>(indexBuffer->GetCount()), GL_UNSIGNED_INT, nullptr,
+                                            static_cast<GLsizei>(instanceCount), firstInstance);
     }
 }

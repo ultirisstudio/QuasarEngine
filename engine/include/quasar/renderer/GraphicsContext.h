@@ -179,6 +179,14 @@ namespace Quasar
         /// vertices of its vertex buffers.
         virtual void DrawIndexed(const VertexArray& vertexArray) = 0;
 
+        /// @brief Draws several instances of the triangles of the index buffer of a vertex array, as DrawIndexed() does.
+        /// The vertex shader reads the number of each instance with `gl_BaseInstanceARB + gl_InstanceID`, for example to
+        /// read its object from a FrameStorageBuffer.
+        /// @param vertexArray The vertex array, created by this context.
+        /// @param instanceCount The number of instances. With 0, nothing is drawn.
+        /// @param firstInstance The number of the first instance, `gl_BaseInstanceARB` in the vertex shader.
+        virtual void DrawInstances(const VertexArray& vertexArray, std::uint32_t instanceCount, std::uint32_t firstInstance) = 0;
+
     protected:
         /// @brief Destroys the objects that the context made for itself, such as the white texture and the queries of the
         /// profiler. The context of each

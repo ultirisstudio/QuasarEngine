@@ -11,22 +11,6 @@ namespace Quasar
     {
         constexpr GLuint64 FenceTimeout = 1'000'000'000;
 
-        bool HasExtension(std::string_view name)
-        {
-            GLint count = 0;
-            glGetIntegerv(GL_NUM_EXTENSIONS, &count);
-            for (GLint index = 0; index < count; ++index)
-            {
-                const GLubyte* extension = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(index));
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                if (extension != nullptr && name == reinterpret_cast<const char*>(extension))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         std::uint32_t ReadLimit(GLenum name)
         {
             GLint value = 0;
@@ -36,7 +20,8 @@ namespace Quasar
 
         float ReadMaxAnisotropy()
         {
-            if (GLAD_GL_VERSION_4_6 == 0 && !HasExtension("GL_ARB_texture_filter_anisotropic") && !HasExtension("GL_EXT_texture_filter_anisotropic"))
+            if (GLAD_GL_VERSION_4_6 == 0 && !HasOpenGLExtension("GL_ARB_texture_filter_anisotropic") &&
+                !HasOpenGLExtension("GL_EXT_texture_filter_anisotropic"))
             {
                 return 1.0f;
             }
@@ -62,6 +47,22 @@ namespace Quasar
                     .StorageBufferOffsetAlignment = std::max(ReadLimit(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT), 1U),
                     .Anisotropy = ReadMaxAnisotropy()};
         }
+    }
+
+    bool HasOpenGLExtension(std::string_view name)
+    {
+        GLint count = 0;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+        for (GLint index = 0; index < count; ++index)
+        {
+            const GLubyte* extension = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(index));
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            if (extension != nullptr && name == reinterpret_cast<const char*>(extension))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     OpenGLDevice::OpenGLDevice(RenderStatistics& statistics) : m_Limits(ReadLimits()), m_State(statistics) {}
