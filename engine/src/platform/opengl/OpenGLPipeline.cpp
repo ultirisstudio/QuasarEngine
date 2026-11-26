@@ -39,19 +39,23 @@ namespace Quasar
         }
     }
 
-    OpenGLPipeline::OpenGLPipeline(const PipelineSpecification& specification) : Pipeline(specification) {}
+    OpenGLPipeline::OpenGLPipeline(const PipelineSpecification& specification, RenderStatistics& statistics)
+        : Pipeline(specification), m_Statistics(&statistics)
+    {
+    }
 
-    Scope<OpenGLPipeline> OpenGLPipeline::Create(const PipelineSpecification& specification)
+    Scope<OpenGLPipeline> OpenGLPipeline::Create(const PipelineSpecification& specification, RenderStatistics& statistics)
     {
         if (!IsValid(specification))
         {
             return nullptr;
         }
-        return Scope<OpenGLPipeline>(new OpenGLPipeline(specification));
+        return Scope<OpenGLPipeline>(new OpenGLPipeline(specification, statistics));
     }
 
     void OpenGLPipeline::Bind()
     {
+        ++m_Statistics->PipelineBinds;
         const PipelineSpecification& specification = GetSpecification();
         specification.Shader->Bind();
 

@@ -152,42 +152,42 @@ namespace Quasar
     Scope<Framebuffer> OpenGLContext::CreateFramebuffer(const FramebufferSpecification& specification)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLFramebuffer::Create(specification);
+        return OpenGLFramebuffer::Create(specification, GetCurrentStatistics());
     }
 
     Scope<Shader> OpenGLContext::CreateShader(const ShaderSpecification& specification)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLShader::Create(specification);
+        return OpenGLShader::Create(specification, GetCurrentStatistics());
     }
 
     Scope<Pipeline> OpenGLContext::CreatePipeline(const PipelineSpecification& specification)
     {
-        return OpenGLPipeline::Create(specification);
+        return OpenGLPipeline::Create(specification, GetCurrentStatistics());
     }
 
     Scope<VertexBuffer> OpenGLContext::CreateVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLVertexBuffer::Create(vertices, layout);
+        return OpenGLVertexBuffer::Create(vertices, layout, GetCurrentStatistics());
     }
 
     Scope<IndexBuffer> OpenGLContext::CreateIndexBuffer(std::span<const std::uint32_t> indices)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLIndexBuffer::Create(indices);
+        return OpenGLIndexBuffer::Create(indices, GetCurrentStatistics());
     }
 
     Scope<UniformBuffer> OpenGLContext::CreateUniformBuffer(std::size_t size, std::uint32_t binding)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLUniformBuffer::Create(size, binding);
+        return OpenGLUniformBuffer::Create(size, binding, GetCurrentStatistics());
     }
 
     Scope<Texture2D> OpenGLContext::CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLTexture2D::Create(specification, pixels, m_MaxAnisotropy);
+        return OpenGLTexture2D::Create(specification, pixels, m_MaxAnisotropy, GetCurrentStatistics());
     }
 
     Scope<VertexArray> OpenGLContext::CreateVertexArray()
@@ -208,6 +208,7 @@ namespace Quasar
         int width = 0;
         int height = 0;
         SDL_GetWindowSizeInPixels(m_Window, &width, &height);
+        ++GetCurrentStatistics().FramebufferBinds;
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, width, height);
     }
@@ -239,6 +240,9 @@ namespace Quasar
             }
         }
 
+        RenderStatistics& statistics = GetCurrentStatistics();
+        ++statistics.Draws;
+        statistics.Triangles += vertexCount / 3;
         GetOpenGLVertexArray(vertexArray).Bind();
         glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
     }
@@ -252,6 +256,9 @@ namespace Quasar
             return;
         }
 
+        RenderStatistics& statistics = GetCurrentStatistics();
+        ++statistics.Draws;
+        statistics.Triangles += indexBuffer->GetCount() / 3;
         GetOpenGLVertexArray(vertexArray).Bind();
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexBuffer->GetCount()), GL_UNSIGNED_INT, nullptr);
     }

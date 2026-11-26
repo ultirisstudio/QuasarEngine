@@ -139,6 +139,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/PipelineLibrary.h
             include/quasar/renderer/PostProcessing.h
             include/quasar/renderer/Primitives.h
+            include/quasar/renderer/RenderStatistics.h
             include/quasar/renderer/Renderer.h
             include/quasar/renderer/Shader.h
             include/quasar/renderer/ShaderBindings.h

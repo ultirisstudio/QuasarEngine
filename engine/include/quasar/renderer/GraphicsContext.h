@@ -11,6 +11,7 @@
 #include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/Pipeline.h>
+#include <quasar/renderer/RenderStatistics.h>
 #include <quasar/renderer/Shader.h>
 #include <quasar/renderer/Texture.h>
 #include <quasar/renderer/TimestampQuery.h>
@@ -118,6 +119,13 @@ namespace Quasar
         /// context. It is off until GpuProfiler::SetEnabled() turns it on.
         GpuProfiler& GetProfiler();
 
+        /// @brief Returns what the engine sent to the graphics card during the last frame that EndFrame() ended.
+        const RenderStatistics& GetFrameStatistics() const { return m_FrameStatistics; }
+
+        /// @brief Ends the frame of the statistics: GetFrameStatistics() gives its counts, and the next frame is
+        /// counted from zero. Application calls it after each rendered frame.
+        void EndFrame();
+
         /// @brief Makes the next draws go into the window, on its whole area.
         virtual void BindWindow() = 0;
 
@@ -155,8 +163,13 @@ namespace Quasar
         /// graphics API calls it at the start of its destructor, while the API can still free them.
         void ReleaseResources();
 
+        /// @brief Returns the counts of the frame being rendered, which the commands of the graphics API add to.
+        RenderStatistics& GetCurrentStatistics() { return m_CurrentStatistics; }
+
     private:
         Scope<Texture2D> m_WhiteTexture;
         Scope<GpuProfiler> m_Profiler;
+        RenderStatistics m_CurrentStatistics;
+        RenderStatistics m_FrameStatistics;
     };
 }

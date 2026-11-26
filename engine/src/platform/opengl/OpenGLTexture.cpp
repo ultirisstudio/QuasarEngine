@@ -68,8 +68,8 @@ namespace Quasar
         }
     }
 
-    OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy)
-        : Texture2D(specification),
+    OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy, RenderStatistics& statistics)
+        : Texture2D(specification), m_Statistics(&statistics),
           m_Levels(specification.Mipmaps ? static_cast<std::uint32_t>(std::bit_width(std::max(specification.Width, specification.Height))) : 1),
           m_SlotCount(slotCount)
     {
@@ -92,7 +92,8 @@ namespace Quasar
         glDeleteTextures(1, &m_Texture);
     }
 
-    Scope<OpenGLTexture2D> OpenGLTexture2D::Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy)
+    Scope<OpenGLTexture2D> OpenGLTexture2D::Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy,
+                                                   RenderStatistics& statistics)
     {
         if (!IsValid(specification))
         {
@@ -115,7 +116,7 @@ namespace Quasar
             return nullptr;
         }
 
-        Scope<OpenGLTexture2D> texture(new OpenGLTexture2D(specification, GetLimit(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS), maxAnisotropy));
+        Scope<OpenGLTexture2D> texture(new OpenGLTexture2D(specification, GetLimit(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS), maxAnisotropy, statistics));
         if (pixels.empty())
         {
             texture->Clear();
@@ -134,6 +135,7 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot bind a texture to the slot {}: OpenGL has the slots 0 to {}", slot, m_SlotCount - 1);
             return;
         }
+        ++m_Statistics->TextureBinds;
         glBindTextureUnit(slot, m_Texture);
     }
 
@@ -146,6 +148,8 @@ namespace Quasar
     {
         const TextureSpecification& specification = GetSpecification();
         const PixelFormat format = GetPixelFormat(specification.Format);
+        ++m_Statistics->Uploads;
+        m_Statistics->UploadedBytes += pixels.size();
 
         // The rows of the pixels follow each other without padding, which OpenGL only assumes with an alignment of 1
         GLint alignment = 4;

@@ -90,7 +90,8 @@ namespace Quasar
         /// but not rendered.
         ///
         /// Each rendered frame is a frame of the GpuProfiler of the graphics context, and drawing the ImGui windows is
-        /// its "ImGui" section. See GraphicsContext::GetProfiler().
+        /// its "ImGui" section. See GraphicsContext::GetProfiler(). Each rendered frame also ends with
+        /// GraphicsContext::EndFrame(), so that GraphicsContext::GetFrameStatistics() gives the counts of the last one.
         ///
         /// The events of the window and of the gamepads go to the application first, then to the ImGui layer, then to
         /// the layers from the top of the stack to the bottom, until one of them handles them. Closing the window stops
