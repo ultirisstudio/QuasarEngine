@@ -53,10 +53,12 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLImGuiBackend.h
         src/renderer/AmbientOcclusion.cpp
         src/renderer/Bloom.cpp
+        src/renderer/BoundingBox.cpp
         src/renderer/Buffer.cpp
         src/renderer/Camera.cpp
         src/renderer/Color.cpp
         src/renderer/Framebuffer.cpp
+        src/renderer/Frustum.cpp
         src/renderer/FullscreenPass.cpp
         src/renderer/GpuProfiler.cpp
         src/renderer/GraphicsContext.cpp
@@ -127,10 +129,12 @@ target_sources(QuasarEngine
             include/quasar/platform/opengl/OpenGLContext.h
             include/quasar/renderer/AmbientOcclusion.h
             include/quasar/renderer/Bloom.h
+            include/quasar/renderer/BoundingBox.h
             include/quasar/renderer/Buffer.h
             include/quasar/renderer/Camera.h
             include/quasar/renderer/Color.h
             include/quasar/renderer/Framebuffer.h
+            include/quasar/renderer/Frustum.h
             include/quasar/renderer/FullscreenPass.h
             include/quasar/renderer/GpuProfiler.h
             include/quasar/renderer/GraphicsAPI.h

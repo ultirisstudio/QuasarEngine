@@ -4,6 +4,7 @@
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
 #include <quasar/log/MemoryLogSink.h>
+#include <quasar/renderer/BoundingBox.h>
 #include <quasar/renderer/Camera.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
@@ -19,6 +20,8 @@
 #include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include <array>
 #include <cstdint>
@@ -208,6 +211,35 @@ TEST_CASE("A mesh can have vertices of another layout than the standard vertex")
     REQUIRE(mesh != nullptr);
     CHECK(scene.Draw(*mesh, CullMode::Back, glm::mat4(1.0f), glm::mat4(1.0f), false, shader.get()) == std::vector<int>(16, 7));
     CHECK(glGetError() == GL_NO_ERROR);
+}
+
+TEST_CASE("A mesh knows the box of its positions, read from the vec3 attribute of location 0")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene;
+    constexpr std::array<std::uint32_t, 3> indices{0, 1, 2};
+
+    const Quasar::Scope<Quasar::Mesh> cube = Quasar::Mesh::Create(scene.GetContext(), Quasar::Primitives::CreateCube(2.0f));
+    REQUIRE(cube != nullptr);
+    CHECK(cube->GetBounds() == Quasar::BoundingBox{.Min = glm::vec3(-1.0f), .Max = glm::vec3(1.0f)});
+
+    struct ColoredVertex
+    {
+        glm::vec4 Color{1.0f};
+        glm::vec3 Position{0.0f};
+    };
+    const std::array<ColoredVertex, 3> colored{ColoredVertex{.Position = {-1.0f, 0.0f, 2.0f}}, ColoredVertex{.Position = {3.0f, -2.0f, 0.0f}},
+                                               ColoredVertex{.Position = {0.0f, 5.0f, 1.0f}}};
+    const Quasar::Scope<Quasar::Mesh> mesh = Quasar::Mesh::Create(scene.GetContext(), std::as_bytes(std::span(colored)),
+                                                                  {{1, Quasar::VertexAttributeType::Vec4}, {0, Quasar::VertexAttributeType::Vec3}}, indices);
+    REQUIRE(mesh != nullptr);
+    CHECK(mesh->GetBounds() == Quasar::BoundingBox{.Min = {-1.0f, -2.0f, 0.0f}, .Max = {3.0f, 5.0f, 2.0f}});
+
+    const std::array<glm::vec2, 3> flat{glm::vec2(0.0f), glm::vec2(1.0f, 0.0f), glm::vec2(0.0f, 1.0f)};
+    const Quasar::Scope<Quasar::Mesh> withoutPositions =
+        Quasar::Mesh::Create(scene.GetContext(), std::as_bytes(std::span(flat)), {{0, Quasar::VertexAttributeType::Vec2}}, indices);
+    REQUIRE(withoutPositions != nullptr);
+    CHECK_FALSE(withoutPositions->GetBounds().has_value());
 }
 
 TEST_CASE("A mesh without triangles, with an incomplete triangle or with an index that is not a vertex is refused")
