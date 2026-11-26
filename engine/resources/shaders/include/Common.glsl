@@ -9,6 +9,7 @@ layout(std140, binding = 0) uniform Camera
 layout(std140, binding = 2) uniform Object
 {
     mat4 u_Model;
+    mat3 u_NormalMatrix;
 };
 
 vec3 SrgbToLinear(vec3 color)

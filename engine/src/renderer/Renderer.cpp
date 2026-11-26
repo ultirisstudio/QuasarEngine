@@ -5,9 +5,12 @@
 #include <quasar/log/Log.h>
 #include <quasar/renderer/ShaderBindings.h>
 
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/mat3x3.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
+#include <array>
 #include <utility>
 
 namespace Quasar
@@ -21,6 +24,19 @@ namespace Quasar
             glm::mat4 Projection{1.0f};
             glm::vec4 Position{0.0f};
         };
+
+        struct ObjectData
+        {
+            glm::mat4 Model{1.0f};
+            std::array<glm::vec4, 3> NormalMatrix{};
+        };
+        static_assert(sizeof(ObjectData) == 112, "The Object block follows std140");
+
+        ObjectData ToObjectData(const glm::mat4& transform)
+        {
+            const glm::mat3 normal = glm::inverseTranspose(glm::mat3(transform));
+            return {.Model = transform, .NormalMatrix = {glm::vec4(normal[0], 0.0f), glm::vec4(normal[1], 0.0f), glm::vec4(normal[2], 0.0f)}};
+        }
     }
 
     Renderer::Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<LightsBuffer> lights)
@@ -33,7 +49,7 @@ namespace Quasar
     Scope<Renderer> Renderer::Create(GraphicsContext& context)
     {
         Scope<UniformBuffer> camera = context.CreateUniformBuffer(sizeof(CameraData), ShaderBindings::Camera);
-        Scope<UniformBuffer> object = context.CreateUniformBuffer(sizeof(glm::mat4), ShaderBindings::Object);
+        Scope<UniformBuffer> object = context.CreateUniformBuffer(sizeof(ObjectData), ShaderBindings::Object);
         Scope<LightsBuffer> lights = LightsBuffer::Create(context);
         if (camera == nullptr || object == nullptr || lights == nullptr)
         {
@@ -118,7 +134,7 @@ namespace Quasar
 
     void Renderer::Draw(const Mesh& mesh, const glm::mat4& transform)
     {
-        m_ObjectBuffer->Set(transform);
+        m_ObjectBuffer->Set(ToObjectData(transform));
         m_Context->DrawIndexed(mesh.GetVertexArray());
     }
 
