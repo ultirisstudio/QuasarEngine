@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 
 #include <quasar/core/Base.h>
 #include <quasar/core/Window.h>
@@ -110,10 +111,7 @@ namespace
             glActiveTexture(GL_TEXTURE7);
             GLint texture = 0;
             glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
-            GLubyte red = 0;
-            glGetTextureSubImage(static_cast<GLuint>(texture), 0, static_cast<GLint>(pixel.x), static_cast<GLint>(pixel.y), 0, 1, 1, 1, GL_RED,
-                                 GL_UNSIGNED_BYTE, 1, &red);
-            return static_cast<float>(red) / 255.0f;
+            return static_cast<float>(TestHelpers::ReadRed8(static_cast<GLuint>(texture), static_cast<int>(pixel.x), static_cast<int>(pixel.y))) / 255.0f;
         }
 
     private:

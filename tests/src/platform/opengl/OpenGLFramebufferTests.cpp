@@ -1,5 +1,6 @@
 #include "helpers/LogHelpers.h"
 #include "helpers/NullWindow.h"
+#include "helpers/RenderHelpers.h"
 #include "helpers/TestLayers.h"
 
 #include <quasar/core/Application.h>
@@ -399,8 +400,7 @@ TEST_CASE("A framebuffer has attachments of one channel, of 8 bits from 0 to 1 o
     framebuffer->ClearColor(0, {0.6f, 0.0f, 0.0f, 1.0f});
     framebuffer->ClearColor(1, {-1234.5f, 0.0f, 0.0f, 1.0f});
 
-    GLubyte share = 0;
-    glGetTextureSubImage(readTexture(0), 0, 3, 3, 0, 1, 1, 1, GL_RED, GL_UNSIGNED_BYTE, 1, &share);
+    const std::uint8_t share = TestHelpers::ReadRed8(readTexture(0), 3, 3);
     GLfloat distance = 0.0f;
     glGetTextureSubImage(readTexture(1), 0, 3, 3, 0, 1, 1, 1, GL_RED, GL_FLOAT, sizeof(distance), &distance);
     CHECK(share == 153);

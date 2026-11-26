@@ -98,6 +98,31 @@ TEST_CASE("The test helpers read the colors of a framebuffer from its top row, a
     CHECK(bound == 0);
 }
 
+TEST_CASE("The test helpers read one pixel of an 8-bit texture with any pack alignment, and keep the alignment")
+{
+    const TestHelpers::ScopedLog log;
+    const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
+    REQUIRE(window != nullptr);
+    const Quasar::Scope<Quasar::Framebuffer> framebuffer =
+        window->GetGraphicsContext()->CreateFramebuffer({.Width = 2, .Height = 2, .Attachments = {Quasar::FramebufferFormat::Red8}});
+    REQUIRE(framebuffer != nullptr);
+    framebuffer->ClearColor(0, {0.6f, 0.0f, 0.0f, 1.0f});
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(1, 0, 1, 1);
+    framebuffer->ClearColor(0, {0.2f, 0.0f, 0.0f, 1.0f});
+    glDisable(GL_SCISSOR_TEST);
+    const auto texture = static_cast<GLuint>(framebuffer->GetImGuiTexture(0));
+    glPixelStorei(GL_PACK_ALIGNMENT, 8);
+
+    CHECK(TestHelpers::ReadRed8(texture, 1, 0) == 51);
+    CHECK(TestHelpers::ReadRed8(texture, 0, 1) == 153);
+    GLint alignment = 0;
+    glGetIntegerv(GL_PACK_ALIGNMENT, &alignment);
+    CHECK(alignment == 8);
+    CHECK(glGetError() == GL_NO_ERROR);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+}
+
 TEST_CASE("The headless ImGui helper types text and presses keys without a window, then restores the previous context")
 {
     ImGuiContext* previous = ImGui::GetCurrentContext();
