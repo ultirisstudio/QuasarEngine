@@ -22,33 +22,140 @@ namespace Quasar::Editor
     {
         constexpr ImVec2 InitialSize{640.0f, 320.0f};
         constexpr ImVec2 CardSize{96.0f, 112.0f};
-        constexpr float FoldersWidth = 200.0f;
+        constexpr float TreeWidth = 200.0f;
+
+        constexpr float ShownFolderAlpha = 0.35f;
+        constexpr float ShownFolderHoveredAlpha = 0.5f;
+        constexpr float ShownFolderMarkWidth = 3.0f;
+
+        constexpr float TreeIconScale = 0.8f;
+
+        ImVec4 WithAlpha(ImVec4 color, float alpha)
+        {
+            return {color.x, color.y, color.z, alpha};
+        }
+
+        void PushShownFolderColors(ImVec4 accent)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Header, WithAlpha(accent, ShownFolderAlpha));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, WithAlpha(accent, ShownFolderHoveredAlpha));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, WithAlpha(accent, ShownFolderHoveredAlpha));
+        }
+
+        void FinishShownFolder(ImVec4 accent, bool scrollToIt)
+        {
+            ImGui::PopStyleColor(3);
+            const ImVec2 min = ImGui::GetItemRectMin();
+            ImGui::GetWindowDrawList()->AddRectFilled(min, ImVec2{min.x + UI::Scaled(ShownFolderMarkWidth), ImGui::GetItemRectMax().y},
+                                                      ImGui::GetColorU32(accent));
+            if (scrollToIt)
+            {
+                ImGui::SetScrollHereY();
+            }
+        }
 
         bool IsInside(const std::filesystem::path& path, const std::filesystem::path& folder)
         {
             return MakeRelativePath(path, folder).has_value();
         }
 
-        std::vector<ContentBrowserFolder> ReadFolders(const std::filesystem::path& assets)
+        std::vector<ContentBrowserEntry> ReadEntries(const std::filesystem::path& directory, std::error_code& error)
         {
-            std::vector<ContentBrowserFolder> folders{{.Path = assets}};
-            std::error_code error;
-            for (std::filesystem::recursive_directory_iterator it(assets, std::filesystem::directory_options::skip_permission_denied, error), end;
-                 !error && it != end; it.increment(error))
+            std::vector<ContentBrowserEntry> entries;
+            for (std::filesystem::directory_iterator it(directory, error), end; !error && it != end; it.increment(error))
             {
                 std::error_code typeError;
-                if (it->is_directory(typeError) && !it->is_symlink(typeError))
+                entries.push_back({it->path(), it->is_directory(typeError)});
+            }
+            if (error)
+            {
+                return {};
+            }
+
+            std::ranges::sort(entries,
+                              [](const ContentBrowserEntry& left, const ContentBrowserEntry& right)
+                              {
+                                  if (left.IsDirectory != right.IsDirectory)
+                                  {
+                                      return left.IsDirectory;
+                                  }
+                                  return left.Path.filename() < right.Path.filename();
+                              });
+            return entries;
+        }
+
+        std::vector<ContentBrowserTreeNode> ReadTree(const std::filesystem::path& assets)
+        {
+            struct Level
+            {
+                std::vector<ContentBrowserEntry> Entries;
+                std::size_t Next = 0;
+            };
+
+            std::vector<ContentBrowserTreeNode> tree{{.Path = assets, .IsDirectory = true}};
+            std::error_code error;
+            std::vector<Level> levels{{.Entries = ReadEntries(assets, error)}};
+            while (!levels.empty())
+            {
+                if (levels.back().Next == levels.back().Entries.size())
                 {
-                    folders.push_back({.Path = it->path(), .Depth = it.depth() + 1});
+                    levels.pop_back();
+                    continue;
+                }
+
+                const ContentBrowserEntry entry = levels.back().Entries[levels.back().Next++];
+                tree.push_back({.Path = entry.Path, .Depth = static_cast<int>(levels.size()), .IsDirectory = entry.IsDirectory});
+
+                std::error_code linkError;
+                if (entry.IsDirectory && !std::filesystem::is_symlink(entry.Path, linkError))
+                {
+                    levels.push_back({.Entries = ReadEntries(entry.Path, error)});
                 }
             }
 
-            std::ranges::sort(folders, {}, &ContentBrowserFolder::Path);
-            for (std::size_t index = 0; index + 1 < folders.size(); ++index)
+            for (std::size_t index = 0; index + 1 < tree.size(); ++index)
             {
-                folders[index].HasChildren = folders[index + 1].Depth > folders[index].Depth;
+                tree[index].HasChildren = tree[index + 1].Depth > tree[index].Depth;
             }
-            return folders;
+            return tree;
+        }
+
+        ImGuiTreeNodeFlags GetNodeFlags(const ContentBrowserTreeNode& node, bool highlighted)
+        {
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth;
+            if (!node.HasChildren)
+            {
+                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            }
+            if (node.Depth == 0)
+            {
+                flags |= ImGuiTreeNodeFlags_DefaultOpen;
+            }
+            if (highlighted)
+            {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+            return flags;
+        }
+
+        void DrawNodeLabel(const ContentBrowserTreeNode& node)
+        {
+            const float size = ImGui::GetTextLineHeight();
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2{size, size});
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 center{min.x + (size / 2.0f), min.y + (size / 2.0f)};
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            if (node.IsDirectory)
+            {
+                UI::DrawFolderIcon(drawList, center, size * TreeIconScale, ImGui::GetColorU32(ImGuiCol_CheckMark));
+            }
+            else
+            {
+                UI::DrawFileIcon(drawList, center, size * TreeIconScale, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+            }
+            ImGui::SameLine();
+            ImGui::TextUnformatted(PathForDisplay(PathToUtf8(node.Path.filename())).c_str());
         }
     }
 
@@ -88,11 +195,18 @@ namespace Quasar::Editor
         {
             return;
         }
+        ImGui::TableSetupColumn("Tree", ImGuiTableColumnFlags_WidthFixed, UI::Scaled(TreeWidth));
         ImGui::TableSetupColumn("Entries", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Folders", ImGuiTableColumnFlags_WidthFixed, UI::Scaled(FoldersWidth));
         ImGui::TableNextRow();
 
         ImGui::TableSetColumnIndex(0);
+        if (ImGui::BeginChild("Tree"))
+        {
+            DrawTree();
+        }
+        ImGui::EndChild();
+
+        ImGui::TableSetColumnIndex(1);
         DrawToolbar();
         if (ImGui::BeginChild("Entries"))
         {
@@ -104,13 +218,6 @@ namespace Quasar::Editor
             {
                 DrawEntries();
             }
-        }
-        ImGui::EndChild();
-
-        ImGui::TableSetColumnIndex(1);
-        if (ImGui::BeginChild("Folders"))
-        {
-            DrawFolders();
         }
         ImGui::EndChild();
 
@@ -127,7 +234,7 @@ namespace Quasar::Editor
 
         m_ProjectDirectory = project;
         m_AssetsDirectory = project.empty() ? std::filesystem::path{} : GetAssetsDirectory(project);
-        m_Folders = m_AssetsDirectory.empty() ? std::vector<ContentBrowserFolder>{} : ReadFolders(m_AssetsDirectory);
+        m_Tree = m_AssetsDirectory.empty() ? std::vector<ContentBrowserTreeNode>{} : ReadTree(m_AssetsDirectory);
         m_ShownDirectory = m_AssetsDirectory;
         m_RevealShownDirectory = true;
         ReadShownDirectory();
@@ -143,27 +250,11 @@ namespace Quasar::Editor
         }
 
         std::error_code error;
-        for (std::filesystem::directory_iterator it(m_ShownDirectory, error), end; !error && it != end; it.increment(error))
-        {
-            std::error_code typeError;
-            m_Entries.push_back({it->path(), it->is_directory(typeError)});
-        }
+        m_Entries = ReadEntries(m_ShownDirectory, error);
         if (error)
         {
             QUASAR_WARN("Cannot read the folder {}: {}", PathToUtf8(m_ShownDirectory), error.message());
-            m_Entries.clear();
-            return;
         }
-
-        std::ranges::sort(m_Entries,
-                          [](const ContentBrowserEntry& left, const ContentBrowserEntry& right)
-                          {
-                              if (left.IsDirectory != right.IsDirectory)
-                              {
-                                  return left.IsDirectory;
-                              }
-                              return left.Path.filename() < right.Path.filename();
-                          });
     }
 
     void ContentBrowserPanel::DrawToolbar()
@@ -217,48 +308,46 @@ namespace Quasar::Editor
         }
     }
 
-    void ContentBrowserPanel::DrawFolders()
+    void ContentBrowserPanel::DrawTree()
     {
-        std::optional<std::filesystem::path> opened;
+        const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+        std::optional<std::filesystem::path> clicked;
         int openDepth = 0;
-        for (const ContentBrowserFolder& folder : m_Folders)
+        for (const ContentBrowserTreeNode& node : m_Tree)
         {
-            while (openDepth > folder.Depth)
+            while (openDepth > node.Depth)
             {
                 ImGui::TreePop();
                 --openDepth;
             }
-            if (folder.Depth > openDepth)
+            if (node.Depth > openDepth)
             {
                 continue;
             }
 
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (!folder.HasChildren)
+            const bool shown = node.Path == m_ShownDirectory;
+            if (shown)
             {
-                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                PushShownFolderColors(accent);
             }
-            if (folder.Depth == 0)
-            {
-                flags |= ImGuiTreeNodeFlags_DefaultOpen;
-            }
-            if (folder.Path == m_ShownDirectory)
-            {
-                flags |= ImGuiTreeNodeFlags_Selected;
-            }
-
-            if (m_RevealShownDirectory && folder.HasChildren && folder.Path != m_ShownDirectory && IsInside(m_ShownDirectory, folder.Path))
+            if (m_RevealShownDirectory && node.HasChildren && IsInside(m_ShownDirectory, node.Path))
             {
                 ImGui::SetNextItemOpen(true);
             }
 
-            const std::string label = PathForDisplay(PathToUtf8(folder.Path.filename())) + "###" + PathToUtf8(folder.Path);
-            const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+            const std::string id = "##" + PathToUtf8(node.Path);
+            const bool open = ImGui::TreeNodeEx(id.c_str(), GetNodeFlags(node, shown || node.Path == m_Selected));
             if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
-                opened = folder.Path;
+                clicked = node.Path;
             }
-            if (open && folder.HasChildren)
+            if (shown)
+            {
+                FinishShownFolder(accent, m_RevealShownDirectory);
+            }
+            DrawNodeLabel(node);
+
+            if (open && node.HasChildren)
             {
                 ++openDepth;
             }
@@ -270,9 +359,13 @@ namespace Quasar::Editor
         }
 
         m_RevealShownDirectory = false;
-        if (opened)
+        if (!clicked)
         {
-            OpenDirectory(*opened);
+            return;
+        }
+        if (!OpenDirectory(*clicked) && OpenDirectory(clicked->parent_path()))
+        {
+            m_Selected = *clicked;
         }
     }
 }

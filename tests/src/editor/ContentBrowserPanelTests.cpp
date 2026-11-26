@@ -23,8 +23,8 @@
 
 using Quasar::Timestep;
 using Quasar::Editor::ContentBrowserEntry;
-using Quasar::Editor::ContentBrowserFolder;
 using Quasar::Editor::ContentBrowserPanel;
+using Quasar::Editor::ContentBrowserTreeNode;
 using Quasar::Editor::CreateProject;
 using Quasar::Editor::EditorContext;
 using Quasar::Editor::GetAssetsDirectory;
@@ -97,12 +97,12 @@ namespace
         ClickAt(imgui, ImVec2{entries->Pos.x + (size / 2.0f), entries->Pos.y - ImGui::GetStyle().ItemSpacing.y - (size / 2.0f)});
     }
 
-    void ClickFolderRow(const TestHelpers::HeadlessImGui& imgui, int row)
+    void ClickTreeRow(const TestHelpers::HeadlessImGui& imgui, int row)
     {
-        const ImGuiWindow* folders = FindChildWindow("Folders");
+        const ImGuiWindow* tree = FindChildWindow("Tree");
         const float rowHeight = ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y;
-        const ImVec2 start = folders->DC.CursorStartPos;
-        ClickAt(imgui, ImVec2{start.x + (folders->Size.x / 2.0f), start.y + (rowHeight * static_cast<float>(row)) + (ImGui::GetTextLineHeight() / 2.0f)});
+        const ImVec2 start = tree->DC.CursorStartPos;
+        ClickAt(imgui, ImVec2{start.x + (tree->Size.x / 2.0f), start.y + (rowHeight * static_cast<float>(row)) + (ImGui::GetTextLineHeight() / 2.0f)});
     }
 }
 
@@ -260,33 +260,37 @@ TEST_CASE("The content browser draws its window without a project, with an empty
     }
 }
 
-TEST_CASE("The content browser lists every folder of the Assets folder with its depth, each one before its subfolders")
+TEST_CASE("The hierarchy of the content browser lists everything in the Assets folder, each folder before its content")
 {
     const TestHelpers::TemporaryFolder folder;
     const std::filesystem::path project = CreateTestProject(folder, "Game");
     const std::filesystem::path assets = GetAssetsDirectory(project);
+    REQUIRE(Quasar::WriteTextFile(assets / "Textures" / "notes.txt", "notes"));
     REQUIRE(Quasar::CreateDirectories(assets / "Textures" / "Characters"));
     REQUIRE(Quasar::CreateDirectories(assets / "Audio"));
-    REQUIRE(Quasar::WriteTextFile(assets / "Textures" / "notes.txt", "notes"));
+    REQUIRE(Quasar::WriteTextFile(assets / "readme.txt", "readme"));
     EditorContext context{project};
     ContentBrowserPanel panel(context);
 
     panel.OnUpdate(Timestep{});
 
-    const std::vector<ContentBrowserFolder>& folders = panel.GetFolders();
-    REQUIRE(folders.size() == 4);
-    CHECK(folders[0].Path == assets);
-    CHECK(folders[1].Path == assets / "Audio");
-    CHECK(folders[2].Path == assets / "Textures");
-    CHECK(folders[3].Path == assets / "Textures" / "Characters");
-    CHECK(folders[0].Depth == 0);
-    CHECK(folders[1].Depth == 1);
-    CHECK(folders[2].Depth == 1);
-    CHECK(folders[3].Depth == 2);
-    CHECK(folders[0].HasChildren);
-    CHECK_FALSE(folders[1].HasChildren);
-    CHECK(folders[2].HasChildren);
-    CHECK_FALSE(folders[3].HasChildren);
+    const std::vector<ContentBrowserTreeNode>& tree = panel.GetTree();
+    REQUIRE(tree.size() == 6);
+    CHECK(tree[0].Path == assets);
+    CHECK(tree[1].Path == assets / "Audio");
+    CHECK(tree[2].Path == assets / "Textures");
+    CHECK(tree[3].Path == assets / "Textures" / "Characters");
+    CHECK(tree[4].Path == assets / "Textures" / "notes.txt");
+    CHECK(tree[5].Path == assets / "readme.txt");
+
+    const std::vector<int> depths{tree[0].Depth, tree[1].Depth, tree[2].Depth, tree[3].Depth, tree[4].Depth, tree[5].Depth};
+    CHECK(depths == std::vector<int>{0, 1, 1, 2, 2, 1});
+    const std::vector<bool> directories{tree[0].IsDirectory, tree[1].IsDirectory, tree[2].IsDirectory,
+                                        tree[3].IsDirectory, tree[4].IsDirectory, tree[5].IsDirectory};
+    CHECK(directories == std::vector<bool>{true, true, true, true, false, false});
+    const std::vector<bool> children{tree[0].HasChildren, tree[1].HasChildren, tree[2].HasChildren,
+                                     tree[3].HasChildren, tree[4].HasChildren, tree[5].HasChildren};
+    CHECK(children == std::vector<bool>{true, false, true, false, false, false});
 }
 
 TEST_CASE("The content browser opens a folder of the Assets folder but not a file or a folder outside of it")
@@ -368,9 +372,31 @@ TEST_CASE("Clicking a folder in the hierarchy of the content browser opens it")
     const TestHelpers::HeadlessImGui imgui([&] { panel.Draw(); });
     imgui.Frame();
 
-    ClickFolderRow(imgui, 2);
+    ClickTreeRow(imgui, 2);
     CHECK(panel.GetShownDirectory() == assets / "Textures");
 
-    ClickFolderRow(imgui, 0);
+    ClickTreeRow(imgui, 0);
     CHECK(panel.GetShownDirectory() == assets);
+}
+
+TEST_CASE("Clicking a file in the hierarchy of the content browser shows its folder and selects the file")
+{
+    TestHelpers::UseEditorLocale();
+    const TestHelpers::TemporaryFolder folder;
+    const std::filesystem::path project = CreateTestProject(folder, "Game");
+    const std::filesystem::path assets = GetAssetsDirectory(project);
+    REQUIRE(Quasar::CreateDirectories(assets / "Textures"));
+    REQUIRE(Quasar::WriteTextFile(assets / "Textures" / "wall.png", "png"));
+    EditorContext context{project};
+    ContentBrowserPanel panel(context);
+    panel.OnUpdate(Timestep{});
+    const TestHelpers::HeadlessImGui imgui([&] { panel.Draw(); });
+    imgui.Frame();
+    ClickTreeRow(imgui, 1);
+    REQUIRE(panel.GetShownDirectory() == assets / "Textures");
+
+    ClickTreeRow(imgui, 2);
+
+    CHECK(panel.GetShownDirectory() == assets / "Textures");
+    CHECK(panel.GetSelected() == assets / "Textures" / "wall.png");
 }
