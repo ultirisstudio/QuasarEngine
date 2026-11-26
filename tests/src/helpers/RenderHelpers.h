@@ -32,4 +32,15 @@ namespace TestHelpers
         framebuffer.Unbind();
         return color;
     }
+
+    inline std::uint8_t ReadRed8(GLuint texture, int x, int y)
+    {
+        GLint alignment = 4;
+        glGetIntegerv(GL_PACK_ALIGNMENT, &alignment);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        std::uint8_t red = 0;
+        glGetTextureSubImage(texture, 0, x, y, 0, 1, 1, 1, GL_RED, GL_UNSIGNED_BYTE, sizeof(red), &red);
+        glPixelStorei(GL_PACK_ALIGNMENT, alignment);
+        return red;
+    }
 }
