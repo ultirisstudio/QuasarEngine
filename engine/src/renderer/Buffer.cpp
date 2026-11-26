@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <span>
 #include <utility>
 
@@ -107,5 +108,37 @@ namespace Quasar
         {
             Write(data, offset);
         }
+    }
+
+    FrameUniformBuffer::FrameUniformBuffer(std::size_t partSize, std::uint32_t binding) : m_PartSize(partSize), m_Binding(binding) {}
+
+    bool FrameUniformBuffer::IsValid(std::size_t partSize)
+    {
+        if (partSize == 0)
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a frame uniform buffer with empty parts");
+            return false;
+        }
+        return true;
+    }
+
+    std::optional<std::uint32_t> FrameUniformBuffer::AddData(std::span<const std::byte> data)
+    {
+        if (data.size() != m_PartSize)
+        {
+            QUASAR_ENGINE_ERROR("Cannot add a part of {} bytes to a frame uniform buffer with parts of {} bytes", data.size(), m_PartSize);
+            return std::nullopt;
+        }
+        return Write(data);
+    }
+
+    void FrameUniformBuffer::Bind(std::uint32_t part)
+    {
+        if (part >= GetPartCount())
+        {
+            QUASAR_ENGINE_ERROR("Cannot bind the part {} of a frame uniform buffer: the current frame added {} parts", part, GetPartCount());
+            return;
+        }
+        BindPart(part);
     }
 }

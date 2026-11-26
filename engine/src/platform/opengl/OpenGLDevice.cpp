@@ -9,6 +9,8 @@ namespace Quasar
 {
     namespace
     {
+        constexpr GLuint64 FenceTimeout = 1'000'000'000;
+
         bool HasExtension(std::string_view name)
         {
             GLint count = 0;
@@ -54,9 +56,44 @@ namespace Quasar
                     .TextureSlots = ReadLimit(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS),
                     .UniformBlockSize = ReadLimit(GL_MAX_UNIFORM_BLOCK_SIZE),
                     .UniformBufferBindings = ReadLimit(GL_MAX_UNIFORM_BUFFER_BINDINGS),
+                    .UniformBufferOffsetAlignment = std::max(ReadLimit(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT), 1U),
                     .Anisotropy = ReadMaxAnisotropy()};
         }
     }
 
     OpenGLDevice::OpenGLDevice(RenderStatistics& statistics) : m_Limits(ReadLimits()), m_State(statistics) {}
+
+    OpenGLDevice::~OpenGLDevice()
+    {
+        for (GLsync fence : m_Fences)
+        {
+            glDeleteSync(fence);
+        }
+    }
+
+    std::uint32_t OpenGLDevice::AcquireFrameMemory()
+    {
+        const auto zone = static_cast<std::uint32_t>(m_Frame % FramesInFlight);
+        GLsync& fence = m_Fences.at(zone);
+        if (!m_FrameMemoryAcquired && fence != nullptr)
+        {
+            while (glClientWaitSync(fence, GL_SYNC_FLUSH_COMMANDS_BIT, FenceTimeout) == GL_TIMEOUT_EXPIRED)
+            {
+            }
+            glDeleteSync(fence);
+            fence = nullptr;
+        }
+        m_FrameMemoryAcquired = true;
+        return zone;
+    }
+
+    void OpenGLDevice::EndFrame()
+    {
+        if (m_FrameMemoryAcquired)
+        {
+            m_Fences.at(m_Frame % FramesInFlight) = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        }
+        m_FrameMemoryAcquired = false;
+        ++m_Frame;
+    }
 }

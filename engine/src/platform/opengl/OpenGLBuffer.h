@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 
 namespace Quasar
@@ -79,5 +80,38 @@ namespace Quasar
 
         OpenGLDevice* m_Device;
         std::uint32_t m_Buffer = 0;
+    };
+
+    class OpenGLFrameUniformBuffer final : public FrameUniformBuffer
+    {
+    public:
+        static Scope<OpenGLFrameUniformBuffer> Create(std::size_t partSize, std::uint32_t binding, OpenGLDevice& device);
+
+        ~OpenGLFrameUniformBuffer() override;
+
+        OpenGLFrameUniformBuffer(const OpenGLFrameUniformBuffer&) = delete;
+        OpenGLFrameUniformBuffer& operator=(const OpenGLFrameUniformBuffer&) = delete;
+        OpenGLFrameUniformBuffer(OpenGLFrameUniformBuffer&&) = delete;
+        OpenGLFrameUniformBuffer& operator=(OpenGLFrameUniformBuffer&&) = delete;
+
+        std::uint32_t GetPartCount() const override;
+
+    private:
+        OpenGLFrameUniformBuffer(std::size_t partSize, std::uint32_t binding, OpenGLDevice& device);
+
+        std::optional<std::uint32_t> Write(std::span<const std::byte> data) override;
+        void BindPart(std::uint32_t part) override;
+
+        bool Allocate(std::uint32_t capacity);
+        std::size_t GetFrameOffset(std::uint32_t zone) const;
+
+        OpenGLDevice* m_Device;
+        std::size_t m_Stride = 0;
+        std::uint32_t m_Capacity = 0;
+        std::uint32_t m_Buffer = 0;
+        std::span<std::byte> m_Memory;
+        std::uint64_t m_Frame = 0;
+        std::uint32_t m_Zone = 0;
+        std::uint32_t m_Count = 0;
     };
 }

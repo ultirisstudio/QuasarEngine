@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <type_traits>
 
@@ -156,6 +157,70 @@ namespace Quasar
 
     private:
         std::size_t m_Size = 0;
+        std::uint32_t m_Binding = 0;
+    };
+
+    /// @brief A uniform block written again at each frame in many parts of one size, such as the object of each draw.
+    ///
+    /// It is created with GraphicsContext::CreateFrameUniformBuffer() with the size of a part and the binding of the
+    /// block that it fills. Add() writes a part and gives its index, and Bind() makes the next draws read the block from
+    /// a part. The parts of a frame are kept until GraphicsContext::EndFrame(), then the next frame starts again from
+    /// the part 0. Each frame writes into its own memory, which the graphics card no longer reads, so writing never
+    /// waits for it. The buffer grows when a frame adds more parts than it holds.
+    class FrameUniformBuffer
+    {
+    public:
+        virtual ~FrameUniformBuffer() = default;
+
+        FrameUniformBuffer(const FrameUniformBuffer&) = delete;
+        FrameUniformBuffer& operator=(const FrameUniformBuffer&) = delete;
+        FrameUniformBuffer(FrameUniformBuffer&&) = delete;
+        FrameUniformBuffer& operator=(FrameUniformBuffer&&) = delete;
+
+        /// @brief Returns true if parts of this size can be created, whatever the graphics API. It must not be 0. The
+        /// reason a buffer is refused is logged as an engine error.
+        static bool IsValid(std::size_t partSize);
+
+        /// @brief Writes a part for the current frame.
+        /// @param data The bytes of the part, of the size of a part.
+        /// @return The index of the part, or nullopt if the data has another size or if the buffer cannot grow. The
+        /// reason is logged as an engine error.
+        std::optional<std::uint32_t> AddData(std::span<const std::byte> data);
+
+        /// @brief Writes a part from a value, usually a struct with the members of the block. See AddData().
+        template <typename T>
+        std::optional<std::uint32_t> Add(const T& value)
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "A frame uniform buffer is filled with the bytes of the value");
+            return AddData(std::as_bytes(std::span<const T, 1>(&value, 1)));
+        }
+
+        /// @brief Makes the next draws read the uniform block of the binding of this buffer from a part of the current
+        /// frame. A part that the current frame did not add is refused with an engine error.
+        void Bind(std::uint32_t part);
+
+        /// @brief Returns the number of parts that the current frame added.
+        virtual std::uint32_t GetPartCount() const = 0;
+
+        /// @brief Returns the size of a part, in bytes.
+        std::size_t GetPartSize() const { return m_PartSize; }
+
+        /// @brief Returns the binding of the uniform block that the buffer fills.
+        std::uint32_t GetBinding() const { return m_Binding; }
+
+    protected:
+        /// @brief Keeps the size of a part, which must be valid, and the binding. See IsValid().
+        FrameUniformBuffer(std::size_t partSize, std::uint32_t binding);
+
+        /// @brief Copies a part of the size of a part into the memory of the current frame.
+        /// @return The index of the part, or nullopt if the buffer cannot grow.
+        virtual std::optional<std::uint32_t> Write(std::span<const std::byte> data) = 0;
+
+        /// @brief Binds a part that the current frame added.
+        virtual void BindPart(std::uint32_t part) = 0;
+
+    private:
+        std::size_t m_PartSize = 0;
         std::uint32_t m_Binding = 0;
     };
 }
