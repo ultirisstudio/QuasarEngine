@@ -126,6 +126,11 @@ namespace Quasar
         /// counted from zero. Application calls it after each rendered frame.
         void EndFrame();
 
+        /// @brief Tells the context that the state of the graphics API was changed outside of the engine, for example by
+        /// direct OpenGL calls or by the ImGui backend. The context remembers what is bound and set to skip what is
+        /// already in place: after this call, it sends again every bind and every change.
+        virtual void InvalidateState() = 0;
+
         /// @brief Makes the next draws go into the window, on its whole area.
         virtual void BindWindow() = 0;
 

@@ -20,6 +20,8 @@ struct SDL_GLContextState;
 
 namespace Quasar
 {
+    class OpenGLState;
+
     /// @brief OpenGL 4.5 core context of a window, created with SDL. The OpenGL functions are loaded with glad.
     ///
     /// A window created with GraphicsAPI::OpenGL owns one, which Window::GetGraphicsContext() returns.
@@ -82,6 +84,9 @@ namespace Quasar
         /// GraphicsContext::CreateTimestampQuery().
         [[nodiscard]] Scope<TimestampQuery> CreateTimestampQuery() override;
 
+        /// @brief Forgets what is bound and set. See GraphicsContext::InvalidateState().
+        void InvalidateState() override;
+
         /// @brief Makes the context current, then makes the next draws go into the window. See
         /// GraphicsContext::BindWindow().
         void BindWindow() override;
@@ -116,6 +121,7 @@ namespace Quasar
 
         SDL_Window* m_Window = nullptr;
         SDL_GLContextState* m_Context = nullptr;
+        Scope<OpenGLState> m_State;
         std::uint32_t m_MaxSamples = 1;
         float m_MaxAnisotropy = 1.0f;
     };

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <quasar/core/Base.h>
-#include <quasar/renderer/RenderStatistics.h>
 #include <quasar/renderer/Shader.h>
 
 #include <cstddef>
@@ -15,10 +14,12 @@
 
 namespace Quasar
 {
+    class OpenGLState;
+
     class OpenGLShader final : public Shader
     {
     public:
-        static Scope<OpenGLShader> Create(const ShaderSpecification& specification, RenderStatistics& statistics);
+        static Scope<OpenGLShader> Create(const ShaderSpecification& specification, OpenGLState& state);
 
         ~OpenGLShader() override;
 
@@ -51,13 +52,13 @@ namespace Quasar
             std::size_t operator()(std::string_view name) const { return std::hash<std::string_view>{}(name); }
         };
 
-        OpenGLShader(std::string name, std::uint32_t program, RenderStatistics& statistics);
+        OpenGLShader(std::string name, std::uint32_t program, OpenGLState& state);
 
         void ReadUniforms();
         int FindLocation(std::string_view name, std::initializer_list<std::uint32_t> types, const char* typeName);
         int FindIntegerLocation(std::string_view name);
 
-        RenderStatistics* m_Statistics;
+        OpenGLState* m_State;
         std::uint32_t m_Program = 0;
         std::unordered_map<std::string, Uniform, NameHash, std::equal_to<>> m_Uniforms;
         std::unordered_set<std::string, NameHash, std::equal_to<>> m_ReportedNames;

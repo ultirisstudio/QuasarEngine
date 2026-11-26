@@ -39,6 +39,8 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLPipeline.h
         src/platform/opengl/OpenGLShader.cpp
         src/platform/opengl/OpenGLShader.h
+        src/platform/opengl/OpenGLState.cpp
+        src/platform/opengl/OpenGLState.h
         src/platform/opengl/OpenGLTexture.cpp
         src/platform/opengl/OpenGLTexture.h
         src/platform/opengl/OpenGLTimestampQuery.cpp

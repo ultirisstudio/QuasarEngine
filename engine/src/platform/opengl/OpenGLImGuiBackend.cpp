@@ -32,6 +32,8 @@ namespace Quasar
             ImGui_ImplSDL3_Shutdown();
             return false;
         }
+        m_Context = window.GetGraphicsContext();
+        m_Context->InvalidateState();
         return true;
     }
 
@@ -39,6 +41,11 @@ namespace Quasar
     {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplSDL3_Shutdown();
+        if (m_Context != nullptr)
+        {
+            m_Context->InvalidateState();
+            m_Context = nullptr;
+        }
     }
 
     void OpenGLImGuiBackend::NewFrame()
@@ -50,6 +57,7 @@ namespace Quasar
     void OpenGLImGuiBackend::Render()
     {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        m_Context->InvalidateState();
 
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0)
         {

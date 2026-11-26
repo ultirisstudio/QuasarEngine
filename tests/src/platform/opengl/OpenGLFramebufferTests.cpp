@@ -128,6 +128,7 @@ TEST_CASE("Unbind resolves every pixel of a multisampled framebuffer, even with 
     framebuffer->ClearColor(1, {0.0f, 1.0f, 0.0f, 1.0f});
     glEnable(GL_SCISSOR_TEST);
     glScissor(0, 0, 1, 1);
+    window->GetGraphicsContext()->InvalidateState();
     framebuffer->Unbind();
     const GLboolean scissorAfterUnbind = glIsEnabled(GL_SCISSOR_TEST);
     glDisable(GL_SCISSOR_TEST);

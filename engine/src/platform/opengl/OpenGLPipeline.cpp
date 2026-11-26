@@ -1,5 +1,7 @@
 #include <platform/opengl/OpenGLPipeline.h>
 
+#include <platform/opengl/OpenGLState.h>
+
 #include <glad/gl.h>
 
 namespace Quasar
@@ -25,57 +27,39 @@ namespace Quasar
             }
             return GL_LESS;
         }
-
-        void SetEnabled(GLenum capability, bool enabled)
-        {
-            if (enabled)
-            {
-                glEnable(capability);
-            }
-            else
-            {
-                glDisable(capability);
-            }
-        }
     }
 
-    OpenGLPipeline::OpenGLPipeline(const PipelineSpecification& specification, RenderStatistics& statistics)
-        : Pipeline(specification), m_Statistics(&statistics)
-    {
-    }
+    OpenGLPipeline::OpenGLPipeline(const PipelineSpecification& specification, OpenGLState& state) : Pipeline(specification), m_State(&state) {}
 
-    Scope<OpenGLPipeline> OpenGLPipeline::Create(const PipelineSpecification& specification, RenderStatistics& statistics)
+    Scope<OpenGLPipeline> OpenGLPipeline::Create(const PipelineSpecification& specification, OpenGLState& state)
     {
         if (!IsValid(specification))
         {
             return nullptr;
         }
-        return Scope<OpenGLPipeline>(new OpenGLPipeline(specification, statistics));
+        return Scope<OpenGLPipeline>(new OpenGLPipeline(specification, state));
     }
 
     void OpenGLPipeline::Bind()
     {
-        ++m_Statistics->PipelineBinds;
+        ++m_State->GetStatistics().PipelineBinds;
         const PipelineSpecification& specification = GetSpecification();
         specification.Shader->Bind();
-
-        SetEnabled(GL_DEPTH_TEST, specification.DepthTest);
-        glDepthMask(specification.DepthWrite ? GL_TRUE : GL_FALSE);
-        glDepthFunc(GetDepthFunction(specification.Compare));
-
-        SetEnabled(GL_CULL_FACE, specification.Culling != CullMode::None);
-        glCullFace(specification.Culling == CullMode::Front ? GL_FRONT : GL_BACK);
-        glFrontFace(GL_CCW);
-
-        SetEnabled(GL_BLEND, specification.Blending != BlendMode::None);
+        m_State->SetEnabled(OpenGLState::Capability::DepthTest, specification.DepthTest);
+        m_State->SetDepthWrite(specification.DepthWrite);
+        m_State->SetDepthFunction(GetDepthFunction(specification.Compare));
+        m_State->SetEnabled(OpenGLState::Capability::CullFace, specification.Culling != CullMode::None);
+        m_State->SetCullFace(specification.Culling == CullMode::Front ? GL_FRONT : GL_BACK);
+        m_State->SetFrontFace(GL_CCW);
+        m_State->SetEnabled(OpenGLState::Capability::Blend, specification.Blending != BlendMode::None);
         if (specification.Blending == BlendMode::Alpha)
         {
-            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            m_State->SetBlendFunction(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         }
         else if (specification.Blending == BlendMode::Additive)
         {
-            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+            m_State->SetBlendFunction(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
         }
-        glBlendEquation(GL_FUNC_ADD);
+        m_State->SetBlendEquation(GL_FUNC_ADD);
     }
 }

@@ -2,14 +2,15 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Pipeline.h>
-#include <quasar/renderer/RenderStatistics.h>
 
 namespace Quasar
 {
+    class OpenGLState;
+
     class OpenGLPipeline final : public Pipeline
     {
     public:
-        static Scope<OpenGLPipeline> Create(const PipelineSpecification& specification, RenderStatistics& statistics);
+        static Scope<OpenGLPipeline> Create(const PipelineSpecification& specification, OpenGLState& state);
 
         ~OpenGLPipeline() override = default;
 
@@ -21,8 +22,8 @@ namespace Quasar
         void Bind() override;
 
     private:
-        OpenGLPipeline(const PipelineSpecification& specification, RenderStatistics& statistics);
+        OpenGLPipeline(const PipelineSpecification& specification, OpenGLState& state);
 
-        RenderStatistics* m_Statistics;
+        OpenGLState* m_State;
     };
 }
