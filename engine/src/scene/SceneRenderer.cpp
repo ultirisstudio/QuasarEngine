@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <utility>
 
@@ -141,6 +142,23 @@ namespace Quasar
                     m_Statistics.ShadowCasters += castsShadow ? 1 : 0;
                 }
             });
+
+        std::ranges::sort(m_DrawList,
+                          [](const DrawItem& first, const DrawItem& second)
+                          {
+                              const std::less<> before;
+                              const Pipeline* firstPipeline = first.Material->GetSpecification().Pipeline;
+                              const Pipeline* secondPipeline = second.Material->GetSpecification().Pipeline;
+                              if (firstPipeline != secondPipeline)
+                              {
+                                  return before(firstPipeline, secondPipeline);
+                              }
+                              if (first.Material != second.Material)
+                              {
+                                  return before(first.Material, second.Material);
+                              }
+                              return before(first.Mesh, second.Mesh);
+                          });
     }
 
     void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)

@@ -259,6 +259,41 @@ TEST_CASE("The meshes out of the view of the camera are not drawn, and the ones 
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
+TEST_CASE("The scene renderer draws the meshes grouped by material, whatever the order of the entities")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    constexpr int count = 8;
+    for (int index = 0; index < count; ++index)
+    {
+        const float x = -0.875f + (0.25f * static_cast<float>(index));
+        fixture.AddQuad(index % 2 == 0 ? fixture.GetRed() : fixture.GetBlue(), {.Position = {x, 0.0f, 0.0f}, .Scale = glm::vec3(0.25f)});
+    }
+    Quasar::Camera camera = Fixture::CreateCamera();
+    camera.SetPosition({0.0f, 0.0f, 1.0f});
+    fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Enabled = false}, .AmbientOcclusion = {.Enabled = false}});
+    Quasar::GraphicsContext& context = fixture.GetContext();
+
+    for (int frame = 0; frame < 2; ++frame)
+    {
+        fixture.Clear();
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+        context.EndFrame();
+    }
+
+    const std::uint32_t objectBinds = count;
+    const std::uint32_t cameraAndLights = 2;
+    const std::uint32_t materials = 2;
+    CHECK(context.GetFrameStatistics().UniformBufferBinds == objectBinds + cameraAndLights + materials);
+    for (int pixel = 0; pixel < 8; ++pixel)
+    {
+        CAPTURE(pixel);
+        const Color color = fixture.ReadColor(pixel, 4);
+        CHECK((pixel % 2 == 0 ? color[0] > color[2] + 100 : color[2] > color[0] + 100));
+    }
+    CHECK(glGetError() == GL_NO_ERROR);
+}
+
 TEST_CASE("The scene renderer draws from the primary camera, at the transform of its entity")
 {
     const TestHelpers::ScopedLog log;
