@@ -25,6 +25,7 @@ namespace Quasar
         std::uint32_t Uploads = 0;            ///< The writes of data into a buffer or a texture.
         std::uint64_t UploadedBytes = 0;      ///< The bytes of these writes.
 
+        /// @brief Compares all the counts.
         bool operator==(const RenderStatistics&) const = default;
     };
 }
