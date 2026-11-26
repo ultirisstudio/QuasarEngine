@@ -12,13 +12,12 @@ namespace Quasar
     public:
         static Scope<LightsBuffer> Create(GraphicsContext& context);
 
-        void Set(const SceneLights& lights);
-        void Bind();
+        void Bind(const SceneLights& lights);
 
     private:
-        explicit LightsBuffer(Scope<UniformBuffer> buffer) : m_Buffer(std::move(buffer)) {}
+        explicit LightsBuffer(Scope<FrameUniformBuffer> buffer) : m_Buffer(std::move(buffer)) {}
 
-        Scope<UniformBuffer> m_Buffer;
+        Scope<FrameUniformBuffer> m_Buffer;
         bool m_ReportedTooManyLights = false;
     };
 }

@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <span>
 #include <utility>
 #include <vector>
 
@@ -123,20 +122,15 @@ namespace Quasar
 
     Scope<LightsBuffer> LightsBuffer::Create(GraphicsContext& context)
     {
-        Scope<UniformBuffer> buffer = context.CreateUniformBuffer(sizeof(LightsData), ShaderBindings::Lights);
+        Scope<FrameUniformBuffer> buffer = context.CreateFrameUniformBuffer(sizeof(LightsData), ShaderBindings::Lights);
         return buffer != nullptr ? Scope<LightsBuffer>(new LightsBuffer(std::move(buffer))) : nullptr;
     }
 
-    void LightsBuffer::Set(const SceneLights& lights)
+    void LightsBuffer::Bind(const SceneLights& lights)
     {
-        const LightsData data = ToLightsData(lights);
-        const std::span<const std::byte> bytes = std::as_bytes(std::span<const LightsData, 1>(&data, 1));
-        const auto pointCount = static_cast<std::size_t>(data.PointLightCount);
-        const auto spotCount = static_cast<std::size_t>(data.SpotLightCount);
-        m_Buffer->SetData(bytes.first(offsetof(LightsData, PointLights) + (pointCount * sizeof(PointLightData))));
-        if (spotCount > 0)
+        if (const std::optional<std::uint32_t> part = m_Buffer->Add(ToLightsData(lights)))
         {
-            m_Buffer->SetData(bytes.subspan(offsetof(LightsData, SpotLights), spotCount * sizeof(SpotLightData)), offsetof(LightsData, SpotLights));
+            m_Buffer->Bind(*part);
         }
 
         const bool tooMany = lights.Points.size() > MaxPointLights || lights.Spots.size() > MaxSpotLights;
@@ -146,10 +140,5 @@ namespace Quasar
                                lights.Spots.size(), MaxPointLights, MaxSpotLights);
         }
         m_ReportedTooManyLights = tooMany;
-    }
-
-    void LightsBuffer::Bind()
-    {
-        m_Buffer->Bind();
     }
 }

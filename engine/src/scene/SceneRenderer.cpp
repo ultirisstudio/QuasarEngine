@@ -115,10 +115,13 @@ namespace Quasar
         scene.ForEach<TransformComponent, MeshRendererComponent>(
             [this](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
             {
-                if (renderer.Mesh != nullptr && renderer.Material != nullptr)
+                if (renderer.Mesh == nullptr || renderer.Material == nullptr)
                 {
-                    m_DrawList.push_back(
-                        {.Mesh = renderer.Mesh, .Material = renderer.Material, .Transform = entity.GetWorldMatrix(), .CastShadows = renderer.CastShadows});
+                    return;
+                }
+                if (const std::optional<PlacedObject> object = m_Renderer->PlaceObject(entity.GetWorldMatrix()))
+                {
+                    m_DrawList.push_back({.Mesh = renderer.Mesh, .Material = renderer.Material, .Object = *object, .CastShadows = renderer.CastShadows});
                 }
             });
     }
@@ -161,7 +164,7 @@ namespace Quasar
             m_Renderer->BeginScene(camera, m_SceneFramebuffer.get(), m_Lights);
             for (const DrawItem& item : m_DrawList)
             {
-                m_Renderer->Submit(*item.Mesh, *item.Material, item.Transform);
+                m_Renderer->Submit(*item.Mesh, *item.Material, item.Object);
             }
             m_Renderer->EndScene();
         }
@@ -181,7 +184,7 @@ namespace Quasar
             for (const DrawItem& item : m_DrawList)
             {
                 const CullMode culling = item.Material->GetSpecification().Pipeline->GetSpecification().Culling;
-                m_Renderer->Submit(*item.Mesh, *m_DepthPipelines.at(static_cast<std::size_t>(culling)), item.Transform);
+                m_Renderer->Submit(*item.Mesh, *m_DepthPipelines.at(static_cast<std::size_t>(culling)), item.Object);
             }
             m_Renderer->EndScene();
         }
@@ -203,7 +206,7 @@ namespace Quasar
         {
             if (item.CastShadows)
             {
-                m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Transform);
+                m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Object);
             }
         }
         m_Renderer->EndScene();

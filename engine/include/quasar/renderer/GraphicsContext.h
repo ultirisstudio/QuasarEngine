@@ -85,6 +85,13 @@ namespace Quasar
         /// binding. The reason is logged as an engine error.
         [[nodiscard]] virtual Scope<UniformBuffer> CreateUniformBuffer(std::size_t size, std::uint32_t binding) = 0;
 
+        /// @brief Creates a uniform buffer written again at each frame, in parts of one size. See FrameUniformBuffer.
+        /// @param partSize The size of a part, in bytes, usually the size of the struct that fills it.
+        /// @param binding The N of `layout(std140, binding = N)` of the uniform block that the buffer fills.
+        /// @return The buffer, or nullptr if the size is 0 or if the graphics API does not allow the size or the
+        /// binding. The reason is logged as an engine error.
+        [[nodiscard]] virtual Scope<FrameUniformBuffer> CreateFrameUniformBuffer(std::size_t partSize, std::uint32_t binding) = 0;
+
         /// @brief Creates a 2D texture.
         /// @param specification The size and the settings of the texture.
         /// @param pixels Width * Height pixels of GetTexturePixelSize() bytes, from the top row, for example the
@@ -122,9 +129,12 @@ namespace Quasar
         /// @brief Returns what the engine sent to the graphics card during the last frame that EndFrame() ended.
         const RenderStatistics& GetFrameStatistics() const { return m_FrameStatistics; }
 
-        /// @brief Ends the frame of the statistics: GetFrameStatistics() gives its counts, and the next frame is
-        /// counted from zero. Application calls it after each rendered frame.
+        /// @brief Ends the frame: GetFrameStatistics() gives its counts, the next frame is counted from zero, and the
+        /// FrameUniformBuffer objects start again from their part 0. Application calls it after each rendered frame.
         void EndFrame();
+
+        /// @brief Returns the number of frames that EndFrame() ended, which identifies the current frame.
+        std::uint64_t GetFrameNumber() const { return m_FrameNumber; }
 
         /// @brief Tells the context that the state of the graphics API was changed outside of the engine, for example by
         /// direct OpenGL calls or by the ImGui backend. The context remembers what is bound and set to skip what is
@@ -171,10 +181,14 @@ namespace Quasar
         /// @brief Returns the counts of the frame being rendered, which the commands of the graphics API add to.
         RenderStatistics& GetCurrentStatistics() { return m_CurrentStatistics; }
 
+        /// @brief Called by EndFrame(), for the graphics API to end its frame.
+        virtual void OnEndFrame() = 0;
+
     private:
         Scope<Texture2D> m_WhiteTexture;
         Scope<GpuProfiler> m_Profiler;
         RenderStatistics m_CurrentStatistics;
         RenderStatistics m_FrameStatistics;
+        std::uint64_t m_FrameNumber = 0;
     };
 }

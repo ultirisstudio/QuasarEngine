@@ -81,10 +81,19 @@ namespace Quasar
 
     void OpenGLState::BindUniformBuffer(GLuint binding, GLuint buffer)
     {
-        if (Change(At(m_UniformBuffers, binding), buffer))
+        if (Change(At(m_UniformBuffers, binding), {.Buffer = buffer}))
         {
             ++m_Statistics->UniformBufferBinds;
             glBindBufferBase(GL_UNIFORM_BUFFER, binding, buffer);
+        }
+    }
+
+    void OpenGLState::BindUniformBufferRange(GLuint binding, GLuint buffer, GLintptr offset, GLsizeiptr size)
+    {
+        if (Change(At(m_UniformBuffers, binding), {.Buffer = buffer, .Offset = offset, .Size = size}))
+        {
+            ++m_Statistics->UniformBufferBinds;
+            glBindBufferRange(GL_UNIFORM_BUFFER, binding, buffer, offset, size);
         }
     }
 
@@ -201,7 +210,14 @@ namespace Quasar
 
     void OpenGLState::ForgetBuffer(GLuint buffer)
     {
-        std::ranges::for_each(m_UniformBuffers, [buffer](std::optional<GLuint>& binding) { Forget(binding, buffer); });
+        std::ranges::for_each(m_UniformBuffers,
+                              [buffer](std::optional<UniformBufferBinding>& binding)
+                              {
+                                  if (binding && binding->Buffer == buffer)
+                                  {
+                                      binding.reset();
+                                  }
+                              });
     }
 
     void OpenGLState::Invalidate()
@@ -219,14 +235,5 @@ namespace Quasar
         m_FrontFace.reset();
         m_BlendFunction.reset();
         m_BlendEquation.reset();
-    }
-
-    std::optional<GLuint>& OpenGLState::At(std::vector<std::optional<GLuint>>& bindings, GLuint index)
-    {
-        if (index >= bindings.size())
-        {
-            bindings.resize(std::size_t{index} + 1);
-        }
-        return bindings[index];
     }
 }

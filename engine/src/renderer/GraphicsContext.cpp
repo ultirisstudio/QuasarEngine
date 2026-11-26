@@ -51,6 +51,8 @@ namespace Quasar
     {
         m_FrameStatistics = m_CurrentStatistics;
         m_CurrentStatistics = {};
+        ++m_FrameNumber;
+        OnEndFrame();
     }
 
     void GraphicsContext::ReleaseResources()

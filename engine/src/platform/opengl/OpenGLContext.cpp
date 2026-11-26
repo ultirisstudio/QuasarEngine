@@ -51,6 +51,7 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         ReleaseResources();
+        m_Device.reset();
         SDL_GL_DestroyContext(m_Context);
     }
 
@@ -147,6 +148,12 @@ namespace Quasar
         return OpenGLUniformBuffer::Create(size, binding, *m_Device);
     }
 
+    Scope<FrameUniformBuffer> OpenGLContext::CreateFrameUniformBuffer(std::size_t partSize, std::uint32_t binding)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLFrameUniformBuffer::Create(partSize, binding, *m_Device);
+    }
+
     Scope<Texture2D> OpenGLContext::CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
@@ -184,6 +191,11 @@ namespace Quasar
     float OpenGLContext::GetMaxAnisotropy() const
     {
         return m_Device->GetLimits().Anisotropy;
+    }
+
+    void OpenGLContext::OnEndFrame()
+    {
+        m_Device->EndFrame();
     }
 
     void OpenGLContext::InvalidateState()
