@@ -19,6 +19,8 @@ target_sources(QuasarEditorLibrary PRIVATE
     src/Project.h
     src/ProjectPopups.cpp
     src/ProjectPopups.h
+    src/panels/ContentBrowserPanel.cpp
+    src/panels/ContentBrowserPanel.h
     src/panels/ConsolePanel.cpp
     src/panels/ConsolePanel.h
     src/panels/GamepadPanel.cpp

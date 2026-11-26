@@ -3,6 +3,7 @@
 #include "EditorText.h"
 
 #include "panels/ConsolePanel.h"
+#include "panels/ContentBrowserPanel.h"
 #include "panels/GamepadPanel.h"
 
 #include <quasar/core/Application.h>
@@ -29,6 +30,7 @@ namespace Quasar::Editor
         QUASAR_INFO("Editor started");
         m_ProjectPopups.SetParentWindow(&Application::Get().GetWindow());
         AddPanel<ConsolePanel>();
+        AddPanel<ContentBrowserPanel>();
         AddPanel<GamepadPanel>(Application::Get().GetGamepads());
     }
 

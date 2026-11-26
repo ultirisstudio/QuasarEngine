@@ -42,8 +42,6 @@ namespace Quasar::Editor
         constexpr float DetailsWidth = 300.0f;
         constexpr float NameColumnRatio = 0.35f;
         constexpr ImVec2 CardSize{150.0f, 170.0f};
-        constexpr float CardRounding = 6.0f;
-        constexpr float CardBorder = 2.0f;
         constexpr ImVec4 ErrorTextColor{0.898f, 0.325f, 0.294f, 1.0f};
 
         struct ProjectTemplate
@@ -69,48 +67,6 @@ namespace Quasar::Editor
                 ImGui::BeginPopupModal(TrLabel(NewProjectPopupKey).c_str(), nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar);
             ImGui::PopStyleVar();
             return open;
-        }
-
-        void DrawFolderIcon(ImDrawList* drawList, ImVec2 center, float width, ImU32 color)
-        {
-            const float height = width * 0.75f;
-            const ImVec2 bodyMin{center.x - (width / 2.0f), center.y - (height / 2.0f) + (height * 0.15f)};
-            const ImVec2 bodyMax{center.x + (width / 2.0f), center.y + (height / 2.0f)};
-            const ImVec2 tabMin{bodyMin.x, bodyMin.y - (height * 0.15f)};
-            const float rounding = Scaled(CardRounding);
-            const ImVec2 tabMax{bodyMin.x + (width * 0.4f), bodyMin.y + rounding};
-            drawList->AddRectFilled(tabMin, tabMax, color, rounding / 2.0f);
-            drawList->AddRectFilled(bodyMin, bodyMax, color, rounding / 2.0f);
-        }
-
-        bool DrawTemplateCard(const ProjectTemplate& projectTemplate, bool selected)
-        {
-            ImGui::PushID(projectTemplate.Name);
-            const ImVec2 cardSize = Scaled(CardSize);
-            const bool clicked = ImGui::InvisibleButton("Card", cardSize);
-            const bool hovered = ImGui::IsItemHovered();
-            ImGui::PopID();
-
-            const ImVec2 min = ImGui::GetItemRectMin();
-            const ImVec2 max = ImGui::GetItemRectMax();
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-            drawList->AddRectFilled(min, max, ImGui::GetColorU32(hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg), Scaled(CardRounding));
-            if (selected)
-            {
-                drawList->AddRect(min, max, ImGui::GetColorU32(ImGuiCol_CheckMark), Scaled(CardRounding), 0, Scaled(CardBorder));
-            }
-
-            const float labelHeight = ImGui::GetTextLineHeightWithSpacing() * 1.5f;
-            const ImVec2 iconCenter{(min.x + max.x) / 2.0f, min.y + ((cardSize.y - labelHeight) / 2.0f)};
-            DrawFolderIcon(drawList, iconCenter, cardSize.x * 0.45f, ImGui::GetColorU32(ImGuiCol_TextDisabled));
-
-            const char* name = Tr(projectTemplate.Name);
-            const ImVec2 labelSize = ImGui::CalcTextSize(name);
-            const ImVec2 labelPosition{(min.x + max.x - labelSize.x) / 2.0f, max.y - labelHeight + ((labelHeight - labelSize.y) / 2.0f)};
-            drawList->AddText(labelPosition, ImGui::GetColorU32(ImGuiCol_Text), name);
-
-            return clicked;
         }
 
         void DrawTemplateDetails(const ProjectTemplate& projectTemplate, std::string_view projectName)
@@ -251,7 +207,7 @@ namespace Quasar::Editor
 
         ImGui::TableSetColumnIndex(0);
         DrawSection(Tr("project.new.templates"));
-        DrawTemplateCard(BlankTemplate, true);
+        UI::DrawCard(BlankTemplate.Name, Tr(BlankTemplate.Name), Scaled(CardSize), UI::CardIcon::Folder, ImGui::GetColorU32(ImGuiCol_TextDisabled), true);
 
         ImGui::TableSetColumnIndex(1);
         DrawTemplateDetails(BlankTemplate, m_Name);

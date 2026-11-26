@@ -12,7 +12,13 @@ menu:
 
 panel:
   console: "Console"
+  content_browser: "Content Browser"
   gamepad: "Gamepad"
+
+content_browser:
+  empty_folder: "This folder is empty"
+  no_project: "No project is open"
+  parent_folder: "Parent folder"
 
 console:
   clear: "Clear"

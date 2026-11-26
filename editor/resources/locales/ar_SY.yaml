@@ -12,7 +12,13 @@ menu:
 
 panel:
   console: "وحدة التحكم"
+  content_browser: "مستعرض المحتوى"
   gamepad: "يد التحكم"
+
+content_browser:
+  empty_folder: "هذا المجلد فارغ"
+  no_project: "لا يوجد مشروع مفتوح"
+  parent_folder: "المجلد الأب"
 
 console:
   clear: "مسح"

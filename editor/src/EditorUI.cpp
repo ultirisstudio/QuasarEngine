@@ -4,7 +4,10 @@
 
 #include <quasar/localization/TextLayout.h>
 
+#include <imgui_internal.h>
+
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <ranges>
 #include <utility>
@@ -123,6 +126,81 @@ namespace Quasar::Editor::UI
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
+    }
+
+    void DrawFolderIcon(ImDrawList* drawList, ImVec2 center, float width, ImU32 color)
+    {
+        const float height = width * 0.75f;
+        const ImVec2 bodyMin{center.x - (width / 2.0f), center.y - (height / 2.0f) + (height * 0.15f)};
+        const ImVec2 bodyMax{center.x + (width / 2.0f), center.y + (height / 2.0f)};
+        const ImVec2 tabMin{bodyMin.x, bodyMin.y - (height * 0.15f)};
+        const float rounding = Scaled(CardRounding);
+        const ImVec2 tabMax{bodyMin.x + (width * 0.4f), bodyMin.y + rounding};
+        drawList->AddRectFilled(tabMin, tabMax, color, rounding / 2.0f);
+        drawList->AddRectFilled(bodyMin, bodyMax, color, rounding / 2.0f);
+    }
+
+    void DrawFileIcon(ImDrawList* drawList, ImVec2 center, float width, ImU32 color)
+    {
+        const float pageWidth = width * 0.7f;
+        const float height = width * 0.9f;
+        const ImVec2 min{center.x - (pageWidth / 2.0f), center.y - (height / 2.0f)};
+        const ImVec2 max{center.x + (pageWidth / 2.0f), center.y + (height / 2.0f)};
+        const float fold = pageWidth * 0.3f;
+        const std::array<ImVec2, 5> outline{ImVec2{min.x, min.y}, ImVec2{max.x - fold, min.y}, ImVec2{max.x, min.y + fold}, ImVec2{max.x, max.y},
+                                            ImVec2{min.x, max.y}};
+        drawList->AddPolyline(outline.data(), static_cast<int>(outline.size()), color, ImDrawFlags_Closed, Scaled(CardBorder));
+        drawList->AddTriangleFilled(ImVec2{max.x - fold, min.y}, ImVec2{max.x, min.y + fold}, ImVec2{max.x - fold, min.y + fold}, color);
+    }
+
+    bool DrawCard(const char* id, std::string_view label, ImVec2 size, CardIcon icon, ImU32 iconColor, bool selected)
+    {
+        ImGui::PushID(id);
+        const bool clicked = ImGui::InvisibleButton("Card", size);
+        const bool hovered = ImGui::IsItemHovered();
+        ImGui::PopID();
+
+        const ImVec2 min = ImGui::GetItemRectMin();
+        const ImVec2 max = ImGui::GetItemRectMax();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        drawList->AddRectFilled(min, max, ImGui::GetColorU32(hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg), Scaled(CardRounding));
+        if (selected)
+        {
+            drawList->AddRect(min, max, ImGui::GetColorU32(ImGuiCol_CheckMark), Scaled(CardRounding), 0, Scaled(CardBorder));
+        }
+
+        const float labelHeight = ImGui::GetTextLineHeightWithSpacing() * 1.5f;
+        const ImVec2 iconCenter{(min.x + max.x) / 2.0f, min.y + ((size.y - labelHeight) / 2.0f)};
+        switch (icon)
+        {
+            case CardIcon::Folder:
+                DrawFolderIcon(drawList, iconCenter, size.x * 0.45f, iconColor);
+                break;
+            case CardIcon::File:
+                DrawFileIcon(drawList, iconCenter, size.x * 0.45f, iconColor);
+                break;
+        }
+
+        const char* begin = label.data();
+        const char* end = label.data() + label.size();
+        const ImVec2 labelSize = ImGui::CalcTextSize(begin, end);
+        const float padding = ImGui::GetStyle().FramePadding.x;
+        const float labelY = max.y - labelHeight + ((labelHeight - labelSize.y) / 2.0f);
+        if (labelSize.x <= size.x - (padding * 2.0f))
+        {
+            drawList->AddText(ImVec2{(min.x + max.x - labelSize.x) / 2.0f, labelY}, ImGui::GetColorU32(ImGuiCol_Text), begin, end);
+            return clicked;
+        }
+
+        ImGui::RenderTextEllipsis(drawList, ImVec2{min.x + padding, labelY}, ImVec2{max.x - padding, labelY + labelSize.y}, max.x - padding, begin, end,
+                                  &labelSize);
+        if (ImGui::BeginItemTooltip())
+        {
+            ImGui::TextUnformatted(begin, end);
+            ImGui::EndTooltip();
+        }
+        return clicked;
     }
 
     void AlignButtonsRight(int count, float buttonWidth)

@@ -12,8 +12,14 @@ menu:
 
 panel:
   console: "Console"
+  content_browser: "Explorateur de contenu"
   gamepad: "Manette"
 
+content_browser:
+  empty_folder: "Ce dossier est vide"
+  no_project: "Aucun projet ouvert"
+  parent_folder: "Dossier parent"
+  
 console:
   clear: "Effacer"
   copy: "Copier"
