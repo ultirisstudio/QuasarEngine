@@ -2,6 +2,7 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Framebuffer.h>
+#include <quasar/renderer/RenderStatistics.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -15,7 +16,7 @@ namespace Quasar
     class OpenGLFramebuffer final : public Framebuffer
     {
     public:
-        static Scope<OpenGLFramebuffer> Create(const FramebufferSpecification& specification);
+        static Scope<OpenGLFramebuffer> Create(const FramebufferSpecification& specification, RenderStatistics& statistics);
 
         ~OpenGLFramebuffer() override;
 
@@ -39,7 +40,7 @@ namespace Quasar
         ImTextureID GetImGuiTexture(std::uint32_t attachment) const override;
 
     private:
-        explicit OpenGLFramebuffer(const FramebufferSpecification& specification);
+        OpenGLFramebuffer(const FramebufferSpecification& specification, RenderStatistics& statistics);
 
         bool CreateTargets();
         void DestroyTargets();
@@ -49,6 +50,7 @@ namespace Quasar
         std::optional<std::size_t> FindColor(std::uint32_t attachment, bool integer, const char* action) const;
         std::uint32_t GetReadableTexture(std::size_t index) const;
 
+        RenderStatistics* m_Statistics;
         std::vector<FramebufferFormat> m_ColorFormats;
         std::optional<FramebufferFormat> m_DepthFormat;
 

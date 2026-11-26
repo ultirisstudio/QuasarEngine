@@ -1,6 +1,7 @@
 #pragma once
 
 #include <quasar/core/Base.h>
+#include <quasar/renderer/RenderStatistics.h>
 #include <quasar/renderer/Texture.h>
 
 #include <cstddef>
@@ -12,7 +13,8 @@ namespace Quasar
     class OpenGLTexture2D final : public Texture2D
     {
     public:
-        static Scope<OpenGLTexture2D> Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy);
+        static Scope<OpenGLTexture2D> Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy,
+                                             RenderStatistics& statistics);
 
         ~OpenGLTexture2D() override;
 
@@ -25,11 +27,12 @@ namespace Quasar
         ImTextureID GetImGuiTexture() const override;
 
     private:
-        OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy);
+        OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy, RenderStatistics& statistics);
 
         void Write(std::span<const std::byte> pixels) override;
         void Clear();
 
+        RenderStatistics* m_Statistics;
         std::uint32_t m_Texture = 0;
         std::uint32_t m_Levels = 1;
         std::uint32_t m_SlotCount = 0;

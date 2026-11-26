@@ -19,6 +19,7 @@
 #include <quasar/renderer/PipelineLibrary.h>
 #include <quasar/renderer/PostProcessing.h>
 #include <quasar/renderer/Primitives.h>
+#include <quasar/renderer/RenderStatistics.h>
 #include <quasar/scene/SceneRenderer.h>
 #include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/DirectionalLightComponent.h>
@@ -36,6 +37,7 @@
 #include <array>
 #include <bit>
 #include <cctype>
+#include <cstdint>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -90,6 +92,37 @@ namespace Quasar::Sandbox
             ImGui::TableSetColumnIndex(1);
             ImGui::TextUnformatted(fmt::format("{:.3f} ms", profiler.GetFrameMilliseconds()).c_str());
             ImGui::EndTable();
+        }
+
+        void DrawFrameStatistics(const RenderStatistics& statistics)
+        {
+            if (!ImGui::TreeNodeEx("Frame statistics", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                return;
+            }
+            constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
+            if (ImGui::BeginTable("FrameStatistics", 2, flags))
+            {
+                const auto row = [](const char* name, std::uint64_t value)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted(name);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextUnformatted(fmt::format("{}", value).c_str());
+                };
+                row("Draws", statistics.Draws);
+                row("Triangles", statistics.Triangles);
+                row("Pipeline binds", statistics.PipelineBinds);
+                row("Framebuffer binds", statistics.FramebufferBinds);
+                row("Texture binds", statistics.TextureBinds);
+                row("Uniform buffer binds", statistics.UniformBufferBinds);
+                row("Uniform changes", statistics.UniformChanges);
+                row("Uploads", statistics.Uploads);
+                row("Uploaded bytes", statistics.UploadedBytes);
+                ImGui::EndTable();
+            }
+            ImGui::TreePop();
         }
 
         std::string KeyLabel(Key key)
@@ -321,6 +354,7 @@ namespace Quasar::Sandbox
             if (GraphicsContext* context = Application::Get().GetWindow().GetGraphicsContext(); context != nullptr)
             {
                 DrawGpuTimings(context->GetProfiler());
+                DrawFrameStatistics(context->GetFrameStatistics());
             }
 
             ImGui::SeparatorText("Scene");

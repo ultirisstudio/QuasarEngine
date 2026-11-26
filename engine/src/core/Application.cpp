@@ -182,6 +182,10 @@ namespace Quasar
         {
             profiler->EndFrame();
         }
+        if (context != nullptr)
+        {
+            context->EndFrame();
+        }
     }
 
     void Application::OnEvent(Event& event)

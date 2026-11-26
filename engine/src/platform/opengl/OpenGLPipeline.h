@@ -2,13 +2,14 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Pipeline.h>
+#include <quasar/renderer/RenderStatistics.h>
 
 namespace Quasar
 {
     class OpenGLPipeline final : public Pipeline
     {
     public:
-        static Scope<OpenGLPipeline> Create(const PipelineSpecification& specification);
+        static Scope<OpenGLPipeline> Create(const PipelineSpecification& specification, RenderStatistics& statistics);
 
         ~OpenGLPipeline() override = default;
 
@@ -20,6 +21,8 @@ namespace Quasar
         void Bind() override;
 
     private:
-        explicit OpenGLPipeline(const PipelineSpecification& specification);
+        OpenGLPipeline(const PipelineSpecification& specification, RenderStatistics& statistics);
+
+        RenderStatistics* m_Statistics;
     };
 }

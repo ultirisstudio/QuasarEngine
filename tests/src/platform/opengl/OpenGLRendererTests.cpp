@@ -73,6 +73,34 @@ void main()
 }
 )";
 
+    constexpr std::string_view NormalMatrixShader = R"(
+#type vertex
+#version 450 core
+
+void main()
+{
+    const vec2 positions[3] = vec2[](vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
+    gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
+}
+
+#type fragment
+#version 450 core
+layout(std140, binding = 2) uniform Object
+{
+    mat4 u_Model;
+    mat3 u_NormalMatrix;
+};
+layout(location = 0) out int o_Value;
+
+void main()
+{
+    const mat3 expected = transpose(inverse(mat3(u_Model)));
+    const mat3 difference = u_NormalMatrix - expected;
+    const float largest = max(max(length(difference[0]), length(difference[1])), length(difference[2]));
+    o_Value = largest < 1e-4 ? 1 : 0;
+}
+)";
+
     constexpr glm::vec4 Black{0.0f, 0.0f, 0.0f, 1.0f};
     constexpr Color BlackPixel{0, 0, 0, 255};
     constexpr Color RedPixel{255, 0, 0, 255};
@@ -258,6 +286,31 @@ TEST_CASE("The shaders read the camera and the object from the blocks of the ren
 
     CHECK(values->ReadInteger(0, 0, 0) == 11753);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("The object block gives the matrix that turns the normals of the mesh into world space, whatever the scale")
+{
+    const TestHelpers::ScopedLog log;
+    Scene scene;
+    const std::optional<Quasar::ShaderSpecification> specification = Quasar::ShaderSpecification::Parse("NormalMatrix", NormalMatrixShader);
+    REQUIRE(specification.has_value());
+    const Quasar::Scope<Quasar::Shader> shader = scene.GetContext().CreateShader(*specification);
+    REQUIRE(shader != nullptr);
+    const Quasar::Scope<Quasar::Pipeline> pipeline = scene.GetContext().CreatePipeline({.Shader = shader.get(), .DepthTest = false});
+    const Quasar::Scope<Quasar::Framebuffer> values =
+        scene.GetContext().CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {Quasar::FramebufferFormat::RedInteger}});
+    REQUIRE(pipeline != nullptr);
+    REQUIRE(values != nullptr);
+
+    const glm::mat4 turned = glm::rotate(glm::translate(glm::mat4(1.0f), {1.0f, 2.0f, 3.0f}), glm::radians(30.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+    for (const glm::mat4& transform : {glm::mat4(1.0f), turned, glm::scale(turned, {3.0f, 0.5f, 2.0f}), glm::scale(turned, {-1.0f, 1.0f, 4.0f})})
+    {
+        values->ClearInteger(0, -1);
+        scene.GetRenderer().BeginScene(scene.GetCamera(), values.get());
+        scene.GetRenderer().Submit(scene.GetQuad(), *pipeline, transform);
+        scene.GetRenderer().EndScene();
+        CHECK(values->ReadInteger(0, 0, 0) == 1);
+    }
 }
 
 TEST_CASE("Inside a scene, the renderer binds a pipeline or a material only when it changes, and each scene binds them again")

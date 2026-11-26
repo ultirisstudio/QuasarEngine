@@ -37,6 +37,7 @@ namespace Quasar
     /// layout(std140, binding = 2) uniform Object
     /// {
     ///     mat4 u_Model;
+    ///     mat3 u_NormalMatrix; // transpose(inverse(mat3(u_Model))), which turns the normals into world space.
     /// };
     /// struct PointLight
     /// {

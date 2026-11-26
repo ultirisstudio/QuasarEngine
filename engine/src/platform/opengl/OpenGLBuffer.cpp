@@ -20,8 +20,10 @@ namespace Quasar
             return buffer;
         }
 
-        void WriteStorage(GLuint buffer, std::size_t offset, const void* data, std::size_t size)
+        void WriteStorage(RenderStatistics& statistics, GLuint buffer, std::size_t offset, const void* data, std::size_t size)
         {
+            ++statistics.Uploads;
+            statistics.UploadedBytes += size;
             glNamedBufferSubData(buffer, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size), data);
         }
 
@@ -33,8 +35,8 @@ namespace Quasar
         }
     }
 
-    OpenGLVertexBuffer::OpenGLVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout)
-        : VertexBuffer(vertices.size(), layout), m_Buffer(CreateStorage(vertices.data(), vertices.size()))
+    OpenGLVertexBuffer::OpenGLVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout, RenderStatistics& statistics)
+        : VertexBuffer(vertices.size(), layout), m_Statistics(&statistics), m_Buffer(CreateStorage(vertices.data(), vertices.size()))
     {
     }
 
@@ -43,22 +45,22 @@ namespace Quasar
         glDeleteBuffers(1, &m_Buffer);
     }
 
-    Scope<OpenGLVertexBuffer> OpenGLVertexBuffer::Create(std::span<const std::byte> vertices, const VertexLayout& layout)
+    Scope<OpenGLVertexBuffer> OpenGLVertexBuffer::Create(std::span<const std::byte> vertices, const VertexLayout& layout, RenderStatistics& statistics)
     {
         if (!IsValid(vertices.size(), layout))
         {
             return nullptr;
         }
-        return Scope<OpenGLVertexBuffer>(new OpenGLVertexBuffer(vertices, layout));
+        return Scope<OpenGLVertexBuffer>(new OpenGLVertexBuffer(vertices, layout, statistics));
     }
 
     void OpenGLVertexBuffer::Write(std::span<const std::byte> data, std::size_t offset)
     {
-        WriteStorage(m_Buffer, offset, data.data(), data.size());
+        WriteStorage(*m_Statistics, m_Buffer, offset, data.data(), data.size());
     }
 
-    OpenGLIndexBuffer::OpenGLIndexBuffer(std::span<const std::uint32_t> indices)
-        : IndexBuffer(static_cast<std::uint32_t>(indices.size())), m_Buffer(CreateStorage(indices.data(), indices.size_bytes()))
+    OpenGLIndexBuffer::OpenGLIndexBuffer(std::span<const std::uint32_t> indices, RenderStatistics& statistics)
+        : IndexBuffer(static_cast<std::uint32_t>(indices.size())), m_Statistics(&statistics), m_Buffer(CreateStorage(indices.data(), indices.size_bytes()))
     {
     }
 
@@ -67,21 +69,22 @@ namespace Quasar
         glDeleteBuffers(1, &m_Buffer);
     }
 
-    Scope<OpenGLIndexBuffer> OpenGLIndexBuffer::Create(std::span<const std::uint32_t> indices)
+    Scope<OpenGLIndexBuffer> OpenGLIndexBuffer::Create(std::span<const std::uint32_t> indices, RenderStatistics& statistics)
     {
         if (!IsValid(indices.size()))
         {
             return nullptr;
         }
-        return Scope<OpenGLIndexBuffer>(new OpenGLIndexBuffer(indices));
+        return Scope<OpenGLIndexBuffer>(new OpenGLIndexBuffer(indices, statistics));
     }
 
     void OpenGLIndexBuffer::Write(std::span<const std::uint32_t> indices, std::size_t first)
     {
-        WriteStorage(m_Buffer, first * sizeof(std::uint32_t), indices.data(), indices.size_bytes());
+        WriteStorage(*m_Statistics, m_Buffer, first * sizeof(std::uint32_t), indices.data(), indices.size_bytes());
     }
 
-    OpenGLUniformBuffer::OpenGLUniformBuffer(std::size_t size, std::uint32_t binding) : UniformBuffer(size, binding), m_Buffer(CreateStorage(nullptr, size))
+    OpenGLUniformBuffer::OpenGLUniformBuffer(std::size_t size, std::uint32_t binding, RenderStatistics& statistics)
+        : UniformBuffer(size, binding), m_Statistics(&statistics), m_Buffer(CreateStorage(nullptr, size))
     {
         glClearNamedBufferData(m_Buffer, GL_R8, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     }
@@ -91,7 +94,7 @@ namespace Quasar
         glDeleteBuffers(1, &m_Buffer);
     }
 
-    Scope<OpenGLUniformBuffer> OpenGLUniformBuffer::Create(std::size_t size, std::uint32_t binding)
+    Scope<OpenGLUniformBuffer> OpenGLUniformBuffer::Create(std::size_t size, std::uint32_t binding, RenderStatistics& statistics)
     {
         if (!IsValid(size))
         {
@@ -110,16 +113,17 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot create a uniform buffer for the binding {}: OpenGL has the bindings 0 to {}", binding, bindingCount - 1);
             return nullptr;
         }
-        return Scope<OpenGLUniformBuffer>(new OpenGLUniformBuffer(size, binding));
+        return Scope<OpenGLUniformBuffer>(new OpenGLUniformBuffer(size, binding, statistics));
     }
 
     void OpenGLUniformBuffer::Bind()
     {
+        ++m_Statistics->UniformBufferBinds;
         glBindBufferBase(GL_UNIFORM_BUFFER, GetBinding(), m_Buffer);
     }
 
     void OpenGLUniformBuffer::Write(std::span<const std::byte> data, std::size_t offset)
     {
-        WriteStorage(m_Buffer, offset, data.data(), data.size());
+        WriteStorage(*m_Statistics, m_Buffer, offset, data.data(), data.size());
     }
 }

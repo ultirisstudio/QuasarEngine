@@ -141,7 +141,8 @@ namespace Quasar
         glDepthMask(depthWrite);
     }
 
-    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& specification) : Framebuffer(specification)
+    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& specification, RenderStatistics& statistics)
+        : Framebuffer(specification), m_Statistics(&statistics)
     {
         for (const FramebufferFormat format : specification.Attachments)
         {
@@ -161,14 +162,14 @@ namespace Quasar
         DestroyTargets();
     }
 
-    Scope<OpenGLFramebuffer> OpenGLFramebuffer::Create(const FramebufferSpecification& specification)
+    Scope<OpenGLFramebuffer> OpenGLFramebuffer::Create(const FramebufferSpecification& specification, RenderStatistics& statistics)
     {
         if (!IsValid(specification))
         {
             return nullptr;
         }
 
-        Scope<OpenGLFramebuffer> framebuffer(new OpenGLFramebuffer(specification));
+        Scope<OpenGLFramebuffer> framebuffer(new OpenGLFramebuffer(specification, statistics));
         const bool integer = std::ranges::find(framebuffer->m_ColorFormats, FramebufferFormat::RedInteger) != framebuffer->m_ColorFormats.end();
         if (!FitsTheLimits(specification, framebuffer->m_ColorFormats.size(), integer) || !framebuffer->CreateTargets())
         {
@@ -179,12 +180,14 @@ namespace Quasar
 
     void OpenGLFramebuffer::Bind()
     {
+        ++m_Statistics->FramebufferBinds;
         glBindFramebuffer(GL_FRAMEBUFFER, m_Framebuffer);
         glViewport(0, 0, static_cast<GLsizei>(GetSpecification().Width), static_cast<GLsizei>(GetSpecification().Height));
     }
 
     void OpenGLFramebuffer::Unbind()
     {
+        ++m_Statistics->FramebufferBinds;
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         Resolve();
     }
@@ -256,6 +259,7 @@ namespace Quasar
     {
         if (const std::optional<std::size_t> index = FindColor(attachment, false, "bind"); index)
         {
+            ++m_Statistics->TextureBinds;
             glBindTextureUnit(slot, GetReadableTexture(*index));
         }
     }
@@ -264,6 +268,7 @@ namespace Quasar
     {
         if (HasDepthTexture())
         {
+            ++m_Statistics->TextureBinds;
             glBindTextureUnit(slot, m_DepthTexture);
         }
     }
@@ -272,6 +277,7 @@ namespace Quasar
     {
         if (HasDepthTexture())
         {
+            ++m_Statistics->TextureBinds;
             glBindTextureUnit(slot, m_DepthValues);
         }
     }

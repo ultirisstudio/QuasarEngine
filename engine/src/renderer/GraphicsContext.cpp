@@ -47,6 +47,12 @@ namespace Quasar
         return *m_Profiler;
     }
 
+    void GraphicsContext::EndFrame()
+    {
+        m_FrameStatistics = m_CurrentStatistics;
+        m_CurrentStatistics = {};
+    }
+
     void GraphicsContext::ReleaseResources()
     {
         m_WhiteTexture.reset();
