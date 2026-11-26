@@ -37,6 +37,8 @@
 #include <array>
 #include <bit>
 #include <cctype>
+#include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <tuple>
 #include <utility>
@@ -53,6 +55,9 @@ namespace Quasar::Sandbox
         constexpr float StickLookSpeed = 1500.0f;
         constexpr float BulbBrightness = 3.0f;
         constexpr GamepadId Gamepad{0};
+        constexpr std::array<std::size_t, 5> StressCounts{0, 1000, 5000, 10000, 20000};
+        constexpr std::array<const char*, 5> StressLabels{"0", "1 000", "5 000", "10 000", "20 000"};
+        constexpr float StressSpacing = 2.0f;
 
         struct SpinComponent
         {
@@ -370,6 +375,8 @@ namespace Quasar::Sandbox
             }
             ImGui::TextUnformatted(fmt::format("Yaw {:.0f}, pitch {:.0f}", m_CameraController.GetYaw(), m_CameraController.GetPitch()).c_str());
 
+            DrawStressTest();
+
             ImGui::SeparatorText("Sun");
             const bool yawChanged = ImGui::SliderFloat("Yaw", &m_SunAngles.x, -180.0f, 180.0f, "%.0f");
             const bool pitchChanged = ImGui::SliderFloat("Pitch", &m_SunAngles.y, -90.0f, 0.0f, "%.0f");
@@ -467,6 +474,7 @@ namespace Quasar::Sandbox
             return false;
         }
         groundMaterial->SetFloat("Specular", 0.1f);
+        m_StressMaterials = {crateMaterial, greenBall};
 
         const glm::quat flat = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         AddObject("Ground", *m_Ground, *groundMaterial, {.Rotation = flat, .Scale = {GroundSize, GroundSize, 1.0f}});
@@ -543,6 +551,44 @@ namespace Quasar::Sandbox
             entity.Add<SpinComponent>(SpinComponent{.Speed = spin});
         }
         return entity;
+    }
+
+    void SandboxLayer::DrawStressTest()
+    {
+        ImGui::SeparatorText("Stress test");
+        const bool countChanged = ImGui::Combo("Objects", &m_StressCount, StressLabels.data(), static_cast<int>(StressLabels.size()));
+        const bool spinChanged = ImGui::Checkbox("Spin the objects", &m_StressSpin);
+        if (countChanged || spinChanged)
+        {
+            SetStressObjects(StressCounts.at(static_cast<std::size_t>(m_StressCount)), m_StressSpin);
+        }
+    }
+
+    void SandboxLayer::SetStressObjects(std::size_t count, bool spin)
+    {
+        for (const Entity entity : m_StressObjects)
+        {
+            m_Scene.DestroyEntity(entity);
+        }
+        m_StressObjects.clear();
+        if (count == 0 || m_StressMaterials[0] == nullptr || m_StressMaterials[1] == nullptr)
+        {
+            return;
+        }
+
+        const auto side = static_cast<std::size_t>(std::ceil(std::sqrt(static_cast<float>(count))));
+        const float start = -0.5f * StressSpacing * static_cast<float>(side - 1);
+        m_StressObjects.reserve(count);
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const bool cube = index % 2 == 0;
+            const std::size_t row = index / side;
+            const std::size_t column = index % side;
+            const glm::vec3 position(start + (StressSpacing * static_cast<float>(column)), 0.5f, start + (StressSpacing * static_cast<float>(row)));
+            const float speed = spin ? 0.5f + (0.25f * static_cast<float>(index % 5)) : 0.0f;
+            m_StressObjects.push_back(AddObject("Stress object", cube ? *m_Cube : *m_Sphere, *m_StressMaterials.at(cube ? 0 : 1),
+                                                {.Position = position, .Scale = glm::vec3(0.5f)}, speed));
+        }
     }
 
     void SandboxLayer::UpdateSun()

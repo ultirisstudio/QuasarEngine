@@ -14,6 +14,8 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
+#include <array>
+#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -46,6 +48,8 @@ namespace Quasar::Sandbox
         Texture2D* AddTexture(GraphicsContext& context, const std::filesystem::path& file);
         Material* AddMaterial(const PipelineLibrary& pipelines, std::string_view pipeline, Texture2D* texture, glm::vec4 color);
         void DrawScenePanel();
+        void DrawStressTest();
+        void SetStressObjects(std::size_t count, bool spin);
         void UpdateSun();
         void SetLooking(bool looking);
 
@@ -58,6 +62,10 @@ namespace Quasar::Sandbox
         Scope<Mesh> m_Ground;
         std::vector<Scope<Texture2D>> m_Textures;
         std::vector<Scope<Material>> m_Materials;
+        std::array<Material*, 2> m_StressMaterials{};
+        std::vector<Entity> m_StressObjects;
+        int m_StressCount = 0;
+        bool m_StressSpin = false;
         glm::vec2 m_SunAngles{30.0f, -50.0f};
         float m_FrameTime = 0.0f;
         bool m_Ready = false;
