@@ -8,10 +8,12 @@
 
 namespace Quasar
 {
+    class OpenGLState;
+
     class OpenGLVertexArray final : public VertexArray
     {
     public:
-        static Scope<OpenGLVertexArray> Create();
+        static Scope<OpenGLVertexArray> Create(OpenGLState& state);
 
         ~OpenGLVertexArray() override;
 
@@ -23,11 +25,12 @@ namespace Quasar
         void Bind() const;
 
     private:
-        explicit OpenGLVertexArray(std::uint32_t vertexArray);
+        OpenGLVertexArray(std::uint32_t vertexArray, OpenGLState& state);
 
         void AttachVertexBuffer(const VertexBuffer& buffer, std::uint32_t index) override;
         void AttachIndexBuffer(const IndexBuffer& buffer) override;
 
         std::uint32_t m_VertexArray = 0;
+        OpenGLState* m_State;
     };
 }

@@ -4,6 +4,7 @@
 #include <platform/opengl/OpenGLFramebuffer.h>
 #include <platform/opengl/OpenGLPipeline.h>
 #include <platform/opengl/OpenGLShader.h>
+#include <platform/opengl/OpenGLState.h>
 #include <platform/opengl/OpenGLTexture.h>
 #include <platform/opengl/OpenGLTimestampQuery.h>
 #include <platform/opengl/OpenGLVertexArray.h>
@@ -81,7 +82,10 @@ namespace Quasar
         }
     }
 
-    OpenGLContext::OpenGLContext(SDL_Window* window, SDL_GLContextState* context) : m_Window(window), m_Context(context) {}
+    OpenGLContext::OpenGLContext(SDL_Window* window, SDL_GLContextState* context)
+        : m_Window(window), m_Context(context), m_State(CreateScope<OpenGLState>(GetCurrentStatistics()))
+    {
+    }
 
     OpenGLContext::~OpenGLContext()
     {
@@ -152,48 +156,48 @@ namespace Quasar
     Scope<Framebuffer> OpenGLContext::CreateFramebuffer(const FramebufferSpecification& specification)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLFramebuffer::Create(specification, GetCurrentStatistics());
+        return OpenGLFramebuffer::Create(specification, *m_State);
     }
 
     Scope<Shader> OpenGLContext::CreateShader(const ShaderSpecification& specification)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLShader::Create(specification, GetCurrentStatistics());
+        return OpenGLShader::Create(specification, *m_State);
     }
 
     Scope<Pipeline> OpenGLContext::CreatePipeline(const PipelineSpecification& specification)
     {
-        return OpenGLPipeline::Create(specification, GetCurrentStatistics());
+        return OpenGLPipeline::Create(specification, *m_State);
     }
 
     Scope<VertexBuffer> OpenGLContext::CreateVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLVertexBuffer::Create(vertices, layout, GetCurrentStatistics());
+        return OpenGLVertexBuffer::Create(vertices, layout, *m_State);
     }
 
     Scope<IndexBuffer> OpenGLContext::CreateIndexBuffer(std::span<const std::uint32_t> indices)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLIndexBuffer::Create(indices, GetCurrentStatistics());
+        return OpenGLIndexBuffer::Create(indices, *m_State);
     }
 
     Scope<UniformBuffer> OpenGLContext::CreateUniformBuffer(std::size_t size, std::uint32_t binding)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLUniformBuffer::Create(size, binding, GetCurrentStatistics());
+        return OpenGLUniformBuffer::Create(size, binding, *m_State);
     }
 
     Scope<Texture2D> OpenGLContext::CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLTexture2D::Create(specification, pixels, m_MaxAnisotropy, GetCurrentStatistics());
+        return OpenGLTexture2D::Create(specification, pixels, m_MaxAnisotropy, *m_State);
     }
 
     Scope<VertexArray> OpenGLContext::CreateVertexArray()
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLVertexArray::Create();
+        return OpenGLVertexArray::Create(*m_State);
     }
 
     Scope<TimestampQuery> OpenGLContext::CreateTimestampQuery()
@@ -208,9 +212,13 @@ namespace Quasar
         int width = 0;
         int height = 0;
         SDL_GetWindowSizeInPixels(m_Window, &width, &height);
-        ++GetCurrentStatistics().FramebufferBinds;
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, width, height);
+        m_State->BindFramebuffer(0);
+        m_State->SetViewport(width, height);
+    }
+
+    void OpenGLContext::InvalidateState()
+    {
+        m_State->Invalidate();
     }
 
     glm::uvec2 OpenGLContext::GetWindowSize() const
@@ -225,7 +233,7 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         glClearNamedFramebufferfv(0, GL_COLOR, 0, glm::value_ptr(color));
-        ClearOpenGLDepthStencil(0, depth, stencil);
+        ClearOpenGLDepthStencil(*m_State, 0, depth, stencil);
     }
 
     void OpenGLContext::Draw(const VertexArray& vertexArray, std::uint32_t vertexCount)

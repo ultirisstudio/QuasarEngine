@@ -1,5 +1,7 @@
 #include <platform/opengl/OpenGLFramebuffer.h>
 
+#include <platform/opengl/OpenGLState.h>
+
 #include <quasar/log/Log.h>
 
 #include <glad/gl.h>
@@ -131,18 +133,16 @@ namespace Quasar
         }
     }
 
-    void ClearOpenGLDepthStencil(std::uint32_t framebuffer, float depth, std::uint8_t stencil)
+    void ClearOpenGLDepthStencil(OpenGLState& state, std::uint32_t framebuffer, float depth, std::uint8_t stencil)
     {
         // A pipeline that does not write the depth also stops the depth from being cleared
-        GLboolean depthWrite = GL_TRUE;
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWrite);
-        glDepthMask(GL_TRUE);
+        const bool depthWrite = state.IsDepthWriteEnabled();
+        state.SetDepthWrite(true);
         glClearNamedFramebufferfi(framebuffer, GL_DEPTH_STENCIL, 0, depth, static_cast<GLint>(stencil));
-        glDepthMask(depthWrite);
+        state.SetDepthWrite(depthWrite);
     }
 
-    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& specification, RenderStatistics& statistics)
-        : Framebuffer(specification), m_Statistics(&statistics)
+    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& specification, OpenGLState& state) : Framebuffer(specification), m_State(&state)
     {
         for (const FramebufferFormat format : specification.Attachments)
         {
@@ -162,14 +162,14 @@ namespace Quasar
         DestroyTargets();
     }
 
-    Scope<OpenGLFramebuffer> OpenGLFramebuffer::Create(const FramebufferSpecification& specification, RenderStatistics& statistics)
+    Scope<OpenGLFramebuffer> OpenGLFramebuffer::Create(const FramebufferSpecification& specification, OpenGLState& state)
     {
         if (!IsValid(specification))
         {
             return nullptr;
         }
 
-        Scope<OpenGLFramebuffer> framebuffer(new OpenGLFramebuffer(specification, statistics));
+        Scope<OpenGLFramebuffer> framebuffer(new OpenGLFramebuffer(specification, state));
         const bool integer = std::ranges::find(framebuffer->m_ColorFormats, FramebufferFormat::RedInteger) != framebuffer->m_ColorFormats.end();
         if (!FitsTheLimits(specification, framebuffer->m_ColorFormats.size(), integer) || !framebuffer->CreateTargets())
         {
@@ -180,15 +180,13 @@ namespace Quasar
 
     void OpenGLFramebuffer::Bind()
     {
-        ++m_Statistics->FramebufferBinds;
-        glBindFramebuffer(GL_FRAMEBUFFER, m_Framebuffer);
-        glViewport(0, 0, static_cast<GLsizei>(GetSpecification().Width), static_cast<GLsizei>(GetSpecification().Height));
+        m_State->BindFramebuffer(m_Framebuffer);
+        m_State->SetViewport(static_cast<GLsizei>(GetSpecification().Width), static_cast<GLsizei>(GetSpecification().Height));
     }
 
     void OpenGLFramebuffer::Unbind()
     {
-        ++m_Statistics->FramebufferBinds;
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        m_State->BindFramebuffer(0);
         Resolve();
     }
 
@@ -236,7 +234,7 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot fill the depth of a framebuffer that has no depth attachment");
             return;
         }
-        ClearOpenGLDepthStencil(m_Framebuffer, depth, stencil);
+        ClearOpenGLDepthStencil(*m_State, m_Framebuffer, depth, stencil);
     }
 
     std::optional<int> OpenGLFramebuffer::ReadInteger(std::uint32_t attachment, std::uint32_t x, std::uint32_t y)
@@ -259,8 +257,7 @@ namespace Quasar
     {
         if (const std::optional<std::size_t> index = FindColor(attachment, false, "bind"); index)
         {
-            ++m_Statistics->TextureBinds;
-            glBindTextureUnit(slot, GetReadableTexture(*index));
+            m_State->BindTexture(slot, GetReadableTexture(*index));
         }
     }
 
@@ -268,8 +265,7 @@ namespace Quasar
     {
         if (HasDepthTexture())
         {
-            ++m_Statistics->TextureBinds;
-            glBindTextureUnit(slot, m_DepthTexture);
+            m_State->BindTexture(slot, m_DepthTexture);
         }
     }
 
@@ -277,8 +273,7 @@ namespace Quasar
     {
         if (HasDepthTexture())
         {
-            ++m_Statistics->TextureBinds;
-            glBindTextureUnit(slot, m_DepthValues);
+            m_State->BindTexture(slot, m_DepthValues);
         }
     }
 
@@ -372,6 +367,19 @@ namespace Quasar
 
     void OpenGLFramebuffer::DestroyTargets()
     {
+        m_State->ForgetFramebuffer(m_Framebuffer);
+        for (const GLuint texture : {m_DepthValues, m_DepthTexture})
+        {
+            m_State->ForgetTexture(texture);
+        }
+        for (const GLuint texture : m_ColorTextures)
+        {
+            m_State->ForgetTexture(texture);
+        }
+        for (const GLuint texture : m_ResolvedTextures)
+        {
+            m_State->ForgetTexture(texture);
+        }
         glDeleteFramebuffers(1, &m_Framebuffer);
         glDeleteFramebuffers(1, &m_ResolveFramebuffer);
         glDeleteRenderbuffers(1, &m_DepthStencil);
@@ -397,8 +405,8 @@ namespace Quasar
         }
 
         // The scissor test also limits the copy, so it is turned off to resolve the whole image
-        const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
-        glDisable(GL_SCISSOR_TEST);
+        const bool scissor = m_State->IsEnabled(OpenGLState::Capability::ScissorTest);
+        m_State->SetEnabled(OpenGLState::Capability::ScissorTest, false);
 
         const auto width = static_cast<GLint>(GetSpecification().Width);
         const auto height = static_cast<GLint>(GetSpecification().Height);
@@ -409,10 +417,7 @@ namespace Quasar
             glBlitNamedFramebuffer(m_Framebuffer, m_ResolveFramebuffer, 0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
 
-        if (scissor == GL_TRUE)
-        {
-            glEnable(GL_SCISSOR_TEST);
-        }
+        m_State->SetEnabled(OpenGLState::Capability::ScissorTest, scissor);
     }
 
     bool OpenGLFramebuffer::IsMultisampled() const

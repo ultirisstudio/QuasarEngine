@@ -2,7 +2,6 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Buffer.h>
-#include <quasar/renderer/RenderStatistics.h>
 #include <quasar/renderer/VertexLayout.h>
 
 #include <cstddef>
@@ -11,10 +10,12 @@
 
 namespace Quasar
 {
+    class OpenGLState;
+
     class OpenGLVertexBuffer final : public VertexBuffer
     {
     public:
-        static Scope<OpenGLVertexBuffer> Create(std::span<const std::byte> vertices, const VertexLayout& layout, RenderStatistics& statistics);
+        static Scope<OpenGLVertexBuffer> Create(std::span<const std::byte> vertices, const VertexLayout& layout, OpenGLState& state);
 
         ~OpenGLVertexBuffer() override;
 
@@ -26,18 +27,18 @@ namespace Quasar
         std::uint32_t GetId() const { return m_Buffer; }
 
     private:
-        OpenGLVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout, RenderStatistics& statistics);
+        OpenGLVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout, OpenGLState& state);
 
         void Write(std::span<const std::byte> data, std::size_t offset) override;
 
-        RenderStatistics* m_Statistics;
+        OpenGLState* m_State;
         std::uint32_t m_Buffer = 0;
     };
 
     class OpenGLIndexBuffer final : public IndexBuffer
     {
     public:
-        static Scope<OpenGLIndexBuffer> Create(std::span<const std::uint32_t> indices, RenderStatistics& statistics);
+        static Scope<OpenGLIndexBuffer> Create(std::span<const std::uint32_t> indices, OpenGLState& state);
 
         ~OpenGLIndexBuffer() override;
 
@@ -49,18 +50,18 @@ namespace Quasar
         std::uint32_t GetId() const { return m_Buffer; }
 
     private:
-        OpenGLIndexBuffer(std::span<const std::uint32_t> indices, RenderStatistics& statistics);
+        OpenGLIndexBuffer(std::span<const std::uint32_t> indices, OpenGLState& state);
 
         void Write(std::span<const std::uint32_t> indices, std::size_t first) override;
 
-        RenderStatistics* m_Statistics;
+        OpenGLState* m_State;
         std::uint32_t m_Buffer = 0;
     };
 
     class OpenGLUniformBuffer final : public UniformBuffer
     {
     public:
-        static Scope<OpenGLUniformBuffer> Create(std::size_t size, std::uint32_t binding, RenderStatistics& statistics);
+        static Scope<OpenGLUniformBuffer> Create(std::size_t size, std::uint32_t binding, OpenGLState& state);
 
         ~OpenGLUniformBuffer() override;
 
@@ -72,11 +73,11 @@ namespace Quasar
         void Bind() override;
 
     private:
-        OpenGLUniformBuffer(std::size_t size, std::uint32_t binding, RenderStatistics& statistics);
+        OpenGLUniformBuffer(std::size_t size, std::uint32_t binding, OpenGLState& state);
 
         void Write(std::span<const std::byte> data, std::size_t offset) override;
 
-        RenderStatistics* m_Statistics;
+        OpenGLState* m_State;
         std::uint32_t m_Buffer = 0;
     };
 }

@@ -2,7 +2,6 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Framebuffer.h>
-#include <quasar/renderer/RenderStatistics.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -11,12 +10,14 @@
 
 namespace Quasar
 {
-    void ClearOpenGLDepthStencil(std::uint32_t framebuffer, float depth, std::uint8_t stencil);
+    class OpenGLState;
+
+    void ClearOpenGLDepthStencil(OpenGLState& state, std::uint32_t framebuffer, float depth, std::uint8_t stencil);
 
     class OpenGLFramebuffer final : public Framebuffer
     {
     public:
-        static Scope<OpenGLFramebuffer> Create(const FramebufferSpecification& specification, RenderStatistics& statistics);
+        static Scope<OpenGLFramebuffer> Create(const FramebufferSpecification& specification, OpenGLState& state);
 
         ~OpenGLFramebuffer() override;
 
@@ -40,7 +41,7 @@ namespace Quasar
         ImTextureID GetImGuiTexture(std::uint32_t attachment) const override;
 
     private:
-        OpenGLFramebuffer(const FramebufferSpecification& specification, RenderStatistics& statistics);
+        OpenGLFramebuffer(const FramebufferSpecification& specification, OpenGLState& state);
 
         bool CreateTargets();
         void DestroyTargets();
@@ -50,7 +51,7 @@ namespace Quasar
         std::optional<std::size_t> FindColor(std::uint32_t attachment, bool integer, const char* action) const;
         std::uint32_t GetReadableTexture(std::size_t index) const;
 
-        RenderStatistics* m_Statistics;
+        OpenGLState* m_State;
         std::vector<FramebufferFormat> m_ColorFormats;
         std::optional<FramebufferFormat> m_DepthFormat;
 

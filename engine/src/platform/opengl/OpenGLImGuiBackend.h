@@ -2,6 +2,8 @@
 
 #include <imgui/ImGuiBackend.h>
 
+#include <quasar/renderer/GraphicsContext.h>
+
 namespace Quasar
 {
     class OpenGLImGuiBackend final : public ImGuiBackend
@@ -11,5 +13,8 @@ namespace Quasar
         void Shutdown() override;
         void NewFrame() override;
         void Render() override;
+
+    private:
+        GraphicsContext* m_Context = nullptr;
     };
 }
