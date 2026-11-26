@@ -351,6 +351,9 @@ namespace Quasar::Sandbox
                 ImGui::TextUnformatted(fmt::format("Image: {}x{}, {} samples per pixel", image.Width, image.Height, image.Samples).c_str());
                 const FramebufferSpecification& shadows = renderer->GetShadowMap().GetSpecification();
                 ImGui::TextUnformatted(fmt::format("Shadow map: {}x{}", shadows.Width, shadows.Height).c_str());
+                const SceneRendererStatistics& objects = renderer->GetStatistics();
+                ImGui::TextUnformatted(
+                    fmt::format("Objects: {} visible of {}, {} casting shadows", objects.VisibleObjects, objects.Objects, objects.ShadowCasters).c_str());
             }
             if (GraphicsContext* context = Application::Get().GetWindow().GetGraphicsContext(); context != nullptr)
             {

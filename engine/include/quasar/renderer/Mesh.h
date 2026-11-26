@@ -6,6 +6,7 @@
 /// \date 2026-11-18
 
 #include <quasar/core/Base.h>
+#include <quasar/renderer/BoundingBox.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/VertexArray.h>
 #include <quasar/renderer/VertexLayout.h>
@@ -15,6 +16,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -70,9 +72,14 @@ namespace Quasar
         /// @brief Returns the vertex array of the mesh, with its vertex buffer and its index buffer.
         const VertexArray& GetVertexArray() const { return *m_VertexArray; }
 
+        /// @brief Returns the box that holds the vertices, in the space of the mesh. It is computed from the attribute
+        /// of location 0 when it is a `vec3`, as the position of Vertex, and is nullopt for the other layouts.
+        const std::optional<BoundingBox>& GetBounds() const { return m_Bounds; }
+
     private:
-        explicit Mesh(Scope<VertexArray> vertexArray);
+        Mesh(Scope<VertexArray> vertexArray, const std::optional<BoundingBox>& bounds);
 
         Scope<VertexArray> m_VertexArray;
+        std::optional<BoundingBox> m_Bounds;
     };
 }
