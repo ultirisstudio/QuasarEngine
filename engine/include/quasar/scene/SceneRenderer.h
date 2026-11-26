@@ -9,6 +9,7 @@
 #include <quasar/renderer/AmbientOcclusion.h>
 #include <quasar/renderer/Camera.h>
 #include <quasar/renderer/Framebuffer.h>
+#include <quasar/renderer/Frustum.h>
 #include <quasar/renderer/Lights.h>
 #include <quasar/renderer/Material.h>
 #include <quasar/renderer/Mesh.h>
@@ -25,6 +26,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace Quasar
@@ -42,6 +44,17 @@ namespace Quasar
         /// GraphicsContext::GetMaxSamples() is lowered to it. If the framebuffer cannot be created with them, the
         /// previous samples are kept and set back here.
         std::uint32_t Samples = 4;
+    };
+
+    /// @brief What a SceneRenderer drew at its last Render().
+    struct SceneRendererStatistics
+    {
+        std::uint32_t Objects = 0;        ///< The entities with a mesh and a material.
+        std::uint32_t VisibleObjects = 0; ///< The ones that can be in the view of the camera, drawn into the image.
+        std::uint32_t ShadowCasters = 0;  ///< The ones that cast shadows and can be in the view of the light, drawn into the shadow map.
+
+        /// @brief Compares all the counts.
+        bool operator==(const SceneRendererStatistics&) const = default;
     };
 
     /// @brief Draws the entities of a scene that have a TransformComponent and a MeshRendererComponent.
@@ -112,6 +125,10 @@ namespace Quasar
         /// moves only by whole pixels of the map, so that the shadows do not shimmer when the camera moves.
         const glm::mat4& GetShadowViewProjection() const { return m_ShadowViewProjection; }
 
+        /// @brief Returns what the last Render() drew. The meshes whose box is out of the view of the camera are not
+        /// drawn into the image, and the ones out of the view of the light are not drawn into the shadow map.
+        const SceneRendererStatistics& GetStatistics() const { return m_Statistics; }
+
     private:
         struct Resources
         {
@@ -130,14 +147,15 @@ namespace Quasar
             const Quasar::Mesh* Mesh = nullptr;
             Quasar::Material* Material = nullptr;
             PlacedObject Object;
-            bool CastShadows = true;
+            bool Visible = true;
+            bool CastsShadow = true;
         };
 
         SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings);
 
         bool GatherLights(Scene& scene);
-        void GatherDrawList(Scene& scene);
-        DirectionalShadow RenderShadows(const Camera& camera, const DirectionalLight& light);
+        void GatherDrawList(Scene& scene, const Frustum& view, const std::optional<Frustum>& light);
+        DirectionalShadow RenderShadows(const ShadowCamera& shadow);
         SceneAmbientOcclusion RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size);
 
         Renderer* m_Renderer;
@@ -153,6 +171,7 @@ namespace Quasar
         SceneLights m_Lights;
         std::vector<DrawItem> m_DrawList;
         glm::mat4 m_ShadowViewProjection{1.0f};
+        SceneRendererStatistics m_Statistics;
         bool m_ReportedNoCamera = false;
     };
 }

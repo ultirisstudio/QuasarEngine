@@ -2,7 +2,9 @@
 
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/Log.h>
+#include <quasar/renderer/BoundingBox.h>
 #include <quasar/renderer/Color.h>
+#include <quasar/renderer/Frustum.h>
 #include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/scene/Entity.h>
@@ -109,29 +111,50 @@ namespace Quasar
         return castShadows;
     }
 
-    void SceneRenderer::GatherDrawList(Scene& scene)
+    void SceneRenderer::GatherDrawList(Scene& scene, const Frustum& view, const std::optional<Frustum>& light)
     {
         m_DrawList.clear();
+        m_Statistics = {};
         scene.ForEach<TransformComponent, MeshRendererComponent>(
-            [this](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
+            [this, &view, &light](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
             {
                 if (renderer.Mesh == nullptr || renderer.Material == nullptr)
                 {
                     return;
                 }
-                if (const std::optional<PlacedObject> object = m_Renderer->PlaceObject(entity.GetWorldMatrix()))
+                ++m_Statistics.Objects;
+                const glm::mat4 world = entity.GetWorldMatrix();
+                const std::optional<BoundingBox>& bounds = renderer.Mesh->GetBounds();
+                const std::optional<BoundingBox> box = bounds ? std::optional(bounds->Transformed(world)) : std::nullopt;
+                const auto canSee = [&box](const Frustum& frustum) { return !box || frustum.Intersects(*box); };
+                const bool visible = canSee(view);
+                const bool castsShadow = renderer.CastShadows && light && canSee(*light);
+                if (!visible && !castsShadow)
                 {
-                    m_DrawList.push_back({.Mesh = renderer.Mesh, .Material = renderer.Material, .Object = *object, .CastShadows = renderer.CastShadows});
+                    return;
+                }
+                if (const std::optional<PlacedObject> object = m_Renderer->PlaceObject(world))
+                {
+                    m_DrawList.push_back(
+                        {.Mesh = renderer.Mesh, .Material = renderer.Material, .Object = *object, .Visible = visible, .CastsShadow = castsShadow});
+                    m_Statistics.VisibleObjects += visible ? 1 : 0;
+                    m_Statistics.ShadowCasters += castsShadow ? 1 : 0;
                 }
             });
     }
 
     void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
     {
-        GatherDrawList(scene);
+        std::optional<ShadowCamera> shadow;
         if (GatherLights(scene) && m_Settings.Shadows.Enabled && m_Lights.Directional)
         {
-            m_Lights.Shadow = RenderShadows(camera, *m_Lights.Directional);
+            shadow = ComputeShadowCamera(camera, m_Lights.Directional->Direction, m_Settings.Shadows);
+        }
+        GatherDrawList(scene, Frustum::FromViewProjection(camera.GetViewProjection()),
+                       shadow ? std::optional(Frustum::FromViewProjection(shadow->View.GetViewProjection())) : std::nullopt);
+        if (shadow)
+        {
+            m_Lights.Shadow = RenderShadows(*shadow);
         }
 
         const glm::uvec2 size =
@@ -164,7 +187,10 @@ namespace Quasar
             m_Renderer->BeginScene(camera, m_SceneFramebuffer.get(), m_Lights);
             for (const DrawItem& item : m_DrawList)
             {
-                m_Renderer->Submit(*item.Mesh, *item.Material, item.Object);
+                if (item.Visible)
+                {
+                    m_Renderer->Submit(*item.Mesh, *item.Material, item.Object);
+                }
             }
             m_Renderer->EndScene();
         }
@@ -183,8 +209,11 @@ namespace Quasar
             m_Renderer->BeginScene(camera, m_DepthPrepass.get(), SceneLights{.Directional = std::nullopt});
             for (const DrawItem& item : m_DrawList)
             {
-                const CullMode culling = item.Material->GetSpecification().Pipeline->GetSpecification().Culling;
-                m_Renderer->Submit(*item.Mesh, *m_DepthPipelines.at(static_cast<std::size_t>(culling)), item.Object);
+                if (item.Visible)
+                {
+                    const CullMode culling = item.Material->GetSpecification().Pipeline->GetSpecification().Culling;
+                    m_Renderer->Submit(*item.Mesh, *m_DepthPipelines.at(static_cast<std::size_t>(culling)), item.Object);
+                }
             }
             m_Renderer->EndScene();
         }
@@ -194,9 +223,8 @@ namespace Quasar
         return {.Map = &m_AmbientOcclusion->GetResult(), .DirectLightingStrength = m_Settings.AmbientOcclusion.DirectLightingStrength};
     }
 
-    DirectionalShadow SceneRenderer::RenderShadows(const Camera& camera, const DirectionalLight& light)
+    DirectionalShadow SceneRenderer::RenderShadows(const ShadowCamera& shadow)
     {
-        const ShadowCamera shadow = ComputeShadowCamera(camera, light.Direction, m_Settings.Shadows);
         const GpuSection section(&m_Renderer->GetContext().GetProfiler(), "Shadows");
         m_ShadowMap->Resize(shadow.Resolution, shadow.Resolution);
 
@@ -204,7 +232,7 @@ namespace Quasar
         m_Renderer->BeginScene(shadow.View, m_ShadowMap.get(), SceneLights{.Directional = std::nullopt});
         for (const DrawItem& item : m_DrawList)
         {
-            if (item.CastShadows)
+            if (item.CastsShadow)
             {
                 m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Object);
             }

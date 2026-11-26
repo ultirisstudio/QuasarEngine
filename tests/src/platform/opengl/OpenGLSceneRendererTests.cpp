@@ -213,6 +213,52 @@ TEST_CASE("Once its materials are sent, the scene renderer draws a frame without
     CHECK(glGetError() == GL_NO_ERROR);
 }
 
+TEST_CASE("The meshes out of the view of the camera are not drawn, and the ones out of the view of the light cast no shadow")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    fixture.AddQuad(fixture.GetRed()).Get<MeshRendererComponent>().CastShadows = false;
+    const std::vector<Entity> hidden{fixture.AddQuad(fixture.GetBlue(), {.Position = {0.0f, 0.0f, 3.0f}}),
+                                     fixture.AddQuad(fixture.GetBlue(), {.Position = {20.0f, 0.0f, 0.0f}}),
+                                     fixture.AddQuad(fixture.GetBlue(), {.Position = {0.0f, 0.0f, -20.0f}})};
+    Quasar::Camera camera = Fixture::CreateCamera();
+    camera.SetPosition({0.0f, 0.0f, 1.0f});
+
+    fixture.Clear();
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+    CHECK(fixture.GetSceneRenderer().GetStatistics() == Quasar::SceneRendererStatistics{.Objects = 4, .VisibleObjects = 1, .ShadowCasters = 0});
+    CHECK(IsNear(fixture.ReadColor(3, 3), Red));
+
+    Entity sun = fixture.GetScene().CreateEntity("Sun");
+    sun.Add<DirectionalLightComponent>();
+    sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+    CHECK(fixture.GetSceneRenderer().GetStatistics() == Quasar::SceneRendererStatistics{.Objects = 4, .VisibleObjects = 1, .ShadowCasters = 1});
+
+    fixture.GetSceneRenderer().SetSettings({.Shadows = {.Enabled = false}});
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+    CHECK(fixture.GetSceneRenderer().GetStatistics() == Quasar::SceneRendererStatistics{.Objects = 4, .VisibleObjects = 1, .ShadowCasters = 0});
+
+    Quasar::GraphicsContext& context = fixture.GetContext();
+    context.EndFrame();
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+    context.EndFrame();
+    const std::uint32_t drawsWithoutShadows = context.GetFrameStatistics().Draws;
+    fixture.GetSceneRenderer().SetSettings({});
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+    context.EndFrame();
+    const std::uint32_t culledDraws = context.GetFrameStatistics().Draws;
+    CHECK(culledDraws == drawsWithoutShadows + 1);
+    for (const Entity& entity : hidden)
+    {
+        entity.Get<TransformComponent>().Position = {0.0f, 0.0f, -1.0f};
+    }
+    fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+    context.EndFrame();
+    CHECK(context.GetFrameStatistics().Draws == culledDraws + 8);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
 TEST_CASE("The scene renderer draws from the primary camera, at the transform of its entity")
 {
     const TestHelpers::ScopedLog log;
