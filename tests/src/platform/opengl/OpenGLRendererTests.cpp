@@ -214,6 +214,41 @@ TEST_CASE("Each submission places its mesh with its own transform and material")
     CHECK(glGetError() == GL_NO_ERROR);
 }
 
+TEST_CASE("A placed object is shared by the scenes of its frame, and refused in the next frame")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene;
+    const glm::mat4 half = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));
+    const std::optional<Quasar::PlacedObject> left = scene.GetRenderer().PlaceObject(glm::translate(glm::mat4(1.0f), {-0.5f, 0.5f, 0.0f}) * half);
+    const std::optional<Quasar::PlacedObject> right = scene.GetRenderer().PlaceObject(glm::translate(glm::mat4(1.0f), {0.5f, -0.5f, 0.0f}) * half);
+    REQUIRE(left.has_value());
+    REQUIRE(right.has_value());
+
+    for (Quasar::Material* material : {&scene.GetRed(), &scene.GetBlue()})
+    {
+        scene.Clear();
+        scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+        scene.GetRenderer().Submit(scene.GetQuad(), *material, *left);
+        scene.GetRenderer().Submit(scene.GetQuad(), scene.GetPipeline(), *right);
+        scene.GetRenderer().EndScene();
+        const Color color = material == &scene.GetRed() ? RedPixel : BluePixel;
+        CHECK(IsNear(scene.ReadColor(1, 1), color));
+        CHECK(IsNear(scene.ReadColor(6, 6), color));
+        CHECK(IsNear(scene.ReadColor(6, 1), BlackPixel));
+    }
+
+    scene.GetContext().EndFrame();
+    scene.Clear();
+    scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    scene.GetRenderer().Submit(scene.GetQuad(), scene.GetRed(), *left);
+    scene.GetRenderer().Submit(scene.GetQuad(), scene.GetPipeline(), *right);
+    scene.GetRenderer().EndScene();
+    CHECK(CountErrors("placed in another frame") == 2);
+    CHECK(IsNear(scene.ReadColor(1, 1), BlackPixel));
+    CHECK(IsNear(scene.ReadColor(6, 6), BlackPixel));
+    CHECK(glGetError() == GL_NO_ERROR);
+}
+
 TEST_CASE("The closest mesh stays in front, whatever the order of the submissions")
 {
     const TestHelpers::ScopedLog log;

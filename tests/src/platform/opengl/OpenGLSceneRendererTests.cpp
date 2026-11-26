@@ -16,6 +16,7 @@
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/PipelineLibrary.h>
 #include <quasar/renderer/Primitives.h>
+#include <quasar/renderer/RenderStatistics.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
 #include <quasar/renderer/ShaderBindings.h>
@@ -182,6 +183,34 @@ TEST_CASE("The scene renderer draws the entities that have a mesh and a material
     CHECK(IsNear(fixture.ReadColor(1, 6), Black));
     CHECK(glGetError() == GL_NO_ERROR);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("Once its materials are sent, the scene renderer draws a frame without uploads to the driver")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    fixture.AddQuad(fixture.GetRed(), {.Position = {-0.5f, 0.5f, 0.0f}, .Scale = glm::vec3(0.5f)});
+    fixture.AddQuad(fixture.GetBlue(), {.Position = {0.5f, -0.5f, 0.0f}, .Scale = glm::vec3(0.5f)});
+    Entity sun = fixture.GetScene().CreateEntity("Sun");
+    sun.Add<DirectionalLightComponent>();
+    Quasar::Camera camera = Fixture::CreateCamera();
+    camera.SetPosition({0.0f, 0.0f, 1.0f});
+    Quasar::GraphicsContext& context = fixture.GetContext();
+
+    for (int frame = 0; frame < 2; ++frame)
+    {
+        fixture.Clear();
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+        context.EndFrame();
+    }
+
+    const Quasar::RenderStatistics& statistics = context.GetFrameStatistics();
+    CHECK(statistics.Draws > 4);
+    CHECK(statistics.Uploads == 0);
+    CHECK(statistics.UploadedBytes > 0);
+    CHECK(IsNear(fixture.ReadColor(1, 1), Red));
+    CHECK(IsNear(fixture.ReadColor(6, 6), Blue));
+    CHECK(glGetError() == GL_NO_ERROR);
 }
 
 TEST_CASE("The scene renderer draws from the primary camera, at the transform of its entity")

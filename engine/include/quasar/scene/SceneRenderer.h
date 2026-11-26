@@ -129,7 +129,7 @@ namespace Quasar
         {
             const Quasar::Mesh* Mesh = nullptr;
             Quasar::Material* Material = nullptr;
-            glm::mat4 Transform{1.0f};
+            PlacedObject Object;
             bool CastShadows = true;
         };
 

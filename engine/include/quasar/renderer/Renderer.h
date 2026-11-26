@@ -17,9 +17,20 @@
 
 #include <glm/mat4x4.hpp>
 
+#include <cstdint>
+#include <optional>
+
 namespace Quasar
 {
     class LightsBuffer;
+
+    /// @brief An object placed in the world for the current frame by Renderer::PlaceObject(), which the submissions of
+    /// all the scenes of the frame can share.
+    struct PlacedObject
+    {
+        std::uint32_t Part = 0;  ///< The part of the object block that holds the matrices of the object.
+        std::uint64_t Frame = 0; ///< The GraphicsContext::GetFrameNumber() of the frame in which it was placed.
+    };
 
     /// @brief Draws meshes with their materials, seen from a camera and lit by the lights of a scene, into a framebuffer
     /// or the window.
@@ -102,20 +113,33 @@ namespace Quasar
         /// A scene started before the previous one ended is refused with an engine error.
         void BeginScene(const Camera& camera, Framebuffer* target = nullptr, const SceneLights& lights = {});
 
+        /// @brief Computes the object block of a mesh placed in the world, once for all the scenes of the current
+        /// frame, for example the shadows, the depth prepass and the scene itself. It can be called outside of a scene.
+        /// @param transform The matrix that places the mesh in the world.
+        /// @return The placed object, which Submit() accepts until GraphicsContext::EndFrame(), or nullopt if its block
+        /// cannot be written. The reason is logged as an engine error.
+        std::optional<PlacedObject> PlaceObject(const glm::mat4& transform);
+
         /// @brief Draws a mesh with a material.
         /// @param mesh The mesh.
         /// @param material The material.
-        /// @param transform The matrix that places the mesh in the world.
+        /// @param object The place of the mesh, given by PlaceObject() in the current frame.
         ///
-        /// A mesh submitted outside of a scene is not drawn and logs an engine error.
+        /// A mesh submitted outside of a scene, or placed in another frame, is not drawn and logs an engine error.
+        void Submit(const Mesh& mesh, Material& material, PlacedObject object);
+
+        /// @brief Places a mesh with PlaceObject() and draws it with a material.
         void Submit(const Mesh& mesh, Material& material, const glm::mat4& transform);
 
         /// @brief Draws a mesh with a pipeline and no material, for example to draw only the depth of the scene.
         /// @param mesh The mesh.
         /// @param pipeline The pipeline, whose shader reads only the blocks of the renderer.
-        /// @param transform The matrix that places the mesh in the world.
+        /// @param object The place of the mesh, given by PlaceObject() in the current frame.
         ///
-        /// A mesh submitted outside of a scene is not drawn and logs an engine error.
+        /// A mesh submitted outside of a scene, or placed in another frame, is not drawn and logs an engine error.
+        void Submit(const Mesh& mesh, Pipeline& pipeline, PlacedObject object);
+
+        /// @brief Places a mesh with PlaceObject() and draws it with a pipeline and no material.
         void Submit(const Mesh& mesh, Pipeline& pipeline, const glm::mat4& transform);
 
         /// @brief Ends the scene, and makes the next draws go into the window. Ending without a scene is refused with
@@ -126,14 +150,15 @@ namespace Quasar
         GraphicsContext& GetContext() const { return *m_Context; }
 
     private:
-        Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<LightsBuffer> lights);
+        Renderer(GraphicsContext& context, Scope<FrameUniformBuffer> camera, Scope<FrameUniformBuffer> object, Scope<LightsBuffer> lights);
 
+        bool CanDraw(PlacedObject object) const;
         void BindPipeline(Pipeline& pipeline);
-        void Draw(const Mesh& mesh, const glm::mat4& transform);
+        void Draw(const Mesh& mesh, PlacedObject object);
 
         GraphicsContext* m_Context;
-        Scope<UniformBuffer> m_CameraBuffer;
-        Scope<UniformBuffer> m_ObjectBuffer;
+        Scope<FrameUniformBuffer> m_CameraBuffer;
+        Scope<FrameUniformBuffer> m_ObjectBuffer;
         Scope<LightsBuffer> m_LightsBuffer;
         Framebuffer* m_Target = nullptr;
         const Pipeline* m_BoundPipeline = nullptr;

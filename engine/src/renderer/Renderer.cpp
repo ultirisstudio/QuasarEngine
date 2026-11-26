@@ -11,6 +11,8 @@
 #include <glm/vec4.hpp>
 
 #include <array>
+#include <cstdint>
+#include <optional>
 #include <utility>
 
 namespace Quasar
@@ -39,7 +41,7 @@ namespace Quasar
         }
     }
 
-    Renderer::Renderer(GraphicsContext& context, Scope<UniformBuffer> camera, Scope<UniformBuffer> object, Scope<LightsBuffer> lights)
+    Renderer::Renderer(GraphicsContext& context, Scope<FrameUniformBuffer> camera, Scope<FrameUniformBuffer> object, Scope<LightsBuffer> lights)
         : m_Context(&context), m_CameraBuffer(std::move(camera)), m_ObjectBuffer(std::move(object)), m_LightsBuffer(std::move(lights))
     {
     }
@@ -48,8 +50,8 @@ namespace Quasar
 
     Scope<Renderer> Renderer::Create(GraphicsContext& context)
     {
-        Scope<UniformBuffer> camera = context.CreateUniformBuffer(sizeof(CameraData), ShaderBindings::Camera);
-        Scope<UniformBuffer> object = context.CreateUniformBuffer(sizeof(ObjectData), ShaderBindings::Object);
+        Scope<FrameUniformBuffer> camera = context.CreateFrameUniformBuffer(sizeof(CameraData), ShaderBindings::Camera);
+        Scope<FrameUniformBuffer> object = context.CreateFrameUniformBuffer(sizeof(ObjectData), ShaderBindings::Object);
         Scope<LightsBuffer> lights = LightsBuffer::Create(context);
         if (camera == nullptr || object == nullptr || lights == nullptr)
         {
@@ -68,14 +70,15 @@ namespace Quasar
 
         m_InScene = true;
         m_Target = target;
-        m_CameraBuffer->Set(CameraData{.ViewProjection = camera.GetViewProjection(),
-                                       .View = camera.GetView(),
-                                       .Projection = camera.GetProjection(),
-                                       .Position = glm::vec4(camera.GetPosition(), 1.0f)});
-        m_LightsBuffer->Set(lights);
-        m_CameraBuffer->Bind();
-        m_ObjectBuffer->Bind();
-        m_LightsBuffer->Bind();
+        const std::optional<std::uint32_t> cameraPart = m_CameraBuffer->Add(CameraData{.ViewProjection = camera.GetViewProjection(),
+                                                                                       .View = camera.GetView(),
+                                                                                       .Projection = camera.GetProjection(),
+                                                                                       .Position = glm::vec4(camera.GetPosition(), 1.0f)});
+        if (cameraPart)
+        {
+            m_CameraBuffer->Bind(*cameraPart);
+        }
+        m_LightsBuffer->Bind(lights);
         m_BoundPipeline = nullptr;
         m_BoundMaterial = nullptr;
         if (lights.Shadow.Map != nullptr)
@@ -96,11 +99,20 @@ namespace Quasar
         }
     }
 
-    void Renderer::Submit(const Mesh& mesh, Material& material, const glm::mat4& transform)
+    std::optional<PlacedObject> Renderer::PlaceObject(const glm::mat4& transform)
     {
-        if (!m_InScene)
+        const std::optional<std::uint32_t> part = m_ObjectBuffer->Add(ToObjectData(transform));
+        if (!part)
         {
-            QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
+            return std::nullopt;
+        }
+        return PlacedObject{.Part = *part, .Frame = m_Context->GetFrameNumber()};
+    }
+
+    void Renderer::Submit(const Mesh& mesh, Material& material, PlacedObject object)
+    {
+        if (!CanDraw(object))
+        {
             return;
         }
         BindPipeline(*material.GetSpecification().Pipeline);
@@ -109,18 +121,48 @@ namespace Quasar
             material.BindResources();
             m_BoundMaterial = &material;
         }
-        Draw(mesh, transform);
+        Draw(mesh, object);
+    }
+
+    void Renderer::Submit(const Mesh& mesh, Material& material, const glm::mat4& transform)
+    {
+        if (const std::optional<PlacedObject> object = PlaceObject(transform))
+        {
+            Submit(mesh, material, *object);
+        }
+    }
+
+    void Renderer::Submit(const Mesh& mesh, Pipeline& pipeline, PlacedObject object)
+    {
+        if (!CanDraw(object))
+        {
+            return;
+        }
+        BindPipeline(pipeline);
+        Draw(mesh, object);
     }
 
     void Renderer::Submit(const Mesh& mesh, Pipeline& pipeline, const glm::mat4& transform)
     {
+        if (const std::optional<PlacedObject> object = PlaceObject(transform))
+        {
+            Submit(mesh, pipeline, *object);
+        }
+    }
+
+    bool Renderer::CanDraw(PlacedObject object) const
+    {
         if (!m_InScene)
         {
             QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
-            return;
+            return false;
         }
-        BindPipeline(pipeline);
-        Draw(mesh, transform);
+        if (object.Frame != m_Context->GetFrameNumber())
+        {
+            QUASAR_ENGINE_ERROR("Cannot draw a mesh placed in another frame");
+            return false;
+        }
+        return true;
     }
 
     void Renderer::BindPipeline(Pipeline& pipeline)
@@ -132,9 +174,9 @@ namespace Quasar
         }
     }
 
-    void Renderer::Draw(const Mesh& mesh, const glm::mat4& transform)
+    void Renderer::Draw(const Mesh& mesh, PlacedObject object)
     {
-        m_ObjectBuffer->Set(ToObjectData(transform));
+        m_ObjectBuffer->Bind(object.Part);
         m_Context->DrawIndexed(mesh.GetVertexArray());
     }
 
