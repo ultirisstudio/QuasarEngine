@@ -20,7 +20,7 @@ struct SDL_GLContextState;
 
 namespace Quasar
 {
-    class OpenGLState;
+    class OpenGLDevice;
 
     /// @brief OpenGL 4.5 core context of a window, created with SDL. The OpenGL functions are loaded with glad.
     ///
@@ -96,11 +96,11 @@ namespace Quasar
 
         /// @brief Returns the most samples per pixel of a framebuffer, read when the context is created. See
         /// GraphicsContext::GetMaxSamples().
-        std::uint32_t GetMaxSamples() const override { return m_MaxSamples; }
+        std::uint32_t GetMaxSamples() const override;
 
         /// @brief Returns the most anisotropy of a texture, read when the context is created. See
         /// GraphicsContext::GetMaxAnisotropy().
-        float GetMaxAnisotropy() const override { return m_MaxAnisotropy; }
+        float GetMaxAnisotropy() const override;
 
         /// @brief Makes the context current, then fills the window. See GraphicsContext::ClearWindow().
         void ClearWindow(glm::vec4 color, float depth, std::uint8_t stencil) override;
@@ -121,8 +121,6 @@ namespace Quasar
 
         SDL_Window* m_Window = nullptr;
         SDL_GLContextState* m_Context = nullptr;
-        Scope<OpenGLState> m_State;
-        std::uint32_t m_MaxSamples = 1;
-        float m_MaxAnisotropy = 1.0f;
+        Scope<OpenGLDevice> m_Device;
     };
 }

@@ -1,6 +1,6 @@
 #include <platform/opengl/OpenGLTexture.h>
 
-#include <platform/opengl/OpenGLState.h>
+#include <platform/opengl/OpenGLDevice.h>
 
 #include <quasar/log/Log.h>
 
@@ -61,19 +61,11 @@ namespace Quasar
             }
             return GL_REPEAT;
         }
-
-        std::uint32_t GetLimit(GLenum name)
-        {
-            GLint value = 0;
-            glGetIntegerv(name, &value);
-            return static_cast<std::uint32_t>(std::max(value, 0));
-        }
     }
 
-    OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy, OpenGLState& state)
-        : Texture2D(specification), m_State(&state),
-          m_Levels(specification.Mipmaps ? static_cast<std::uint32_t>(std::bit_width(std::max(specification.Width, specification.Height))) : 1),
-          m_SlotCount(slotCount)
+    OpenGLTexture2D::OpenGLTexture2D(const TextureSpecification& specification, OpenGLDevice& device)
+        : Texture2D(specification), m_Device(&device),
+          m_Levels(specification.Mipmaps ? static_cast<std::uint32_t>(std::bit_width(std::max(specification.Width, specification.Height))) : 1)
     {
         glCreateTextures(GL_TEXTURE_2D, 1, &m_Texture);
         glTextureStorage2D(m_Texture, static_cast<GLsizei>(m_Levels), GetPixelFormat(specification.Format).Internal, static_cast<GLsizei>(specification.Width),
@@ -82,6 +74,7 @@ namespace Quasar
         glTextureParameteri(m_Texture, GL_TEXTURE_MAG_FILTER, specification.Filter == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR);
         glTextureParameteri(m_Texture, GL_TEXTURE_WRAP_S, GetWrap(specification.Wrap));
         glTextureParameteri(m_Texture, GL_TEXTURE_WRAP_T, GetWrap(specification.Wrap));
+        const float maxAnisotropy = device.GetLimits().Anisotropy;
         if (maxAnisotropy > 1.0f && specification.Filter == TextureFilter::Linear && specification.Mipmaps)
         {
             glTextureParameterf(m_Texture, GL_TEXTURE_MAX_ANISOTROPY,
@@ -91,19 +84,18 @@ namespace Quasar
 
     OpenGLTexture2D::~OpenGLTexture2D()
     {
-        m_State->ForgetTexture(m_Texture);
+        m_Device->GetState().ForgetTexture(m_Texture);
         glDeleteTextures(1, &m_Texture);
     }
 
-    Scope<OpenGLTexture2D> OpenGLTexture2D::Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy,
-                                                   OpenGLState& state)
+    Scope<OpenGLTexture2D> OpenGLTexture2D::Create(const TextureSpecification& specification, std::span<const std::byte> pixels, OpenGLDevice& device)
     {
         if (!IsValid(specification))
         {
             return nullptr;
         }
 
-        const std::uint32_t maxSize = GetLimit(GL_MAX_TEXTURE_SIZE);
+        const std::uint32_t maxSize = device.GetLimits().TextureSize;
         if (specification.Width > maxSize || specification.Height > maxSize)
         {
             QUASAR_ENGINE_ERROR("Cannot create a texture of {}x{} pixels: OpenGL allows at most {}x{}", specification.Width, specification.Height, maxSize,
@@ -119,7 +111,7 @@ namespace Quasar
             return nullptr;
         }
 
-        Scope<OpenGLTexture2D> texture(new OpenGLTexture2D(specification, GetLimit(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS), maxAnisotropy, state));
+        Scope<OpenGLTexture2D> texture(new OpenGLTexture2D(specification, device));
         if (pixels.empty())
         {
             texture->Clear();
@@ -133,12 +125,13 @@ namespace Quasar
 
     void OpenGLTexture2D::Bind(std::uint32_t slot)
     {
-        if (slot >= m_SlotCount)
+        const std::uint32_t slotCount = m_Device->GetLimits().TextureSlots;
+        if (slot >= slotCount)
         {
-            QUASAR_ENGINE_ERROR("Cannot bind a texture to the slot {}: OpenGL has the slots 0 to {}", slot, m_SlotCount - 1);
+            QUASAR_ENGINE_ERROR("Cannot bind a texture to the slot {}: OpenGL has the slots 0 to {}", slot, slotCount - 1);
             return;
         }
-        m_State->BindTexture(slot, m_Texture);
+        m_Device->GetState().BindTexture(slot, m_Texture);
     }
 
     ImTextureID OpenGLTexture2D::GetImGuiTexture() const
@@ -150,8 +143,8 @@ namespace Quasar
     {
         const TextureSpecification& specification = GetSpecification();
         const PixelFormat format = GetPixelFormat(specification.Format);
-        ++m_State->GetStatistics().Uploads;
-        m_State->GetStatistics().UploadedBytes += pixels.size();
+        ++m_Device->GetStatistics().Uploads;
+        m_Device->GetStatistics().UploadedBytes += pixels.size();
 
         // The rows of the pixels follow each other without padding, which OpenGL only assumes with an alignment of 1
         GLint alignment = 4;

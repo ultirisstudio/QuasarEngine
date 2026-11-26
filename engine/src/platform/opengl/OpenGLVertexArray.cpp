@@ -1,7 +1,7 @@
 #include <platform/opengl/OpenGLVertexArray.h>
 
 #include <platform/opengl/OpenGLBuffer.h>
-#include <platform/opengl/OpenGLState.h>
+#include <platform/opengl/OpenGLDevice.h>
 
 #include <glad/gl.h>
 
@@ -45,24 +45,24 @@ namespace Quasar
         }
     }
 
-    OpenGLVertexArray::OpenGLVertexArray(std::uint32_t vertexArray, OpenGLState& state) : m_VertexArray(vertexArray), m_State(&state) {}
+    OpenGLVertexArray::OpenGLVertexArray(std::uint32_t vertexArray, OpenGLDevice& device) : m_VertexArray(vertexArray), m_Device(&device) {}
 
     OpenGLVertexArray::~OpenGLVertexArray()
     {
-        m_State->ForgetVertexArray(m_VertexArray);
+        m_Device->GetState().ForgetVertexArray(m_VertexArray);
         glDeleteVertexArrays(1, &m_VertexArray);
     }
 
-    Scope<OpenGLVertexArray> OpenGLVertexArray::Create(OpenGLState& state)
+    Scope<OpenGLVertexArray> OpenGLVertexArray::Create(OpenGLDevice& device)
     {
         GLuint vertexArray = 0;
         glCreateVertexArrays(1, &vertexArray);
-        return Scope<OpenGLVertexArray>(new OpenGLVertexArray(vertexArray, state));
+        return Scope<OpenGLVertexArray>(new OpenGLVertexArray(vertexArray, device));
     }
 
     void OpenGLVertexArray::Bind() const
     {
-        m_State->BindVertexArray(m_VertexArray);
+        m_Device->GetState().BindVertexArray(m_VertexArray);
     }
 
     void OpenGLVertexArray::AttachVertexBuffer(const VertexBuffer& buffer, std::uint32_t index)

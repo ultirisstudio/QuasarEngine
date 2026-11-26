@@ -14,12 +14,12 @@
 
 namespace Quasar
 {
-    class OpenGLState;
+    class OpenGLDevice;
 
     class OpenGLShader final : public Shader
     {
     public:
-        static Scope<OpenGLShader> Create(const ShaderSpecification& specification, OpenGLState& state);
+        static Scope<OpenGLShader> Create(const ShaderSpecification& specification, OpenGLDevice& device);
 
         ~OpenGLShader() override;
 
@@ -52,13 +52,13 @@ namespace Quasar
             std::size_t operator()(std::string_view name) const { return std::hash<std::string_view>{}(name); }
         };
 
-        OpenGLShader(std::string name, std::uint32_t program, OpenGLState& state);
+        OpenGLShader(std::string name, std::uint32_t program, OpenGLDevice& device);
 
         void ReadUniforms();
         int FindLocation(std::string_view name, std::initializer_list<std::uint32_t> types, const char* typeName);
         int FindIntegerLocation(std::string_view name);
 
-        OpenGLState* m_State;
+        OpenGLDevice* m_Device;
         std::uint32_t m_Program = 0;
         std::unordered_map<std::string, Uniform, NameHash, std::equal_to<>> m_Uniforms;
         std::unordered_set<std::string, NameHash, std::equal_to<>> m_ReportedNames;

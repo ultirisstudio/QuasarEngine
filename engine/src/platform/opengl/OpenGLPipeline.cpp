@@ -1,6 +1,6 @@
 #include <platform/opengl/OpenGLPipeline.h>
 
-#include <platform/opengl/OpenGLState.h>
+#include <platform/opengl/OpenGLDevice.h>
 
 #include <glad/gl.h>
 
@@ -29,37 +29,37 @@ namespace Quasar
         }
     }
 
-    OpenGLPipeline::OpenGLPipeline(const PipelineSpecification& specification, OpenGLState& state) : Pipeline(specification), m_State(&state) {}
+    OpenGLPipeline::OpenGLPipeline(const PipelineSpecification& specification, OpenGLDevice& device) : Pipeline(specification), m_Device(&device) {}
 
-    Scope<OpenGLPipeline> OpenGLPipeline::Create(const PipelineSpecification& specification, OpenGLState& state)
+    Scope<OpenGLPipeline> OpenGLPipeline::Create(const PipelineSpecification& specification, OpenGLDevice& device)
     {
         if (!IsValid(specification))
         {
             return nullptr;
         }
-        return Scope<OpenGLPipeline>(new OpenGLPipeline(specification, state));
+        return Scope<OpenGLPipeline>(new OpenGLPipeline(specification, device));
     }
 
     void OpenGLPipeline::Bind()
     {
-        ++m_State->GetStatistics().PipelineBinds;
+        ++m_Device->GetStatistics().PipelineBinds;
         const PipelineSpecification& specification = GetSpecification();
         specification.Shader->Bind();
-        m_State->SetEnabled(OpenGLState::Capability::DepthTest, specification.DepthTest);
-        m_State->SetDepthWrite(specification.DepthWrite);
-        m_State->SetDepthFunction(GetDepthFunction(specification.Compare));
-        m_State->SetEnabled(OpenGLState::Capability::CullFace, specification.Culling != CullMode::None);
-        m_State->SetCullFace(specification.Culling == CullMode::Front ? GL_FRONT : GL_BACK);
-        m_State->SetFrontFace(GL_CCW);
-        m_State->SetEnabled(OpenGLState::Capability::Blend, specification.Blending != BlendMode::None);
+        m_Device->GetState().SetEnabled(OpenGLState::Capability::DepthTest, specification.DepthTest);
+        m_Device->GetState().SetDepthWrite(specification.DepthWrite);
+        m_Device->GetState().SetDepthFunction(GetDepthFunction(specification.Compare));
+        m_Device->GetState().SetEnabled(OpenGLState::Capability::CullFace, specification.Culling != CullMode::None);
+        m_Device->GetState().SetCullFace(specification.Culling == CullMode::Front ? GL_FRONT : GL_BACK);
+        m_Device->GetState().SetFrontFace(GL_CCW);
+        m_Device->GetState().SetEnabled(OpenGLState::Capability::Blend, specification.Blending != BlendMode::None);
         if (specification.Blending == BlendMode::Alpha)
         {
-            m_State->SetBlendFunction(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            m_Device->GetState().SetBlendFunction(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         }
         else if (specification.Blending == BlendMode::Additive)
         {
-            m_State->SetBlendFunction(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+            m_Device->GetState().SetBlendFunction(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
         }
-        m_State->SetBlendEquation(GL_FUNC_ADD);
+        m_Device->GetState().SetBlendEquation(GL_FUNC_ADD);
     }
 }

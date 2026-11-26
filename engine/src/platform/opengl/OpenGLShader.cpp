@@ -1,6 +1,6 @@
 #include <platform/opengl/OpenGLShader.h>
 
-#include <platform/opengl/OpenGLState.h>
+#include <platform/opengl/OpenGLDevice.h>
 
 #include <quasar/log/Log.h>
 
@@ -137,15 +137,17 @@ namespace Quasar
         }
     }
 
-    OpenGLShader::OpenGLShader(std::string name, std::uint32_t program, OpenGLState& state) : Shader(std::move(name)), m_State(&state), m_Program(program) {}
+    OpenGLShader::OpenGLShader(std::string name, std::uint32_t program, OpenGLDevice& device) : Shader(std::move(name)), m_Device(&device), m_Program(program)
+    {
+    }
 
     OpenGLShader::~OpenGLShader()
     {
-        m_State->ForgetProgram(m_Program);
+        m_Device->GetState().ForgetProgram(m_Program);
         glDeleteProgram(m_Program);
     }
 
-    Scope<OpenGLShader> OpenGLShader::Create(const ShaderSpecification& specification, OpenGLState& state)
+    Scope<OpenGLShader> OpenGLShader::Create(const ShaderSpecification& specification, OpenGLDevice& device)
     {
         if (!IsValid(specification))
         {
@@ -158,21 +160,21 @@ namespace Quasar
             return nullptr;
         }
 
-        Scope<OpenGLShader> shader(new OpenGLShader(specification.Name, program, state));
+        Scope<OpenGLShader> shader(new OpenGLShader(specification.Name, program, device));
         shader->ReadUniforms();
         return shader;
     }
 
     void OpenGLShader::Bind()
     {
-        m_State->UseProgram(m_Program);
+        m_Device->GetState().UseProgram(m_Program);
     }
 
     void OpenGLShader::SetInt(std::string_view name, int value)
     {
         if (const GLint location = FindIntegerLocation(name); location >= 0)
         {
-            ++m_State->GetStatistics().UniformChanges;
+            ++m_Device->GetStatistics().UniformChanges;
             glProgramUniform1i(m_Program, location, value);
         }
     }
@@ -181,7 +183,7 @@ namespace Quasar
     {
         if (const GLint location = FindLocation(name, {GL_FLOAT}, "float"); location >= 0)
         {
-            ++m_State->GetStatistics().UniformChanges;
+            ++m_Device->GetStatistics().UniformChanges;
             glProgramUniform1f(m_Program, location, value);
         }
     }
@@ -190,7 +192,7 @@ namespace Quasar
     {
         if (const GLint location = FindLocation(name, {GL_FLOAT_VEC2}, "vec2"); location >= 0)
         {
-            ++m_State->GetStatistics().UniformChanges;
+            ++m_Device->GetStatistics().UniformChanges;
             glProgramUniform2fv(m_Program, location, 1, glm::value_ptr(value));
         }
     }
@@ -199,7 +201,7 @@ namespace Quasar
     {
         if (const GLint location = FindLocation(name, {GL_FLOAT_VEC3}, "vec3"); location >= 0)
         {
-            ++m_State->GetStatistics().UniformChanges;
+            ++m_Device->GetStatistics().UniformChanges;
             glProgramUniform3fv(m_Program, location, 1, glm::value_ptr(value));
         }
     }
@@ -208,7 +210,7 @@ namespace Quasar
     {
         if (const GLint location = FindLocation(name, {GL_FLOAT_VEC4}, "vec4"); location >= 0)
         {
-            ++m_State->GetStatistics().UniformChanges;
+            ++m_Device->GetStatistics().UniformChanges;
             glProgramUniform4fv(m_Program, location, 1, glm::value_ptr(value));
         }
     }
@@ -217,7 +219,7 @@ namespace Quasar
     {
         if (const GLint location = FindLocation(name, {GL_FLOAT_MAT3}, "mat3"); location >= 0)
         {
-            ++m_State->GetStatistics().UniformChanges;
+            ++m_Device->GetStatistics().UniformChanges;
             glProgramUniformMatrix3fv(m_Program, location, 1, GL_FALSE, glm::value_ptr(value));
         }
     }
@@ -226,7 +228,7 @@ namespace Quasar
     {
         if (const GLint location = FindLocation(name, {GL_FLOAT_MAT4}, "mat4"); location >= 0)
         {
-            ++m_State->GetStatistics().UniformChanges;
+            ++m_Device->GetStatistics().UniformChanges;
             glProgramUniformMatrix4fv(m_Program, location, 1, GL_FALSE, glm::value_ptr(value));
         }
     }

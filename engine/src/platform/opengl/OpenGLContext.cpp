@@ -1,10 +1,10 @@
 #include <quasar/platform/opengl/OpenGLContext.h>
 
 #include <platform/opengl/OpenGLBuffer.h>
+#include <platform/opengl/OpenGLDevice.h>
 #include <platform/opengl/OpenGLFramebuffer.h>
 #include <platform/opengl/OpenGLPipeline.h>
 #include <platform/opengl/OpenGLShader.h>
-#include <platform/opengl/OpenGLState.h>
 #include <platform/opengl/OpenGLTexture.h>
 #include <platform/opengl/OpenGLTimestampQuery.h>
 #include <platform/opengl/OpenGLVertexArray.h>
@@ -21,7 +21,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <string_view>
 
 namespace Quasar
 {
@@ -38,42 +37,6 @@ namespace Quasar
             return text != nullptr ? reinterpret_cast<const char*>(text) : "unknown";
         }
 
-        bool HasExtension(std::string_view name)
-        {
-            GLint count = 0;
-            glGetIntegerv(GL_NUM_EXTENSIONS, &count);
-            for (GLint index = 0; index < count; ++index)
-            {
-                const GLubyte* extension = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(index));
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                if (extension != nullptr && name == reinterpret_cast<const char*>(extension))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        float ReadMaxAnisotropy()
-        {
-            if (GLAD_GL_VERSION_4_6 == 0 && !HasExtension("GL_ARB_texture_filter_anisotropic") && !HasExtension("GL_EXT_texture_filter_anisotropic"))
-            {
-                return 1.0f;
-            }
-            GLfloat value = 1.0f;
-            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &value);
-            return std::max(value, 1.0f);
-        }
-
-        std::uint32_t ReadMaxSamples()
-        {
-            GLint samples = 1;
-            GLint colorSamples = 1;
-            glGetIntegerv(GL_MAX_SAMPLES, &samples);
-            glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, &colorSamples);
-            return static_cast<std::uint32_t>(std::max(std::min(samples, colorSamples), 1));
-        }
-
         const OpenGLVertexArray& GetOpenGLVertexArray(const VertexArray& vertexArray)
         {
             // The vertex arrays of an OpenGL context are OpenGL vertex arrays
@@ -82,10 +45,7 @@ namespace Quasar
         }
     }
 
-    OpenGLContext::OpenGLContext(SDL_Window* window, SDL_GLContextState* context)
-        : m_Window(window), m_Context(context), m_State(CreateScope<OpenGLState>(GetCurrentStatistics()))
-    {
-    }
+    OpenGLContext::OpenGLContext(SDL_Window* window, SDL_GLContextState* context) : m_Window(window), m_Context(context) {}
 
     OpenGLContext::~OpenGLContext()
     {
@@ -132,8 +92,7 @@ namespace Quasar
         }
 
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
-        created->m_MaxSamples = ReadMaxSamples();
-        created->m_MaxAnisotropy = ReadMaxAnisotropy();
+        created->m_Device = CreateScope<OpenGLDevice>(created->GetCurrentStatistics());
 
         QUASAR_ENGINE_INFO("OpenGL vendor: {}", GetString(GL_VENDOR));
         QUASAR_ENGINE_INFO("OpenGL renderer: {}", GetString(GL_RENDERER));
@@ -156,48 +115,48 @@ namespace Quasar
     Scope<Framebuffer> OpenGLContext::CreateFramebuffer(const FramebufferSpecification& specification)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLFramebuffer::Create(specification, *m_State);
+        return OpenGLFramebuffer::Create(specification, *m_Device);
     }
 
     Scope<Shader> OpenGLContext::CreateShader(const ShaderSpecification& specification)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLShader::Create(specification, *m_State);
+        return OpenGLShader::Create(specification, *m_Device);
     }
 
     Scope<Pipeline> OpenGLContext::CreatePipeline(const PipelineSpecification& specification)
     {
-        return OpenGLPipeline::Create(specification, *m_State);
+        return OpenGLPipeline::Create(specification, *m_Device);
     }
 
     Scope<VertexBuffer> OpenGLContext::CreateVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLVertexBuffer::Create(vertices, layout, *m_State);
+        return OpenGLVertexBuffer::Create(vertices, layout, *m_Device);
     }
 
     Scope<IndexBuffer> OpenGLContext::CreateIndexBuffer(std::span<const std::uint32_t> indices)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLIndexBuffer::Create(indices, *m_State);
+        return OpenGLIndexBuffer::Create(indices, *m_Device);
     }
 
     Scope<UniformBuffer> OpenGLContext::CreateUniformBuffer(std::size_t size, std::uint32_t binding)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLUniformBuffer::Create(size, binding, *m_State);
+        return OpenGLUniformBuffer::Create(size, binding, *m_Device);
     }
 
     Scope<Texture2D> OpenGLContext::CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLTexture2D::Create(specification, pixels, m_MaxAnisotropy, *m_State);
+        return OpenGLTexture2D::Create(specification, pixels, *m_Device);
     }
 
     Scope<VertexArray> OpenGLContext::CreateVertexArray()
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
-        return OpenGLVertexArray::Create(*m_State);
+        return OpenGLVertexArray::Create(*m_Device);
     }
 
     Scope<TimestampQuery> OpenGLContext::CreateTimestampQuery()
@@ -212,13 +171,24 @@ namespace Quasar
         int width = 0;
         int height = 0;
         SDL_GetWindowSizeInPixels(m_Window, &width, &height);
-        m_State->BindFramebuffer(0);
-        m_State->SetViewport(width, height);
+        m_Device->GetState().BindFramebuffer(0);
+        m_Device->GetState().SetViewport(width, height);
+    }
+
+    std::uint32_t OpenGLContext::GetMaxSamples() const
+    {
+        const OpenGLLimits& limits = m_Device->GetLimits();
+        return std::max(std::min(limits.Samples, limits.ColorTextureSamples), 1U);
+    }
+
+    float OpenGLContext::GetMaxAnisotropy() const
+    {
+        return m_Device->GetLimits().Anisotropy;
     }
 
     void OpenGLContext::InvalidateState()
     {
-        m_State->Invalidate();
+        m_Device->GetState().Invalidate();
     }
 
     glm::uvec2 OpenGLContext::GetWindowSize() const
@@ -233,7 +203,7 @@ namespace Quasar
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);
         glClearNamedFramebufferfv(0, GL_COLOR, 0, glm::value_ptr(color));
-        ClearOpenGLDepthStencil(*m_State, 0, depth, stencil);
+        ClearOpenGLDepthStencil(m_Device->GetState(), 0, depth, stencil);
     }
 
     void OpenGLContext::Draw(const VertexArray& vertexArray, std::uint32_t vertexCount)

@@ -10,6 +10,7 @@
 
 namespace Quasar
 {
+    class OpenGLDevice;
     class OpenGLState;
 
     void ClearOpenGLDepthStencil(OpenGLState& state, std::uint32_t framebuffer, float depth, std::uint8_t stencil);
@@ -17,7 +18,7 @@ namespace Quasar
     class OpenGLFramebuffer final : public Framebuffer
     {
     public:
-        static Scope<OpenGLFramebuffer> Create(const FramebufferSpecification& specification, OpenGLState& state);
+        static Scope<OpenGLFramebuffer> Create(const FramebufferSpecification& specification, OpenGLDevice& device);
 
         ~OpenGLFramebuffer() override;
 
@@ -41,7 +42,7 @@ namespace Quasar
         ImTextureID GetImGuiTexture(std::uint32_t attachment) const override;
 
     private:
-        OpenGLFramebuffer(const FramebufferSpecification& specification, OpenGLState& state);
+        OpenGLFramebuffer(const FramebufferSpecification& specification, OpenGLDevice& device);
 
         bool CreateTargets();
         void DestroyTargets();
@@ -51,7 +52,7 @@ namespace Quasar
         std::optional<std::size_t> FindColor(std::uint32_t attachment, bool integer, const char* action) const;
         std::uint32_t GetReadableTexture(std::size_t index) const;
 
-        OpenGLState* m_State;
+        OpenGLDevice* m_Device;
         std::vector<FramebufferFormat> m_ColorFormats;
         std::optional<FramebufferFormat> m_DepthFormat;
 

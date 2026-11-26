@@ -33,6 +33,8 @@ target_sources(QuasarEngine
         src/platform/opengl/OpenGLBuffer.cpp
         src/platform/opengl/OpenGLBuffer.h
         src/platform/opengl/OpenGLContext.cpp
+        src/platform/opengl/OpenGLDevice.cpp
+        src/platform/opengl/OpenGLDevice.h
         src/platform/opengl/OpenGLFramebuffer.cpp
         src/platform/opengl/OpenGLFramebuffer.h
         src/platform/opengl/OpenGLPipeline.cpp
