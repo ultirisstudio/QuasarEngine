@@ -1,6 +1,6 @@
 #include <platform/opengl/OpenGLFramebuffer.h>
 
-#include <platform/opengl/OpenGLState.h>
+#include <platform/opengl/OpenGLDevice.h>
 
 #include <quasar/log/Log.h>
 
@@ -67,13 +67,6 @@ namespace Quasar
             return GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index);
         }
 
-        int GetLimit(GLenum name)
-        {
-            GLint value = 0;
-            glGetIntegerv(name, &value);
-            return value;
-        }
-
         GLuint CreateColorTexture(FramebufferFormat format, GLsizei width, GLsizei height, GLsizei samples)
         {
             GLuint texture = 0;
@@ -106,9 +99,9 @@ namespace Quasar
             return true;
         }
 
-        bool FitsTheLimits(const FramebufferSpecification& specification, std::size_t colorCount, bool integer)
+        bool FitsTheLimits(const OpenGLLimits& limits, const FramebufferSpecification& specification, std::size_t colorCount, bool integer)
         {
-            const auto maxSize = static_cast<std::uint32_t>(std::min(GetLimit(GL_MAX_TEXTURE_SIZE), GetLimit(GL_MAX_RENDERBUFFER_SIZE)));
+            const std::uint32_t maxSize = std::min(limits.TextureSize, limits.RenderbufferSize);
             if (specification.Width > maxSize || specification.Height > maxSize)
             {
                 QUASAR_ENGINE_ERROR("Cannot create a framebuffer of {}x{} pixels: OpenGL allows at most {}x{}", specification.Width, specification.Height,
@@ -116,14 +109,14 @@ namespace Quasar
                 return false;
             }
 
-            const auto maxColors = static_cast<std::size_t>(GetLimit(GL_MAX_COLOR_ATTACHMENTS));
+            const std::size_t maxColors = limits.ColorAttachments;
             if (colorCount > maxColors)
             {
                 QUASAR_ENGINE_ERROR("Cannot create a framebuffer with {} color attachments: OpenGL allows at most {}", colorCount, maxColors);
                 return false;
             }
 
-            const auto maxSamples = static_cast<std::uint32_t>(GetLimit(integer ? GL_MAX_INTEGER_SAMPLES : GL_MAX_SAMPLES));
+            const std::uint32_t maxSamples = integer ? limits.IntegerSamples : limits.Samples;
             if (specification.Samples > maxSamples)
             {
                 QUASAR_ENGINE_ERROR("Cannot create a framebuffer with {} samples per pixel: OpenGL allows at most {}", specification.Samples, maxSamples);
@@ -142,7 +135,7 @@ namespace Quasar
         state.SetDepthWrite(depthWrite);
     }
 
-    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& specification, OpenGLState& state) : Framebuffer(specification), m_State(&state)
+    OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& specification, OpenGLDevice& device) : Framebuffer(specification), m_Device(&device)
     {
         for (const FramebufferFormat format : specification.Attachments)
         {
@@ -162,16 +155,16 @@ namespace Quasar
         DestroyTargets();
     }
 
-    Scope<OpenGLFramebuffer> OpenGLFramebuffer::Create(const FramebufferSpecification& specification, OpenGLState& state)
+    Scope<OpenGLFramebuffer> OpenGLFramebuffer::Create(const FramebufferSpecification& specification, OpenGLDevice& device)
     {
         if (!IsValid(specification))
         {
             return nullptr;
         }
 
-        Scope<OpenGLFramebuffer> framebuffer(new OpenGLFramebuffer(specification, state));
+        Scope<OpenGLFramebuffer> framebuffer(new OpenGLFramebuffer(specification, device));
         const bool integer = std::ranges::find(framebuffer->m_ColorFormats, FramebufferFormat::RedInteger) != framebuffer->m_ColorFormats.end();
-        if (!FitsTheLimits(specification, framebuffer->m_ColorFormats.size(), integer) || !framebuffer->CreateTargets())
+        if (!FitsTheLimits(device.GetLimits(), specification, framebuffer->m_ColorFormats.size(), integer) || !framebuffer->CreateTargets())
         {
             return nullptr;
         }
@@ -180,13 +173,13 @@ namespace Quasar
 
     void OpenGLFramebuffer::Bind()
     {
-        m_State->BindFramebuffer(m_Framebuffer);
-        m_State->SetViewport(static_cast<GLsizei>(GetSpecification().Width), static_cast<GLsizei>(GetSpecification().Height));
+        m_Device->GetState().BindFramebuffer(m_Framebuffer);
+        m_Device->GetState().SetViewport(static_cast<GLsizei>(GetSpecification().Width), static_cast<GLsizei>(GetSpecification().Height));
     }
 
     void OpenGLFramebuffer::Unbind()
     {
-        m_State->BindFramebuffer(0);
+        m_Device->GetState().BindFramebuffer(0);
         Resolve();
     }
 
@@ -201,7 +194,7 @@ namespace Quasar
         resized.Width = width;
         resized.Height = height;
         const bool integer = std::ranges::find(m_ColorFormats, FramebufferFormat::RedInteger) != m_ColorFormats.end();
-        if (!FitsTheLimits(resized, m_ColorFormats.size(), integer))
+        if (!FitsTheLimits(m_Device->GetLimits(), resized, m_ColorFormats.size(), integer))
         {
             return;
         }
@@ -234,7 +227,7 @@ namespace Quasar
             QUASAR_ENGINE_ERROR("Cannot fill the depth of a framebuffer that has no depth attachment");
             return;
         }
-        ClearOpenGLDepthStencil(*m_State, m_Framebuffer, depth, stencil);
+        ClearOpenGLDepthStencil(m_Device->GetState(), m_Framebuffer, depth, stencil);
     }
 
     std::optional<int> OpenGLFramebuffer::ReadInteger(std::uint32_t attachment, std::uint32_t x, std::uint32_t y)
@@ -257,7 +250,7 @@ namespace Quasar
     {
         if (const std::optional<std::size_t> index = FindColor(attachment, false, "bind"); index)
         {
-            m_State->BindTexture(slot, GetReadableTexture(*index));
+            m_Device->GetState().BindTexture(slot, GetReadableTexture(*index));
         }
     }
 
@@ -265,7 +258,7 @@ namespace Quasar
     {
         if (HasDepthTexture())
         {
-            m_State->BindTexture(slot, m_DepthTexture);
+            m_Device->GetState().BindTexture(slot, m_DepthTexture);
         }
     }
 
@@ -273,7 +266,7 @@ namespace Quasar
     {
         if (HasDepthTexture())
         {
-            m_State->BindTexture(slot, m_DepthValues);
+            m_Device->GetState().BindTexture(slot, m_DepthValues);
         }
     }
 
@@ -367,18 +360,18 @@ namespace Quasar
 
     void OpenGLFramebuffer::DestroyTargets()
     {
-        m_State->ForgetFramebuffer(m_Framebuffer);
+        m_Device->GetState().ForgetFramebuffer(m_Framebuffer);
         for (const GLuint texture : {m_DepthValues, m_DepthTexture})
         {
-            m_State->ForgetTexture(texture);
+            m_Device->GetState().ForgetTexture(texture);
         }
         for (const GLuint texture : m_ColorTextures)
         {
-            m_State->ForgetTexture(texture);
+            m_Device->GetState().ForgetTexture(texture);
         }
         for (const GLuint texture : m_ResolvedTextures)
         {
-            m_State->ForgetTexture(texture);
+            m_Device->GetState().ForgetTexture(texture);
         }
         glDeleteFramebuffers(1, &m_Framebuffer);
         glDeleteFramebuffers(1, &m_ResolveFramebuffer);
@@ -405,8 +398,8 @@ namespace Quasar
         }
 
         // The scissor test also limits the copy, so it is turned off to resolve the whole image
-        const bool scissor = m_State->IsEnabled(OpenGLState::Capability::ScissorTest);
-        m_State->SetEnabled(OpenGLState::Capability::ScissorTest, false);
+        const bool scissor = m_Device->GetState().IsEnabled(OpenGLState::Capability::ScissorTest);
+        m_Device->GetState().SetEnabled(OpenGLState::Capability::ScissorTest, false);
 
         const auto width = static_cast<GLint>(GetSpecification().Width);
         const auto height = static_cast<GLint>(GetSpecification().Height);
@@ -417,7 +410,7 @@ namespace Quasar
             glBlitNamedFramebuffer(m_Framebuffer, m_ResolveFramebuffer, 0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
 
-        m_State->SetEnabled(OpenGLState::Capability::ScissorTest, scissor);
+        m_Device->GetState().SetEnabled(OpenGLState::Capability::ScissorTest, scissor);
     }
 
     bool OpenGLFramebuffer::IsMultisampled() const

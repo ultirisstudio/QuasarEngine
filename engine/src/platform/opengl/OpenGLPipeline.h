@@ -5,12 +5,12 @@
 
 namespace Quasar
 {
-    class OpenGLState;
+    class OpenGLDevice;
 
     class OpenGLPipeline final : public Pipeline
     {
     public:
-        static Scope<OpenGLPipeline> Create(const PipelineSpecification& specification, OpenGLState& state);
+        static Scope<OpenGLPipeline> Create(const PipelineSpecification& specification, OpenGLDevice& device);
 
         ~OpenGLPipeline() override = default;
 
@@ -22,8 +22,8 @@ namespace Quasar
         void Bind() override;
 
     private:
-        OpenGLPipeline(const PipelineSpecification& specification, OpenGLState& state);
+        OpenGLPipeline(const PipelineSpecification& specification, OpenGLDevice& device);
 
-        OpenGLState* m_State;
+        OpenGLDevice* m_Device;
     };
 }

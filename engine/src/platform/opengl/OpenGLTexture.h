@@ -9,13 +9,12 @@
 
 namespace Quasar
 {
-    class OpenGLState;
+    class OpenGLDevice;
 
     class OpenGLTexture2D final : public Texture2D
     {
     public:
-        static Scope<OpenGLTexture2D> Create(const TextureSpecification& specification, std::span<const std::byte> pixels, float maxAnisotropy,
-                                             OpenGLState& state);
+        static Scope<OpenGLTexture2D> Create(const TextureSpecification& specification, std::span<const std::byte> pixels, OpenGLDevice& device);
 
         ~OpenGLTexture2D() override;
 
@@ -28,14 +27,13 @@ namespace Quasar
         ImTextureID GetImGuiTexture() const override;
 
     private:
-        OpenGLTexture2D(const TextureSpecification& specification, std::uint32_t slotCount, float maxAnisotropy, OpenGLState& state);
+        OpenGLTexture2D(const TextureSpecification& specification, OpenGLDevice& device);
 
         void Write(std::span<const std::byte> pixels) override;
         void Clear();
 
-        OpenGLState* m_State;
+        OpenGLDevice* m_Device;
         std::uint32_t m_Texture = 0;
         std::uint32_t m_Levels = 1;
-        std::uint32_t m_SlotCount = 0;
     };
 }

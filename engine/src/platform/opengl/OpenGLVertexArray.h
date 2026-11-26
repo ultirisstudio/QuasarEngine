@@ -8,12 +8,12 @@
 
 namespace Quasar
 {
-    class OpenGLState;
+    class OpenGLDevice;
 
     class OpenGLVertexArray final : public VertexArray
     {
     public:
-        static Scope<OpenGLVertexArray> Create(OpenGLState& state);
+        static Scope<OpenGLVertexArray> Create(OpenGLDevice& device);
 
         ~OpenGLVertexArray() override;
 
@@ -25,12 +25,12 @@ namespace Quasar
         void Bind() const;
 
     private:
-        OpenGLVertexArray(std::uint32_t vertexArray, OpenGLState& state);
+        OpenGLVertexArray(std::uint32_t vertexArray, OpenGLDevice& device);
 
         void AttachVertexBuffer(const VertexBuffer& buffer, std::uint32_t index) override;
         void AttachIndexBuffer(const IndexBuffer& buffer) override;
 
         std::uint32_t m_VertexArray = 0;
-        OpenGLState* m_State;
+        OpenGLDevice* m_Device;
     };
 }

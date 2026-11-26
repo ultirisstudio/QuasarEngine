@@ -1,6 +1,6 @@
 #include <platform/opengl/OpenGLBuffer.h>
 
-#include <platform/opengl/OpenGLState.h>
+#include <platform/opengl/OpenGLDevice.h>
 
 #include <quasar/log/Log.h>
 
@@ -28,17 +28,10 @@ namespace Quasar
             statistics.UploadedBytes += size;
             glNamedBufferSubData(buffer, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size), data);
         }
-
-        std::size_t GetLimit(GLenum name)
-        {
-            GLint value = 0;
-            glGetIntegerv(name, &value);
-            return static_cast<std::size_t>(value);
-        }
     }
 
-    OpenGLVertexBuffer::OpenGLVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout, OpenGLState& state)
-        : VertexBuffer(vertices.size(), layout), m_State(&state), m_Buffer(CreateStorage(vertices.data(), vertices.size()))
+    OpenGLVertexBuffer::OpenGLVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout, OpenGLDevice& device)
+        : VertexBuffer(vertices.size(), layout), m_Device(&device), m_Buffer(CreateStorage(vertices.data(), vertices.size()))
     {
     }
 
@@ -47,22 +40,22 @@ namespace Quasar
         glDeleteBuffers(1, &m_Buffer);
     }
 
-    Scope<OpenGLVertexBuffer> OpenGLVertexBuffer::Create(std::span<const std::byte> vertices, const VertexLayout& layout, OpenGLState& state)
+    Scope<OpenGLVertexBuffer> OpenGLVertexBuffer::Create(std::span<const std::byte> vertices, const VertexLayout& layout, OpenGLDevice& device)
     {
         if (!IsValid(vertices.size(), layout))
         {
             return nullptr;
         }
-        return Scope<OpenGLVertexBuffer>(new OpenGLVertexBuffer(vertices, layout, state));
+        return Scope<OpenGLVertexBuffer>(new OpenGLVertexBuffer(vertices, layout, device));
     }
 
     void OpenGLVertexBuffer::Write(std::span<const std::byte> data, std::size_t offset)
     {
-        WriteStorage(m_State->GetStatistics(), m_Buffer, offset, data.data(), data.size());
+        WriteStorage(m_Device->GetStatistics(), m_Buffer, offset, data.data(), data.size());
     }
 
-    OpenGLIndexBuffer::OpenGLIndexBuffer(std::span<const std::uint32_t> indices, OpenGLState& state)
-        : IndexBuffer(static_cast<std::uint32_t>(indices.size())), m_State(&state), m_Buffer(CreateStorage(indices.data(), indices.size_bytes()))
+    OpenGLIndexBuffer::OpenGLIndexBuffer(std::span<const std::uint32_t> indices, OpenGLDevice& device)
+        : IndexBuffer(static_cast<std::uint32_t>(indices.size())), m_Device(&device), m_Buffer(CreateStorage(indices.data(), indices.size_bytes()))
     {
     }
 
@@ -71,61 +64,61 @@ namespace Quasar
         glDeleteBuffers(1, &m_Buffer);
     }
 
-    Scope<OpenGLIndexBuffer> OpenGLIndexBuffer::Create(std::span<const std::uint32_t> indices, OpenGLState& state)
+    Scope<OpenGLIndexBuffer> OpenGLIndexBuffer::Create(std::span<const std::uint32_t> indices, OpenGLDevice& device)
     {
         if (!IsValid(indices.size()))
         {
             return nullptr;
         }
-        return Scope<OpenGLIndexBuffer>(new OpenGLIndexBuffer(indices, state));
+        return Scope<OpenGLIndexBuffer>(new OpenGLIndexBuffer(indices, device));
     }
 
     void OpenGLIndexBuffer::Write(std::span<const std::uint32_t> indices, std::size_t first)
     {
-        WriteStorage(m_State->GetStatistics(), m_Buffer, first * sizeof(std::uint32_t), indices.data(), indices.size_bytes());
+        WriteStorage(m_Device->GetStatistics(), m_Buffer, first * sizeof(std::uint32_t), indices.data(), indices.size_bytes());
     }
 
-    OpenGLUniformBuffer::OpenGLUniformBuffer(std::size_t size, std::uint32_t binding, OpenGLState& state)
-        : UniformBuffer(size, binding), m_State(&state), m_Buffer(CreateStorage(nullptr, size))
+    OpenGLUniformBuffer::OpenGLUniformBuffer(std::size_t size, std::uint32_t binding, OpenGLDevice& device)
+        : UniformBuffer(size, binding), m_Device(&device), m_Buffer(CreateStorage(nullptr, size))
     {
         glClearNamedBufferData(m_Buffer, GL_R8, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     }
 
     OpenGLUniformBuffer::~OpenGLUniformBuffer()
     {
-        m_State->ForgetBuffer(m_Buffer);
+        m_Device->GetState().ForgetBuffer(m_Buffer);
         glDeleteBuffers(1, &m_Buffer);
     }
 
-    Scope<OpenGLUniformBuffer> OpenGLUniformBuffer::Create(std::size_t size, std::uint32_t binding, OpenGLState& state)
+    Scope<OpenGLUniformBuffer> OpenGLUniformBuffer::Create(std::size_t size, std::uint32_t binding, OpenGLDevice& device)
     {
         if (!IsValid(size))
         {
             return nullptr;
         }
 
-        const std::size_t maxSize = GetLimit(GL_MAX_UNIFORM_BLOCK_SIZE);
+        const std::size_t maxSize = device.GetLimits().UniformBlockSize;
         if (size > maxSize)
         {
             QUASAR_ENGINE_ERROR("Cannot create a uniform buffer of {} bytes: OpenGL allows at most {}", size, maxSize);
             return nullptr;
         }
-        const std::size_t bindingCount = GetLimit(GL_MAX_UNIFORM_BUFFER_BINDINGS);
+        const std::uint32_t bindingCount = device.GetLimits().UniformBufferBindings;
         if (binding >= bindingCount)
         {
             QUASAR_ENGINE_ERROR("Cannot create a uniform buffer for the binding {}: OpenGL has the bindings 0 to {}", binding, bindingCount - 1);
             return nullptr;
         }
-        return Scope<OpenGLUniformBuffer>(new OpenGLUniformBuffer(size, binding, state));
+        return Scope<OpenGLUniformBuffer>(new OpenGLUniformBuffer(size, binding, device));
     }
 
     void OpenGLUniformBuffer::Bind()
     {
-        m_State->BindUniformBuffer(GetBinding(), m_Buffer);
+        m_Device->GetState().BindUniformBuffer(GetBinding(), m_Buffer);
     }
 
     void OpenGLUniformBuffer::Write(std::span<const std::byte> data, std::size_t offset)
     {
-        WriteStorage(m_State->GetStatistics(), m_Buffer, offset, data.data(), data.size());
+        WriteStorage(m_Device->GetStatistics(), m_Buffer, offset, data.data(), data.size());
     }
 }
