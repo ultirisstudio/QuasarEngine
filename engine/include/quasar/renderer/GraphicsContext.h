@@ -92,6 +92,13 @@ namespace Quasar
         /// binding. The reason is logged as an engine error.
         [[nodiscard]] virtual Scope<FrameUniformBuffer> CreateFrameUniformBuffer(std::size_t partSize, std::uint32_t binding) = 0;
 
+        /// @brief Creates a storage buffer written again at each frame, as an array of elements. See FrameStorageBuffer.
+        /// @param elementSize The size of an element, in bytes, usually the size of the struct that fills it.
+        /// @param binding The N of `layout(std430, binding = N)` of the storage block that the buffer fills.
+        /// @return The buffer, or nullptr if the size is 0 or if the graphics API does not allow the binding. The reason
+        /// is logged as an engine error.
+        [[nodiscard]] virtual Scope<FrameStorageBuffer> CreateFrameStorageBuffer(std::size_t elementSize, std::uint32_t binding) = 0;
+
         /// @brief Creates a 2D texture.
         /// @param specification The size and the settings of the texture.
         /// @param pixels Width * Height pixels of GetTexturePixelSize() bytes, from the top row, for example the

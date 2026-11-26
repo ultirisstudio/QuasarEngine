@@ -122,6 +122,7 @@ namespace Quasar::Sandbox
                 row("Framebuffer binds", statistics.FramebufferBinds);
                 row("Texture binds", statistics.TextureBinds);
                 row("Uniform buffer binds", statistics.UniformBufferBinds);
+                row("Storage buffer binds", statistics.StorageBufferBinds);
                 row("State changes", statistics.StateChanges);
                 row("Uniform changes", statistics.UniformChanges);
                 row("Uploads", statistics.Uploads);

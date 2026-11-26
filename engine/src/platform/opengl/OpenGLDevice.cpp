@@ -57,6 +57,9 @@ namespace Quasar
                     .UniformBlockSize = ReadLimit(GL_MAX_UNIFORM_BLOCK_SIZE),
                     .UniformBufferBindings = ReadLimit(GL_MAX_UNIFORM_BUFFER_BINDINGS),
                     .UniformBufferOffsetAlignment = std::max(ReadLimit(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT), 1U),
+                    .StorageBlockSize = ReadLimit(GL_MAX_SHADER_STORAGE_BLOCK_SIZE),
+                    .StorageBufferBindings = ReadLimit(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS),
+                    .StorageBufferOffsetAlignment = std::max(ReadLimit(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT), 1U),
                     .Anisotropy = ReadMaxAnisotropy()};
         }
     }

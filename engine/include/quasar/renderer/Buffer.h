@@ -223,4 +223,70 @@ namespace Quasar
         std::size_t m_PartSize = 0;
         std::uint32_t m_Binding = 0;
     };
+
+    /// @brief A storage block written again at each frame, as an array of elements of one size, such as the objects of
+    /// the draws.
+    ///
+    /// It is created with GraphicsContext::CreateFrameStorageBuffer() with the size of an element and the binding of the
+    /// block, the N of `layout(std430, binding = N) readonly buffer Objects { ... };`. Add() writes an element and gives
+    /// its index in the array, and Bind() makes the next draws read the array of the current frame. The elements of a
+    /// frame are kept until GraphicsContext::EndFrame(), then the next frame starts again from the element 0. As with
+    /// FrameUniformBuffer, each frame writes into its own memory and the buffer grows when needed. The elements follow
+    /// each other without padding, so the C++ struct must follow the std430 rules of GLSL.
+    class FrameStorageBuffer
+    {
+    public:
+        virtual ~FrameStorageBuffer() = default;
+
+        FrameStorageBuffer(const FrameStorageBuffer&) = delete;
+        FrameStorageBuffer& operator=(const FrameStorageBuffer&) = delete;
+        FrameStorageBuffer(FrameStorageBuffer&&) = delete;
+        FrameStorageBuffer& operator=(FrameStorageBuffer&&) = delete;
+
+        /// @brief Returns true if elements of this size can be created, whatever the graphics API. It must not be 0. The
+        /// reason a buffer is refused is logged as an engine error.
+        static bool IsValid(std::size_t elementSize);
+
+        /// @brief Writes an element for the current frame.
+        /// @param data The bytes of the element, of the size of an element.
+        /// @return The index of the element, or nullopt if the data has another size or if the buffer cannot grow. The
+        /// reason is logged as an engine error.
+        std::optional<std::uint32_t> AddData(std::span<const std::byte> data);
+
+        /// @brief Writes an element from a value, usually a struct with the members of an element. See AddData().
+        template <typename T>
+        std::optional<std::uint32_t> Add(const T& value)
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "A frame storage buffer is filled with the bytes of the value");
+            return AddData(std::as_bytes(std::span<const T, 1>(&value, 1)));
+        }
+
+        /// @brief Makes the next draws read the storage block of the binding of this buffer from the elements of the
+        /// current frame.
+        void Bind() { BindFrame(); }
+
+        /// @brief Returns the number of elements that the current frame added.
+        virtual std::uint32_t GetCount() const = 0;
+
+        /// @brief Returns the size of an element, in bytes.
+        std::size_t GetElementSize() const { return m_ElementSize; }
+
+        /// @brief Returns the binding of the storage block that the buffer fills.
+        std::uint32_t GetBinding() const { return m_Binding; }
+
+    protected:
+        /// @brief Keeps the size of an element, which must be valid, and the binding. See IsValid().
+        FrameStorageBuffer(std::size_t elementSize, std::uint32_t binding);
+
+        /// @brief Copies an element of the size of an element into the memory of the current frame.
+        /// @return The index of the element, or nullopt if the buffer cannot grow.
+        virtual std::optional<std::uint32_t> Write(std::span<const std::byte> data) = 0;
+
+        /// @brief Binds the elements of the current frame.
+        virtual void BindFrame() = 0;
+
+    private:
+        std::size_t m_ElementSize = 0;
+        std::uint32_t m_Binding = 0;
+    };
 }

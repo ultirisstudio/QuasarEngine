@@ -154,6 +154,12 @@ namespace Quasar
         return OpenGLFrameUniformBuffer::Create(partSize, binding, *m_Device);
     }
 
+    Scope<FrameStorageBuffer> OpenGLContext::CreateFrameStorageBuffer(std::size_t elementSize, std::uint32_t binding)
+    {
+        SDL_GL_MakeCurrent(m_Window, m_Context);
+        return OpenGLFrameStorageBuffer::Create(elementSize, binding, *m_Device);
+    }
+
     Scope<Texture2D> OpenGLContext::CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels)
     {
         SDL_GL_MakeCurrent(m_Window, m_Context);

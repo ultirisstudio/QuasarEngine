@@ -78,6 +78,10 @@ namespace Quasar
         /// GraphicsContext::CreateFrameUniformBuffer().
         [[nodiscard]] Scope<FrameUniformBuffer> CreateFrameUniformBuffer(std::size_t partSize, std::uint32_t binding) override;
 
+        /// @brief Makes the context current, then creates a frame storage buffer. See
+        /// GraphicsContext::CreateFrameStorageBuffer().
+        [[nodiscard]] Scope<FrameStorageBuffer> CreateFrameStorageBuffer(std::size_t elementSize, std::uint32_t binding) override;
+
         /// @brief Makes the context current, then creates an OpenGL texture. See GraphicsContext::CreateTexture2D().
         [[nodiscard]] Scope<Texture2D> CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels) override;
 
