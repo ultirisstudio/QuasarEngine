@@ -82,7 +82,8 @@ namespace Quasar
         glTextureParameteri(m_Texture, GL_TEXTURE_WRAP_T, GetWrap(specification.Wrap));
         if (maxAnisotropy > 1.0f && specification.Filter == TextureFilter::Linear && specification.Mipmaps)
         {
-            glTextureParameterf(m_Texture, GL_TEXTURE_MAX_ANISOTROPY, specification.Anisotropy > 1.0f ? specification.Anisotropy : 1.0f);
+            glTextureParameterf(m_Texture, GL_TEXTURE_MAX_ANISOTROPY,
+                                specification.Anisotropy > 1.0f ? std::min(specification.Anisotropy, maxAnisotropy) : 1.0f);
         }
     }
 
