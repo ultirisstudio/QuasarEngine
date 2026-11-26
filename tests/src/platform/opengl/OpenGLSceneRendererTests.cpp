@@ -721,6 +721,60 @@ TEST_CASE("The ambient occlusion darkens the ambient light where surfaces meet, 
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
+TEST_CASE("The ambient occlusion sees the sides of the meshes that their materials draw, and only them")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    Quasar::PipelineLibrary library(fixture.GetContext());
+    REQUIRE(library.AddDefaults());
+    const Quasar::Scope<Quasar::Material> lit = library.CreateMaterial(Quasar::PipelineLibrary::BlinnPhong);
+    REQUIRE(lit != nullptr);
+    lit->SetFloat("Specular", 0.0f);
+    const Quasar::Scope<Quasar::Pipeline> twoSidedPipeline =
+        fixture.GetContext().CreatePipeline({.Shader = lit->GetSpecification().Pipeline->GetSpecification().Shader, .Culling = Quasar::CullMode::None});
+    REQUIRE(twoSidedPipeline != nullptr);
+    Quasar::MaterialSpecification twoSidedSpecification = lit->GetSpecification();
+    twoSidedSpecification.Pipeline = twoSidedPipeline.get();
+    const Quasar::Scope<Quasar::Material> twoSided = Quasar::Material::Create(fixture.GetContext(), twoSidedSpecification);
+    REQUIRE(twoSided != nullptr);
+    twoSided->SetFloat("Specular", 0.0f);
+
+    const glm::quat facingUp = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    fixture.AddQuad(*lit, {.Rotation = facingUp, .Scale = glm::vec3(20.0f)});
+    const Entity wall = fixture.AddQuad(
+        *lit, {.Position = {0.0f, 1.0f, 0.0f}, .Rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)), .Scale = glm::vec3(2.0f)});
+    Entity camera = fixture.AddCamera({0.0f, 1.5f, 2.5f});
+    camera.Get<CameraComponent>().Camera.SetViewportSize(64, 64);
+    camera.Get<TransformComponent>().Rotation =
+        glm::quatLookAtRH(glm::normalize(glm::vec3(0.0f, 0.3f, 0.0f) - glm::vec3(0.0f, 1.5f, 2.5f)), {0.0f, 1.0f, 0.0f});
+    Entity sun = fixture.GetScene().CreateEntity("Sun");
+    sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 1.0f});
+    sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    const Quasar::Scope<Quasar::Framebuffer> target = fixture.GetContext().CreateFramebuffer({.Width = 64, .Height = 64});
+    REQUIRE(target != nullptr);
+    const Quasar::Camera& view = camera.Get<CameraComponent>().Camera;
+    const auto render = [&](bool occlusion)
+    {
+        fixture.GetSceneRenderer().SetSettings(
+            {.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Enabled = false}, .AmbientOcclusion = {.Enabled = occlusion, .HalfResolution = false}});
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), target.get());
+        Quasar::Camera placed = view;
+        placed.SetPosition(camera.Get<TransformComponent>().Position);
+        placed.SetOrientation(camera.Get<TransformComponent>().Rotation);
+        const glm::vec4 clip = placed.GetViewProjection() * glm::vec4(0.0f, 0.0f, 0.08f, 1.0f);
+        const glm::vec2 pixel = (glm::vec2(clip) / clip.w * 0.5f + 0.5f) * 64.0f;
+        return TestHelpers::ReadColor(*target, static_cast<int>(pixel.x), 63 - static_cast<int>(pixel.y))[0];
+    };
+
+    const int ambient = render(false);
+    CHECK(ambient > 200);
+    CHECK(std::abs(render(true) - ambient) <= 3);
+
+    wall.Get<MeshRendererComponent>().Material = twoSided.get();
+    CHECK(render(true) < ambient - 20);
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
 TEST_CASE("The scene renderer measures each of its steps on the graphics card")
 {
     const TestHelpers::ScopedLog log;

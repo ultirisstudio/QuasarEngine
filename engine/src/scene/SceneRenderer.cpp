@@ -18,6 +18,7 @@
 #include <glm/vec4.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -27,7 +28,8 @@ namespace Quasar
     SceneRenderer::SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings)
         : m_Renderer(&renderer), m_Settings(settings), m_PostProcessing(std::move(resources.PostProcessing)),
           m_SceneFramebuffer(std::move(resources.SceneFramebuffer)), m_ShadowShader(std::move(resources.ShadowShader)),
-          m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_ShadowMap(std::move(resources.ShadowMap)), m_DepthPrepass(std::move(resources.DepthPrepass)),
+          m_ShadowPipeline(std::move(resources.ShadowPipeline)), m_DepthPipelines(std::move(resources.DepthPipelines)),
+          m_ShadowMap(std::move(resources.ShadowMap)), m_DepthPrepass(std::move(resources.DepthPrepass)),
           m_AmbientOcclusion(std::move(resources.AmbientOcclusion))
     {
     }
@@ -48,13 +50,19 @@ namespace Quasar
         if (resources.ShadowShader != nullptr)
         {
             resources.ShadowPipeline = context.CreatePipeline({.Shader = resources.ShadowShader.get(), .Culling = CullMode::None});
+            for (const CullMode culling : {CullMode::None, CullMode::Back, CullMode::Front})
+            {
+                resources.DepthPipelines.at(static_cast<std::size_t>(culling)) =
+                    context.CreatePipeline({.Shader = resources.ShadowShader.get(), .Culling = culling});
+            }
         }
         resources.SceneFramebuffer =
             context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Rgba16F, FramebufferFormat::Depth24Stencil8}});
         resources.ShadowMap = context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Depth32F}});
         resources.DepthPrepass = context.CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {FramebufferFormat::Depth32F}});
         resources.AmbientOcclusion = AmbientOcclusion::Create(context);
-        if (resources.PostProcessing == nullptr || resources.ShadowPipeline == nullptr || resources.SceneFramebuffer == nullptr ||
+        const bool depthPipelines = std::ranges::all_of(resources.DepthPipelines, [](const Scope<Pipeline>& pipeline) { return pipeline != nullptr; });
+        if (resources.PostProcessing == nullptr || resources.ShadowPipeline == nullptr || !depthPipelines || resources.SceneFramebuffer == nullptr ||
             resources.ShadowMap == nullptr || resources.DepthPrepass == nullptr || resources.AmbientOcclusion == nullptr)
         {
             QUASAR_ENGINE_ERROR("Cannot create a scene renderer: its post-processing, its pipelines or its framebuffers cannot be created");
@@ -172,7 +180,8 @@ namespace Quasar
             m_Renderer->BeginScene(camera, m_DepthPrepass.get(), SceneLights{.Directional = std::nullopt});
             for (const DrawItem& item : m_DrawList)
             {
-                m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Transform);
+                const CullMode culling = item.Material->GetSpecification().Pipeline->GetSpecification().Culling;
+                m_Renderer->Submit(*item.Mesh, *m_DepthPipelines.at(static_cast<std::size_t>(culling)), item.Transform);
             }
             m_Renderer->EndScene();
         }

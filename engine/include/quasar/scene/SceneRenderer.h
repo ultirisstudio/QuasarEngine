@@ -23,6 +23,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -50,8 +51,9 @@ namespace Quasar
     /// SpotLightComponent, up to the maximums of the Renderer. The meshes cast shadows from the directional light, see
     /// ShadowSettings.
     ///
-    /// With SceneRendererSettings::AmbientOcclusion, the depth of the scene is first drawn alone, and an AmbientOcclusion
-    /// computes from it how much ambient light reaches each pixel, which the shaders read from the Renderer.
+    /// With SceneRendererSettings::AmbientOcclusion, the depth of the scene is first drawn alone, with the culling of the
+    /// pipeline of each material, and an AmbientOcclusion computes from it how much ambient light reaches each pixel,
+    /// which the shaders read from the Renderer.
     ///
     /// The scene is drawn in linear colors into a framebuffer of its own, of format FramebufferFormat::Rgba16F, of the
     /// size of the target and with SceneRendererSettings::Samples, cleared with SceneRendererSettings::Background. Its
@@ -117,6 +119,7 @@ namespace Quasar
             Scope<Framebuffer> SceneFramebuffer;
             Scope<Shader> ShadowShader;
             Scope<Pipeline> ShadowPipeline;
+            std::array<Scope<Pipeline>, 3> DepthPipelines;
             Scope<Framebuffer> ShadowMap;
             Scope<Framebuffer> DepthPrepass;
             Scope<Quasar::AmbientOcclusion> AmbientOcclusion;
@@ -143,6 +146,7 @@ namespace Quasar
         Scope<Framebuffer> m_SceneFramebuffer;
         Scope<Shader> m_ShadowShader;
         Scope<Pipeline> m_ShadowPipeline;
+        std::array<Scope<Pipeline>, 3> m_DepthPipelines;
         Scope<Framebuffer> m_ShadowMap;
         Scope<Framebuffer> m_DepthPrepass;
         Scope<AmbientOcclusion> m_AmbientOcclusion;
