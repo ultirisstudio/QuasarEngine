@@ -81,11 +81,7 @@ namespace Quasar
         }
         frame.SectionCount = 0;
         frame.CpuBegin = m_CpuClock();
-        frame.Valid = Prepare(frame.Begin) && Prepare(frame.End);
-        if (frame.Valid)
-        {
-            frame.Begin->Record();
-        }
+        frame.Valid = true;
         m_InFrame = true;
     }
 
@@ -101,10 +97,6 @@ namespace Quasar
         }
 
         Frame& frame = m_Frames.at(m_Current);
-        if (frame.Valid)
-        {
-            frame.End->Record();
-        }
         frame.CpuEnd = m_CpuClock();
         frame.Pending = frame.Valid;
         m_InFrame = false;
@@ -166,12 +158,7 @@ namespace Quasar
 
     bool FrameProfiler::ReadFrame(Frame& frame)
     {
-        const std::optional<double> total = GetMilliseconds(*frame.Begin, *frame.End);
-        if (!total)
-        {
-            return false;
-        }
-
+        double gpuTotal = 0.0;
         std::vector<SectionTiming> timings;
         timings.reserve(frame.SectionCount);
         for (std::size_t index = 0; index < frame.SectionCount; ++index)
@@ -181,6 +168,10 @@ namespace Quasar
             if (!time)
             {
                 return false;
+            }
+            if (section.Depth == 0)
+            {
+                gpuTotal += *time;
             }
             timings.push_back(
                 {.Name = section.Name, .Depth = section.Depth, .CpuMilliseconds = ToMilliseconds(section.CpuBegin, section.CpuEnd), .GpuMilliseconds = *time});
@@ -204,7 +195,7 @@ namespace Quasar
         m_Timings = std::move(timings);
         const double cpuTotal = ToMilliseconds(frame.CpuBegin, frame.CpuEnd);
         m_FrameCpuMilliseconds = m_HasTimings ? Smooth(m_FrameCpuMilliseconds, cpuTotal) : cpuTotal;
-        m_FrameGpuMilliseconds = m_HasTimings ? Smooth(m_FrameGpuMilliseconds, *total) : *total;
+        m_FrameGpuMilliseconds = m_HasTimings ? Smooth(m_FrameGpuMilliseconds, gpuTotal) : gpuTotal;
         m_HasTimings = true;
         return true;
     }

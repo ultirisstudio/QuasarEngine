@@ -91,8 +91,9 @@ namespace Quasar
 
         /// @brief Draws a scene seen from a camera.
         ///
-        /// Each step is a section of the profiler of the graphics context: "Shadows", "Depth prepass", "Ambient
-        /// occlusion", "Scene" and "Post-processing", which holds a section for each effect. See FrameProfiler.
+        /// Each step is a section of the profiler of the graphics context: "Gather and cull", "Sort and batch",
+        /// "Shadows", "Depth prepass", "Ambient occlusion", "Scene" and "Post-processing", which holds a section for each
+        /// effect. See FrameProfiler.
         /// @param scene The scene.
         /// @param camera The camera, whose viewport size should be the size of the target.
         /// @param target The framebuffer to draw into, or nullptr for the window.
@@ -161,6 +162,7 @@ namespace Quasar
 
         bool GatherLights(Scene& scene);
         void GatherDrawList(Scene& scene, const Frustum& view, const std::optional<Frustum>& light);
+        void BuildBatches();
         void BuildBatches(std::vector<std::uint32_t>& order, std::vector<Batch>& batches, bool byMaterial);
         DirectionalShadow RenderShadows(const ShadowCamera& shadow);
         SceneAmbientOcclusion RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size);

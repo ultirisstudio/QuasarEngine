@@ -4,8 +4,8 @@
 #include <quasar/log/Log.h>
 #include <quasar/renderer/BoundingBox.h>
 #include <quasar/renderer/Color.h>
-#include <quasar/renderer/Frustum.h>
 #include <quasar/renderer/FrameProfiler.h>
+#include <quasar/renderer/Frustum.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/scene/Entity.h>
 #include <quasar/scene/components/CameraComponent.h>
@@ -147,7 +147,10 @@ namespace Quasar
                     m_ShadowOrder.push_back(index);
                 }
             });
+    }
 
+    void SceneRenderer::BuildBatches()
+    {
         BuildBatches(m_SceneOrder, m_SceneBatches, true);
         BuildBatches(m_ShadowOrder, m_ShadowBatches, false);
         for (const Batch& batch : m_SceneBatches)
@@ -209,13 +212,21 @@ namespace Quasar
 
     void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
     {
+        FrameProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
         std::optional<ShadowCamera> shadow;
-        if (GatherLights(scene) && m_Settings.Shadows.Enabled && m_Lights.Directional)
         {
-            shadow = ComputeShadowCamera(camera, m_Lights.Directional->Direction, m_Settings.Shadows);
+            const ProfilerSection section(profiler, "Gather and cull");
+            if (GatherLights(scene) && m_Settings.Shadows.Enabled && m_Lights.Directional)
+            {
+                shadow = ComputeShadowCamera(camera, m_Lights.Directional->Direction, m_Settings.Shadows);
+            }
+            GatherDrawList(scene, Frustum::FromViewProjection(camera.GetViewProjection()),
+                           shadow ? std::optional(Frustum::FromViewProjection(shadow->View.GetViewProjection())) : std::nullopt);
         }
-        GatherDrawList(scene, Frustum::FromViewProjection(camera.GetViewProjection()),
-                       shadow ? std::optional(Frustum::FromViewProjection(shadow->View.GetViewProjection())) : std::nullopt);
+        {
+            const ProfilerSection section(profiler, "Sort and batch");
+            BuildBatches();
+        }
         if (shadow)
         {
             m_Lights.Shadow = RenderShadows(*shadow);
@@ -243,7 +254,6 @@ namespace Quasar
         }
         m_SceneFramebuffer->Resize(size.x, size.y);
 
-        FrameProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
         {
             const ProfilerSection section(profiler, "Scene");
             m_SceneFramebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));

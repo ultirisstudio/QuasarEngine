@@ -175,7 +175,7 @@ namespace
     };
 }
 
-TEST_CASE("The application measures each rendered frame on the graphics card, with its ImGui windows")
+TEST_CASE("The application measures the update, the layers, the ImGui windows and the swap of each rendered frame")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateApplicationWithContext();
@@ -193,7 +193,9 @@ TEST_CASE("The application measures each rendered frame on the graphics card, wi
         sections.push_back(timing.Name);
     }
     const bool hasImGui = application->GetImGuiLayer() != nullptr;
-    CHECK(sections == (hasImGui ? std::vector<std::string>{"Layer", "ImGui"} : std::vector<std::string>{"Layer"}));
+    CHECK(sections == (hasImGui ? std::vector<std::string>{"Update", "Layer", "ImGui", "Swap and events"}
+                                : std::vector<std::string>{"Update", "Layer", "Swap and events"}));
     CHECK(profiler.GetFrameGpuMilliseconds() > 0.0);
+    CHECK(profiler.GetFrameCpuMilliseconds() > 0.0);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }

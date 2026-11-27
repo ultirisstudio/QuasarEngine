@@ -164,7 +164,7 @@ TEST_SUITE("FrameProfiler")
         CHECK(profiler.GetFrameGpuMilliseconds() == 0.0);
     }
 
-    TEST_CASE("The profiler gives the time of each section and of the frame, in the order the sections started")
+    TEST_CASE("The profiler gives the time of each section in the order they started, and the sum of the sections as the frame")
     {
         FakeGpu gpu;
         FrameProfiler profiler = CreateProfiler(gpu);
@@ -180,7 +180,7 @@ TEST_SUITE("FrameProfiler")
         CHECK(HasTiming(timings, "Shadows", 0, 2.0));
         CHECK(HasTiming(timings, "Post-processing", 0, 2.0));
         CHECK(HasTiming(timings, "Bloom", 1, 1.0));
-        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(6.0));
+        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(4.0));
     }
 
     TEST_CASE("The times are smoothed over the frames")
@@ -194,7 +194,7 @@ TEST_SUITE("FrameProfiler")
 
         CHECK(HasTiming(profiler.GetTimings(), "Shadows", 0, 2.0 + (10.0 * FrameProfiler::Smoothing)));
         CHECK(HasTiming(profiler.GetTimings(), "Bloom", 1, 1.0));
-        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(6.0 + (10.0 * FrameProfiler::Smoothing)));
+        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(4.0 + (10.0 * FrameProfiler::Smoothing)));
     }
 
     TEST_CASE("A section that appears starts at its time, and a section that is gone is removed")

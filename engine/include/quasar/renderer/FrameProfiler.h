@@ -35,10 +35,14 @@ namespace Quasar
     /// Application runs the frames, and the SceneRenderer and the PostProcessStack mark their steps.
     ///
     /// The time on the processor is the time between the start and the end of a section, and the time on the graphics
-    /// card is the time between the commands sent at its start and at its end. The times of a frame are ready a few
-    /// frames later, once the graphics card has finished it, and both times are given together. The profiler keeps the queries of the last FramesInFlight
-    /// frames and reads the ones that are ready, so it never makes the program wait for the graphics card. A frame
-    /// that is still not ready after FramesInFlight frames is skipped.
+    /// card is the time between the commands sent at its start and at its end. The frame on the processor lasts from
+    /// BeginFrame() to EndFrame(), and the frame on the graphics card is the sum of the sections of depth 0, so the time
+    /// the graphics card waits for the processor is not counted.
+    ///
+    /// The times of a frame are ready a few frames later, once the graphics card has finished it, and both times are
+    /// given together. The profiler keeps the queries of the last FramesInFlight frames and reads the ones that are
+    /// ready, so it never makes the program wait for the graphics card. A frame that is still not ready after
+    /// FramesInFlight frames is skipped.
     ///
     /// The profiler is off at first, so it costs nothing until SetEnabled() turns it on. Each GraphicsContext owns a
     /// profiler: see GraphicsContext::GetProfiler().
@@ -90,8 +94,8 @@ namespace Quasar
         /// frame was read.
         double GetFrameCpuMilliseconds() const { return m_FrameCpuMilliseconds; }
 
-        /// @brief Returns the smoothed time of the graphics card for the whole last frame read, in milliseconds, or 0 if
-        /// no frame was read.
+        /// @brief Returns the smoothed time of the graphics card for the sections of depth 0 of the last frame read, in
+        /// milliseconds, or 0 if no frame was read.
         double GetFrameGpuMilliseconds() const { return m_FrameGpuMilliseconds; }
 
     private:
@@ -107,8 +111,6 @@ namespace Quasar
 
         struct Frame
         {
-            Scope<TimestampQuery> Begin;
-            Scope<TimestampQuery> End;
             std::uint64_t CpuBegin = 0;
             std::uint64_t CpuEnd = 0;
             std::vector<Section> Sections;

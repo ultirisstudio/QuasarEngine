@@ -8,8 +8,8 @@
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/renderer/Bloom.h>
 #include <quasar/renderer/Camera.h>
-#include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/FrameProfiler.h>
+#include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Material.h>
 #include <quasar/renderer/Mesh.h>
@@ -901,7 +901,7 @@ TEST_CASE("The ambient occlusion sees the sides of the meshes that their materia
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
-TEST_CASE("The scene renderer measures each of its steps on the graphics card")
+TEST_CASE("The scene renderer measures each of its steps, from the culling to the post-processing")
 {
     const TestHelpers::ScopedLog log;
     Fixture fixture;
@@ -925,8 +925,8 @@ TEST_CASE("The scene renderer measures each of its steps on the graphics card")
         CHECK(timing.GpuMilliseconds >= 0.0);
     }
     const std::vector<std::pair<std::string, std::uint32_t>> expected{
-        {"Shadows", 0},  {"Depth prepass", 0}, {"Ambient occlusion", 0}, {"Occlusion", 1}, {"Blur", 1},
-        {"Upsample", 1}, {"Scene", 0},         {"Post-processing", 0},   {"Bloom", 1},     {"Tone mapping", 1}};
+        {"Gather and cull", 0}, {"Sort and batch", 0}, {"Shadows", 0},         {"Depth prepass", 0}, {"Ambient occlusion", 0}, {"Occlusion", 1}, {"Blur", 1},
+        {"Upsample", 1},        {"Scene", 0},          {"Post-processing", 0}, {"Bloom", 1},         {"Tone mapping", 1}};
     CHECK(sections == expected);
     CHECK(profiler.GetFrameGpuMilliseconds() > 0.0);
     profiler.SetEnabled(false);
