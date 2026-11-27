@@ -310,6 +310,48 @@ TEST_CASE("The scene renderer draws the meshes that share a mesh and a material 
     CHECK(glGetError() == GL_NO_ERROR);
 }
 
+TEST_CASE("The scene renderer places each mesh once for the image and the shadow map, and draws its casters in one draw")
+{
+    const TestHelpers::ScopedLog log;
+    Fixture fixture;
+    constexpr int count = 8;
+    const auto addQuads = [&fixture](float y)
+    {
+        for (int index = 0; index < count; ++index)
+        {
+            const float x = -0.875f + (0.25f * static_cast<float>(index));
+            Entity quad = fixture.AddQuad(fixture.GetRed(), {.Position = {x, y, 0.0f}, .Scale = glm::vec3(0.25f)});
+            quad.Get<MeshRendererComponent>().CastShadows = index % 2 == 0;
+        }
+    };
+    addQuads(0.0f);
+    Entity sun = fixture.GetScene().CreateEntity("Sun");
+    sun.Add<DirectionalLightComponent>();
+    sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    Quasar::Camera camera = Fixture::CreateCamera();
+    camera.SetPosition({0.0f, 0.0f, 1.0f});
+    Quasar::GraphicsContext& context = fixture.GetContext();
+    const auto render = [&](bool shadows)
+    {
+        fixture.GetSceneRenderer().SetSettings({.Shadows = {.Enabled = shadows}, .AmbientOcclusion = {.Enabled = false}});
+        fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
+        context.EndFrame();
+        return context.GetFrameStatistics();
+    };
+
+    render(true);
+    const Quasar::RenderStatistics withShadows = render(true);
+    CHECK(withShadows.Draws == render(false).Draws + 1);
+
+    addQuads(0.5f);
+    const Quasar::RenderStatistics twiceAsMany = render(true);
+    CHECK(fixture.GetSceneRenderer().GetStatistics() ==
+          Quasar::SceneRendererStatistics{.Objects = 2 * count, .VisibleObjects = 2 * count, .ShadowCasters = count});
+    const std::uint64_t objectBytes = 112;
+    CHECK(twiceAsMany.UploadedBytes == withShadows.UploadedBytes + (count * objectBytes));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
 TEST_CASE("The scene renderer draws from the primary camera, at the transform of its entity")
 {
     const TestHelpers::ScopedLog log;

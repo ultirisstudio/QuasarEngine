@@ -12,6 +12,7 @@
 #include <quasar/scene/components/DirectionalLightComponent.h>
 #include <quasar/scene/components/MeshRendererComponent.h>
 #include <quasar/scene/components/PointLightComponent.h>
+#include <quasar/scene/components/RelationshipComponent.h>
 #include <quasar/scene/components/SpotLightComponent.h>
 #include <quasar/scene/components/TransformComponent.h>
 
@@ -115,18 +116,18 @@ namespace Quasar
     void SceneRenderer::GatherDrawList(Scene& scene, const Frustum& view, const std::optional<Frustum>& light)
     {
         m_DrawList.clear();
-        m_SceneOrder.clear();
-        m_ShadowOrder.clear();
+        m_DrawOrder.clear();
         m_Statistics = {};
-        scene.ForEach<TransformComponent, MeshRendererComponent>(
-            [this, &view, &light](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
+        scene.ForEach<TransformComponent, MeshRendererComponent, RelationshipComponent>(
+            [this, &view, &light](Entity entity, const TransformComponent& transform, const MeshRendererComponent& renderer,
+                                  const RelationshipComponent& relationship)
             {
                 if (renderer.Mesh == nullptr || renderer.Material == nullptr)
                 {
                     return;
                 }
                 ++m_Statistics.Objects;
-                const glm::mat4 world = entity.GetWorldMatrix();
+                const glm::mat4 world = relationship.Parent.IsValid() ? entity.GetWorldMatrix() : transform.GetMatrix();
                 const std::optional<BoundingBox>& bounds = renderer.Mesh->GetBounds();
                 const std::optional<BoundingBox> box = bounds ? std::optional(bounds->Transformed(world)) : std::nullopt;
                 const auto canSee = [&box](const Frustum& frustum) { return !box || frustum.Intersects(*box); };
@@ -136,78 +137,79 @@ namespace Quasar
                 {
                     return;
                 }
-                const auto index = static_cast<std::uint32_t>(m_DrawList.size());
-                m_DrawList.push_back({.Mesh = renderer.Mesh, .Material = renderer.Material, .World = world});
-                if (visible)
+                DrawPasses passes = DrawPasses::SceneAndShadow;
+                if (!castsShadow)
                 {
-                    m_SceneOrder.push_back(index);
+                    passes = DrawPasses::Scene;
                 }
-                if (castsShadow)
+                else if (!visible)
                 {
-                    m_ShadowOrder.push_back(index);
+                    passes = DrawPasses::Shadow;
                 }
+                m_DrawOrder.push_back({.Pipeline = renderer.Material->GetSpecification().Pipeline,
+                                       .Material = renderer.Material,
+                                       .Mesh = renderer.Mesh,
+                                       .Passes = passes,
+                                       .Item = static_cast<std::uint32_t>(m_DrawList.size())});
+                m_DrawList.push_back(world);
             });
     }
 
     void SceneRenderer::BuildBatches()
     {
-        BuildBatches(m_SceneOrder, m_SceneBatches, true);
-        BuildBatches(m_ShadowOrder, m_ShadowBatches, false);
-        for (const Batch& batch : m_SceneBatches)
-        {
-            m_Statistics.VisibleObjects += batch.Count;
-        }
-        for (const Batch& batch : m_ShadowBatches)
-        {
-            m_Statistics.ShadowCasters += batch.Count;
-        }
-    }
-
-    void SceneRenderer::BuildBatches(std::vector<std::uint32_t>& order, std::vector<Batch>& batches, bool byMaterial)
-    {
         const std::less<> before;
-        std::ranges::sort(order,
-                          [this, byMaterial, &before](std::uint32_t firstIndex, std::uint32_t secondIndex)
+        std::ranges::sort(m_DrawOrder,
+                          [&before](const DrawKey& first, const DrawKey& second)
                           {
-                              const DrawItem& first = m_DrawList[firstIndex];
-                              const DrawItem& second = m_DrawList[secondIndex];
-                              if (byMaterial)
+                              if (first.Pipeline != second.Pipeline)
                               {
-                                  const Pipeline* firstPipeline = first.Material->GetSpecification().Pipeline;
-                                  const Pipeline* secondPipeline = second.Material->GetSpecification().Pipeline;
-                                  if (firstPipeline != secondPipeline)
-                                  {
-                                      return before(firstPipeline, secondPipeline);
-                                  }
-                                  if (first.Material != second.Material)
-                                  {
-                                      return before(first.Material, second.Material);
-                                  }
+                                  return before(first.Pipeline, second.Pipeline);
                               }
-                              return before(first.Mesh, second.Mesh);
+                              if (first.Material != second.Material)
+                              {
+                                  return before(first.Material, second.Material);
+                              }
+                              if (first.Mesh != second.Mesh)
+                              {
+                                  return before(first.Mesh, second.Mesh);
+                              }
+                              return first.Passes < second.Passes;
                           });
 
-        batches.clear();
-        for (const std::uint32_t index : order)
+        m_SceneBatches.clear();
+        m_ShadowBatches.clear();
+        for (const DrawKey& key : m_DrawOrder)
         {
-            const DrawItem& item = m_DrawList[index];
-            const std::optional<PlacedObject> object = m_Renderer->PlaceObject(item.World);
+            const std::optional<PlacedObject> object = m_Renderer->PlaceObject(m_DrawList[key.Item]);
             if (!object)
             {
                 continue;
             }
-            Quasar::Material* material = byMaterial ? item.Material : nullptr;
-            if (!batches.empty())
+            if (key.Passes != DrawPasses::Shadow)
             {
-                Batch& last = batches.back();
-                if (last.Mesh == item.Mesh && last.Material == material && last.First.Index + last.Count == object->Index)
-                {
-                    ++last.Count;
-                    continue;
-                }
+                AddToBatches(m_SceneBatches, {.Mesh = key.Mesh, .Material = key.Material, .First = *object, .Count = 1});
+                ++m_Statistics.VisibleObjects;
             }
-            batches.push_back({.Mesh = item.Mesh, .Material = material, .First = *object, .Count = 1});
+            if (key.Passes != DrawPasses::Scene)
+            {
+                AddToBatches(m_ShadowBatches, {.Mesh = key.Mesh, .Material = nullptr, .First = *object, .Count = 1});
+                ++m_Statistics.ShadowCasters;
+            }
         }
+    }
+
+    void SceneRenderer::AddToBatches(std::vector<Batch>& batches, const Batch& object)
+    {
+        if (!batches.empty())
+        {
+            Batch& last = batches.back();
+            if (last.Mesh == object.Mesh && last.Material == object.Material && last.First.Index + last.Count == object.First.Index)
+            {
+                ++last.Count;
+                return;
+            }
+        }
+        batches.push_back(object);
     }
 
     void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
