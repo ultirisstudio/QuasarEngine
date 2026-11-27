@@ -320,7 +320,7 @@ TEST_CASE("The scene renderer places each mesh once for the image and the shadow
         for (int index = 0; index < count; ++index)
         {
             const float x = -0.875f + (0.25f * static_cast<float>(index));
-            Entity quad = fixture.AddQuad(fixture.GetRed(), {.Position = {x, y, 0.0f}, .Scale = glm::vec3(0.25f)});
+            const Entity quad = fixture.AddQuad(fixture.GetRed(), {.Position = {x, y, 0.0f}, .Scale = glm::vec3(0.25f)});
             quad.Get<MeshRendererComponent>().CastShadows = index % 2 == 0;
         }
     };
