@@ -141,4 +141,26 @@ namespace Quasar
         }
         BindPart(part);
     }
+
+    FrameStorageBuffer::FrameStorageBuffer(std::size_t elementSize, std::uint32_t binding) : m_ElementSize(elementSize), m_Binding(binding) {}
+
+    bool FrameStorageBuffer::IsValid(std::size_t elementSize)
+    {
+        if (elementSize == 0)
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a frame storage buffer with empty elements");
+            return false;
+        }
+        return true;
+    }
+
+    std::optional<std::uint32_t> FrameStorageBuffer::AddData(std::span<const std::byte> data)
+    {
+        if (data.size() != m_ElementSize)
+        {
+            QUASAR_ENGINE_ERROR("Cannot add an element of {} bytes to a frame storage buffer with elements of {} bytes", data.size(), m_ElementSize);
+            return std::nullopt;
+        }
+        return Write(data);
+    }
 }

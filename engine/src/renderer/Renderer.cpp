@@ -32,7 +32,7 @@ namespace Quasar
             glm::mat4 Model{1.0f};
             std::array<glm::vec4, 3> NormalMatrix{};
         };
-        static_assert(sizeof(ObjectData) == 112, "The Object block follows std140");
+        static_assert(sizeof(ObjectData) == 112, "The elements of the Objects block follow std430");
 
         ObjectData ToObjectData(const glm::mat4& transform)
         {
@@ -41,8 +41,8 @@ namespace Quasar
         }
     }
 
-    Renderer::Renderer(GraphicsContext& context, Scope<FrameUniformBuffer> camera, Scope<FrameUniformBuffer> object, Scope<LightsBuffer> lights)
-        : m_Context(&context), m_CameraBuffer(std::move(camera)), m_ObjectBuffer(std::move(object)), m_LightsBuffer(std::move(lights))
+    Renderer::Renderer(GraphicsContext& context, Scope<FrameUniformBuffer> camera, Scope<FrameStorageBuffer> objects, Scope<LightsBuffer> lights)
+        : m_Context(&context), m_CameraBuffer(std::move(camera)), m_ObjectBuffer(std::move(objects)), m_LightsBuffer(std::move(lights))
     {
     }
 
@@ -51,13 +51,13 @@ namespace Quasar
     Scope<Renderer> Renderer::Create(GraphicsContext& context)
     {
         Scope<FrameUniformBuffer> camera = context.CreateFrameUniformBuffer(sizeof(CameraData), ShaderBindings::Camera);
-        Scope<FrameUniformBuffer> object = context.CreateFrameUniformBuffer(sizeof(ObjectData), ShaderBindings::Object);
+        Scope<FrameStorageBuffer> objects = context.CreateFrameStorageBuffer(sizeof(ObjectData), ShaderBindings::Objects);
         Scope<LightsBuffer> lights = LightsBuffer::Create(context);
-        if (camera == nullptr || object == nullptr || lights == nullptr)
+        if (camera == nullptr || objects == nullptr || lights == nullptr)
         {
             return nullptr;
         }
-        return Scope<Renderer>(new Renderer(context, std::move(camera), std::move(object), std::move(lights)));
+        return Scope<Renderer>(new Renderer(context, std::move(camera), std::move(objects), std::move(lights)));
     }
 
     void Renderer::BeginScene(const Camera& camera, Framebuffer* target, const SceneLights& lights)
@@ -101,17 +101,17 @@ namespace Quasar
 
     std::optional<PlacedObject> Renderer::PlaceObject(const glm::mat4& transform)
     {
-        const std::optional<std::uint32_t> part = m_ObjectBuffer->Add(ToObjectData(transform));
-        if (!part)
+        const std::optional<std::uint32_t> index = m_ObjectBuffer->Add(ToObjectData(transform));
+        if (!index)
         {
             return std::nullopt;
         }
-        return PlacedObject{.Part = *part, .Frame = m_Context->GetFrameNumber()};
+        return PlacedObject{.Index = *index, .Frame = m_Context->GetFrameNumber()};
     }
 
-    void Renderer::Submit(const Mesh& mesh, Material& material, PlacedObject object)
+    void Renderer::Submit(const Mesh& mesh, Material& material, PlacedObject first, std::uint32_t count)
     {
-        if (!CanDraw(object))
+        if (!CanDraw(first, count))
         {
             return;
         }
@@ -121,7 +121,7 @@ namespace Quasar
             material.BindResources();
             m_BoundMaterial = &material;
         }
-        Draw(mesh, object);
+        Draw(mesh, first, count);
     }
 
     void Renderer::Submit(const Mesh& mesh, Material& material, const glm::mat4& transform)
@@ -132,14 +132,14 @@ namespace Quasar
         }
     }
 
-    void Renderer::Submit(const Mesh& mesh, Pipeline& pipeline, PlacedObject object)
+    void Renderer::Submit(const Mesh& mesh, Pipeline& pipeline, PlacedObject first, std::uint32_t count)
     {
-        if (!CanDraw(object))
+        if (!CanDraw(first, count))
         {
             return;
         }
         BindPipeline(pipeline);
-        Draw(mesh, object);
+        Draw(mesh, first, count);
     }
 
     void Renderer::Submit(const Mesh& mesh, Pipeline& pipeline, const glm::mat4& transform)
@@ -150,16 +150,22 @@ namespace Quasar
         }
     }
 
-    bool Renderer::CanDraw(PlacedObject object) const
+    bool Renderer::CanDraw(PlacedObject first, std::uint32_t count) const
     {
         if (!m_InScene)
         {
             QUASAR_ENGINE_ERROR("Cannot draw a mesh outside of a scene");
             return false;
         }
-        if (object.Frame != m_Context->GetFrameNumber())
+        if (first.Frame != m_Context->GetFrameNumber())
         {
             QUASAR_ENGINE_ERROR("Cannot draw a mesh placed in another frame");
+            return false;
+        }
+        if (std::uint64_t{first.Index} + count > m_ObjectBuffer->GetCount())
+        {
+            QUASAR_ENGINE_ERROR("Cannot draw {} instances from the object {}: the current frame placed {} objects", count, first.Index,
+                                m_ObjectBuffer->GetCount());
             return false;
         }
         return true;
@@ -174,10 +180,10 @@ namespace Quasar
         }
     }
 
-    void Renderer::Draw(const Mesh& mesh, PlacedObject object)
+    void Renderer::Draw(const Mesh& mesh, PlacedObject first, std::uint32_t count)
     {
-        m_ObjectBuffer->Bind(object.Part);
-        m_Context->DrawIndexed(mesh.GetVertexArray());
+        m_ObjectBuffer->Bind();
+        m_Context->DrawInstances(mesh.GetVertexArray(), count, first.Index);
     }
 
     void Renderer::EndScene()

@@ -78,6 +78,10 @@ namespace Quasar
         /// GraphicsContext::CreateFrameUniformBuffer().
         [[nodiscard]] Scope<FrameUniformBuffer> CreateFrameUniformBuffer(std::size_t partSize, std::uint32_t binding) override;
 
+        /// @brief Makes the context current, then creates a frame storage buffer. See
+        /// GraphicsContext::CreateFrameStorageBuffer().
+        [[nodiscard]] Scope<FrameStorageBuffer> CreateFrameStorageBuffer(std::size_t elementSize, std::uint32_t binding) override;
+
         /// @brief Makes the context current, then creates an OpenGL texture. See GraphicsContext::CreateTexture2D().
         [[nodiscard]] Scope<Texture2D> CreateTexture2D(const TextureSpecification& specification, std::span<const std::byte> pixels) override;
 
@@ -116,6 +120,10 @@ namespace Quasar
         /// @brief Draws indexed triangles with the current OpenGL context, as Draw() does. See
         /// GraphicsContext::DrawIndexed().
         void DrawIndexed(const VertexArray& vertexArray) override;
+
+        /// @brief Draws instances of indexed triangles with the current OpenGL context, as Draw() does. See
+        /// GraphicsContext::DrawInstances().
+        void DrawInstances(const VertexArray& vertexArray, std::uint32_t instanceCount, std::uint32_t firstInstance) override;
 
         /// @brief Returns the SDL OpenGL context, for the code that needs to call SDL or OpenGL directly.
         SDL_GLContextState* GetNativeContext() const { return m_Context; }

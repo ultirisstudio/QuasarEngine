@@ -22,6 +22,7 @@ namespace Quasar
         std::uint32_t FramebufferBinds = 0;   ///< The binds of a framebuffer or of the window.
         std::uint32_t TextureBinds = 0;       ///< The binds of a texture or of a framebuffer attachment to a slot.
         std::uint32_t UniformBufferBinds = 0; ///< The binds of a uniform buffer.
+        std::uint32_t StorageBufferBinds = 0; ///< The binds of a storage buffer.
         std::uint32_t StateChanges = 0;       ///< The other changes: shader, vertex array, viewport, depth, culling and blending.
         std::uint32_t UniformChanges = 0;     ///< The values set on a shader, such as Shader::SetFloat().
         std::uint32_t Uploads = 0;            ///< The writes of data into a buffer or a texture sent to the driver.

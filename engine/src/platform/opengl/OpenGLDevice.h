@@ -7,9 +7,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace Quasar
 {
+    bool HasOpenGLExtension(std::string_view name);
+
     struct OpenGLLimits
     {
         std::uint32_t TextureSize = 0;
@@ -22,6 +25,9 @@ namespace Quasar
         std::size_t UniformBlockSize = 0;
         std::uint32_t UniformBufferBindings = 0;
         std::uint32_t UniformBufferOffsetAlignment = 1;
+        std::size_t StorageBlockSize = 0;
+        std::uint32_t StorageBufferBindings = 0;
+        std::uint32_t StorageBufferOffsetAlignment = 1;
         float Anisotropy = 1.0f;
     };
 

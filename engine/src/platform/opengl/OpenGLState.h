@@ -34,6 +34,7 @@ namespace Quasar
         void BindTexture(GLuint slot, GLuint texture);
         void BindUniformBuffer(GLuint binding, GLuint buffer);
         void BindUniformBufferRange(GLuint binding, GLuint buffer, GLintptr offset, GLsizeiptr size);
+        void BindStorageBufferRange(GLuint binding, GLuint buffer, GLintptr offset, GLsizeiptr size);
         void SetEnabled(Capability capability, bool enabled);
         void SetDepthWrite(bool enabled);
         void SetDepthFunction(GLenum function);
@@ -65,13 +66,13 @@ namespace Quasar
             return true;
         }
 
-        struct UniformBufferBinding
+        struct BufferBinding
         {
             GLuint Buffer = 0;
             GLintptr Offset = 0;
             GLsizeiptr Size = 0;
 
-            bool operator==(const UniformBufferBinding&) const = default;
+            bool operator==(const BufferBinding&) const = default;
         };
 
         template <typename T>
@@ -90,7 +91,8 @@ namespace Quasar
         std::optional<GLuint> m_Framebuffer;
         std::optional<std::array<GLsizei, 2>> m_Viewport;
         std::vector<std::optional<GLuint>> m_Textures;
-        std::vector<std::optional<UniformBufferBinding>> m_UniformBuffers;
+        std::vector<std::optional<BufferBinding>> m_UniformBuffers;
+        std::vector<std::optional<BufferBinding>> m_StorageBuffers;
         std::array<std::optional<bool>, 4> m_Capabilities;
         std::optional<bool> m_DepthWrite;
         std::optional<GLenum> m_DepthFunction;

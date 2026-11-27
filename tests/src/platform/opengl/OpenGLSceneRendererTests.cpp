@@ -243,54 +243,70 @@ TEST_CASE("The meshes out of the view of the camera are not drawn, and the ones 
     context.EndFrame();
     fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
     context.EndFrame();
-    const std::uint32_t drawsWithoutShadows = context.GetFrameStatistics().Draws;
+    const std::uint64_t trianglesWithoutShadows = context.GetFrameStatistics().Triangles;
     fixture.GetSceneRenderer().SetSettings({});
     fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
     context.EndFrame();
-    const std::uint32_t culledDraws = context.GetFrameStatistics().Draws;
-    CHECK(culledDraws == drawsWithoutShadows + 1);
+    const std::uint64_t culledTriangles = context.GetFrameStatistics().Triangles;
+    const std::uint64_t quad = 2;
+    CHECK(culledTriangles == trianglesWithoutShadows + quad);
     for (const Entity& entity : hidden)
     {
         entity.Get<TransformComponent>().Position = {0.0f, 0.0f, -1.0f};
     }
     fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
     context.EndFrame();
-    CHECK(context.GetFrameStatistics().Draws == culledDraws + 8);
+    CHECK(context.GetFrameStatistics().Triangles == culledTriangles + (8 * quad));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
-TEST_CASE("The scene renderer draws the meshes grouped by material, whatever the order of the entities")
+TEST_CASE("The scene renderer draws the meshes that share a mesh and a material in one draw, whatever the order of the entities")
 {
     const TestHelpers::ScopedLog log;
     Fixture fixture;
     constexpr int count = 8;
+    std::vector<Entity> blue;
     for (int index = 0; index < count; ++index)
     {
         const float x = -0.875f + (0.25f * static_cast<float>(index));
-        fixture.AddQuad(index % 2 == 0 ? fixture.GetRed() : fixture.GetBlue(), {.Position = {x, 0.0f, 0.0f}, .Scale = glm::vec3(0.25f)});
+        const Entity entity = fixture.AddQuad(index % 2 == 0 ? fixture.GetRed() : fixture.GetBlue(), {.Position = {x, 0.0f, 0.0f}, .Scale = glm::vec3(0.25f)});
+        if (index % 2 != 0)
+        {
+            blue.push_back(entity);
+        }
     }
     Quasar::Camera camera = Fixture::CreateCamera();
     camera.SetPosition({0.0f, 0.0f, 1.0f});
     fixture.GetSceneRenderer().SetSettings({.Tonemap = Quasar::Tonemapping::None, .Shadows = {.Enabled = false}, .AmbientOcclusion = {.Enabled = false}});
     Quasar::GraphicsContext& context = fixture.GetContext();
-
-    for (int frame = 0; frame < 2; ++frame)
+    const auto render = [&]
     {
         fixture.Clear();
         fixture.GetSceneRenderer().Render(fixture.GetScene(), camera, &fixture.GetFramebuffer());
         context.EndFrame();
-    }
+        return context.GetFrameStatistics();
+    };
 
-    const std::uint32_t objectBinds = count;
+    render();
+    const Quasar::RenderStatistics twoMaterials = render();
     const std::uint32_t cameraAndLights = 2;
     const std::uint32_t materials = 2;
-    CHECK(context.GetFrameStatistics().UniformBufferBinds == objectBinds + cameraAndLights + materials);
+    CHECK(twoMaterials.UniformBufferBinds == cameraAndLights + materials);
+    CHECK(twoMaterials.StorageBufferBinds == 1);
     for (int pixel = 0; pixel < 8; ++pixel)
     {
         CAPTURE(pixel);
         const Color color = fixture.ReadColor(pixel, 4);
         CHECK((pixel % 2 == 0 ? color[0] > color[2] + 100 : color[2] > color[0] + 100));
     }
+
+    for (const Entity& entity : blue)
+    {
+        entity.Get<MeshRendererComponent>().Material = &fixture.GetRed();
+    }
+    const Quasar::RenderStatistics oneMaterial = render();
+    CHECK(twoMaterials.Draws == oneMaterial.Draws + 1);
+    CHECK(twoMaterials.Triangles == oneMaterial.Triangles);
     CHECK(glGetError() == GL_NO_ERROR);
 }
 

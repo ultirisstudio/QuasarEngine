@@ -6,9 +6,9 @@
 
 #include <glad/gl.h>
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <span>
 
@@ -52,8 +52,7 @@ namespace Quasar
             return (size + alignment - 1) / alignment * alignment;
         }
 
-        constexpr std::uint32_t FirstPartCapacity = 64;
-        constexpr GLbitfield MappingFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+        constexpr std::uint32_t FirstCapacity = 64;
     }
 
     OpenGLVertexBuffer::OpenGLVertexBuffer(std::span<const std::byte> vertices, const VertexLayout& layout, OpenGLDevice& device)
@@ -141,19 +140,10 @@ namespace Quasar
     }
 
     OpenGLFrameUniformBuffer::OpenGLFrameUniformBuffer(std::size_t partSize, std::uint32_t binding, OpenGLDevice& device)
-        : FrameUniformBuffer(partSize, binding), m_Device(&device), m_Stride(RoundUp(partSize, device.GetLimits().UniformBufferOffsetAlignment)),
-          m_Frame(device.GetFrame())
+        : FrameUniformBuffer(partSize, binding), m_Device(&device),
+          m_Memory(device, RoundUp(partSize, device.GetLimits().UniformBufferOffsetAlignment), device.GetLimits().UniformBufferOffsetAlignment,
+                   std::numeric_limits<std::size_t>::max(), "frame uniform buffer")
     {
-    }
-
-    OpenGLFrameUniformBuffer::~OpenGLFrameUniformBuffer()
-    {
-        if (m_Buffer != 0)
-        {
-            m_Device->GetState().ForgetBuffer(m_Buffer);
-            glUnmapNamedBuffer(m_Buffer);
-            glDeleteBuffers(1, &m_Buffer);
-        }
     }
 
     Scope<OpenGLFrameUniformBuffer> OpenGLFrameUniformBuffer::Create(std::size_t partSize, std::uint32_t binding, OpenGLDevice& device)
@@ -163,78 +153,49 @@ namespace Quasar
             return nullptr;
         }
         Scope<OpenGLFrameUniformBuffer> buffer(new OpenGLFrameUniformBuffer(partSize, binding, device));
-        if (!buffer->Allocate(FirstPartCapacity))
+        if (!buffer->m_Memory.Allocate(FirstCapacity))
         {
             return nullptr;
         }
         return buffer;
     }
 
-    std::uint32_t OpenGLFrameUniformBuffer::GetPartCount() const
-    {
-        return m_Frame == m_Device->GetFrame() ? m_Count : 0;
-    }
-
-    std::optional<std::uint32_t> OpenGLFrameUniformBuffer::Write(std::span<const std::byte> data)
-    {
-        if (m_Frame != m_Device->GetFrame())
-        {
-            m_Frame = m_Device->GetFrame();
-            m_Count = 0;
-        }
-        if (m_Count == 0)
-        {
-            m_Zone = m_Device->AcquireFrameMemory();
-        }
-        if (m_Count == m_Capacity && !Allocate(m_Capacity * 2))
-        {
-            return std::nullopt;
-        }
-
-        std::ranges::copy(data, m_Memory.subspan(GetFrameOffset(m_Zone) + (m_Count * m_Stride)).begin());
-        m_Device->GetStatistics().UploadedBytes += data.size();
-        return m_Count++;
-    }
-
     void OpenGLFrameUniformBuffer::BindPart(std::uint32_t part)
     {
-        const std::size_t offset = GetFrameOffset(m_Zone) + (part * m_Stride);
-        m_Device->GetState().BindUniformBufferRange(GetBinding(), m_Buffer, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(GetPartSize()));
+        const std::size_t offset = m_Memory.GetFrameOffset() + (part * m_Memory.GetStride());
+        m_Device->GetState().BindUniformBufferRange(GetBinding(), m_Memory.GetBuffer(), static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(GetPartSize()));
     }
 
-    bool OpenGLFrameUniformBuffer::Allocate(std::uint32_t capacity)
+    OpenGLFrameStorageBuffer::OpenGLFrameStorageBuffer(std::size_t elementSize, std::uint32_t binding, OpenGLDevice& device)
+        : FrameStorageBuffer(elementSize, binding), m_Device(&device),
+          m_Memory(device, elementSize, device.GetLimits().StorageBufferOffsetAlignment, device.GetLimits().StorageBlockSize, "frame storage buffer")
     {
-        const std::size_t size = m_Stride * capacity * OpenGLDevice::FramesInFlight;
-        GLuint buffer = 0;
-        glCreateBuffers(1, &buffer);
-        glNamedBufferStorage(buffer, static_cast<GLsizeiptr>(size), nullptr, MappingFlags);
-        void* memory = glMapNamedBufferRange(buffer, 0, static_cast<GLsizeiptr>(size), MappingFlags);
-        if (memory == nullptr)
-        {
-            glDeleteBuffers(1, &buffer);
-            QUASAR_ENGINE_ERROR("Cannot create a frame uniform buffer of {} bytes: OpenGL cannot map it", size);
-            return false;
-        }
-
-        if (m_Buffer != 0)
-        {
-            if (m_Count > 0)
-            {
-                glCopyNamedBufferSubData(m_Buffer, buffer, static_cast<GLintptr>(GetFrameOffset(m_Zone)), static_cast<GLintptr>(m_Zone * m_Stride * capacity),
-                                         static_cast<GLsizeiptr>(m_Count * m_Stride));
-            }
-            m_Device->GetState().ForgetBuffer(m_Buffer);
-            glUnmapNamedBuffer(m_Buffer);
-            glDeleteBuffers(1, &m_Buffer);
-        }
-        m_Buffer = buffer;
-        m_Memory = std::span(static_cast<std::byte*>(memory), size);
-        m_Capacity = capacity;
-        return true;
     }
 
-    std::size_t OpenGLFrameUniformBuffer::GetFrameOffset(std::uint32_t zone) const
+    Scope<OpenGLFrameStorageBuffer> OpenGLFrameStorageBuffer::Create(std::size_t elementSize, std::uint32_t binding, OpenGLDevice& device)
     {
-        return zone * m_Stride * m_Capacity;
+        if (!IsValid(elementSize))
+        {
+            return nullptr;
+        }
+        const OpenGLLimits& limits = device.GetLimits();
+        if (binding >= limits.StorageBufferBindings)
+        {
+            QUASAR_ENGINE_ERROR("Cannot create a storage buffer for the binding {}: OpenGL has the bindings 0 to {}", binding,
+                                limits.StorageBufferBindings - 1);
+            return nullptr;
+        }
+        Scope<OpenGLFrameStorageBuffer> buffer(new OpenGLFrameStorageBuffer(elementSize, binding, device));
+        if (!buffer->m_Memory.Allocate(FirstCapacity))
+        {
+            return nullptr;
+        }
+        return buffer;
+    }
+
+    void OpenGLFrameStorageBuffer::BindFrame()
+    {
+        m_Device->GetState().BindStorageBufferRange(GetBinding(), m_Memory.GetBuffer(), static_cast<GLintptr>(m_Memory.GetFrameOffset()),
+                                                    static_cast<GLsizeiptr>(m_Memory.GetZoneSize()));
     }
 }

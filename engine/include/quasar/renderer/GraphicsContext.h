@@ -92,6 +92,13 @@ namespace Quasar
         /// binding. The reason is logged as an engine error.
         [[nodiscard]] virtual Scope<FrameUniformBuffer> CreateFrameUniformBuffer(std::size_t partSize, std::uint32_t binding) = 0;
 
+        /// @brief Creates a storage buffer written again at each frame, as an array of elements. See FrameStorageBuffer.
+        /// @param elementSize The size of an element, in bytes, usually the size of the struct that fills it.
+        /// @param binding The N of `layout(std430, binding = N)` of the storage block that the buffer fills.
+        /// @return The buffer, or nullptr if the size is 0 or if the graphics API does not allow the binding. The reason
+        /// is logged as an engine error.
+        [[nodiscard]] virtual Scope<FrameStorageBuffer> CreateFrameStorageBuffer(std::size_t elementSize, std::uint32_t binding) = 0;
+
         /// @brief Creates a 2D texture.
         /// @param specification The size and the settings of the texture.
         /// @param pixels Width * Height pixels of GetTexturePixelSize() bytes, from the top row, for example the
@@ -171,6 +178,14 @@ namespace Quasar
         /// @param vertexArray The vertex array, created by this context. Its indices must be below the number of
         /// vertices of its vertex buffers.
         virtual void DrawIndexed(const VertexArray& vertexArray) = 0;
+
+        /// @brief Draws several instances of the triangles of the index buffer of a vertex array, as DrawIndexed() does.
+        /// The vertex shader reads the number of each instance with `gl_BaseInstanceARB + gl_InstanceID`, for example to
+        /// read its object from a FrameStorageBuffer.
+        /// @param vertexArray The vertex array, created by this context.
+        /// @param instanceCount The number of instances. With 0, nothing is drawn.
+        /// @param firstInstance The number of the first instance, `gl_BaseInstanceARB` in the vertex shader.
+        virtual void DrawInstances(const VertexArray& vertexArray, std::uint32_t instanceCount, std::uint32_t firstInstance) = 0;
 
     protected:
         /// @brief Destroys the objects that the context made for itself, such as the white texture and the queries of the

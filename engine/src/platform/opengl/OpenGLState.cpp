@@ -97,6 +97,15 @@ namespace Quasar
         }
     }
 
+    void OpenGLState::BindStorageBufferRange(GLuint binding, GLuint buffer, GLintptr offset, GLsizeiptr size)
+    {
+        if (Change(At(m_StorageBuffers, binding), {.Buffer = buffer, .Offset = offset, .Size = size}))
+        {
+            ++m_Statistics->StorageBufferBinds;
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, binding, buffer, offset, size);
+        }
+    }
+
     void OpenGLState::SetEnabled(Capability capability, bool enabled)
     {
         if (Change(m_Capabilities.at(static_cast<std::size_t>(capability)), enabled))
@@ -210,14 +219,15 @@ namespace Quasar
 
     void OpenGLState::ForgetBuffer(GLuint buffer)
     {
-        std::ranges::for_each(m_UniformBuffers,
-                              [buffer](std::optional<UniformBufferBinding>& binding)
-                              {
-                                  if (binding && binding->Buffer == buffer)
-                                  {
-                                      binding.reset();
-                                  }
-                              });
+        const auto forget = [buffer](std::optional<BufferBinding>& binding)
+        {
+            if (binding && binding->Buffer == buffer)
+            {
+                binding.reset();
+            }
+        };
+        std::ranges::for_each(m_UniformBuffers, forget);
+        std::ranges::for_each(m_StorageBuffers, forget);
     }
 
     void OpenGLState::Invalidate()
@@ -228,6 +238,7 @@ namespace Quasar
         m_Viewport.reset();
         m_Textures.clear();
         m_UniformBuffers.clear();
+        m_StorageBuffers.clear();
         m_Capabilities = {};
         m_DepthWrite.reset();
         m_DepthFunction.reset();

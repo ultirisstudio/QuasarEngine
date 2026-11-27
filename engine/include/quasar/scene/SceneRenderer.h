@@ -146,15 +146,22 @@ namespace Quasar
         {
             const Quasar::Mesh* Mesh = nullptr;
             Quasar::Material* Material = nullptr;
-            PlacedObject Object;
-            bool Visible = true;
-            bool CastsShadow = true;
+            glm::mat4 World{1.0f};
+        };
+
+        struct Batch
+        {
+            const Quasar::Mesh* Mesh = nullptr;
+            Quasar::Material* Material = nullptr;
+            PlacedObject First;
+            std::uint32_t Count = 0;
         };
 
         SceneRenderer(Renderer& renderer, Resources resources, const SceneRendererSettings& settings);
 
         bool GatherLights(Scene& scene);
         void GatherDrawList(Scene& scene, const Frustum& view, const std::optional<Frustum>& light);
+        void BuildBatches(std::vector<std::uint32_t>& order, std::vector<Batch>& batches, bool byMaterial);
         DirectionalShadow RenderShadows(const ShadowCamera& shadow);
         SceneAmbientOcclusion RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size);
 
@@ -170,6 +177,10 @@ namespace Quasar
         Scope<AmbientOcclusion> m_AmbientOcclusion;
         SceneLights m_Lights;
         std::vector<DrawItem> m_DrawList;
+        std::vector<std::uint32_t> m_SceneOrder;
+        std::vector<std::uint32_t> m_ShadowOrder;
+        std::vector<Batch> m_SceneBatches;
+        std::vector<Batch> m_ShadowBatches;
         glm::mat4 m_ShadowViewProjection{1.0f};
         SceneRendererStatistics m_Statistics;
         bool m_ReportedNoCamera = false;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <platform/opengl/OpenGLFrameMemory.h>
+
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Buffer.h>
 #include <quasar/renderer/VertexLayout.h>
@@ -87,31 +89,46 @@ namespace Quasar
     public:
         static Scope<OpenGLFrameUniformBuffer> Create(std::size_t partSize, std::uint32_t binding, OpenGLDevice& device);
 
-        ~OpenGLFrameUniformBuffer() override;
+        ~OpenGLFrameUniformBuffer() override = default;
 
         OpenGLFrameUniformBuffer(const OpenGLFrameUniformBuffer&) = delete;
         OpenGLFrameUniformBuffer& operator=(const OpenGLFrameUniformBuffer&) = delete;
         OpenGLFrameUniformBuffer(OpenGLFrameUniformBuffer&&) = delete;
         OpenGLFrameUniformBuffer& operator=(OpenGLFrameUniformBuffer&&) = delete;
 
-        std::uint32_t GetPartCount() const override;
+        std::uint32_t GetPartCount() const override { return m_Memory.GetCount(); }
 
     private:
         OpenGLFrameUniformBuffer(std::size_t partSize, std::uint32_t binding, OpenGLDevice& device);
 
-        std::optional<std::uint32_t> Write(std::span<const std::byte> data) override;
+        std::optional<std::uint32_t> Write(std::span<const std::byte> data) override { return m_Memory.Write(data); }
         void BindPart(std::uint32_t part) override;
 
-        bool Allocate(std::uint32_t capacity);
-        std::size_t GetFrameOffset(std::uint32_t zone) const;
+        OpenGLDevice* m_Device;
+        OpenGLFrameMemory m_Memory;
+    };
+
+    class OpenGLFrameStorageBuffer final : public FrameStorageBuffer
+    {
+    public:
+        static Scope<OpenGLFrameStorageBuffer> Create(std::size_t elementSize, std::uint32_t binding, OpenGLDevice& device);
+
+        ~OpenGLFrameStorageBuffer() override = default;
+
+        OpenGLFrameStorageBuffer(const OpenGLFrameStorageBuffer&) = delete;
+        OpenGLFrameStorageBuffer& operator=(const OpenGLFrameStorageBuffer&) = delete;
+        OpenGLFrameStorageBuffer(OpenGLFrameStorageBuffer&&) = delete;
+        OpenGLFrameStorageBuffer& operator=(OpenGLFrameStorageBuffer&&) = delete;
+
+        std::uint32_t GetCount() const override { return m_Memory.GetCount(); }
+
+    private:
+        OpenGLFrameStorageBuffer(std::size_t elementSize, std::uint32_t binding, OpenGLDevice& device);
+
+        std::optional<std::uint32_t> Write(std::span<const std::byte> data) override { return m_Memory.Write(data); }
+        void BindFrame() override;
 
         OpenGLDevice* m_Device;
-        std::size_t m_Stride = 0;
-        std::uint32_t m_Capacity = 0;
-        std::uint32_t m_Buffer = 0;
-        std::span<std::byte> m_Memory;
-        std::uint64_t m_Frame = 0;
-        std::uint32_t m_Zone = 0;
-        std::uint32_t m_Count = 0;
+        OpenGLFrameMemory m_Memory;
     };
 }
