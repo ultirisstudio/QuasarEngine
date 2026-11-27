@@ -28,15 +28,15 @@ namespace Quasar
     /// all the scenes of the frame can share.
     struct PlacedObject
     {
-        std::uint32_t Part = 0;  ///< The part of the object block that holds the matrices of the object.
+        std::uint32_t Index = 0; ///< The index of the object in the `u_Objects` array of the `Objects` storage block.
         std::uint64_t Frame = 0; ///< The GraphicsContext::GetFrameNumber() of the frame in which it was placed.
     };
 
     /// @brief Draws meshes with their materials, seen from a camera and lit by the lights of a scene, into a framebuffer
     /// or the window.
     ///
-    /// The shaders read the camera, the object and the lights from these uniform blocks, and the materials use the
-    /// binding 1:
+    /// The shaders read the camera and the lights from these uniform blocks, and the objects from the storage block
+    /// Objects. The materials use the uniform binding 1:
     /// ```glsl
     /// layout(std140, binding = 0) uniform Camera
     /// {
@@ -45,10 +45,14 @@ namespace Quasar
     ///     mat4 u_Projection;
     ///     vec4 u_CameraPosition;
     /// };
-    /// layout(std140, binding = 2) uniform Object
+    /// struct ObjectData
     /// {
-    ///     mat4 u_Model;
-    ///     mat3 u_NormalMatrix; // transpose(inverse(mat3(u_Model))), which turns the normals into world space.
+    ///     mat4 Model;
+    ///     mat3 NormalMatrix; // transpose(inverse(mat3(Model))), which turns the normals into world space.
+    /// };
+    /// layout(std430, binding = 2) readonly buffer Objects
+    /// {
+    ///     ObjectData u_Objects[];
     /// };
     /// struct PointLight
     /// {
@@ -82,11 +86,14 @@ namespace Quasar
     /// MaxPointLights point lights and MaxSpotLights spot lights. The next ones are not used, and an engine warning is
     /// logged once until the scene has few enough lights again.
     ///
-    /// A scene is drawn between BeginScene() and EndScene(), and each Submit() draws one mesh at once. The target is not
-    /// cleared, so that several scenes can be drawn into it. BeginScene() binds the blocks of the renderer, and each
-    /// Submit() binds a pipeline, or the values and the textures of a material, only when they differ from the previous
-    /// draw of the scene. So between BeginScene() and EndScene(), the pipelines and the materials submitted must stay
-    /// alive, and nothing else should bind pipelines, uniform blocks or textures.
+    /// The vertex shaders read the object of each instance with `u_Objects[gl_BaseInstanceARB + gl_InstanceID]`, after
+    /// `#extension GL_ARB_shader_draw_parameters : require` on the line after `#version`.
+    ///
+    /// A scene is drawn between BeginScene() and EndScene(), and each Submit() draws one mesh, or several instances of
+    /// it, at once. The target is not cleared, so that several scenes can be drawn into it. BeginScene() binds the
+    /// blocks of the renderer, and each Submit() binds a pipeline, or the values and the textures of a material, only
+    /// when they differ from the previous draw of the scene. So between BeginScene() and EndScene(), the pipelines and
+    /// the materials submitted must stay alive, and nothing else should bind pipelines, blocks or textures.
     ///
     /// The shaders compute and write linear colors, which can go above 1, for example into a framebuffer of format
     /// FramebufferFormat::Rgba16F. The SceneRenderer turns them into the colors of the screen at the end.
@@ -120,24 +127,28 @@ namespace Quasar
         /// cannot be written. The reason is logged as an engine error.
         std::optional<PlacedObject> PlaceObject(const glm::mat4& transform);
 
-        /// @brief Draws a mesh with a material.
+        /// @brief Draws instances of a mesh with a material, in one draw.
         /// @param mesh The mesh.
         /// @param material The material.
-        /// @param object The place of the mesh, given by PlaceObject() in the current frame.
+        /// @param first The place of the first instance, given by PlaceObject() in the current frame.
+        /// @param count The number of instances, whose objects were placed one after the other from first.
         ///
-        /// A mesh submitted outside of a scene, or placed in another frame, is not drawn and logs an engine error.
-        void Submit(const Mesh& mesh, Material& material, PlacedObject object);
+        /// A mesh submitted outside of a scene, placed in another frame or with more instances than the frame placed
+        /// objects from first, is not drawn and logs an engine error.
+        void Submit(const Mesh& mesh, Material& material, PlacedObject first, std::uint32_t count = 1);
 
         /// @brief Places a mesh with PlaceObject() and draws it with a material.
         void Submit(const Mesh& mesh, Material& material, const glm::mat4& transform);
 
-        /// @brief Draws a mesh with a pipeline and no material, for example to draw only the depth of the scene.
+        /// @brief Draws instances of a mesh with a pipeline and no material, in one draw, for example to draw only the
+        /// depth of the scene.
         /// @param mesh The mesh.
         /// @param pipeline The pipeline, whose shader reads only the blocks of the renderer.
-        /// @param object The place of the mesh, given by PlaceObject() in the current frame.
+        /// @param first The place of the first instance, given by PlaceObject() in the current frame.
+        /// @param count The number of instances, whose objects were placed one after the other from first.
         ///
-        /// A mesh submitted outside of a scene, or placed in another frame, is not drawn and logs an engine error.
-        void Submit(const Mesh& mesh, Pipeline& pipeline, PlacedObject object);
+        /// A mesh refused as with the other Submit() is not drawn and logs an engine error.
+        void Submit(const Mesh& mesh, Pipeline& pipeline, PlacedObject first, std::uint32_t count = 1);
 
         /// @brief Places a mesh with PlaceObject() and draws it with a pipeline and no material.
         void Submit(const Mesh& mesh, Pipeline& pipeline, const glm::mat4& transform);
@@ -150,15 +161,15 @@ namespace Quasar
         GraphicsContext& GetContext() const { return *m_Context; }
 
     private:
-        Renderer(GraphicsContext& context, Scope<FrameUniformBuffer> camera, Scope<FrameUniformBuffer> object, Scope<LightsBuffer> lights);
+        Renderer(GraphicsContext& context, Scope<FrameUniformBuffer> camera, Scope<FrameStorageBuffer> objects, Scope<LightsBuffer> lights);
 
-        bool CanDraw(PlacedObject object) const;
+        bool CanDraw(PlacedObject first, std::uint32_t count) const;
         void BindPipeline(Pipeline& pipeline);
-        void Draw(const Mesh& mesh, PlacedObject object);
+        void Draw(const Mesh& mesh, PlacedObject first, std::uint32_t count);
 
         GraphicsContext* m_Context;
         Scope<FrameUniformBuffer> m_CameraBuffer;
-        Scope<FrameUniformBuffer> m_ObjectBuffer;
+        Scope<FrameStorageBuffer> m_ObjectBuffer;
         Scope<LightsBuffer> m_LightsBuffer;
         Framebuffer* m_Target = nullptr;
         const Pipeline* m_BoundPipeline = nullptr;

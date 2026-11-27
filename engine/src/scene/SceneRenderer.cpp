@@ -115,6 +115,8 @@ namespace Quasar
     void SceneRenderer::GatherDrawList(Scene& scene, const Frustum& view, const std::optional<Frustum>& light)
     {
         m_DrawList.clear();
+        m_SceneOrder.clear();
+        m_ShadowOrder.clear();
         m_Statistics = {};
         scene.ForEach<TransformComponent, MeshRendererComponent>(
             [this, &view, &light](Entity entity, const TransformComponent& /*transform*/, const MeshRendererComponent& renderer)
@@ -134,31 +136,75 @@ namespace Quasar
                 {
                     return;
                 }
-                if (const std::optional<PlacedObject> object = m_Renderer->PlaceObject(world))
+                const auto index = static_cast<std::uint32_t>(m_DrawList.size());
+                m_DrawList.push_back({.Mesh = renderer.Mesh, .Material = renderer.Material, .World = world});
+                if (visible)
                 {
-                    m_DrawList.push_back(
-                        {.Mesh = renderer.Mesh, .Material = renderer.Material, .Object = *object, .Visible = visible, .CastsShadow = castsShadow});
-                    m_Statistics.VisibleObjects += visible ? 1 : 0;
-                    m_Statistics.ShadowCasters += castsShadow ? 1 : 0;
+                    m_SceneOrder.push_back(index);
+                }
+                if (castsShadow)
+                {
+                    m_ShadowOrder.push_back(index);
                 }
             });
 
-        std::ranges::sort(m_DrawList,
-                          [](const DrawItem& first, const DrawItem& second)
+        BuildBatches(m_SceneOrder, m_SceneBatches, true);
+        BuildBatches(m_ShadowOrder, m_ShadowBatches, false);
+        for (const Batch& batch : m_SceneBatches)
+        {
+            m_Statistics.VisibleObjects += batch.Count;
+        }
+        for (const Batch& batch : m_ShadowBatches)
+        {
+            m_Statistics.ShadowCasters += batch.Count;
+        }
+    }
+
+    void SceneRenderer::BuildBatches(std::vector<std::uint32_t>& order, std::vector<Batch>& batches, bool byMaterial)
+    {
+        const std::less<> before;
+        std::ranges::sort(order,
+                          [this, byMaterial, &before](std::uint32_t firstIndex, std::uint32_t secondIndex)
                           {
-                              const std::less<> before;
-                              const Pipeline* firstPipeline = first.Material->GetSpecification().Pipeline;
-                              const Pipeline* secondPipeline = second.Material->GetSpecification().Pipeline;
-                              if (firstPipeline != secondPipeline)
+                              const DrawItem& first = m_DrawList[firstIndex];
+                              const DrawItem& second = m_DrawList[secondIndex];
+                              if (byMaterial)
                               {
-                                  return before(firstPipeline, secondPipeline);
-                              }
-                              if (first.Material != second.Material)
-                              {
-                                  return before(first.Material, second.Material);
+                                  const Pipeline* firstPipeline = first.Material->GetSpecification().Pipeline;
+                                  const Pipeline* secondPipeline = second.Material->GetSpecification().Pipeline;
+                                  if (firstPipeline != secondPipeline)
+                                  {
+                                      return before(firstPipeline, secondPipeline);
+                                  }
+                                  if (first.Material != second.Material)
+                                  {
+                                      return before(first.Material, second.Material);
+                                  }
                               }
                               return before(first.Mesh, second.Mesh);
                           });
+
+        batches.clear();
+        for (const std::uint32_t index : order)
+        {
+            const DrawItem& item = m_DrawList[index];
+            const std::optional<PlacedObject> object = m_Renderer->PlaceObject(item.World);
+            if (!object)
+            {
+                continue;
+            }
+            Quasar::Material* material = byMaterial ? item.Material : nullptr;
+            if (!batches.empty())
+            {
+                Batch& last = batches.back();
+                if (last.Mesh == item.Mesh && last.Material == material && last.First.Index + last.Count == object->Index)
+                {
+                    ++last.Count;
+                    continue;
+                }
+            }
+            batches.push_back({.Mesh = item.Mesh, .Material = material, .First = *object, .Count = 1});
+        }
     }
 
     void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
@@ -203,12 +249,9 @@ namespace Quasar
             m_SceneFramebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
             m_SceneFramebuffer->ClearDepthStencil();
             m_Renderer->BeginScene(camera, m_SceneFramebuffer.get(), m_Lights);
-            for (const DrawItem& item : m_DrawList)
+            for (const Batch& batch : m_SceneBatches)
             {
-                if (item.Visible)
-                {
-                    m_Renderer->Submit(*item.Mesh, *item.Material, item.Object);
-                }
+                m_Renderer->Submit(*batch.Mesh, *batch.Material, batch.First, batch.Count);
             }
             m_Renderer->EndScene();
         }
@@ -225,13 +268,10 @@ namespace Quasar
             const GpuSection section(profiler, "Depth prepass");
             m_DepthPrepass->ClearDepthStencil();
             m_Renderer->BeginScene(camera, m_DepthPrepass.get(), SceneLights{.Directional = std::nullopt});
-            for (const DrawItem& item : m_DrawList)
+            for (const Batch& batch : m_SceneBatches)
             {
-                if (item.Visible)
-                {
-                    const CullMode culling = item.Material->GetSpecification().Pipeline->GetSpecification().Culling;
-                    m_Renderer->Submit(*item.Mesh, *m_DepthPipelines.at(static_cast<std::size_t>(culling)), item.Object);
-                }
+                const CullMode culling = batch.Material->GetSpecification().Pipeline->GetSpecification().Culling;
+                m_Renderer->Submit(*batch.Mesh, *m_DepthPipelines.at(static_cast<std::size_t>(culling)), batch.First, batch.Count);
             }
             m_Renderer->EndScene();
         }
@@ -248,12 +288,9 @@ namespace Quasar
 
         m_ShadowMap->ClearDepthStencil();
         m_Renderer->BeginScene(shadow.View, m_ShadowMap.get(), SceneLights{.Directional = std::nullopt});
-        for (const DrawItem& item : m_DrawList)
+        for (const Batch& batch : m_ShadowBatches)
         {
-            if (item.CastsShadow)
-            {
-                m_Renderer->Submit(*item.Mesh, *m_ShadowPipeline, item.Object);
-            }
+            m_Renderer->Submit(*batch.Mesh, *m_ShadowPipeline, batch.First, batch.Count);
         }
         m_Renderer->EndScene();
 

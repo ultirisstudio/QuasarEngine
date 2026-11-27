@@ -98,6 +98,12 @@ void main()
                 {"d", UniformType::Int},   {"e", UniformType::Vec4}, {"f", UniformType::Mat4}};
     }
 
+    struct ObjectData
+    {
+        glm::mat4 Model{1.0f};
+        std::array<glm::vec4, 3> NormalMatrix{glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f)};
+    };
+
     class Scene
     {
     public:
@@ -107,13 +113,13 @@ void main()
             m_Framebuffer = GetContext().CreateFramebuffer({.Width = 2, .Height = 2, .Attachments = {format}});
             m_Quad = Quasar::Mesh::Create(GetContext(), Quasar::Primitives::CreateQuad(2.0f));
             m_Camera = GetContext().CreateUniformBuffer(3 * sizeof(glm::mat4) + sizeof(glm::vec4), 0);
-            m_Object = GetContext().CreateUniformBuffer(sizeof(glm::mat4), 2);
+            m_Objects = GetContext().CreateFrameStorageBuffer(sizeof(ObjectData), Quasar::ShaderBindings::Objects);
             REQUIRE(m_Framebuffer != nullptr);
             REQUIRE(m_Quad != nullptr);
             REQUIRE(m_Camera != nullptr);
-            REQUIRE(m_Object != nullptr);
+            REQUIRE(m_Objects != nullptr);
             m_Camera->Set(glm::mat4(1.0f));
-            m_Object->Set(glm::mat4(1.0f));
+            REQUIRE(m_Objects->Add(ObjectData{}) == 0U);
         }
 
         Quasar::GraphicsContext& GetContext() const { return *m_Window->GetGraphicsContext(); }
@@ -144,7 +150,7 @@ void main()
         {
             m_Framebuffer->Bind();
             m_Camera->Bind();
-            m_Object->Bind();
+            m_Objects->Bind();
             GetContext().DrawIndexed(m_Quad->GetVertexArray());
             m_Framebuffer->Unbind();
         }
@@ -168,7 +174,7 @@ void main()
         Quasar::Scope<Quasar::Framebuffer> m_Framebuffer;
         Quasar::Scope<Quasar::Mesh> m_Quad;
         Quasar::Scope<Quasar::UniformBuffer> m_Camera;
-        Quasar::Scope<Quasar::UniformBuffer> m_Object;
+        Quasar::Scope<Quasar::FrameStorageBuffer> m_Objects;
     };
 
     std::optional<Quasar::ShaderSpecification> ReadUnlitShader()
@@ -430,7 +436,7 @@ TEST_CASE("No material is created without a pipeline, with names or slots used t
     GLint bindings = 0;
     glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &bindings);
 
-    const std::array<Quasar::MaterialSpecification, 11> refused{{
+    const std::array<Quasar::MaterialSpecification, 10> refused{{
         {.Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .Uniforms = {{"a", UniformType::Float}, {"a", UniformType::Int}}},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "Albedo", .Slot = 0}, {.Name = "Albedo", .Slot = 1}}},
@@ -438,7 +444,6 @@ TEST_CASE("No material is created without a pipeline, with names or slots used t
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "", .Slot = 0}}},
         {.Pipeline = pipeline.get(), .UniformBinding = static_cast<std::uint32_t>(bindings), .Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Camera, .Uniforms = GetValuesLayout()},
-        {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Object, .Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Lights, .Uniforms = GetValuesLayout()},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "Map", .Slot = Quasar::ShaderBindings::ShadowMap}}},
         {.Pipeline = pipeline.get(), .Textures = {{.Name = "Albedo", .Slot = 0}, {.Name = "Occlusion", .Slot = Quasar::ShaderBindings::AmbientOcclusionMap}}},

@@ -42,11 +42,23 @@ namespace
     constexpr std::string_view BlocksShader = R"(
 #type vertex
 #version 450 core
+#extension GL_ARB_shader_draw_parameters : require
+struct ObjectData
+{
+    mat4 Model;
+    mat3 NormalMatrix;
+};
+layout(std430, binding = 2) readonly buffer Objects
+{
+    ObjectData u_Objects[];
+};
+layout(location = 0) flat out float v_ModelX;
 
 void main()
 {
+    v_ModelX = u_Objects[gl_BaseInstanceARB + gl_InstanceID].Model[3][0];
     const vec2 positions[3] = vec2[](vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
-    gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
+    gl_Position = vec4(positions[gl_VertexID % 3], 0.0, 1.0);
 }
 
 #type fragment
@@ -58,17 +70,14 @@ layout(std140, binding = 0) uniform Camera
     mat4 u_Projection;
     vec4 u_CameraPosition;
 };
-layout(std140, binding = 2) uniform Object
-{
-    mat4 u_Model;
-};
+layout(location = 0) flat in float v_ModelX;
 layout(location = 0) out int o_Value;
 
 void main()
 {
     const mat4 difference = u_ViewProjection - u_Projection * u_View;
     const bool product = all(lessThan(abs(difference[3]), vec4(1e-4)));
-    o_Value = int(round(u_CameraPosition.y)) + 10 * int(round(-u_View[3][2])) + 100 * int(round(u_Model[3][0])) +
+    o_Value = int(round(u_CameraPosition.y)) + 10 * int(round(-u_View[3][2])) + 100 * int(round(v_ModelX)) +
               1000 * int(round(u_Projection[1][1])) + (product ? 10000 : 0);
 }
 )";
@@ -76,28 +85,37 @@ void main()
     constexpr std::string_view NormalMatrixShader = R"(
 #type vertex
 #version 450 core
+#extension GL_ARB_shader_draw_parameters : require
+struct ObjectData
+{
+    mat4 Model;
+    mat3 NormalMatrix;
+};
+layout(std430, binding = 2) readonly buffer Objects
+{
+    ObjectData u_Objects[];
+};
+layout(location = 0) flat out int v_Value;
 
 void main()
 {
+    const ObjectData object = u_Objects[gl_BaseInstanceARB + gl_InstanceID];
+    const mat3 expected = transpose(inverse(mat3(object.Model)));
+    const mat3 difference = object.NormalMatrix - expected;
+    const float largest = max(max(length(difference[0]), length(difference[1])), length(difference[2]));
+    v_Value = largest < 1e-4 ? 1 : 0;
     const vec2 positions[3] = vec2[](vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
-    gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
+    gl_Position = vec4(positions[gl_VertexID % 3], 0.0, 1.0);
 }
 
 #type fragment
 #version 450 core
-layout(std140, binding = 2) uniform Object
-{
-    mat4 u_Model;
-    mat3 u_NormalMatrix;
-};
+layout(location = 0) flat in int v_Value;
 layout(location = 0) out int o_Value;
 
 void main()
 {
-    const mat3 expected = transpose(inverse(mat3(u_Model)));
-    const mat3 difference = u_NormalMatrix - expected;
-    const float largest = max(max(length(difference[0]), length(difference[1])), length(difference[2]));
-    o_Value = largest < 1e-4 ? 1 : 0;
+    o_Value = v_Value;
 }
 )";
 
@@ -249,6 +267,37 @@ TEST_CASE("A placed object is shared by the scenes of its frame, and refused in 
     CHECK(glGetError() == GL_NO_ERROR);
 }
 
+TEST_CASE("A submission draws the instances of the objects placed one after the other, in one draw")
+{
+    const TestHelpers::ScopedLog log;
+    const Scene scene;
+    const glm::mat4 quarter = glm::scale(glm::mat4(1.0f), glm::vec3(0.25f));
+    scene.GetContext().EndFrame();
+    REQUIRE(scene.GetRenderer().PlaceObject(glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, 50.0f})).has_value());
+    const std::optional<Quasar::PlacedObject> first = scene.GetRenderer().PlaceObject(glm::translate(glm::mat4(1.0f), {-0.625f, 0.125f, 0.0f}) * quarter);
+    REQUIRE(first.has_value());
+    for (const float x : {-0.125f, 0.375f})
+    {
+        REQUIRE(scene.GetRenderer().PlaceObject(glm::translate(glm::mat4(1.0f), {x, 0.125f, 0.0f}) * quarter).has_value());
+    }
+
+    scene.GetRenderer().BeginScene(scene.GetCamera(), &scene.GetFramebuffer());
+    scene.GetRenderer().Submit(scene.GetQuad(), scene.GetRed(), *first, 3);
+    scene.GetRenderer().Submit(scene.GetQuad(), scene.GetRed(), *first, 4);
+    scene.GetRenderer().EndScene();
+    scene.GetContext().EndFrame();
+
+    CHECK(IsNear(scene.ReadColor(1, 3), RedPixel));
+    CHECK(IsNear(scene.ReadColor(3, 3), RedPixel));
+    CHECK(IsNear(scene.ReadColor(5, 3), RedPixel));
+    CHECK(IsNear(scene.ReadColor(7, 3), BlackPixel));
+    CHECK(scene.GetContext().GetFrameStatistics().Draws == 1);
+    CHECK(scene.GetContext().GetFrameStatistics().Triangles == 6);
+    CHECK(first->Index == 1);
+    CHECK(CountErrors("Cannot draw 4 instances from the object 1: the current frame placed 4 objects") == 1);
+    CHECK(glGetError() == GL_NO_ERROR);
+}
+
 TEST_CASE("The closest mesh stays in front, whatever the order of the submissions")
 {
     const TestHelpers::ScopedLog log;
@@ -307,7 +356,7 @@ TEST_CASE("The shaders read the camera and the object from the blocks of the ren
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.GetContext().CreatePipeline({.Shader = shader.get(), .DepthTest = false});
     REQUIRE(pipeline != nullptr);
     const Quasar::Scope<Quasar::Material> material =
-        Quasar::Material::Create(scene.GetContext(), {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Object});
+        Quasar::Material::Create(scene.GetContext(), {.Pipeline = pipeline.get(), .UniformBinding = Quasar::ShaderBindings::Camera});
     const Quasar::Scope<Quasar::Framebuffer> values =
         scene.GetContext().CreateFramebuffer({.Width = 1, .Height = 1, .Attachments = {Quasar::FramebufferFormat::RedInteger}});
     REQUIRE(material != nullptr);

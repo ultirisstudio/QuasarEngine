@@ -6,10 +6,15 @@ layout(std140, binding = 0) uniform Camera
     vec4 u_CameraPosition;
 };
 
-layout(std140, binding = 2) uniform Object
+struct ObjectData
 {
-    mat4 u_Model;
-    mat3 u_NormalMatrix;
+    mat4 Model;
+    mat3 NormalMatrix;
+};
+
+layout(std430, binding = 2) readonly buffer Objects
+{
+    ObjectData u_Objects[];
 };
 
 vec3 SrgbToLinear(vec3 color)
