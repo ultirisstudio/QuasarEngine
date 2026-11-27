@@ -30,8 +30,9 @@ namespace Quasar
     /// @brief One texture that a material gives to its shader.
     struct MaterialTexture
     {
-        std::string Name;       ///< The name that the texture is set with.
-        std::uint32_t Slot = 0; ///< The N of the `layout(binding = N) uniform sampler2D` of the shader.
+        std::string Name;                               ///< The name that the texture is set with.
+        std::uint32_t Slot = 0;                         ///< The N of the `layout(binding = N) uniform sampler2D` of the shader.
+        DefaultTexture Default = DefaultTexture::White; ///< The texture read while none is set.
     };
 
     /// @brief The description of a material: its pipeline, the members of its uniform block and its textures.
@@ -52,8 +53,8 @@ namespace Quasar
 
     /// @brief The values and the textures of a material, with the pipeline that draws with them.
     ///
-    /// The values start at zero, and a texture that is not set is the white texture of the context, see
-    /// GraphicsContext::GetWhiteTexture(). The Set functions only change the copy of the
+    /// The values start at zero, and a texture that is not set is the MaterialTexture::Default of the context, see
+    /// GraphicsContext::GetDefaultTexture(). The Set functions only change the copy of the
     /// material, and Bind() sends the values that changed. A name that the description does not have, or a value of
     /// another type than the member, is refused with one engine warning per name.
     class Material
@@ -79,7 +80,7 @@ namespace Quasar
         void SetVec4(std::string_view name, glm::vec4 value);        ///< Sets a member of type UniformType::Vec4.
         void SetMat4(std::string_view name, const glm::mat4& value); ///< Sets a member of type UniformType::Mat4.
 
-        /// @brief Sets a texture, or white with nullptr. The material does not own it, so it must stay alive while the
+        /// @brief Sets a texture, or its default with nullptr. The material does not own it, so it must stay alive while the
         /// material uses it.
         void SetTexture(std::string_view name, Texture2D* texture);
 
@@ -98,7 +99,7 @@ namespace Quasar
         const MaterialSpecification& GetSpecification() const { return m_Specification; }
 
     private:
-        Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Texture2D* white);
+        Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, std::vector<Texture2D*> defaults);
 
         void SetValue(std::string_view name, UniformType type, std::span<const std::byte> value);
         void Report(std::string_view name, std::string_view problem);
@@ -108,7 +109,7 @@ namespace Quasar
         std::vector<std::byte> m_Values;
         bool m_ValuesChanged = false;
         bool m_Changed = true;
-        Texture2D* m_White = nullptr;
+        std::vector<Texture2D*> m_Defaults;
         std::vector<Texture2D*> m_Textures;
         std::vector<std::string> m_ReportedNames;
     };

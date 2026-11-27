@@ -28,14 +28,17 @@ namespace Quasar
         return CreateTexture2D(settings, image->Pixels);
     }
 
-    Texture2D* GraphicsContext::GetWhiteTexture()
+    Texture2D* GraphicsContext::GetDefaultTexture(DefaultTexture texture)
     {
-        if (m_WhiteTexture == nullptr)
+        Scope<Texture2D>& made = m_DefaultTextures.at(static_cast<std::size_t>(texture));
+        if (made == nullptr)
         {
-            constexpr std::array<std::uint8_t, 4> pixel{255, 255, 255, 255};
-            m_WhiteTexture = CreateTexture2D({.Width = 1, .Height = 1, .Mipmaps = false}, std::as_bytes(std::span(pixel)));
+            const bool white = texture == DefaultTexture::White;
+            const std::array<std::uint8_t, 4> pixel = white ? std::array<std::uint8_t, 4>{255, 255, 255, 255} : std::array<std::uint8_t, 4>{128, 128, 255, 255};
+            made = CreateTexture2D({.Width = 1, .Height = 1, .Format = white ? TextureFormat::Srgba8 : TextureFormat::Rgba8, .Mipmaps = false},
+                                   std::as_bytes(std::span(pixel)));
         }
-        return m_WhiteTexture.get();
+        return made.get();
     }
 
     FrameProfiler& GraphicsContext::GetProfiler()
@@ -57,7 +60,10 @@ namespace Quasar
 
     void GraphicsContext::ReleaseResources()
     {
-        m_WhiteTexture.reset();
+        for (Scope<Texture2D>& texture : m_DefaultTextures)
+        {
+            texture.reset();
+        }
         m_Profiler.reset();
     }
 }

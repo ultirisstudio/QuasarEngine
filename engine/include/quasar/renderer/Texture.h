@@ -27,6 +27,14 @@ namespace Quasar
     /// Rgba8 and Srgba8, and 16 for Rgba16F, whose pixels are given as four 32-bit floats.
     std::uint32_t GetTexturePixelSize(TextureFormat format);
 
+    /// @brief The textures of 1 x 1 pixel that a GraphicsContext makes, for example for a material texture that is not
+    /// set. See GraphicsContext::GetDefaultTexture().
+    enum class DefaultTexture : std::uint8_t
+    {
+        White,     ///< White, in TextureFormat::Srgba8: a color or a mask that changes nothing.
+        FlatNormal ///< The normal (0, 0, 1) of a normal map, in TextureFormat::Rgba8: the surface keeps its normal.
+    };
+
     /// @brief How a texture is read between its pixels.
     enum class TextureFilter : std::uint8_t
     {

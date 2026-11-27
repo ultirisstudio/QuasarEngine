@@ -21,6 +21,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -116,11 +117,11 @@ namespace Quasar
         /// is logged as an engine error.
         [[nodiscard]] Scope<Texture2D> LoadTexture2D(const std::filesystem::path& file, TextureSpecification settings = {});
 
-        /// @brief Returns a texture of 1 x 1 white pixel, made at the first call and owned by the context, for example to
-        /// read when a texture is not set. It must not be changed.
+        /// @brief Returns a texture of 1 x 1 pixel, made at the first call and owned by the context, for example to read
+        /// when a texture is not set. It must not be changed.
         /// @return The texture, or nullptr if the graphics API cannot create it. The reason is logged as an engine
         /// error, and the next call tries again.
-        Texture2D* GetWhiteTexture();
+        Texture2D* GetDefaultTexture(DefaultTexture texture);
 
         /// @brief Creates a vertex array without buffers.
         [[nodiscard]] virtual Scope<VertexArray> CreateVertexArray() = 0;
@@ -200,7 +201,7 @@ namespace Quasar
         virtual void OnEndFrame() = 0;
 
     private:
-        Scope<Texture2D> m_WhiteTexture;
+        std::array<Scope<Texture2D>, 2> m_DefaultTextures;
         Scope<FrameProfiler> m_Profiler;
         RenderStatistics m_CurrentStatistics;
         RenderStatistics m_FrameStatistics;
