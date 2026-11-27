@@ -38,11 +38,11 @@ namespace Quasar
         return m_WhiteTexture.get();
     }
 
-    GpuProfiler& GraphicsContext::GetProfiler()
+    FrameProfiler& GraphicsContext::GetProfiler()
     {
         if (m_Profiler == nullptr)
         {
-            m_Profiler = CreateScope<GpuProfiler>([this] { return CreateTimestampQuery(); });
+            m_Profiler = CreateScope<FrameProfiler>([this] { return CreateTimestampQuery(); });
         }
         return *m_Profiler;
     }

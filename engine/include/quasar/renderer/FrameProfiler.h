@@ -1,7 +1,8 @@
 #pragma once
 
 /// \file
-/// \brief The time that the graphics card spends on each step of a frame, such as the shadows or the bloom.
+/// \brief The time that the processor and the graphics card spend on each step of a frame, such as the shadows or the
+/// bloom.
 /// \author Kurogenshi
 /// \date 2026-11-24
 
@@ -18,27 +19,30 @@
 
 namespace Quasar
 {
-    /// @brief The time of one section of a frame on the graphics card.
-    struct GpuTiming
+    /// @brief The times of one section of a frame, on the processor and on the graphics card.
+    struct SectionTiming
     {
-        std::string Name;          ///< The name given to GpuProfiler::BeginSection().
-        std::uint32_t Depth = 0;   ///< 0 for a section of the frame, 1 for a section inside it, and so on.
-        double Milliseconds = 0.0; ///< The time, smoothed over the last frames so that it can be read.
+        std::string Name;             ///< The name given to FrameProfiler::BeginSection().
+        std::uint32_t Depth = 0;      ///< 0 for a section of the frame, 1 for a section inside it, and so on.
+        double CpuMilliseconds = 0.0; ///< The time spent by the processor between the start and the end of the section, smoothed.
+        double GpuMilliseconds = 0.0; ///< The time spent by the graphics card on the commands of the section, smoothed.
     };
 
-    /// @brief Measures the time that the graphics card spends on each section of a frame.
+    /// @brief Measures the time that the processor and the graphics card spend on each section of a frame.
     ///
-    /// The code marks its steps with BeginSection() and EndSection(), or with a GpuSection, between BeginFrame() and
+    /// The code marks its steps with BeginSection() and EndSection(), or with a ProfilerSection, between BeginFrame() and
     /// EndFrame(). Sections can be inside each other, for example each effect inside the post-processing. The
     /// Application runs the frames, and the SceneRenderer and the PostProcessStack mark their steps.
     ///
-    /// The times of a frame are ready a few frames later. The profiler keeps the queries of the last FramesInFlight
+    /// The time on the processor is the time between the start and the end of a section, and the time on the graphics
+    /// card is the time between the commands sent at its start and at its end. The times of a frame are ready a few
+    /// frames later, once the graphics card has finished it, and both times are given together. The profiler keeps the queries of the last FramesInFlight
     /// frames and reads the ones that are ready, so it never makes the program wait for the graphics card. A frame
     /// that is still not ready after FramesInFlight frames is skipped.
     ///
     /// The profiler is off at first, so it costs nothing until SetEnabled() turns it on. Each GraphicsContext owns a
     /// profiler: see GraphicsContext::GetProfiler().
-    class GpuProfiler
+    class FrameProfiler
     {
     public:
         /// The number of frames whose times can be waited for at the same time.
@@ -50,14 +54,15 @@ namespace Quasar
         /// @brief Creates a profiler that is off.
         /// @param createQuery Creates the queries, usually GraphicsContext::CreateTimestampQuery(). A query that
         /// cannot be created makes the profiler skip that frame.
-        explicit GpuProfiler(std::function<Scope<TimestampQuery>()> createQuery);
+        /// @param cpuClock Gives the time of the processor in nanoseconds, or nothing for a steady clock.
+        explicit FrameProfiler(std::function<Scope<TimestampQuery>()> createQuery, std::function<std::uint64_t()> cpuClock = {});
 
-        ~GpuProfiler() = default;
+        ~FrameProfiler() = default;
 
-        GpuProfiler(const GpuProfiler&) = delete;
-        GpuProfiler& operator=(const GpuProfiler&) = delete;
-        GpuProfiler(GpuProfiler&&) = delete;
-        GpuProfiler& operator=(GpuProfiler&&) = delete;
+        FrameProfiler(const FrameProfiler&) = delete;
+        FrameProfiler& operator=(const FrameProfiler&) = delete;
+        FrameProfiler(FrameProfiler&&) = delete;
+        FrameProfiler& operator=(FrameProfiler&&) = delete;
 
         /// @brief Returns true if the profiler measures the frames.
         bool IsEnabled() const { return m_Enabled; }
@@ -79,10 +84,15 @@ namespace Quasar
         void EndSection();
 
         /// @brief Returns the smoothed times of the sections of the last frame read, in the order they started.
-        const std::vector<GpuTiming>& GetTimings() const { return m_Timings; }
+        const std::vector<SectionTiming>& GetTimings() const { return m_Timings; }
 
-        /// @brief Returns the smoothed time of the whole last frame read, in milliseconds, or 0 if no frame was read.
-        double GetFrameMilliseconds() const { return m_FrameMilliseconds; }
+        /// @brief Returns the smoothed time of the processor for the whole last frame read, in milliseconds, or 0 if no
+        /// frame was read.
+        double GetFrameCpuMilliseconds() const { return m_FrameCpuMilliseconds; }
+
+        /// @brief Returns the smoothed time of the graphics card for the whole last frame read, in milliseconds, or 0 if
+        /// no frame was read.
+        double GetFrameGpuMilliseconds() const { return m_FrameGpuMilliseconds; }
 
     private:
         struct Section
@@ -91,12 +101,16 @@ namespace Quasar
             std::uint32_t Depth = 0;
             Scope<TimestampQuery> Begin;
             Scope<TimestampQuery> End;
+            std::uint64_t CpuBegin = 0;
+            std::uint64_t CpuEnd = 0;
         };
 
         struct Frame
         {
             Scope<TimestampQuery> Begin;
             Scope<TimestampQuery> End;
+            std::uint64_t CpuBegin = 0;
+            std::uint64_t CpuEnd = 0;
             std::vector<Section> Sections;
             std::size_t SectionCount = 0;
             bool Pending = false;
@@ -108,11 +122,13 @@ namespace Quasar
         void ReadReadyFrames();
 
         std::function<Scope<TimestampQuery>()> m_CreateQuery;
+        std::function<std::uint64_t()> m_CpuClock;
         std::array<Frame, FramesInFlight> m_Frames;
         std::size_t m_Current = 0;
         std::vector<std::size_t> m_OpenSections;
-        std::vector<GpuTiming> m_Timings;
-        double m_FrameMilliseconds = 0.0;
+        std::vector<SectionTiming> m_Timings;
+        double m_FrameCpuMilliseconds = 0.0;
+        double m_FrameGpuMilliseconds = 0.0;
         bool m_HasTimings = false;
         bool m_Enabled = false;
         bool m_InFrame = false;
@@ -120,24 +136,24 @@ namespace Quasar
 
     /// @brief Measures a section from its creation to its destruction, like BeginSection() and EndSection().
     ///
-    /// For example `const GpuSection section(profiler, "Shadows");` at the start of a block.
-    class GpuSection
+    /// For example `const ProfilerSection section(profiler, "Shadows");` at the start of a block.
+    class ProfilerSection
     {
     public:
         /// @brief Starts the section.
         /// @param profiler The profiler, or nullptr to measure nothing.
         /// @param name The name of the section.
-        GpuSection(GpuProfiler* profiler, std::string_view name);
+        ProfilerSection(FrameProfiler* profiler, std::string_view name);
 
         /// @brief Ends the section.
-        ~GpuSection();
+        ~ProfilerSection();
 
-        GpuSection(const GpuSection&) = delete;
-        GpuSection& operator=(const GpuSection&) = delete;
-        GpuSection(GpuSection&&) = delete;
-        GpuSection& operator=(GpuSection&&) = delete;
+        ProfilerSection(const ProfilerSection&) = delete;
+        ProfilerSection& operator=(const ProfilerSection&) = delete;
+        ProfilerSection(ProfilerSection&&) = delete;
+        ProfilerSection& operator=(ProfilerSection&&) = delete;
 
     private:
-        GpuProfiler* m_Profiler;
+        FrameProfiler* m_Profiler;
     };
 }

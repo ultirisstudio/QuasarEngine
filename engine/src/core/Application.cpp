@@ -3,7 +3,7 @@
 #include <quasar/events/WindowEvent.h>
 #include <quasar/io/UserDataDirectory.h>
 #include <quasar/log/Log.h>
-#include <quasar/renderer/GpuProfiler.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/PipelineLibrary.h>
@@ -152,7 +152,7 @@ namespace Quasar
     void Application::RenderFrame()
     {
         GraphicsContext* context = m_Window->GetGraphicsContext();
-        GpuProfiler* profiler = context != nullptr ? &context->GetProfiler() : nullptr;
+        FrameProfiler* profiler = context != nullptr ? &context->GetProfiler() : nullptr;
         if (profiler != nullptr)
         {
             profiler->BeginFrame();
@@ -174,7 +174,7 @@ namespace Quasar
             {
                 layer->OnImGuiRender();
             }
-            const GpuSection section(profiler, "ImGui");
+            const ProfilerSection section(profiler, "ImGui");
             m_ImGuiLayer->End();
         }
 

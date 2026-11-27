@@ -14,7 +14,7 @@
 #include <quasar/log/Log.h>
 #include <quasar/renderer/Bloom.h>
 #include <quasar/renderer/Framebuffer.h>
-#include <quasar/renderer/GpuProfiler.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/PipelineLibrary.h>
 #include <quasar/renderer/PostProcessing.h>
@@ -64,7 +64,7 @@ namespace Quasar::Sandbox
             float Speed = 0.0f;
         };
 
-        void DrawGpuTimings(GpuProfiler& profiler)
+        void DrawSectionTimings(FrameProfiler& profiler)
         {
             bool enabled = profiler.IsEnabled();
             if (ImGui::Checkbox("GPU timings", &enabled))
@@ -77,25 +77,25 @@ namespace Quasar::Sandbox
             }
 
             constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
-            if (!ImGui::BeginTable("GpuTimings", 2, flags))
+            if (!ImGui::BeginTable("SectionTimings", 2, flags))
             {
                 return;
             }
             const float indent = ImGui::GetStyle().IndentSpacing;
-            for (const GpuTiming& timing : profiler.GetTimings())
+            for (const SectionTiming& timing : profiler.GetTimings())
             {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (indent * static_cast<float>(timing.Depth)));
                 ImGui::TextUnformatted(timing.Name.c_str());
                 ImGui::TableSetColumnIndex(1);
-                ImGui::TextUnformatted(fmt::format("{:.3f} ms", timing.Milliseconds).c_str());
+                ImGui::TextUnformatted(fmt::format("{:.3f} ms", timing.GpuMilliseconds).c_str());
             }
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted("Whole frame");
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(fmt::format("{:.3f} ms", profiler.GetFrameMilliseconds()).c_str());
+            ImGui::TextUnformatted(fmt::format("{:.3f} ms", profiler.GetFrameGpuMilliseconds()).c_str());
             ImGui::EndTable();
         }
 
@@ -363,7 +363,7 @@ namespace Quasar::Sandbox
             }
             if (GraphicsContext* context = Application::Get().GetWindow().GetGraphicsContext(); context != nullptr)
             {
-                DrawGpuTimings(context->GetProfiler());
+                DrawSectionTimings(context->GetProfiler());
                 DrawFrameStatistics(context->GetFrameStatistics());
             }
 

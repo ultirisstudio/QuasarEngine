@@ -9,7 +9,7 @@
 #include <quasar/core/Window.h>
 #include <quasar/log/MemoryLogSink.h>
 #include <quasar/platform/opengl/OpenGLContext.h>
-#include <quasar/renderer/GpuProfiler.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Texture.h>
@@ -169,7 +169,7 @@ namespace
 
         void OnRender() override
         {
-            const Quasar::GpuSection section(&Quasar::Application::Get().GetWindow().GetGraphicsContext()->GetProfiler(), "Layer");
+            const Quasar::ProfilerSection section(&Quasar::Application::Get().GetWindow().GetGraphicsContext()->GetProfiler(), "Layer");
             Quasar::Application::Get().GetWindow().GetGraphicsContext()->ClearWindow({0.0f, 0.0f, 0.0f, 1.0f});
         }
     };
@@ -180,7 +180,7 @@ TEST_CASE("The application measures each rendered frame on the graphics card, wi
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Application> application = TestHelpers::CreateApplicationWithContext();
     REQUIRE(application != nullptr);
-    Quasar::GpuProfiler& profiler = application->GetWindow().GetGraphicsContext()->GetProfiler();
+    Quasar::FrameProfiler& profiler = application->GetWindow().GetGraphicsContext()->GetProfiler();
     profiler.SetEnabled(true);
     application->PushLayer(Quasar::CreateScope<MeasuredLayer>());
     application->PushLayer(Quasar::CreateScope<TestHelpers::ClosingLayer>(3));
@@ -188,12 +188,12 @@ TEST_CASE("The application measures each rendered frame on the graphics card, wi
     application->Run();
 
     std::vector<std::string> sections;
-    for (const Quasar::GpuTiming& timing : profiler.GetTimings())
+    for (const Quasar::SectionTiming& timing : profiler.GetTimings())
     {
         sections.push_back(timing.Name);
     }
     const bool hasImGui = application->GetImGuiLayer() != nullptr;
     CHECK(sections == (hasImGui ? std::vector<std::string>{"Layer", "ImGui"} : std::vector<std::string>{"Layer"}));
-    CHECK(profiler.GetFrameMilliseconds() > 0.0);
+    CHECK(profiler.GetFrameGpuMilliseconds() > 0.0);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }

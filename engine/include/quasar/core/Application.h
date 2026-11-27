@@ -89,7 +89,7 @@ namespace Quasar
         /// to the top. While the window is minimized, or while its drawing area is empty, the layers are still updated
         /// but not rendered.
         ///
-        /// Each rendered frame is a frame of the GpuProfiler of the graphics context, and drawing the ImGui windows is
+        /// Each rendered frame is a frame of the FrameProfiler of the graphics context, and drawing the ImGui windows is
         /// its "ImGui" section. See GraphicsContext::GetProfiler(). Each rendered frame also ends with
         /// GraphicsContext::EndFrame(), so that GraphicsContext::GetFrameStatistics() gives the counts of the last one.
         ///

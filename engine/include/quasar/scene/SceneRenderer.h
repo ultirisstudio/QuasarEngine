@@ -92,7 +92,7 @@ namespace Quasar
         /// @brief Draws a scene seen from a camera.
         ///
         /// Each step is a section of the profiler of the graphics context: "Shadows", "Depth prepass", "Ambient
-        /// occlusion", "Scene" and "Post-processing", which holds a section for each effect. See GpuProfiler.
+        /// occlusion", "Scene" and "Post-processing", which holds a section for each effect. See FrameProfiler.
         /// @param scene The scene.
         /// @param camera The camera, whose viewport size should be the size of the target.
         /// @param target The framebuffer to draw into, or nullptr for the window.

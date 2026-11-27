@@ -62,7 +62,7 @@ target_sources(QuasarEngine
         src/renderer/Framebuffer.cpp
         src/renderer/Frustum.cpp
         src/renderer/FullscreenPass.cpp
-        src/renderer/GpuProfiler.cpp
+        src/renderer/FrameProfiler.cpp
         src/renderer/GraphicsContext.cpp
         src/renderer/GraphicsContextFactory.cpp
         src/renderer/GraphicsContextFactory.h
@@ -138,7 +138,7 @@ target_sources(QuasarEngine
             include/quasar/renderer/Framebuffer.h
             include/quasar/renderer/Frustum.h
             include/quasar/renderer/FullscreenPass.h
-            include/quasar/renderer/GpuProfiler.h
+            include/quasar/renderer/FrameProfiler.h
             include/quasar/renderer/GraphicsAPI.h
             include/quasar/renderer/GraphicsContext.h
             include/quasar/renderer/Image.h
