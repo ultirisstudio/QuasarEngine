@@ -13,7 +13,6 @@
 #include <quasar/scene/components/TransformComponent.h>
 #include <quasar/time/Timestep.h>
 
-#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include <array>
@@ -53,7 +52,6 @@ namespace Quasar::Sandbox
         void BuildCube();
         void PlaceLights(std::size_t side, float start);
         void ResizeGround(float size);
-        void ResetCamera();
         void DrawScenePanel();
         void UpdateSun();
         void SetLooking(bool looking);
@@ -77,7 +75,8 @@ namespace Quasar::Sandbox
         int m_CubeSize = 1;
         float m_Spacing = 2.0f;
         bool m_Spin = false;
-        glm::vec2 m_SunAngles{30.0f, -50.0f};
+        float m_SunAzimuth = 30.0f;
+        float m_SunElevation = 50.0f;
         bool m_Ready = false;
         bool m_Looking = false;
     };
