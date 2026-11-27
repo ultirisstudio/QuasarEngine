@@ -289,23 +289,22 @@ namespace Quasar::Sandbox
         Texture2D* ground = AddTexture(context, textures / "test3.png");
         const std::array<Texture2D*, 2> objects{AddTexture(context, textures / "test.png"), AddTexture(context, textures / "test2.png")};
 
-        m_GroundMaterial = AddMaterial(pipelines, PipelineLibrary::BlinnPhong, ground, {0.8f, 0.8f, 0.8f, 1.0f});
+        m_GroundMaterial = AddMaterial(pipelines, PipelineLibrary::Pbr, ground, {0.8f, 0.8f, 0.8f, 1.0f});
         if (m_GroundMaterial == nullptr)
         {
             return false;
         }
-        m_GroundMaterial->SetFloat("Specular", 0.1f);
+        m_GroundMaterial->SetFloat("Roughness", 0.9f);
 
         for (std::size_t index = 0; index < m_ObjectMaterials.size(); ++index)
         {
-            Material* material = AddMaterial(pipelines, PipelineLibrary::BlinnPhong, objects.at(index / 2), White);
+            Material* material = AddMaterial(pipelines, PipelineLibrary::Pbr, objects.at(index / 2), White);
             if (material == nullptr)
             {
                 return false;
             }
             const bool shiny = index % 2 == 1;
-            material->SetFloat("Specular", shiny ? 1.0f : 0.0f);
-            material->SetFloat("Shininess", shiny ? 64.0f : 8.0f);
+            material->SetFloat("Roughness", shiny ? 0.25f : 0.85f);
             m_ObjectMaterials.at(index) = material;
         }
 
