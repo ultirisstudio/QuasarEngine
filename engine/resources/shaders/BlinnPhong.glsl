@@ -65,18 +65,21 @@ void main()
     {
         PointLight light = u_PointLights[index];
         vec3 toLight = light.PositionRange.xyz - v_Position;
-        float attenuation = Attenuate(toLight, light.PositionRange.w);
-        color += Shade(base.rgb, normal, toCamera, normalize(toLight), light.Color.rgb * attenuation);
+        if (IsInRange(toLight, light.PositionRange.w))
+        {
+            color += Shade(base.rgb, normal, toCamera, normalize(toLight), GetPointLightRadiance(light, toLight));
+        }
     }
 
     for (int index = 0; index < u_SpotLightCount; ++index)
     {
         SpotLight light = u_SpotLights[index];
         vec3 toLight = light.PositionRange.xyz - v_Position;
-        vec3 direction = normalize(toLight);
-        float cone = clamp((dot(-direction, light.DirectionOuter.xyz) - light.DirectionOuter.w) / (light.ColorInner.w - light.DirectionOuter.w), 0.0, 1.0);
-        float attenuation = Attenuate(toLight, light.PositionRange.w) * cone * cone;
-        color += Shade(base.rgb, normal, toCamera, direction, light.ColorInner.rgb * attenuation);
+        if (IsInRange(toLight, light.PositionRange.w))
+        {
+            vec3 direction = normalize(toLight);
+            color += Shade(base.rgb, normal, toCamera, direction, GetSpotLightRadiance(light, toLight, direction));
+        }
     }
 
     float occlusion = ReadAmbientOcclusion();

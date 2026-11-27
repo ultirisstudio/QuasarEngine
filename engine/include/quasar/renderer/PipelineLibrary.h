@@ -39,17 +39,36 @@ namespace Quasar
     /// The library owns its shaders and its pipelines, which stay at the same address until it is destroyed, so it
     /// must outlive the materials that use them. AddDefaults() adds the pipelines of the engine:
     /// - `Unlit`: the color of a texture multiplied by `Color` (vec4), without light.
-    /// - `BlinnPhong`: the same color lit by the DirectionalLight of the Renderer, with a highlight of strength
-    ///   `Specular` (float) and of sharpness `Shininess` (float).
+    /// - `BlinnPhong`: the same color lit by the lights of the Renderer, with a highlight of strength `Specular` (float)
+    ///   and of sharpness `Shininess` (float).
+    /// - `PBR`: physically based shading with metals and roughness, described below.
     ///
     /// Their materials read the texture `Texture` in the slot 0, and start white, with a `Specular` of 0.5 and a
-    /// `Shininess` of 32. `Color` is in sRGB, as in a color picker, with a linear alpha. Both write linear colors, see
+    /// `Shininess` of 32. `Color` is in sRGB, as in a color picker, with a linear alpha. All write linear colors, see
     /// Renderer.
+    ///
+    /// The `PBR` materials follow the metallic and roughness model of glTF:
+    /// - `Color` (vec4) and `Texture` (slot 0, TextureFormat::Srgba8): the base color, which is the diffuse color of a
+    ///   nonmetal and the color of the reflections of a metal.
+    /// - `Metallic` (float, 0 to 1) and `Roughness` (float, 0 for a mirror to 1 for a matte surface), multiplied by the
+    ///   blue and the green channels of `MetallicRoughnessMap` (slot 2, TextureFormat::Rgba8).
+    /// - `NormalMap` (slot 1, TextureFormat::Rgba8): the normals in the space of the tangents, with green toward the top
+    ///   of the image as in OpenGL, tilted by `NormalScale` (float). The meshes need tangents, see Vertex::Tangent.
+    /// - `OcclusionMap` (slot 3, TextureFormat::Rgba8): how much ambient light reaches the surface, in red, applied by
+    ///   `OcclusionStrength` (float, 0 to 1). It can be the same texture as `MetallicRoughnessMap`.
+    /// - `Emissive` (vec3, in sRGB) multiplied by `EmissiveIntensity` (float) and by `EmissiveMap` (slot 4,
+    ///   TextureFormat::Srgba8): the light that the surface gives, which can go above 1 for the bloom.
+    ///
+    /// They start white, not metallic, with a `Roughness` of 0.5, a `NormalScale`, an `OcclusionStrength` and an
+    /// `EmissiveIntensity` of 1, and a black `Emissive`. A light of intensity 1 makes a white matte surface that faces
+    /// it white, as with `BlinnPhong`. Until the scenes have an environment map, the ambient light of the
+    /// DirectionalLight stands for the light of the sky, in the diffuse color and in the reflections.
     class PipelineLibrary
     {
     public:
         static constexpr std::string_view Unlit = "Unlit";           ///< The name of the pipeline without light.
-        static constexpr std::string_view BlinnPhong = "BlinnPhong"; ///< The name of the lit pipeline.
+        static constexpr std::string_view BlinnPhong = "BlinnPhong"; ///< The name of the Blinn-Phong pipeline.
+        static constexpr std::string_view Pbr = "PBR";               ///< The name of the physically based pipeline.
 
         /// @brief Creates an empty library whose pipelines are created with a context, which must outlive it.
         explicit PipelineLibrary(GraphicsContext& context) : m_Context(&context) {}
