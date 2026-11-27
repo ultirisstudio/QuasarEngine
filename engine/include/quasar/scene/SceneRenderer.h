@@ -91,6 +91,9 @@ namespace Quasar
 
         /// @brief Draws a scene seen from a camera.
         ///
+        /// The meshes that share a mesh and a material are drawn in one draw, and each mesh is placed once for the image
+        /// and for the shadow map.
+        ///
         /// Each step is a section of the profiler of the graphics context: "Gather and cull", "Sort and batch",
         /// "Shadows", "Depth prepass", "Ambient occlusion", "Scene" and "Post-processing", which holds a section for each
         /// effect. See FrameProfiler.
@@ -143,11 +146,20 @@ namespace Quasar
             Scope<Quasar::AmbientOcclusion> AmbientOcclusion;
         };
 
-        struct DrawItem
+        enum class DrawPasses : std::uint8_t
         {
-            const Quasar::Mesh* Mesh = nullptr;
+            Scene,
+            SceneAndShadow,
+            Shadow
+        };
+
+        struct DrawKey
+        {
+            const Quasar::Pipeline* Pipeline = nullptr;
             Quasar::Material* Material = nullptr;
-            glm::mat4 World{1.0f};
+            const Quasar::Mesh* Mesh = nullptr;
+            DrawPasses Passes = DrawPasses::Scene;
+            std::uint32_t Item = 0;
         };
 
         struct Batch
@@ -163,7 +175,7 @@ namespace Quasar
         bool GatherLights(Scene& scene);
         void GatherDrawList(Scene& scene, const Frustum& view, const std::optional<Frustum>& light);
         void BuildBatches();
-        void BuildBatches(std::vector<std::uint32_t>& order, std::vector<Batch>& batches, bool byMaterial);
+        static void AddToBatches(std::vector<Batch>& batches, const Batch& object);
         DirectionalShadow RenderShadows(const ShadowCamera& shadow);
         SceneAmbientOcclusion RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size);
 
@@ -178,9 +190,8 @@ namespace Quasar
         Scope<Framebuffer> m_DepthPrepass;
         Scope<AmbientOcclusion> m_AmbientOcclusion;
         SceneLights m_Lights;
-        std::vector<DrawItem> m_DrawList;
-        std::vector<std::uint32_t> m_SceneOrder;
-        std::vector<std::uint32_t> m_ShadowOrder;
+        std::vector<glm::mat4> m_DrawList;
+        std::vector<DrawKey> m_DrawOrder;
         std::vector<Batch> m_SceneBatches;
         std::vector<Batch> m_ShadowBatches;
         glm::mat4 m_ShadowViewProjection{1.0f};

@@ -1,17 +1,22 @@
 #include <quasar/scene/components/TransformComponent.h>
 
 #include <glm/geometric.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat3x3.hpp>
 #include <glm/matrix.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 namespace Quasar
 {
     glm::mat4 TransformComponent::GetMatrix() const
     {
-        return glm::translate(glm::mat4(1.0f), Position) * glm::mat4_cast(Rotation) * glm::scale(glm::mat4(1.0f), Scale);
+        glm::mat4 matrix = glm::mat4_cast(Rotation);
+        matrix[0] *= Scale.x;
+        matrix[1] *= Scale.y;
+        matrix[2] *= Scale.z;
+        matrix[3] = glm::vec4(Position, 1.0f);
+        return matrix;
     }
 
     void TransformComponent::SetMatrix(const glm::mat4& matrix)

@@ -1,5 +1,6 @@
 #include <quasar/renderer/Frustum.h>
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
 
@@ -23,13 +24,13 @@ namespace Quasar
 
     bool Frustum::Intersects(const BoundingBox& box) const
     {
+        const glm::vec3 center = (box.Min + box.Max) * 0.5f;
+        const glm::vec3 extent = (box.Max - box.Min) * 0.5f;
         return std::ranges::all_of(m_Planes,
-                                   [&box](const glm::vec4& plane)
+                                   [&center, &extent](const glm::vec4& plane)
                                    {
                                        const glm::vec3 normal(plane);
-                                       const glm::vec3 farthest(normal.x >= 0.0f ? box.Max.x : box.Min.x, normal.y >= 0.0f ? box.Max.y : box.Min.y,
-                                                                normal.z >= 0.0f ? box.Max.z : box.Min.z);
-                                       return glm::dot(normal, farthest) + plane.w >= 0.0f;
+                                       return glm::dot(normal, center) + glm::dot(glm::abs(normal), extent) + plane.w >= 0.0f;
                                    });
     }
 }
