@@ -9,7 +9,9 @@
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include <algorithm>
 #include <array>
@@ -80,6 +82,33 @@ namespace
                                    });
     }
 
+    // Each tangent has length 1, is perpendicular to its normal, follows u, and its bitangent goes toward v = 0
+    bool HasTangentsAlongTheImage(const MeshData& data)
+    {
+        for (std::size_t triangle = 0; triangle < data.Indices.size() / 3; ++triangle)
+        {
+            const std::array<const Vertex*, 3> vertices = GetTriangle(data, triangle);
+            const glm::vec3 edge1 = vertices[1]->Position - vertices[0]->Position;
+            const glm::vec3 edge2 = vertices[2]->Position - vertices[0]->Position;
+            const glm::vec2 uv1 = vertices[1]->TexCoord - vertices[0]->TexCoord;
+            const glm::vec2 uv2 = vertices[2]->TexCoord - vertices[0]->TexCoord;
+            const float determinant = (uv1.x * uv2.y) - (uv2.x * uv1.y);
+            const glm::vec3 towardU = ((edge1 * uv2.y) - (edge2 * uv1.y)) / determinant;
+            const glm::vec3 towardTop = -((edge2 * uv1.x) - (edge1 * uv2.x)) / determinant;
+            for (const Vertex* vertex : vertices)
+            {
+                const glm::vec3 tangent(vertex->Tangent);
+                const glm::vec3 bitangent = glm::cross(vertex->Normal, tangent) * vertex->Tangent.w;
+                if (!IsNear(glm::length(tangent), 1.0f) || !IsNear(glm::dot(tangent, vertex->Normal), 0.0f) || std::abs(vertex->Tangent.w) != 1.0f ||
+                    !(glm::dot(tangent, towardU) > 0.0f) || !(glm::dot(bitangent, towardTop) > 0.0f))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     bool IsUpright(const MeshData& data)
     {
         for (std::size_t triangle = 0; triangle < data.Indices.size() / 3; ++triangle)
@@ -108,14 +137,17 @@ TEST_CASE("The standard vertex has the layout of its struct")
 {
     const Quasar::VertexLayout layout = Vertex::GetLayout();
 
-    REQUIRE(layout.GetAttributes().size() == 3);
+    REQUIRE(layout.GetAttributes().size() == 4);
     CHECK(layout.GetStride() == sizeof(Vertex));
     CHECK(layout.GetOffset(0) == offsetof(Vertex, Position));
     CHECK(layout.GetOffset(1) == offsetof(Vertex, Normal));
     CHECK(layout.GetOffset(2) == offsetof(Vertex, TexCoord));
+    CHECK(layout.GetOffset(3) == offsetof(Vertex, Tangent));
     CHECK(layout.GetAttributes()[0].Location == 0);
     CHECK(layout.GetAttributes()[1].Location == 1);
     CHECK(layout.GetAttributes()[2].Location == 2);
+    CHECK(layout.GetAttributes()[3].Location == 3);
+    CHECK(layout.GetAttributes()[3].Type == Quasar::VertexAttributeType::Vec4);
 }
 
 TEST_CASE("A cube is closed, faces outward, and has its own normal and the whole image on each face")
@@ -176,6 +208,49 @@ TEST_CASE("A quad faces +Z, with the image upright and not mirrored")
         CHECK(std::abs(vertex.Position.y) == 1.5f);
         CHECK((vertex.TexCoord.x == 0.0f) == (vertex.Position.x < 0.0f));
         CHECK((vertex.TexCoord.y == 0.0f) == (vertex.Position.y > 0.0f));
+        CHECK(vertex.Tangent == glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+    }
+}
+
+TEST_CASE("The tangents of the shapes follow u, and their bitangents go toward the top of the image")
+{
+    CHECK(HasTangentsAlongTheImage(Quasar::Primitives::CreateQuad()));
+    CHECK(HasTangentsAlongTheImage(Quasar::Primitives::CreateCube()));
+    CHECK(HasTangentsAlongTheImage(Quasar::Primitives::CreateSphere(1.0f, 16, 8)));
+}
+
+TEST_CASE("Mirrored texture coordinates give the opposite handedness")
+{
+    MeshData quad = Quasar::Primitives::CreateQuad();
+    for (Vertex& vertex : quad.Vertices)
+    {
+        vertex.TexCoord.x = 1.0f - vertex.TexCoord.x;
+    }
+
+    quad.GenerateTangents();
+
+    CHECK(HasTangentsAlongTheImage(quad));
+    for (const Vertex& vertex : quad.Vertices)
+    {
+        CHECK(vertex.Tangent == glm::vec4(-1.0f, 0.0f, 0.0f, -1.0f));
+    }
+}
+
+TEST_CASE("Without texture coordinates, or with indices out of the vertices, each tangent is still perpendicular to its normal")
+{
+    MeshData data;
+    data.Vertices = {{.Position = {0.0f, 0.0f, 0.0f}, .Normal = {1.0f, 0.0f, 0.0f}},
+                     {.Position = {0.0f, 1.0f, 0.0f}, .Normal = {1.0f, 0.0f, 0.0f}},
+                     {.Position = {0.0f, 0.0f, 1.0f}, .Normal = {1.0f, 0.0f, 0.0f}}};
+    data.Indices = {0, 1, 2, 0, 1, 7};
+
+    data.GenerateTangents();
+
+    for (const Vertex& vertex : data.Vertices)
+    {
+        CHECK(IsNear(glm::length(glm::vec3(vertex.Tangent)), 1.0f));
+        CHECK(IsNear(glm::dot(glm::vec3(vertex.Tangent), vertex.Normal), 0.0f));
+        CHECK(std::abs(vertex.Tangent.w) == 1.0f);
     }
 }
 

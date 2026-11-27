@@ -71,6 +71,7 @@ namespace Quasar::Primitives
         {
             AddFace(data, face, size);
         }
+        data.GenerateTangents();
         return data;
     }
 
@@ -87,6 +88,7 @@ namespace Quasar::Primitives
         {
             vertex.Position.z = 0.0f;
         }
+        data.GenerateTangents();
         return data;
     }
 
@@ -140,6 +142,7 @@ namespace Quasar::Primitives
                 }
             }
         }
+        data.GenerateTangents();
         return data;
     }
 }

@@ -2,12 +2,18 @@
 
 #include <quasar/log/Log.h>
 
+#include <glm/geometric.hpp>
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <span>
 #include <utility>
@@ -40,7 +46,57 @@ namespace Quasar
 
     VertexLayout Vertex::GetLayout()
     {
-        return {{0, VertexAttributeType::Vec3}, {1, VertexAttributeType::Vec3}, {2, VertexAttributeType::Vec2}};
+        return {{0, VertexAttributeType::Vec3}, {1, VertexAttributeType::Vec3}, {2, VertexAttributeType::Vec2}, {3, VertexAttributeType::Vec4}};
+    }
+
+    void MeshData::GenerateTangents()
+    {
+        std::vector<glm::vec3> towardU(Vertices.size(), glm::vec3(0.0f));
+        std::vector<glm::vec3> towardV(Vertices.size(), glm::vec3(0.0f));
+        for (std::size_t first = 0; first + 2 < Indices.size(); first += 3)
+        {
+            const std::array<std::uint32_t, 3> triangle{Indices[first], Indices[first + 1], Indices[first + 2]};
+            if (std::ranges::any_of(triangle, [this](std::uint32_t index) { return index >= Vertices.size(); }))
+            {
+                continue;
+            }
+            const Vertex& a = Vertices[triangle[0]];
+            const Vertex& b = Vertices[triangle[1]];
+            const Vertex& c = Vertices[triangle[2]];
+            const glm::vec3 edge1 = b.Position - a.Position;
+            const glm::vec3 edge2 = c.Position - a.Position;
+            const glm::vec2 uv1 = b.TexCoord - a.TexCoord;
+            const glm::vec2 uv2 = c.TexCoord - a.TexCoord;
+            const float determinant = (uv1.x * uv2.y) - (uv2.x * uv1.y);
+            if (std::abs(determinant) < std::numeric_limits<float>::epsilon())
+            {
+                continue;
+            }
+            const glm::vec3 u = ((edge1 * uv2.y) - (edge2 * uv1.y)) / determinant;
+            const glm::vec3 v = ((edge2 * uv1.x) - (edge1 * uv2.x)) / determinant;
+            for (const std::uint32_t index : triangle)
+            {
+                towardU[index] += u;
+                towardV[index] += v;
+            }
+        }
+
+        for (std::size_t index = 0; index < Vertices.size(); ++index)
+        {
+            Vertex& vertex = Vertices[index];
+            glm::vec3 tangent = towardU[index] - (vertex.Normal * glm::dot(vertex.Normal, towardU[index]));
+            if (glm::dot(tangent, tangent) < std::numeric_limits<float>::epsilon())
+            {
+                const glm::vec3 axis = std::abs(vertex.Normal.x) < 0.9f ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+                tangent = glm::cross(axis, vertex.Normal);
+                if (glm::dot(tangent, tangent) < std::numeric_limits<float>::epsilon())
+                {
+                    tangent = axis;
+                }
+            }
+            const float handedness = glm::dot(glm::cross(vertex.Normal, tangent), -towardV[index]) < 0.0f ? -1.0f : 1.0f;
+            vertex.Tangent = glm::vec4(glm::normalize(tangent), handedness);
+        }
     }
 
     Mesh::Mesh(Scope<VertexArray> vertexArray, const std::optional<BoundingBox>& bounds) : m_VertexArray(std::move(vertexArray)), m_Bounds(bounds) {}
