@@ -23,14 +23,25 @@ namespace Quasar::Sandbox
     namespace
     {
         constexpr std::string_view SwapSection = "Swap and events";
-        constexpr float BarWidth = 110.0f;
         constexpr ImVec2 GraphSize{340.0f, 70.0f};
         constexpr ImGuiTableFlags TableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
 
-        void TimeCell(double milliseconds, double frame)
+        void RightAlignedText(const std::string& text)
         {
-            const float fraction = frame > 0.0 ? static_cast<float>(std::clamp(milliseconds / frame, 0.0, 1.0)) : 0.0f;
-            ImGui::ProgressBar(fraction, {BarWidth, 0.0f}, fmt::format("{:.3f} ms", milliseconds).c_str());
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(text.c_str()).x);
+            ImGui::TextUnformatted(text.c_str());
+        }
+
+        void TimeRow(const char* name, std::uint32_t depth, double cpuMilliseconds, double gpuMilliseconds)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetStyle().IndentSpacing * static_cast<float>(depth)));
+            ImGui::TextUnformatted(name);
+            ImGui::TableSetColumnIndex(1);
+            RightAlignedText(fmt::format("{:.3f}", cpuMilliseconds));
+            ImGui::TableSetColumnIndex(2);
+            RightAlignedText(fmt::format("{:.3f}", gpuMilliseconds));
         }
 
         const char* FindLimit(const FrameProfiler& profiler, float frame, bool vsync)
@@ -66,46 +77,34 @@ namespace Quasar::Sandbox
 
             const bool vsync = Application::Get().GetWindow().IsVSync();
             ImGui::TextUnformatted(fmt::format("Limited by {}", FindLimit(profiler, frame, vsync)).c_str());
-            if (!ImGui::BeginTable("Sections", 3, TableFlags))
+            if (!ImGui::BeginTable("Sections", 3, TableFlags | ImGuiTableFlags_BordersInnerV))
             {
                 return;
             }
-            ImGui::TableSetupColumn("Section");
+            ImGui::TableSetupColumn("Section (ms)");
             ImGui::TableSetupColumn("Processor");
             ImGui::TableSetupColumn("Graphics card");
             ImGui::TableHeadersRow();
-
-            const double cpuFrame = profiler.GetFrameCpuMilliseconds();
-            const double gpuFrame = profiler.GetFrameGpuMilliseconds();
-            const float indent = ImGui::GetStyle().IndentSpacing;
             for (const SectionTiming& timing : profiler.GetTimings())
             {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (indent * static_cast<float>(timing.Depth)));
-                ImGui::TextUnformatted(timing.Name.c_str());
-                ImGui::TableSetColumnIndex(1);
-                TimeCell(timing.CpuMilliseconds, cpuFrame);
-                ImGui::TableSetColumnIndex(2);
-                TimeCell(timing.GpuMilliseconds, gpuFrame);
+                TimeRow(timing.Name.c_str(), timing.Depth, timing.CpuMilliseconds, timing.GpuMilliseconds);
             }
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted("Frame");
-            ImGui::TableSetColumnIndex(1);
-            TimeCell(cpuFrame, cpuFrame);
-            ImGui::TableSetColumnIndex(2);
-            TimeCell(gpuFrame, gpuFrame);
+            TimeRow("Frame", 0, profiler.GetFrameCpuMilliseconds(), profiler.GetFrameGpuMilliseconds());
             ImGui::EndTable();
         }
 
-        void CountRow(const char* name, std::uint64_t value)
+        void TextRow(const char* name, const std::string& value)
         {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted(name);
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(fmt::format("{}", value).c_str());
+            ImGui::TextUnformatted(value.c_str());
+        }
+
+        void CountRow(const char* name, std::uint64_t value)
+        {
+            TextRow(name, fmt::format("{}", value));
         }
 
         void DrawFrameStatistics(const RenderStatistics& statistics)
@@ -140,16 +139,8 @@ namespace Quasar::Sandbox
             CountRow("Shadow casters", objects.ShadowCasters);
             const FramebufferSpecification& image = renderer.GetSceneFramebuffer().GetSpecification();
             const FramebufferSpecification& shadows = renderer.GetShadowMap().GetSpecification();
-            const auto textRow = [](const char* name, const std::string& value)
-            {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(name);
-                ImGui::TableSetColumnIndex(1);
-                ImGui::TextUnformatted(value.c_str());
-            };
-            textRow("Image", fmt::format("{}x{}, {} samples", image.Width, image.Height, image.Samples));
-            textRow("Shadow map", fmt::format("{}x{}", shadows.Width, shadows.Height));
+            TextRow("Image", fmt::format("{}x{}, {} samples", image.Width, image.Height, image.Samples));
+            TextRow("Shadow map", fmt::format("{}x{}", shadows.Width, shadows.Height));
             ImGui::EndTable();
         }
     }

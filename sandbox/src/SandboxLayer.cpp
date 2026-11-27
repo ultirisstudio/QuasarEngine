@@ -1,6 +1,5 @@
 #include "SandboxLayer.h"
 
-#include "ControlsPanel.h"
 #include "GraphicsPanel.h"
 
 #include <quasar/core/Application.h>
@@ -61,10 +60,19 @@ namespace Quasar::Sandbox
 
         static_assert(MaxLightsPerSide * MaxLightsPerSide * MaxLightsPerSide <= MaxPointLights);
 
+        constexpr glm::vec3 CameraStart{-24.0f, 24.0f, 32.0f};
+        constexpr float CameraStartYaw = -37.0f;
+        constexpr float CameraStartPitch = -20.0f;
+
         struct SpinComponent
         {
             float Speed = 0.0f;
         };
+
+        std::string FormatVector(std::string_view name, glm::vec3 vector)
+        {
+            return fmt::format("{} {:.2f}, {:.2f}, {:.2f}", name, vector.x, vector.y, vector.z);
+        }
     }
 
     SandboxLayer::SandboxLayer() : Layer("Sandbox") {}
@@ -147,7 +155,6 @@ namespace Quasar::Sandbox
         m_Performance.Draw(Application::Get().GetWindow().GetGraphicsContext(), Application::Get().GetSceneRenderer());
         DrawScenePanel();
         DrawGraphicsPanel();
-        DrawControlsPanel();
     }
 
     void SandboxLayer::DrawScenePanel()
@@ -185,14 +192,15 @@ namespace Quasar::Sandbox
             ImGui::TextUnformatted(fmt::format("{} point lights, {} entities", m_LightCount, m_Scene.GetEntityCount()).c_str());
 
             ImGui::SeparatorText("Sun");
-            const bool yawChanged = ImGui::SliderFloat("Yaw", &m_SunAngles.x, -180.0f, 180.0f, "%.0f");
-            const bool pitchChanged = ImGui::SliderFloat("Pitch", &m_SunAngles.y, -90.0f, 0.0f, "%.0f");
-            if (yawChanged || pitchChanged)
+            const bool azimuthChanged = ImGui::SliderFloat("Azimuth", &m_SunAzimuth, -180.0f, 180.0f, "%.0f deg");
+            const bool elevationChanged = ImGui::SliderFloat("Elevation", &m_SunElevation, 0.0f, 90.0f, "%.0f deg");
+            if (azimuthChanged || elevationChanged)
             {
                 UpdateSun();
             }
             if (m_Sun.IsValid())
             {
+                ImGui::TextUnformatted(FormatVector("Direction", m_Sun.Get<TransformComponent>().GetForward()).c_str());
                 auto& sun = m_Sun.Get<DirectionalLightComponent>();
                 ImGui::SliderFloat("Intensity", &sun.Intensity, 0.0f, 2.0f, "%.2f");
                 ImGui::SliderFloat("Ambient", &sun.Ambient, 0.0f, 1.0f, "%.2f");
@@ -201,13 +209,9 @@ namespace Quasar::Sandbox
             ImGui::SeparatorText("Camera");
             if (m_Camera.IsValid())
             {
-                const glm::vec3& position = m_Camera.Get<TransformComponent>().Position;
-                ImGui::TextUnformatted(fmt::format("Position {:.1f}, {:.1f}, {:.1f}", position.x, position.y, position.z).c_str());
-            }
-            ImGui::TextUnformatted(fmt::format("Yaw {:.0f}, pitch {:.0f}", m_CameraController.GetYaw(), m_CameraController.GetPitch()).c_str());
-            if (ImGui::Button("Look at the cube"))
-            {
-                ResetCamera();
+                const TransformComponent& camera = m_Camera.Get<TransformComponent>();
+                ImGui::TextUnformatted(FormatVector("Position", camera.Position).c_str());
+                ImGui::TextUnformatted(FormatVector("Direction", camera.GetForward()).c_str());
             }
         }
         ImGui::End();
@@ -271,10 +275,11 @@ namespace Quasar::Sandbox
         UpdateSun();
 
         m_Camera = m_Scene.CreateEntity("Camera");
+        m_Camera.Get<TransformComponent>().Position = CameraStart;
         m_Camera.Add<CameraComponent>().Camera.SetPerspective({.VerticalFov = glm::radians(60.0f), .Near = 0.1f, .Far = 500.0f});
+        m_CameraController.SetRotation(CameraStartYaw, CameraStartPitch);
 
         BuildCube();
-        ResetCamera();
         return m_GroundMesh != nullptr;
     }
 
@@ -430,23 +435,12 @@ namespace Quasar::Sandbox
         m_Ground.Get<MeshRendererComponent>().Mesh = m_GroundMesh.get();
     }
 
-    void SandboxLayer::ResetCamera()
-    {
-        const std::size_t side = CubeSides.at(static_cast<std::size_t>(m_CubeSize));
-        const float extent = (m_Spacing * static_cast<float>(side - 1)) + 1.0f;
-        if (m_Camera.IsValid())
-        {
-            m_Camera.Get<TransformComponent>().Position = {0.0f, m_Spacing + extent, (2.0f * extent) + 2.0f};
-        }
-        m_CameraController.SetRotation(0.0f, -20.0f);
-    }
-
     void SandboxLayer::UpdateSun()
     {
         if (m_Sun.IsValid())
         {
-            m_Sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(m_SunAngles.x), glm::vec3(0.0f, 1.0f, 0.0f)) *
-                                                       glm::angleAxis(glm::radians(m_SunAngles.y), glm::vec3(1.0f, 0.0f, 0.0f));
+            m_Sun.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(m_SunAzimuth), glm::vec3(0.0f, 1.0f, 0.0f)) *
+                                                       glm::angleAxis(glm::radians(-m_SunElevation), glm::vec3(1.0f, 0.0f, 0.0f));
         }
     }
 
