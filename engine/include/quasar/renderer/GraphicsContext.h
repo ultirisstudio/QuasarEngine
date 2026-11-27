@@ -7,8 +7,8 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Buffer.h>
-#include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/FrameProfiler.h>
+#include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/RenderStatistics.h>
