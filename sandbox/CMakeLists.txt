@@ -1,6 +1,12 @@
 add_executable(QuasarSandbox)
 
 target_sources(QuasarSandbox PRIVATE
+    src/ControlsPanel.cpp
+    src/ControlsPanel.h
+    src/GraphicsPanel.cpp
+    src/GraphicsPanel.h
+    src/PerformancePanel.cpp
+    src/PerformancePanel.h
     src/SandboxApplication.cpp
     src/SandboxLayer.cpp
     src/SandboxLayer.h
