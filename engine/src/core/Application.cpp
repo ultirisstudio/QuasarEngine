@@ -3,7 +3,7 @@
 #include <quasar/events/WindowEvent.h>
 #include <quasar/io/UserDataDirectory.h>
 #include <quasar/log/Log.h>
-#include <quasar/renderer/GpuProfiler.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/PipelineLibrary.h>
@@ -129,18 +129,34 @@ namespace Quasar
             const Timestep timestep(static_cast<float>(time - m_LastFrameTime));
             m_LastFrameTime = time;
 
-            for (Scope<Layer>& layer : m_LayerStack)
+            const bool canRender = !m_Minimized && m_Window->GetWidth() > 0 && m_Window->GetHeight() > 0;
+            GraphicsContext* context = m_Window->GetGraphicsContext();
+            FrameProfiler* profiler = canRender && context != nullptr ? &context->GetProfiler() : nullptr;
+            if (profiler != nullptr)
             {
-                layer->OnUpdate(timestep);
+                profiler->BeginFrame();
             }
 
-            const bool canRender = !m_Minimized && m_Window->GetWidth() > 0 && m_Window->GetHeight() > 0;
+            {
+                const ProfilerSection section(profiler, "Update");
+                for (Scope<Layer>& layer : m_LayerStack)
+                {
+                    layer->OnUpdate(timestep);
+                }
+            }
             if (canRender)
             {
-                RenderFrame();
+                RenderFrame(profiler);
             }
 
-            m_Window->Update();
+            {
+                const ProfilerSection section(profiler, "Swap and events");
+                m_Window->Update();
+            }
+            if (profiler != nullptr)
+            {
+                profiler->EndFrame();
+            }
             m_Gamepads.Update([this](Event& event) { OnEvent(event); });
             ApplyLayerChanges();
         }
@@ -149,15 +165,9 @@ namespace Quasar
         m_Running = false;
     }
 
-    void Application::RenderFrame()
+    void Application::RenderFrame(FrameProfiler* profiler)
     {
         GraphicsContext* context = m_Window->GetGraphicsContext();
-        GpuProfiler* profiler = context != nullptr ? &context->GetProfiler() : nullptr;
-        if (profiler != nullptr)
-        {
-            profiler->BeginFrame();
-        }
-
         if (context != nullptr && m_Specification.ClearColor)
         {
             context->ClearWindow(*m_Specification.ClearColor);
@@ -169,19 +179,15 @@ namespace Quasar
 
         if (m_ImGuiLayer)
         {
+            const ProfilerSection section(profiler, "ImGui");
             m_ImGuiLayer->Begin();
             for (Scope<Layer>& layer : m_LayerStack)
             {
                 layer->OnImGuiRender();
             }
-            const GpuSection section(profiler, "ImGui");
             m_ImGuiLayer->End();
         }
 
-        if (profiler != nullptr)
-        {
-            profiler->EndFrame();
-        }
         if (context != nullptr)
         {
             context->EndFrame();

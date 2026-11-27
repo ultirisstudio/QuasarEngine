@@ -7,9 +7,9 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Camera.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/Framebuffer.h>
 #include <quasar/renderer/FullscreenPass.h>
-#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/Shader.h>
@@ -97,11 +97,11 @@ namespace Quasar
             Scope<Framebuffer> Result;
         };
 
-        AmbientOcclusion(GpuProfiler& profiler, Resources resources);
+        AmbientOcclusion(FrameProfiler& profiler, Resources resources);
 
         void Blur(const Framebuffer& source, bool vertical, int radius, Framebuffer* target);
 
-        GpuProfiler* m_Profiler;
+        FrameProfiler* m_Profiler;
         Scope<FullscreenPass> m_Pass;
         Program m_Occlusion;
         Program m_Blur;

@@ -4,8 +4,8 @@
 #include <quasar/log/Log.h>
 #include <quasar/renderer/BoundingBox.h>
 #include <quasar/renderer/Color.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/Frustum.h>
-#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/scene/Entity.h>
 #include <quasar/scene/components/CameraComponent.h>
@@ -147,7 +147,10 @@ namespace Quasar
                     m_ShadowOrder.push_back(index);
                 }
             });
+    }
 
+    void SceneRenderer::BuildBatches()
+    {
         BuildBatches(m_SceneOrder, m_SceneBatches, true);
         BuildBatches(m_ShadowOrder, m_ShadowBatches, false);
         for (const Batch& batch : m_SceneBatches)
@@ -209,13 +212,21 @@ namespace Quasar
 
     void SceneRenderer::Render(Scene& scene, const Camera& camera, Framebuffer* target)
     {
+        FrameProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
         std::optional<ShadowCamera> shadow;
-        if (GatherLights(scene) && m_Settings.Shadows.Enabled && m_Lights.Directional)
         {
-            shadow = ComputeShadowCamera(camera, m_Lights.Directional->Direction, m_Settings.Shadows);
+            const ProfilerSection section(profiler, "Gather and cull");
+            if (GatherLights(scene) && m_Settings.Shadows.Enabled && m_Lights.Directional)
+            {
+                shadow = ComputeShadowCamera(camera, m_Lights.Directional->Direction, m_Settings.Shadows);
+            }
+            GatherDrawList(scene, Frustum::FromViewProjection(camera.GetViewProjection()),
+                           shadow ? std::optional(Frustum::FromViewProjection(shadow->View.GetViewProjection())) : std::nullopt);
         }
-        GatherDrawList(scene, Frustum::FromViewProjection(camera.GetViewProjection()),
-                       shadow ? std::optional(Frustum::FromViewProjection(shadow->View.GetViewProjection())) : std::nullopt);
+        {
+            const ProfilerSection section(profiler, "Sort and batch");
+            BuildBatches();
+        }
         if (shadow)
         {
             m_Lights.Shadow = RenderShadows(*shadow);
@@ -243,9 +254,8 @@ namespace Quasar
         }
         m_SceneFramebuffer->Resize(size.x, size.y);
 
-        GpuProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
         {
-            const GpuSection section(profiler, "Scene");
+            const ProfilerSection section(profiler, "Scene");
             m_SceneFramebuffer->ClearColor(0, glm::vec4(SrgbToLinear(m_Settings.Background), 1.0f));
             m_SceneFramebuffer->ClearDepthStencil();
             m_Renderer->BeginScene(camera, m_SceneFramebuffer.get(), m_Lights);
@@ -256,16 +266,16 @@ namespace Quasar
             m_Renderer->EndScene();
         }
 
-        const GpuSection section(profiler, "Post-processing");
+        const ProfilerSection section(profiler, "Post-processing");
         m_PostProcessing->Apply(*m_SceneFramebuffer, target, camera, m_Settings.Exposure, m_Settings.Tonemap);
     }
 
     SceneAmbientOcclusion SceneRenderer::RenderAmbientOcclusion(const Camera& camera, glm::uvec2 size)
     {
-        GpuProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
+        FrameProfiler* profiler = &m_Renderer->GetContext().GetProfiler();
         m_DepthPrepass->Resize(size.x, size.y);
         {
-            const GpuSection section(profiler, "Depth prepass");
+            const ProfilerSection section(profiler, "Depth prepass");
             m_DepthPrepass->ClearDepthStencil();
             m_Renderer->BeginScene(camera, m_DepthPrepass.get(), SceneLights{.Directional = std::nullopt});
             for (const Batch& batch : m_SceneBatches)
@@ -276,14 +286,14 @@ namespace Quasar
             m_Renderer->EndScene();
         }
 
-        const GpuSection section(profiler, "Ambient occlusion");
+        const ProfilerSection section(profiler, "Ambient occlusion");
         m_AmbientOcclusion->Compute(*m_DepthPrepass, camera, m_Settings.AmbientOcclusion);
         return {.Map = &m_AmbientOcclusion->GetResult(), .DirectLightingStrength = m_Settings.AmbientOcclusion.DirectLightingStrength};
     }
 
     DirectionalShadow SceneRenderer::RenderShadows(const ShadowCamera& shadow)
     {
-        const GpuSection section(&m_Renderer->GetContext().GetProfiler(), "Shadows");
+        const ProfilerSection section(&m_Renderer->GetContext().GetProfiler(), "Shadows");
         m_ShadowMap->Resize(shadow.Resolution, shadow.Resolution);
 
         m_ShadowMap->ClearDepthStencil();

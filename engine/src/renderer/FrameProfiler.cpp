@@ -1,5 +1,6 @@
-#include <quasar/renderer/GpuProfiler.h>
+#include <quasar/renderer/FrameProfiler.h>
 
+#include <chrono>
 #include <optional>
 #include <utility>
 
@@ -9,6 +10,11 @@ namespace Quasar
     {
         constexpr double NanosecondsPerMillisecond = 1'000'000.0;
 
+        double ToMilliseconds(std::uint64_t first, std::uint64_t last)
+        {
+            return last > first ? static_cast<double>(last - first) / NanosecondsPerMillisecond : 0.0;
+        }
+
         std::optional<double> GetMilliseconds(TimestampQuery& begin, TimestampQuery& end)
         {
             const std::optional<std::uint64_t> first = begin.GetNanoseconds();
@@ -17,18 +23,27 @@ namespace Quasar
             {
                 return std::nullopt;
             }
-            return *last > *first ? static_cast<double>(*last - *first) / NanosecondsPerMillisecond : 0.0;
+            return ToMilliseconds(*first, *last);
+        }
+
+        std::uint64_t ReadSteadyClock()
+        {
+            return static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
         }
 
         double Smooth(double previous, double value)
         {
-            return previous + ((value - previous) * GpuProfiler::Smoothing);
+            return previous + ((value - previous) * FrameProfiler::Smoothing);
         }
     }
 
-    GpuProfiler::GpuProfiler(std::function<Scope<TimestampQuery>()> createQuery) : m_CreateQuery(std::move(createQuery)) {}
+    FrameProfiler::FrameProfiler(std::function<Scope<TimestampQuery>()> createQuery, std::function<std::uint64_t()> cpuClock)
+        : m_CreateQuery(std::move(createQuery)), m_CpuClock(cpuClock ? std::move(cpuClock) : ReadSteadyClock)
+    {
+    }
 
-    void GpuProfiler::SetEnabled(bool enabled)
+    void FrameProfiler::SetEnabled(bool enabled)
     {
         m_Enabled = enabled;
         if (enabled)
@@ -42,11 +57,12 @@ namespace Quasar
             frame.Pending = false;
         }
         m_Timings.clear();
-        m_FrameMilliseconds = 0.0;
+        m_FrameCpuMilliseconds = 0.0;
+        m_FrameGpuMilliseconds = 0.0;
         m_HasTimings = false;
     }
 
-    void GpuProfiler::BeginFrame()
+    void FrameProfiler::BeginFrame()
     {
         if (!m_Enabled)
         {
@@ -64,15 +80,12 @@ namespace Quasar
             frame.Pending = false;
         }
         frame.SectionCount = 0;
-        frame.Valid = Prepare(frame.Begin) && Prepare(frame.End);
-        if (frame.Valid)
-        {
-            frame.Begin->Record();
-        }
+        frame.CpuBegin = m_CpuClock();
+        frame.Valid = true;
         m_InFrame = true;
     }
 
-    void GpuProfiler::EndFrame()
+    void FrameProfiler::EndFrame()
     {
         if (!m_InFrame)
         {
@@ -84,17 +97,14 @@ namespace Quasar
         }
 
         Frame& frame = m_Frames.at(m_Current);
-        if (frame.Valid)
-        {
-            frame.End->Record();
-        }
+        frame.CpuEnd = m_CpuClock();
         frame.Pending = frame.Valid;
         m_InFrame = false;
         m_Current = (m_Current + 1) % FramesInFlight;
         ReadReadyFrames();
     }
 
-    void GpuProfiler::BeginSection(std::string_view name)
+    void FrameProfiler::BeginSection(std::string_view name)
     {
         if (!m_InFrame)
         {
@@ -109,6 +119,7 @@ namespace Quasar
         Section& section = frame.Sections[frame.SectionCount];
         section.Name = name;
         section.Depth = static_cast<std::uint32_t>(m_OpenSections.size());
+        section.CpuBegin = m_CpuClock();
         if (Prepare(section.Begin) && Prepare(section.End))
         {
             section.Begin->Record();
@@ -121,7 +132,7 @@ namespace Quasar
         ++frame.SectionCount;
     }
 
-    void GpuProfiler::EndSection()
+    void FrameProfiler::EndSection()
     {
         if (!m_InFrame || m_OpenSections.empty())
         {
@@ -133,9 +144,10 @@ namespace Quasar
         {
             section.End->Record();
         }
+        section.CpuEnd = m_CpuClock();
     }
 
-    bool GpuProfiler::Prepare(Scope<TimestampQuery>& query)
+    bool FrameProfiler::Prepare(Scope<TimestampQuery>& query)
     {
         if (query == nullptr && m_CreateQuery)
         {
@@ -144,15 +156,10 @@ namespace Quasar
         return query != nullptr;
     }
 
-    bool GpuProfiler::ReadFrame(Frame& frame)
+    bool FrameProfiler::ReadFrame(Frame& frame)
     {
-        const std::optional<double> total = GetMilliseconds(*frame.Begin, *frame.End);
-        if (!total)
-        {
-            return false;
-        }
-
-        std::vector<GpuTiming> timings;
+        double gpuTotal = 0.0;
+        std::vector<SectionTiming> timings;
         timings.reserve(frame.SectionCount);
         for (std::size_t index = 0; index < frame.SectionCount; ++index)
         {
@@ -162,30 +169,38 @@ namespace Quasar
             {
                 return false;
             }
-            timings.push_back({.Name = section.Name, .Depth = section.Depth, .Milliseconds = *time});
+            if (section.Depth == 0)
+            {
+                gpuTotal += *time;
+            }
+            timings.push_back(
+                {.Name = section.Name, .Depth = section.Depth, .CpuMilliseconds = ToMilliseconds(section.CpuBegin, section.CpuEnd), .GpuMilliseconds = *time});
         }
 
         std::vector<bool> used(m_Timings.size(), false);
-        for (GpuTiming& timing : timings)
+        for (SectionTiming& timing : timings)
         {
             for (std::size_t index = 0; index < m_Timings.size(); ++index)
             {
                 if (!used[index] && m_Timings[index].Name == timing.Name && m_Timings[index].Depth == timing.Depth)
                 {
                     used[index] = true;
-                    timing.Milliseconds = Smooth(m_Timings[index].Milliseconds, timing.Milliseconds);
+                    timing.CpuMilliseconds = Smooth(m_Timings[index].CpuMilliseconds, timing.CpuMilliseconds);
+                    timing.GpuMilliseconds = Smooth(m_Timings[index].GpuMilliseconds, timing.GpuMilliseconds);
                     break;
                 }
             }
         }
 
         m_Timings = std::move(timings);
-        m_FrameMilliseconds = m_HasTimings ? Smooth(m_FrameMilliseconds, *total) : *total;
+        const double cpuTotal = ToMilliseconds(frame.CpuBegin, frame.CpuEnd);
+        m_FrameCpuMilliseconds = m_HasTimings ? Smooth(m_FrameCpuMilliseconds, cpuTotal) : cpuTotal;
+        m_FrameGpuMilliseconds = m_HasTimings ? Smooth(m_FrameGpuMilliseconds, gpuTotal) : gpuTotal;
         m_HasTimings = true;
         return true;
     }
 
-    void GpuProfiler::ReadReadyFrames()
+    void FrameProfiler::ReadReadyFrames()
     {
         for (std::size_t offset = 0; offset < FramesInFlight; ++offset)
         {
@@ -202,7 +217,7 @@ namespace Quasar
         }
     }
 
-    GpuSection::GpuSection(GpuProfiler* profiler, std::string_view name) : m_Profiler(profiler)
+    ProfilerSection::ProfilerSection(FrameProfiler* profiler, std::string_view name) : m_Profiler(profiler)
     {
         if (m_Profiler != nullptr)
         {
@@ -210,7 +225,7 @@ namespace Quasar
         }
     }
 
-    GpuSection::~GpuSection()
+    ProfilerSection::~ProfilerSection()
     {
         if (m_Profiler != nullptr)
         {

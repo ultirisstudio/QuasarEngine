@@ -1,5 +1,7 @@
 #pragma once
 
+#include "PerformancePanel.h"
+
 #include <quasar/core/Base.h>
 #include <quasar/core/Layer.h>
 #include <quasar/renderer/Material.h>
@@ -44,30 +46,38 @@ namespace Quasar::Sandbox
 
     private:
         bool CreateScene();
-        Entity AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform, float spin = 0.0f);
+        bool CreateMaterials(GraphicsContext& context, const PipelineLibrary& pipelines);
         Texture2D* AddTexture(GraphicsContext& context, const std::filesystem::path& file);
         Material* AddMaterial(const PipelineLibrary& pipelines, std::string_view pipeline, Texture2D* texture, glm::vec4 color);
+        Entity AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform);
+        void BuildCube();
+        void PlaceLights(std::size_t side, float start);
+        void ResizeGround(float size);
+        void ResetCamera();
         void DrawScenePanel();
-        void DrawStressTest();
-        void SetStressObjects(std::size_t count, bool spin);
         void UpdateSun();
         void SetLooking(bool looking);
 
         Scene m_Scene;
         Entity m_Camera;
         Entity m_Sun;
+        Entity m_Ground;
         FlyCameraController m_CameraController;
+        PerformancePanel m_Performance;
         Scope<Mesh> m_Cube;
         Scope<Mesh> m_Sphere;
-        Scope<Mesh> m_Ground;
+        Scope<Mesh> m_GroundMesh;
         std::vector<Scope<Texture2D>> m_Textures;
         std::vector<Scope<Material>> m_Materials;
-        std::array<Material*, 2> m_StressMaterials{};
-        std::vector<Entity> m_StressObjects;
-        int m_StressCount = 0;
-        bool m_StressSpin = false;
+        Material* m_GroundMaterial = nullptr;
+        std::array<Material*, 4> m_ObjectMaterials{};
+        std::vector<Material*> m_BulbMaterials;
+        std::vector<Entity> m_CubeEntities;
+        std::size_t m_LightCount = 0;
+        int m_CubeSize = 1;
+        float m_Spacing = 2.0f;
+        bool m_Spin = false;
         glm::vec2 m_SunAngles{30.0f, -50.0f};
-        float m_FrameTime = 0.0f;
         bool m_Ready = false;
         bool m_Looking = false;
     };

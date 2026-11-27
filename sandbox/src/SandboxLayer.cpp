@@ -1,5 +1,8 @@
 #include "SandboxLayer.h"
 
+#include "ControlsPanel.h"
+#include "GraphicsPanel.h"
+
 #include <quasar/core/Application.h>
 #include <quasar/events/Event.h>
 #include <quasar/events/EventDispatcher.h>
@@ -13,19 +16,17 @@
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/Log.h>
 #include <quasar/renderer/Bloom.h>
-#include <quasar/renderer/Framebuffer.h>
-#include <quasar/renderer/GpuProfiler.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
+#include <quasar/renderer/Lights.h>
 #include <quasar/renderer/PipelineLibrary.h>
 #include <quasar/renderer/PostProcessing.h>
 #include <quasar/renderer/Primitives.h>
-#include <quasar/renderer/RenderStatistics.h>
 #include <quasar/scene/SceneRenderer.h>
 #include <quasar/scene/components/CameraComponent.h>
 #include <quasar/scene/components/DirectionalLightComponent.h>
 #include <quasar/scene/components/MeshRendererComponent.h>
 #include <quasar/scene/components/PointLightComponent.h>
-#include <quasar/scene/components/SpotLightComponent.h>
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
@@ -35,12 +36,7 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
-#include <cctype>
-#include <cmath>
 #include <cstddef>
-#include <cstdint>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -50,217 +46,25 @@ namespace Quasar::Sandbox
     {
         constexpr glm::vec4 White{1.0f};
         constexpr glm::vec3 SkyColor{0.45f, 0.62f, 0.85f};
-        constexpr float GroundSize = 30.0f;
-        constexpr float GroundTiles = 15.0f;
         constexpr float StickLookSpeed = 1500.0f;
-        constexpr float BulbBrightness = 3.0f;
         constexpr GamepadId Gamepad{0};
-        constexpr std::array<std::size_t, 5> StressCounts{0, 1000, 5000, 10000, 20000};
-        constexpr std::array<const char*, 5> StressLabels{"0", "1 000", "5 000", "10 000", "20 000"};
-        constexpr float StressSpacing = 2.0f;
+        constexpr std::array<std::size_t, 6> CubeSides{5, 10, 15, 20, 25, 30};
+        constexpr float GroundMargin = 10.0f;
+        constexpr float GroundTileSize = 2.0f;
+        constexpr float BulbSize = 0.25f;
+        constexpr float BulbBrightness = 3.0f;
+        constexpr float LightIntensity = 6.0f;
+        constexpr std::size_t GapsPerLight = 5;
+        constexpr std::size_t MaxLightsPerSide = 3;
+        constexpr std::array<glm::vec3, 6> LightColors{glm::vec3(1.0f, 0.6f, 0.3f), glm::vec3(0.3f, 0.5f, 1.0f), glm::vec3(0.4f, 1.0f, 0.4f),
+                                                       glm::vec3(1.0f, 0.3f, 0.8f), glm::vec3(1.0f, 0.9f, 0.3f), glm::vec3(0.3f, 1.0f, 1.0f)};
+
+        static_assert(MaxLightsPerSide * MaxLightsPerSide * MaxLightsPerSide <= MaxPointLights);
 
         struct SpinComponent
         {
             float Speed = 0.0f;
         };
-
-        void DrawGpuTimings(GpuProfiler& profiler)
-        {
-            bool enabled = profiler.IsEnabled();
-            if (ImGui::Checkbox("GPU timings", &enabled))
-            {
-                profiler.SetEnabled(enabled);
-            }
-            if (!enabled || profiler.GetTimings().empty())
-            {
-                return;
-            }
-
-            constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
-            if (!ImGui::BeginTable("GpuTimings", 2, flags))
-            {
-                return;
-            }
-            const float indent = ImGui::GetStyle().IndentSpacing;
-            for (const GpuTiming& timing : profiler.GetTimings())
-            {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (indent * static_cast<float>(timing.Depth)));
-                ImGui::TextUnformatted(timing.Name.c_str());
-                ImGui::TableSetColumnIndex(1);
-                ImGui::TextUnformatted(fmt::format("{:.3f} ms", timing.Milliseconds).c_str());
-            }
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted("Whole frame");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(fmt::format("{:.3f} ms", profiler.GetFrameMilliseconds()).c_str());
-            ImGui::EndTable();
-        }
-
-        void DrawFrameStatistics(const RenderStatistics& statistics)
-        {
-            if (!ImGui::TreeNodeEx("Frame statistics", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                return;
-            }
-            constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
-            if (ImGui::BeginTable("FrameStatistics", 2, flags))
-            {
-                const auto row = [](const char* name, std::uint64_t value)
-                {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::TextUnformatted(name);
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::TextUnformatted(fmt::format("{}", value).c_str());
-                };
-                row("Draws", statistics.Draws);
-                row("Triangles", statistics.Triangles);
-                row("Pipeline binds", statistics.PipelineBinds);
-                row("Framebuffer binds", statistics.FramebufferBinds);
-                row("Texture binds", statistics.TextureBinds);
-                row("Uniform buffer binds", statistics.UniformBufferBinds);
-                row("Storage buffer binds", statistics.StorageBufferBinds);
-                row("State changes", statistics.StateChanges);
-                row("Uniform changes", statistics.UniformChanges);
-                row("Uploads", statistics.Uploads);
-                row("Uploaded bytes", statistics.UploadedBytes);
-                ImGui::EndTable();
-            }
-            ImGui::TreePop();
-        }
-
-        std::string KeyLabel(Key key)
-        {
-            std::string name = Application::Get().GetWindow().GetKeyName(key);
-            std::ranges::transform(name, name.begin(), [](unsigned char character) { return static_cast<char>(std::toupper(character)); });
-            return name;
-        }
-        void DrawVideoOptions()
-        {
-            Window& window = Application::Get().GetWindow();
-            ImGui::SeparatorText("Video");
-            bool fullscreen = window.IsFullscreen();
-            if (ImGui::Checkbox("Fullscreen", &fullscreen))
-            {
-                window.SetFullscreen(fullscreen);
-            }
-            bool vsync = window.IsVSync();
-            if (ImGui::Checkbox("VSync", &vsync))
-            {
-                window.SetVSync(vsync);
-            }
-        }
-
-        void DrawAmbientOcclusionOptions(AmbientOcclusionSettings& settings)
-        {
-            ImGui::Checkbox("Ambient occlusion", &settings.Enabled);
-            if (!settings.Enabled)
-            {
-                return;
-            }
-            ImGui::Indent();
-            constexpr std::array<const char*, 4> samples{"8", "16", "32", "64"};
-            int quality = std::clamp(std::countr_zero(settings.Samples) - 3, 0, 3);
-            if (ImGui::Combo("AO samples", &quality, samples.data(), static_cast<int>(samples.size())))
-            {
-                settings.Samples = 8U << static_cast<unsigned>(quality);
-            }
-            ImGui::Checkbox("AO half resolution", &settings.HalfResolution);
-            ImGui::SliderFloat("AO radius", &settings.Radius, 0.1f, 2.0f, "%.2f");
-            ImGui::SliderFloat("AO intensity", &settings.Intensity, 0.0f, 4.0f, "%.2f");
-            ImGui::SliderFloat("AO on direct light", &settings.DirectLightingStrength, 0.0f, 1.0f, "%.2f");
-            ImGui::Unindent();
-        }
-
-        void DrawQualityOptions(SceneRendererSettings& settings)
-        {
-            ImGui::SeparatorText("Quality");
-            constexpr std::array<const char*, 4> antialiasing{"Off", "2x", "4x", "8x"};
-            int level = std::min(std::countr_zero(settings.Samples), 3);
-            if (ImGui::Combo("Antialiasing", &level, antialiasing.data(), static_cast<int>(antialiasing.size())))
-            {
-                settings.Samples = 1U << static_cast<unsigned>(level);
-            }
-            ImGui::Checkbox("Shadows", &settings.Shadows.Enabled);
-            constexpr std::array<const char*, 4> resolutions{"512", "1024", "2048", "4096"};
-            int resolution = std::clamp(std::countr_zero(settings.Shadows.Resolution) - 9, 0, 3);
-            if (ImGui::Combo("Shadow quality", &resolution, resolutions.data(), static_cast<int>(resolutions.size())))
-            {
-                settings.Shadows.Resolution = 512U << static_cast<unsigned>(resolution);
-            }
-            ImGui::SliderFloat("Shadow distance", &settings.Shadows.Distance, 5.0f, 100.0f, "%.0f");
-            if (ImGui::TreeNode("Shadow biases"))
-            {
-                ImGui::SliderFloat("Depth bias", &settings.Shadows.DepthBias, 0.0f, 0.005f, "%.4f");
-                ImGui::SliderFloat("Normal bias", &settings.Shadows.NormalBias, 0.0f, 4.0f, "%.2f");
-                ImGui::TreePop();
-            }
-            DrawAmbientOcclusionOptions(settings.AmbientOcclusion);
-
-            ImGui::SeparatorText("Image");
-            ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f, "%.2f");
-            constexpr std::array<const char*, 3> tonemaps{"None", "Reinhard", "ACES"};
-            int tonemap = static_cast<int>(settings.Tonemap);
-            ImGui::Combo("Tonemapping", &tonemap, tonemaps.data(), static_cast<int>(tonemaps.size()));
-            settings.Tonemap = static_cast<Tonemapping>(tonemap);
-        }
-
-        void DrawBloomOptions(Bloom& bloom)
-        {
-            ImGui::Indent();
-            BloomSettings settings = bloom.GetSettings();
-            ImGui::SliderFloat("Bloom intensity", &settings.Intensity, 0.0f, 1.0f, "%.2f");
-            ImGui::SliderFloat("Bloom threshold", &settings.Threshold, 0.0f, 4.0f, "%.2f");
-            ImGui::SliderFloat("Bloom soft knee", &settings.SoftKnee, 0.0f, 1.0f, "%.2f");
-            ImGui::SliderFloat("Bloom radius", &settings.Radius, 0.0f, 2.0f, "%.2f");
-            bloom.SetSettings(settings);
-            ImGui::Unindent();
-        }
-
-        void DrawEffectOptions(const PostProcessStack& effects)
-        {
-            ImGui::SeparatorText("Effects");
-            if (effects.GetEffects().empty())
-            {
-                ImGui::BeginDisabled();
-                ImGui::TextUnformatted("No effects");
-                ImGui::EndDisabled();
-            }
-            for (const Scope<PostProcessEffect>& effect : effects.GetEffects())
-            {
-                bool enabled = effect->IsEnabled();
-                if (ImGui::Checkbox(effect->GetName().c_str(), &enabled))
-                {
-                    effect->SetEnabled(enabled);
-                }
-                if (auto* bloom = dynamic_cast<Bloom*>(effect.get()); bloom != nullptr && enabled)
-                {
-                    DrawBloomOptions(*bloom);
-                }
-            }
-        }
-
-        void DrawGraphicsPanel()
-        {
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            const ImGuiCond placement = ImGui::GetFrameCount() < 3 ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-            ImGui::SetNextWindowPos({viewport->WorkPos.x + viewport->WorkSize.x - 10.0f, viewport->WorkPos.y + 10.0f}, placement, {1.0f, 0.0f});
-            if (ImGui::Begin("Graphics", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-            {
-                DrawVideoOptions();
-                if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
-                {
-                    SceneRendererSettings settings = renderer->GetSettings();
-                    DrawQualityOptions(settings);
-                    DrawEffectOptions(renderer->GetPostProcessing());
-                    renderer->SetSettings(settings);
-                }
-            }
-            ImGui::End();
-        }
     }
 
     SandboxLayer::SandboxLayer() : Layer("Sandbox") {}
@@ -268,8 +72,6 @@ namespace Quasar::Sandbox
     void SandboxLayer::OnAttach()
     {
         const Window& window = Application::Get().GetWindow();
-        m_CameraController.SetRotation(0.0f, -10.0f);
-
         m_Ready = CreateScene();
         if (!m_Ready)
         {
@@ -279,7 +81,9 @@ namespace Quasar::Sandbox
 
         if (SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
         {
-            renderer->SetSettings({.Background = SkyColor});
+            SceneRendererSettings settings{.Background = SkyColor};
+            settings.Shadows.Distance = 60.0f;
+            renderer->SetSettings(settings);
             renderer->GetPostProcessing().Add(Bloom::Create(*window.GetGraphicsContext()));
         }
         if (GraphicsContext* context = window.GetGraphicsContext(); context != nullptr)
@@ -299,7 +103,7 @@ namespace Quasar::Sandbox
 
     void SandboxLayer::OnUpdate(Timestep timestep)
     {
-        m_FrameTime = timestep.GetMilliseconds();
+        m_Performance.Record(timestep);
 
         if (m_Looking && !Input::IsMouseButtonPressed(MouseButton::Right))
         {
@@ -340,43 +144,45 @@ namespace Quasar::Sandbox
 
     void SandboxLayer::OnImGuiRender()
     {
+        m_Performance.Draw(Application::Get().GetWindow().GetGraphicsContext(), Application::Get().GetSceneRenderer());
         DrawScenePanel();
         DrawGraphicsPanel();
+        DrawControlsPanel();
     }
 
     void SandboxLayer::DrawScenePanel()
     {
-        ImGui::SetNextWindowPos({10.0f, 10.0f}, ImGuiCond_FirstUseEver);
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImGuiCond placement = ImGui::GetFrameCount() < 3 ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+        ImGui::SetNextWindowPos({viewport->WorkPos.x + (viewport->WorkSize.x * 0.5f), viewport->WorkPos.y + viewport->WorkSize.y - 10.0f}, placement,
+                                {0.5f, 1.0f});
         if (ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::SeparatorText("Rendering");
-            ImGui::TextUnformatted(fmt::format("{:.0f} frames per second ({:.2f} ms)", ImGui::GetIO().Framerate, m_FrameTime).c_str());
-            if (const SceneRenderer* renderer = Application::Get().GetSceneRenderer(); renderer != nullptr)
+            ImGui::SeparatorText("Cube of objects");
+            const std::string label = fmt::format("{0}x{0}x{0}", CubeSides.at(static_cast<std::size_t>(m_CubeSize)));
+            bool rebuild = false;
+            if (ImGui::BeginCombo("Size", label.c_str()))
             {
-                const FramebufferSpecification& image = renderer->GetSceneFramebuffer().GetSpecification();
-                ImGui::TextUnformatted(fmt::format("Image: {}x{}, {} samples per pixel", image.Width, image.Height, image.Samples).c_str());
-                const FramebufferSpecification& shadows = renderer->GetShadowMap().GetSpecification();
-                ImGui::TextUnformatted(fmt::format("Shadow map: {}x{}", shadows.Width, shadows.Height).c_str());
-                const SceneRendererStatistics& objects = renderer->GetStatistics();
-                ImGui::TextUnformatted(
-                    fmt::format("Objects: {} visible of {}, {} casting shadows", objects.VisibleObjects, objects.Objects, objects.ShadowCasters).c_str());
+                for (std::size_t index = 0; index < CubeSides.size(); ++index)
+                {
+                    const std::size_t side = CubeSides.at(index);
+                    const bool selected = static_cast<std::size_t>(m_CubeSize) == index;
+                    if (ImGui::Selectable(fmt::format("{0}x{0}x{0} ({1} objects)", side, side * side * side).c_str(), selected))
+                    {
+                        m_CubeSize = static_cast<int>(index);
+                        rebuild = true;
+                    }
+                }
+                ImGui::EndCombo();
             }
-            if (GraphicsContext* context = Application::Get().GetWindow().GetGraphicsContext(); context != nullptr)
+            ImGui::SliderFloat("Spacing", &m_Spacing, 1.5f, 4.0f, "%.1f");
+            rebuild = ImGui::IsItemDeactivatedAfterEdit() || rebuild;
+            rebuild = ImGui::Checkbox("Spin the objects", &m_Spin) || rebuild;
+            if (rebuild)
             {
-                DrawGpuTimings(context->GetProfiler());
-                DrawFrameStatistics(context->GetFrameStatistics());
+                BuildCube();
             }
-
-            ImGui::SeparatorText("Scene");
-            ImGui::TextUnformatted(fmt::format("{} entities", m_Scene.GetEntityCount()).c_str());
-            if (m_Camera.IsValid())
-            {
-                const glm::vec3& position = m_Camera.Get<TransformComponent>().Position;
-                ImGui::TextUnformatted(fmt::format("Camera: {:.1f}, {:.1f}, {:.1f}", position.x, position.y, position.z).c_str());
-            }
-            ImGui::TextUnformatted(fmt::format("Yaw {:.0f}, pitch {:.0f}", m_CameraController.GetYaw(), m_CameraController.GetPitch()).c_str());
-
-            DrawStressTest();
+            ImGui::TextUnformatted(fmt::format("{} point lights, {} entities", m_LightCount, m_Scene.GetEntityCount()).c_str());
 
             ImGui::SeparatorText("Sun");
             const bool yawChanged = ImGui::SliderFloat("Yaw", &m_SunAngles.x, -180.0f, 180.0f, "%.0f");
@@ -387,17 +193,22 @@ namespace Quasar::Sandbox
             }
             if (m_Sun.IsValid())
             {
-                ImGui::SliderFloat("Intensity", &m_Sun.Get<DirectionalLightComponent>().Intensity, 0.0f, 2.0f, "%.2f");
+                auto& sun = m_Sun.Get<DirectionalLightComponent>();
+                ImGui::SliderFloat("Intensity", &sun.Intensity, 0.0f, 2.0f, "%.2f");
+                ImGui::SliderFloat("Ambient", &sun.Ambient, 0.0f, 1.0f, "%.2f");
             }
 
-            ImGui::SeparatorText("Controls");
-            ImGui::TextUnformatted(fmt::format("Move: {} {} {} {}", KeyLabel(Key::W), KeyLabel(Key::A), KeyLabel(Key::S), KeyLabel(Key::D)).c_str());
-            ImGui::TextUnformatted("Up and down: Space and Left Ctrl");
-            ImGui::TextUnformatted("Faster: Left Shift");
-            ImGui::TextUnformatted("Look around: hold the right mouse button");
-            ImGui::TextUnformatted("Fullscreen: F11");
-            ImGui::TextUnformatted("Gamepad: left stick to move, right stick to look");
-            ImGui::TextUnformatted("Triggers to go up and down, left stick click to go faster");
+            ImGui::SeparatorText("Camera");
+            if (m_Camera.IsValid())
+            {
+                const glm::vec3& position = m_Camera.Get<TransformComponent>().Position;
+                ImGui::TextUnformatted(fmt::format("Position {:.1f}, {:.1f}, {:.1f}", position.x, position.y, position.z).c_str());
+            }
+            ImGui::TextUnformatted(fmt::format("Yaw {:.0f}, pitch {:.0f}", m_CameraController.GetYaw(), m_CameraController.GetPitch()).c_str());
+            if (ImGui::Button("Look at the cube"))
+            {
+                ResetCamera();
+            }
         }
         ImGui::End();
     }
@@ -446,77 +257,58 @@ namespace Quasar::Sandbox
 
         m_Cube = Mesh::Create(*context, Primitives::CreateCube());
         m_Sphere = Mesh::Create(*context, Primitives::CreateSphere());
-        MeshData groundData = Primitives::CreateQuad();
-        for (Vertex& vertex : groundData.Vertices)
-        {
-            vertex.TexCoord *= GroundTiles;
-        }
-        m_Ground = Mesh::Create(*context, groundData);
-        if (m_Cube == nullptr || m_Sphere == nullptr || m_Ground == nullptr)
+        if (m_Cube == nullptr || m_Sphere == nullptr || !CreateMaterials(*context, *pipelines))
         {
             return false;
         }
 
-        const std::filesystem::path textures = GetResourcesDirectory() / "sandbox" / "textures";
-        Texture2D* crate = AddTexture(*context, textures / "test.png");
-        Texture2D* ball = AddTexture(*context, textures / "test2.png");
-        Texture2D* ground = AddTexture(*context, textures / "test3.png");
-
-        const std::string_view lit = PipelineLibrary::BlinnPhong;
-        Material* crateMaterial = AddMaterial(*pipelines, lit, crate, White);
-        Material* redCrate = AddMaterial(*pipelines, lit, crate, {1.0f, 0.45f, 0.45f, 1.0f});
-        Material* ballMaterial = AddMaterial(*pipelines, lit, ball, White);
-        Material* greenBall = AddMaterial(*pipelines, lit, ball, {0.5f, 1.0f, 0.5f, 1.0f});
-        Material* unlitBall = AddMaterial(*pipelines, PipelineLibrary::Unlit, ball, White);
-        Material* groundMaterial = AddMaterial(*pipelines, lit, ground, {0.8f, 0.8f, 0.8f, 1.0f});
-        if (crateMaterial == nullptr || redCrate == nullptr || ballMaterial == nullptr || greenBall == nullptr || unlitBall == nullptr ||
-            groundMaterial == nullptr)
-        {
-            return false;
-        }
-        groundMaterial->SetFloat("Specular", 0.1f);
-        m_StressMaterials = {crateMaterial, greenBall};
-
-        const glm::quat flat = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        AddObject("Ground", *m_Ground, *groundMaterial, {.Rotation = flat, .Scale = {GroundSize, GroundSize, 1.0f}});
-        const Entity bigCrate = AddObject("Big crate", *m_Cube, *crateMaterial, {.Position = {0.0f, 1.5f, 0.0f}, .Scale = glm::vec3(1.5f)}, 0.8f);
-        AddObject("Moon", *m_Sphere, *greenBall, {.Position = {1.2f, 0.4f, 0.0f}, .Scale = glm::vec3(0.3f)}).SetParent(bigCrate, false);
-        AddObject("Crate", *m_Cube, *crateMaterial, {.Position = {-3.0f, 0.5f, -1.0f}});
-        AddObject("Red crate", *m_Cube, *redCrate, {.Position = {3.0f, 0.75f, -2.0f}, .Scale = glm::vec3(1.5f)}, -0.4f);
-        AddObject("Stacked crate", *m_Cube, *crateMaterial, {.Position = {-3.0f, 1.5f, -1.0f}}, 1.5f);
-        AddObject("Ball", *m_Sphere, *ballMaterial, {.Position = {-1.5f, 0.5f, 2.0f}}, 1.0f);
-        AddObject("Green ball", *m_Sphere, *greenBall, {.Position = {2.0f, 1.0f, 2.0f}, .Scale = glm::vec3(2.0f)}, 0.3f);
-        AddObject("Unlit ball", *m_Sphere, *unlitBall, {.Position = {0.0f, 0.75f, -5.0f}, .Scale = glm::vec3(1.5f)}, -0.6f);
-
-        Entity rig = m_Scene.CreateEntity("Lamp rig");
-        rig.Get<TransformComponent>().Position = {0.0f, 2.5f, 0.0f};
-        rig.Add<SpinComponent>(SpinComponent{.Speed = 0.7f});
-        for (const auto& [name, color, position] : {std::tuple{"Warm lamp", glm::vec3(1.0f, 0.6f, 0.3f), glm::vec3(4.0f, 0.0f, 0.0f)},
-                                                    std::tuple{"Cold lamp", glm::vec3(0.3f, 0.5f, 1.0f), glm::vec3(-4.0f, 0.0f, 0.0f)}})
-        {
-            Material* bulb = AddMaterial(*pipelines, PipelineLibrary::Unlit, nullptr, glm::vec4(color * BulbBrightness, 1.0f));
-            if (bulb == nullptr)
-            {
-                return false;
-            }
-            Entity lamp = AddObject(name, *m_Sphere, *bulb, {.Position = position, .Scale = glm::vec3(0.2f)});
-            lamp.Add<PointLightComponent>(PointLightComponent{.Color = color, .Intensity = 8.0f, .Range = 8.0f});
-            lamp.Get<MeshRendererComponent>().CastShadows = false;
-            lamp.SetParent(rig, false);
-        }
-
-        Entity spot = m_Scene.CreateEntity("Spot");
-        spot.Get<TransformComponent>() = {.Position = {3.0f, 5.0f, -2.0f}, .Rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))};
-        spot.Add<SpotLightComponent>(SpotLightComponent{.Intensity = 20.0f, .Range = 10.0f});
+        m_Ground = m_Scene.CreateEntity("Ground");
+        m_Ground.Get<TransformComponent>().Rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        m_Ground.Add<MeshRendererComponent>(MeshRendererComponent{.Material = m_GroundMaterial});
 
         m_Sun = m_Scene.CreateEntity("Sun");
         m_Sun.Add<DirectionalLightComponent>(DirectionalLightComponent{.Ambient = 0.25f});
         UpdateSun();
 
         m_Camera = m_Scene.CreateEntity("Camera");
-        m_Camera.Get<TransformComponent>().Position = {0.0f, 2.0f, 8.0f};
         m_Camera.Add<CameraComponent>().Camera.SetPerspective({.VerticalFov = glm::radians(60.0f), .Near = 0.1f, .Far = 500.0f});
-        return true;
+
+        BuildCube();
+        ResetCamera();
+        return m_GroundMesh != nullptr;
+    }
+
+    bool SandboxLayer::CreateMaterials(GraphicsContext& context, const PipelineLibrary& pipelines)
+    {
+        const std::filesystem::path textures = GetResourcesDirectory() / "sandbox" / "textures";
+        Texture2D* ground = AddTexture(context, textures / "test3.png");
+        const std::array<Texture2D*, 2> objects{AddTexture(context, textures / "test.png"), AddTexture(context, textures / "test2.png")};
+
+        m_GroundMaterial = AddMaterial(pipelines, PipelineLibrary::BlinnPhong, ground, {0.8f, 0.8f, 0.8f, 1.0f});
+        if (m_GroundMaterial == nullptr)
+        {
+            return false;
+        }
+        m_GroundMaterial->SetFloat("Specular", 0.1f);
+
+        for (std::size_t index = 0; index < m_ObjectMaterials.size(); ++index)
+        {
+            Material* material = AddMaterial(pipelines, PipelineLibrary::BlinnPhong, objects.at(index / 2), White);
+            if (material == nullptr)
+            {
+                return false;
+            }
+            const bool shiny = index % 2 == 1;
+            material->SetFloat("Specular", shiny ? 1.0f : 0.0f);
+            material->SetFloat("Shininess", shiny ? 64.0f : 8.0f);
+            m_ObjectMaterials.at(index) = material;
+        }
+
+        for (const glm::vec3& color : LightColors)
+        {
+            m_BulbMaterials.push_back(AddMaterial(pipelines, PipelineLibrary::Unlit, nullptr, glm::vec4(color * BulbBrightness, 1.0f)));
+        }
+        return std::ranges::none_of(m_BulbMaterials, [](const Material* bulb) { return bulb == nullptr; });
     }
 
     Texture2D* SandboxLayer::AddTexture(GraphicsContext& context, const std::filesystem::path& file)
@@ -542,54 +334,111 @@ namespace Quasar::Sandbox
         return m_Materials.emplace_back(std::move(material)).get();
     }
 
-    Entity SandboxLayer::AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform, float spin)
+    Entity SandboxLayer::AddObject(std::string name, const Mesh& mesh, Material& material, const TransformComponent& transform)
     {
         Entity entity = m_Scene.CreateEntity(std::move(name));
         entity.Get<TransformComponent>() = transform;
         entity.Add<MeshRendererComponent>(MeshRendererComponent{.Mesh = &mesh, .Material = &material});
-        if (spin != 0.0f)
-        {
-            entity.Add<SpinComponent>(SpinComponent{.Speed = spin});
-        }
+        m_CubeEntities.push_back(entity);
         return entity;
     }
 
-    void SandboxLayer::DrawStressTest()
+    void SandboxLayer::BuildCube()
     {
-        ImGui::SeparatorText("Stress test");
-        const bool countChanged = ImGui::Combo("Objects", &m_StressCount, StressLabels.data(), static_cast<int>(StressLabels.size()));
-        const bool spinChanged = ImGui::Checkbox("Spin the objects", &m_StressSpin);
-        if (countChanged || spinChanged)
-        {
-            SetStressObjects(StressCounts.at(static_cast<std::size_t>(m_StressCount)), m_StressSpin);
-        }
-    }
-
-    void SandboxLayer::SetStressObjects(std::size_t count, bool spin)
-    {
-        for (const Entity entity : m_StressObjects)
+        for (const Entity entity : m_CubeEntities)
         {
             m_Scene.DestroyEntity(entity);
         }
-        m_StressObjects.clear();
-        if (count == 0 || m_StressMaterials[0] == nullptr || m_StressMaterials[1] == nullptr)
+        m_CubeEntities.clear();
+
+        const std::size_t side = CubeSides.at(static_cast<std::size_t>(m_CubeSize));
+        const float start = -0.5f * m_Spacing * static_cast<float>(side - 1);
+        m_CubeEntities.reserve((side * side * side) + (MaxLightsPerSide * MaxLightsPerSide * MaxLightsPerSide));
+        for (std::size_t y = 0; y < side; ++y)
+        {
+            for (std::size_t z = 0; z < side; ++z)
+            {
+                for (std::size_t x = 0; x < side; ++x)
+                {
+                    const bool cube = (x + y + z) % 2 == 0;
+                    Material& material = *m_ObjectMaterials.at(((z % 2) * 2) + (x % 2));
+                    const glm::vec3 position(start + (m_Spacing * static_cast<float>(x)), m_Spacing * static_cast<float>(y + 1),
+                                             start + (m_Spacing * static_cast<float>(z)));
+                    Entity object = AddObject("Object", cube ? *m_Cube : *m_Sphere, material, {.Position = position});
+                    if (m_Spin)
+                    {
+                        object.Add<SpinComponent>(SpinComponent{.Speed = 0.5f + (0.25f * static_cast<float>((x + y + z) % 5))});
+                    }
+                }
+            }
+        }
+        PlaceLights(side, start);
+        ResizeGround((m_Spacing * static_cast<float>(side)) + (2.0f * GroundMargin));
+    }
+
+    void SandboxLayer::PlaceLights(std::size_t side, float start)
+    {
+        m_LightCount = 0;
+        if (side < 2)
         {
             return;
         }
-
-        const auto side = static_cast<std::size_t>(std::ceil(std::sqrt(static_cast<float>(count))));
-        const float start = -0.5f * StressSpacing * static_cast<float>(side - 1);
-        m_StressObjects.reserve(count);
-        for (std::size_t index = 0; index < count; ++index)
+        const std::size_t gaps = side - 1;
+        const std::size_t count = std::clamp((gaps + GapsPerLight - 1) / GapsPerLight, std::size_t{1}, MaxLightsPerSide);
+        const auto gapPosition = [this, gaps, count, start](std::size_t light)
         {
-            const bool cube = index % 2 == 0;
-            const std::size_t row = index / side;
-            const std::size_t column = index % side;
-            const glm::vec3 position(start + (StressSpacing * static_cast<float>(column)), 0.5f, start + (StressSpacing * static_cast<float>(row)));
-            const float speed = spin ? 0.5f + (0.25f * static_cast<float>(index % 5)) : 0.0f;
-            m_StressObjects.push_back(AddObject("Stress object", cube ? *m_Cube : *m_Sphere, *m_StressMaterials.at(cube ? 0 : 1),
-                                                {.Position = position, .Scale = glm::vec3(0.5f)}, speed));
+            const std::size_t gap = (((2 * light) + 1) * gaps) / (2 * count);
+            return start + (m_Spacing * (static_cast<float>(gap) + 0.5f));
+        };
+        for (std::size_t y = 0; y < count; ++y)
+        {
+            for (std::size_t z = 0; z < count; ++z)
+            {
+                for (std::size_t x = 0; x < count; ++x)
+                {
+                    const std::size_t colorIndex = m_LightCount % LightColors.size();
+                    const glm::vec3 position(gapPosition(x), gapPosition(y) - start + m_Spacing, gapPosition(z));
+                    Entity bulb = AddObject("Point light", *m_Sphere, *m_BulbMaterials.at(colorIndex), {.Position = position, .Scale = glm::vec3(BulbSize)});
+                    bulb.Get<MeshRendererComponent>().CastShadows = false;
+                    bulb.Add<PointLightComponent>(
+                        PointLightComponent{.Color = LightColors.at(colorIndex), .Intensity = LightIntensity, .Range = 3.0f * m_Spacing});
+                    ++m_LightCount;
+                }
+            }
         }
+    }
+
+    void SandboxLayer::ResizeGround(float size)
+    {
+        GraphicsContext* context = Application::Get().GetWindow().GetGraphicsContext();
+        if (context == nullptr)
+        {
+            return;
+        }
+        MeshData data = Primitives::CreateQuad();
+        for (Vertex& vertex : data.Vertices)
+        {
+            vertex.TexCoord *= size / GroundTileSize;
+        }
+        Scope<Mesh> mesh = Mesh::Create(*context, data);
+        if (mesh == nullptr)
+        {
+            return;
+        }
+        m_GroundMesh = std::move(mesh);
+        m_Ground.Get<TransformComponent>().Scale = {size, size, 1.0f};
+        m_Ground.Get<MeshRendererComponent>().Mesh = m_GroundMesh.get();
+    }
+
+    void SandboxLayer::ResetCamera()
+    {
+        const std::size_t side = CubeSides.at(static_cast<std::size_t>(m_CubeSize));
+        const float extent = (m_Spacing * static_cast<float>(side - 1)) + 1.0f;
+        if (m_Camera.IsValid())
+        {
+            m_Camera.Get<TransformComponent>().Position = {0.0f, m_Spacing + extent, (2.0f * extent) + 2.0f};
+        }
+        m_CameraController.SetRotation(0.0f, -20.0f);
     }
 
     void SandboxLayer::UpdateSun()

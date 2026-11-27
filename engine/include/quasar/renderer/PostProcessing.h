@@ -7,8 +7,8 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Camera.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/Framebuffer.h>
-#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsContext.h>
 #include <quasar/renderer/ToneMapper.h>
 
@@ -142,7 +142,7 @@ namespace Quasar
         /// @brief Applies the effects and the tone mapping to the image of a scene.
         ///
         /// Each effect and the tone mapping are a section of the profiler of the context, named after the effect and
-        /// "Tone mapping". See GpuProfiler.
+        /// "Tone mapping". See FrameProfiler.
         /// @param scene The framebuffer of the scene, in linear colors in its first color attachment, of format Rgba16F.
         /// @param target The framebuffer to draw into, of format Rgba8 or Rgba16F and of the size of the scene, or
         /// nullptr for the window. The window is bound again afterwards.
@@ -154,13 +154,13 @@ namespace Quasar
     private:
         using Buffers = std::array<Scope<Framebuffer>, 2>;
 
-        PostProcessStack(GpuProfiler& profiler, Scope<ToneMapper> toneMapper, Buffers linear, Buffers display);
+        PostProcessStack(FrameProfiler& profiler, Scope<ToneMapper> toneMapper, Buffers linear, Buffers display);
 
         bool AddEffect(Scope<PostProcessEffect> effect);
         void GatherEnabled(PostProcessStage stage);
         const Framebuffer* ApplyStage(PostProcessInput& input, Buffers& buffers, std::size_t first, bool toTarget, Framebuffer* target);
 
-        GpuProfiler* m_Profiler;
+        FrameProfiler* m_Profiler;
         Scope<ToneMapper> m_ToneMapper;
         Buffers m_LinearBuffers;
         Buffers m_DisplayBuffers;

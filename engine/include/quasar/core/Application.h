@@ -24,6 +24,7 @@
 
 namespace Quasar
 {
+    class FrameProfiler;
     class PipelineLibrary;
     class Renderer;
     class SceneRenderer;
@@ -89,8 +90,9 @@ namespace Quasar
         /// to the top. While the window is minimized, or while its drawing area is empty, the layers are still updated
         /// but not rendered.
         ///
-        /// Each rendered frame is a frame of the GpuProfiler of the graphics context, and drawing the ImGui windows is
-        /// its "ImGui" section. See GraphicsContext::GetProfiler(). Each rendered frame also ends with
+        /// Each rendered frame is a frame of the FrameProfiler of the graphics context, with the sections "Update",
+        /// "ImGui" for drawing the ImGui windows, and "Swap and events" for showing the image and processing the
+        /// messages. See GraphicsContext::GetProfiler(). Each rendered frame also ends with
         /// GraphicsContext::EndFrame(), so that GraphicsContext::GetFrameStatistics() gives the counts of the last one.
         ///
         /// The events of the window and of the gamepads go to the application first, then to the ImGui layer, then to
@@ -201,7 +203,7 @@ namespace Quasar
             Layer* Removed = nullptr;
         };
 
-        void RenderFrame();
+        void RenderFrame(FrameProfiler* profiler);
         void OnEvent(Event& event);
         void ApplyLayerChanges();
         bool IsRemovalPending(const Layer& layer) const;

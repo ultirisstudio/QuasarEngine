@@ -1,18 +1,20 @@
 #include <quasar/core/Base.h>
-#include <quasar/renderer/GpuProfiler.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/TimestampQuery.h>
 
 #include <doctest/doctest.h>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
-using Quasar::GpuProfiler;
-using Quasar::GpuSection;
-using Quasar::GpuTiming;
+using Quasar::FrameProfiler;
+using Quasar::ProfilerSection;
+using Quasar::SectionTiming;
 
 namespace
 {
@@ -22,6 +24,7 @@ namespace
     struct FakeGpu
     {
         std::uint64_t Now = 0;
+        std::uint64_t CpuNow = 0;
         std::uint64_t Recorded = 0;
         std::uint64_t Reached = 0;
         std::uint64_t Missing = 0;
@@ -30,6 +33,7 @@ namespace
         int Failures = 0;
 
         void Advance(double milliseconds) { Now += static_cast<std::uint64_t>(milliseconds * static_cast<double>(Millisecond)); }
+        void AdvanceCpu(double milliseconds) { CpuNow += static_cast<std::uint64_t>(milliseconds * static_cast<double>(Millisecond)); }
         void Pause() { Unlimited = false; }
         void ReachAll()
         {
@@ -66,9 +70,9 @@ namespace
         bool m_Recorded = false;
     };
 
-    GpuProfiler CreateProfiler(FakeGpu& gpu)
+    FrameProfiler CreateProfiler(FakeGpu& gpu)
     {
-        return GpuProfiler(
+        return FrameProfiler(
             [&gpu]() -> Quasar::Scope<Quasar::TimestampQuery>
             {
                 if (gpu.Failures > 0)
@@ -78,11 +82,12 @@ namespace
                 }
                 ++gpu.Created;
                 return Quasar::CreateScope<FakeQuery>(gpu);
-            });
+            },
+            [&gpu]() { return gpu.CpuNow; });
     }
 
     // A frame of 1 ms of setup, then Shadows for 2 ms and Post-processing for 3 ms with Bloom for 1 ms inside it
-    void RunFrame(GpuProfiler& profiler, FakeGpu& gpu, double shadows = 2.0)
+    void RunFrame(FrameProfiler& profiler, FakeGpu& gpu, double shadows = 2.0)
     {
         profiler.BeginFrame();
         gpu.Advance(1.0);
@@ -90,52 +95,84 @@ namespace
         gpu.Advance(shadows);
         profiler.EndSection();
         {
-            const GpuSection post(&profiler, "Post-processing");
+            const ProfilerSection post(&profiler, "Post-processing");
             gpu.Advance(1.0);
-            const GpuSection bloom(&profiler, "Bloom");
+            const ProfilerSection bloom(&profiler, "Bloom");
             gpu.Advance(1.0);
         }
         gpu.Advance(1.0);
         profiler.EndFrame();
     }
 
-    bool HasTiming(const std::vector<GpuTiming>& timings, const std::string& name, std::uint32_t depth, double milliseconds)
+    // The same frame, recorded by the processor in 0.5 ms for Shadows and 0.25 ms for Bloom, 1.5 ms in all
+    void RunFrameOnCpu(FrameProfiler& profiler, FakeGpu& gpu, double shadows = 0.5)
     {
-        for (const GpuTiming& timing : timings)
+        profiler.BeginFrame();
+        gpu.AdvanceCpu(0.25);
+        profiler.BeginSection("Shadows");
+        gpu.AdvanceCpu(shadows);
+        gpu.Advance(2.0);
+        profiler.EndSection();
+        {
+            const ProfilerSection post(&profiler, "Post-processing");
+            gpu.AdvanceCpu(0.25);
+            const ProfilerSection bloom(&profiler, "Bloom");
+            gpu.AdvanceCpu(0.25);
+            gpu.Advance(1.0);
+        }
+        gpu.AdvanceCpu(0.25);
+        profiler.EndFrame();
+    }
+
+    bool HasCpuTiming(const std::vector<SectionTiming>& timings, const std::string& name, double milliseconds)
+    {
+        for (const SectionTiming& timing : timings)
+        {
+            if (timing.Name == name)
+            {
+                return timing.CpuMilliseconds == doctest::Approx(milliseconds);
+            }
+        }
+        return false;
+    }
+
+    bool HasTiming(const std::vector<SectionTiming>& timings, const std::string& name, std::uint32_t depth, double milliseconds)
+    {
+        for (const SectionTiming& timing : timings)
         {
             if (timing.Name == name && timing.Depth == depth)
             {
-                return timing.Milliseconds == doctest::Approx(milliseconds);
+                return timing.GpuMilliseconds == doctest::Approx(milliseconds);
             }
         }
         return false;
     }
 }
 
-TEST_SUITE("GpuProfiler")
+TEST_SUITE("FrameProfiler")
 {
     TEST_CASE("A new profiler is off and creates no query")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
 
         RunFrame(profiler, gpu);
 
         CHECK_FALSE(profiler.IsEnabled());
         CHECK(gpu.Created == 0);
         CHECK(profiler.GetTimings().empty());
-        CHECK(profiler.GetFrameMilliseconds() == 0.0);
+        CHECK(profiler.GetFrameGpuMilliseconds() == 0.0);
     }
 
-    TEST_CASE("The profiler gives the time of each section and of the frame, in the order the sections started")
+    TEST_CASE("The profiler gives the time of each section in the order they started, and the sum of the sections as the frame")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
 
         RunFrame(profiler, gpu);
 
-        const std::vector<GpuTiming>& timings = profiler.GetTimings();
+        const std::vector<SectionTiming>& timings = profiler.GetTimings();
         REQUIRE(timings.size() == 3);
         CHECK(timings[0].Name == "Shadows");
         CHECK(timings[1].Name == "Post-processing");
@@ -143,27 +180,27 @@ TEST_SUITE("GpuProfiler")
         CHECK(HasTiming(timings, "Shadows", 0, 2.0));
         CHECK(HasTiming(timings, "Post-processing", 0, 2.0));
         CHECK(HasTiming(timings, "Bloom", 1, 1.0));
-        CHECK(profiler.GetFrameMilliseconds() == doctest::Approx(6.0));
+        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(4.0));
     }
 
     TEST_CASE("The times are smoothed over the frames")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
 
         RunFrame(profiler, gpu, 2.0);
         RunFrame(profiler, gpu, 12.0);
 
-        CHECK(HasTiming(profiler.GetTimings(), "Shadows", 0, 2.0 + (10.0 * GpuProfiler::Smoothing)));
+        CHECK(HasTiming(profiler.GetTimings(), "Shadows", 0, 2.0 + (10.0 * FrameProfiler::Smoothing)));
         CHECK(HasTiming(profiler.GetTimings(), "Bloom", 1, 1.0));
-        CHECK(profiler.GetFrameMilliseconds() == doctest::Approx(6.0 + (10.0 * GpuProfiler::Smoothing)));
+        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(4.0 + (10.0 * FrameProfiler::Smoothing)));
     }
 
     TEST_CASE("A section that appears starts at its time, and a section that is gone is removed")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
         RunFrame(profiler, gpu);
 
@@ -180,14 +217,14 @@ TEST_SUITE("GpuProfiler")
     TEST_CASE("The profiler never waits: it reads a frame once the graphics card has finished it")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
         gpu.Pause();
 
         RunFrame(profiler, gpu, 2.0);
         RunFrame(profiler, gpu, 2.0);
         CHECK(profiler.GetTimings().empty());
-        CHECK(profiler.GetFrameMilliseconds() == 0.0);
+        CHECK(profiler.GetFrameGpuMilliseconds() == 0.0);
 
         gpu.ReachAll();
         RunFrame(profiler, gpu, 2.0);
@@ -198,11 +235,11 @@ TEST_SUITE("GpuProfiler")
     TEST_CASE("A frame that is still not finished after the frames in flight is skipped, and its queries are reused")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
         gpu.Pause();
 
-        for (std::size_t frame = 0; frame < GpuProfiler::FramesInFlight; ++frame)
+        for (std::size_t frame = 0; frame < FrameProfiler::FramesInFlight; ++frame)
         {
             RunFrame(profiler, gpu);
         }
@@ -214,14 +251,14 @@ TEST_SUITE("GpuProfiler")
         gpu.ReachAll();
         RunFrame(profiler, gpu, 8.0);
         CHECK(gpu.Created == created);
-        constexpr double afterFifth = 2.0 + (6.0 * GpuProfiler::Smoothing);
-        CHECK(HasTiming(profiler.GetTimings(), "Shadows", 0, afterFifth + ((8.0 - afterFifth) * GpuProfiler::Smoothing)));
+        constexpr double afterFifth = 2.0 + (6.0 * FrameProfiler::Smoothing);
+        CHECK(HasTiming(profiler.GetTimings(), "Shadows", 0, afterFifth + ((8.0 - afterFifth) * FrameProfiler::Smoothing)));
     }
 
     TEST_CASE("Sections outside a frame are ignored, and the end of a frame closes the sections still open")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
 
         profiler.BeginSection("Outside");
@@ -236,7 +273,7 @@ TEST_SUITE("GpuProfiler")
         profiler.EndFrame();
         REQUIRE(profiler.GetTimings().size() == 1);
         CHECK(HasTiming(profiler.GetTimings(), "Open", 0, 3.0));
-        CHECK(profiler.GetFrameMilliseconds() == doctest::Approx(3.0));
+        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(3.0));
 
         profiler.BeginFrame();
         profiler.BeginSection("Next");
@@ -249,14 +286,14 @@ TEST_SUITE("GpuProfiler")
     TEST_CASE("Turning the profiler off forgets the times")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
         RunFrame(profiler, gpu);
         REQUIRE_FALSE(profiler.GetTimings().empty());
 
         profiler.SetEnabled(false);
         CHECK(profiler.GetTimings().empty());
-        CHECK(profiler.GetFrameMilliseconds() == 0.0);
+        CHECK(profiler.GetFrameGpuMilliseconds() == 0.0);
 
         profiler.SetEnabled(true);
         RunFrame(profiler, gpu, 5.0);
@@ -266,10 +303,10 @@ TEST_SUITE("GpuProfiler")
     TEST_CASE("A frame finished while the profiler waited for it is read before its queries are reused")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
         gpu.Pause();
-        for (std::size_t frame = 0; frame < GpuProfiler::FramesInFlight; ++frame)
+        for (std::size_t frame = 0; frame < FrameProfiler::FramesInFlight; ++frame)
         {
             RunFrame(profiler, gpu, 1.0 + static_cast<double>(frame));
         }
@@ -283,7 +320,7 @@ TEST_SUITE("GpuProfiler")
     TEST_CASE("A frame is read only once all of its times are ready")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
 
         gpu.Missing = 2;
@@ -298,7 +335,7 @@ TEST_SUITE("GpuProfiler")
     TEST_CASE("A frame whose queries cannot be created is skipped")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
 
         gpu.Failures = 1;
@@ -307,7 +344,7 @@ TEST_SUITE("GpuProfiler")
 
         RunFrame(profiler, gpu, 4.0);
         CHECK(HasTiming(profiler.GetTimings(), "Shadows", 0, 4.0));
-        for (std::size_t frame = 0; frame < GpuProfiler::FramesInFlight; ++frame)
+        for (std::size_t frame = 0; frame < FrameProfiler::FramesInFlight; ++frame)
         {
             RunFrame(profiler, gpu, 4.0);
         }
@@ -327,7 +364,7 @@ TEST_SUITE("GpuProfiler")
     TEST_CASE("A clock of the graphics card that goes back gives a time of 0 instead of a huge one")
     {
         FakeGpu gpu;
-        GpuProfiler profiler = CreateProfiler(gpu);
+        FrameProfiler profiler = CreateProfiler(gpu);
         profiler.SetEnabled(true);
         gpu.Now = 10 * Millisecond;
 
@@ -338,12 +375,82 @@ TEST_SUITE("GpuProfiler")
         profiler.EndFrame();
 
         CHECK(HasTiming(profiler.GetTimings(), "Shadows", 0, 0.0));
-        CHECK(profiler.GetFrameMilliseconds() == 0.0);
+        CHECK(profiler.GetFrameGpuMilliseconds() == 0.0);
+    }
+
+    TEST_CASE("The profiler gives the time of the processor next to the time of the graphics card")
+    {
+        FakeGpu gpu;
+        FrameProfiler profiler = CreateProfiler(gpu);
+        profiler.SetEnabled(true);
+
+        RunFrameOnCpu(profiler, gpu);
+
+        const std::vector<SectionTiming>& timings = profiler.GetTimings();
+        REQUIRE(timings.size() == 3);
+        CHECK(HasCpuTiming(timings, "Shadows", 0.5));
+        CHECK(HasCpuTiming(timings, "Post-processing", 0.5));
+        CHECK(HasCpuTiming(timings, "Bloom", 0.25));
+        CHECK(HasTiming(timings, "Shadows", 0, 2.0));
+        CHECK(HasTiming(timings, "Bloom", 1, 1.0));
+        CHECK(profiler.GetFrameCpuMilliseconds() == doctest::Approx(1.5));
+        CHECK(profiler.GetFrameGpuMilliseconds() == doctest::Approx(3.0));
+    }
+
+    TEST_CASE("The times of the processor are smoothed, and given only once the graphics card has finished the frame")
+    {
+        FakeGpu gpu;
+        FrameProfiler profiler = CreateProfiler(gpu);
+        profiler.SetEnabled(true);
+
+        RunFrameOnCpu(profiler, gpu);
+        gpu.Pause();
+        RunFrameOnCpu(profiler, gpu, 10.5);
+
+        CHECK(HasCpuTiming(profiler.GetTimings(), "Shadows", 0.5));
+        CHECK(profiler.GetFrameCpuMilliseconds() == doctest::Approx(1.5));
+
+        gpu.ReachAll();
+        RunFrameOnCpu(profiler, gpu);
+
+        const double second = 0.5 + (10.0 * FrameProfiler::Smoothing);
+        CHECK(HasCpuTiming(profiler.GetTimings(), "Shadows", second + ((0.5 - second) * FrameProfiler::Smoothing)));
+        CHECK(HasCpuTiming(profiler.GetTimings(), "Bloom", 0.25));
+        CHECK(profiler.GetFrameCpuMilliseconds() == doctest::Approx(second + 1.0 + ((0.5 - second) * FrameProfiler::Smoothing)));
+    }
+
+    TEST_CASE("Turning the profiler off forgets the times of the processor")
+    {
+        FakeGpu gpu;
+        FrameProfiler profiler = CreateProfiler(gpu);
+        profiler.SetEnabled(true);
+        RunFrameOnCpu(profiler, gpu);
+
+        profiler.SetEnabled(false);
+
+        CHECK(profiler.GetFrameCpuMilliseconds() == 0.0);
+    }
+
+    TEST_CASE("Without a clock, the profiler measures the processor with a steady clock")
+    {
+        FakeGpu gpu;
+        FrameProfiler profiler([&gpu]() -> Quasar::Scope<Quasar::TimestampQuery> { return Quasar::CreateScope<FakeQuery>(gpu); });
+        profiler.SetEnabled(true);
+
+        profiler.BeginFrame();
+        profiler.BeginSection("Sleep");
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        profiler.EndSection();
+        profiler.EndFrame();
+
+        REQUIRE(profiler.GetTimings().size() == 1);
+        CHECK(profiler.GetTimings()[0].CpuMilliseconds >= 1.5);
+        CHECK(profiler.GetFrameCpuMilliseconds() >= profiler.GetTimings()[0].CpuMilliseconds);
     }
 
     TEST_CASE("A section without a profiler measures nothing")
     {
-        const GpuSection section(nullptr, "Nothing");
+        const ProfilerSection section(nullptr, "Nothing");
         CHECK(true);
     }
 }

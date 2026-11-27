@@ -7,8 +7,8 @@
 
 #include <quasar/core/Base.h>
 #include <quasar/renderer/Buffer.h>
+#include <quasar/renderer/FrameProfiler.h>
 #include <quasar/renderer/Framebuffer.h>
-#include <quasar/renderer/GpuProfiler.h>
 #include <quasar/renderer/GraphicsAPI.h>
 #include <quasar/renderer/Pipeline.h>
 #include <quasar/renderer/RenderStatistics.h>
@@ -130,8 +130,8 @@ namespace Quasar
         [[nodiscard]] virtual Scope<TimestampQuery> CreateTimestampQuery() = 0;
 
         /// @brief Returns the profiler of the commands of this context, made at the first call and owned by the
-        /// context. It is off until GpuProfiler::SetEnabled() turns it on.
-        GpuProfiler& GetProfiler();
+        /// context. It is off until FrameProfiler::SetEnabled() turns it on.
+        FrameProfiler& GetProfiler();
 
         /// @brief Returns what the engine sent to the graphics card during the last frame that EndFrame() ended.
         const RenderStatistics& GetFrameStatistics() const { return m_FrameStatistics; }
@@ -201,7 +201,7 @@ namespace Quasar
 
     private:
         Scope<Texture2D> m_WhiteTexture;
-        Scope<GpuProfiler> m_Profiler;
+        Scope<FrameProfiler> m_Profiler;
         RenderStatistics m_CurrentStatistics;
         RenderStatistics m_FrameStatistics;
         std::uint64_t m_FrameNumber = 0;

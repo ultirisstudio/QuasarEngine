@@ -26,7 +26,7 @@ namespace Quasar
         }
     }
 
-    PostProcessStack::PostProcessStack(GpuProfiler& profiler, Scope<ToneMapper> toneMapper, Buffers linear, Buffers display)
+    PostProcessStack::PostProcessStack(FrameProfiler& profiler, Scope<ToneMapper> toneMapper, Buffers linear, Buffers display)
         : m_Profiler(&profiler), m_ToneMapper(std::move(toneMapper)), m_LinearBuffers(std::move(linear)), m_DisplayBuffers(std::move(display))
     {
     }
@@ -83,7 +83,7 @@ namespace Quasar
                 output = buffers.at((first + index) % buffers.size()).get();
                 output->Resize(input.Size.x, input.Size.y);
             }
-            const GpuSection section(m_Profiler, m_Enabled[index]->GetName());
+            const ProfilerSection section(m_Profiler, m_Enabled[index]->GetName());
             m_Enabled[index]->Apply(input, output);
             input.Source = output;
         }
@@ -100,14 +100,14 @@ namespace Quasar
         GatherEnabled(PostProcessStage::AfterToneMapping);
         if (m_Enabled.empty())
         {
-            const GpuSection section(m_Profiler, ToneMappingSection);
+            const ProfilerSection section(m_Profiler, ToneMappingSection);
             m_ToneMapper->Apply(*linear, target, exposure, tonemapping);
             return;
         }
         Framebuffer& display = *m_DisplayBuffers[0];
         display.Resize(input.Size.x, input.Size.y);
         {
-            const GpuSection section(m_Profiler, ToneMappingSection);
+            const ProfilerSection section(m_Profiler, ToneMappingSection);
             m_ToneMapper->Apply(*linear, &display, exposure, tonemapping);
         }
         input.Source = &display;

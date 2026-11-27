@@ -14,7 +14,7 @@ namespace Quasar
     ///
     /// The graphics card runs the commands later than the program sends them, so the time is only known a few frames
     /// after Record(). GetNanoseconds() never waits for it: it gives no value until the time is ready. A query is
-    /// created with GraphicsContext::CreateTimestampQuery(), and GpuProfiler uses two of them for each section.
+    /// created with GraphicsContext::CreateTimestampQuery(), and FrameProfiler uses two of them for each section.
     class TimestampQuery
     {
     public:

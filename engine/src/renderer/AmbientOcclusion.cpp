@@ -39,7 +39,7 @@ namespace Quasar
         }
     }
 
-    AmbientOcclusion::AmbientOcclusion(GpuProfiler& profiler, Resources resources)
+    AmbientOcclusion::AmbientOcclusion(FrameProfiler& profiler, Resources resources)
         : m_Profiler(&profiler), m_Pass(std::move(resources.Pass)), m_Occlusion(std::move(resources.Occlusion)), m_Blur(std::move(resources.Blur)),
           m_Upsample(std::move(resources.Upsample)), m_Raw(std::move(resources.Raw)), m_Blurred(std::move(resources.Blurred)),
           m_Smoothed(std::move(resources.Smoothed)), m_Result(std::move(resources.Result))
@@ -79,7 +79,7 @@ namespace Quasar
         const glm::mat4& projection = camera.GetProjection();
 
         {
-            const GpuSection section(m_Profiler, "Occlusion");
+            const ProfilerSection section(m_Profiler, "Occlusion");
             Shader& occlusion = *m_Occlusion.Shader;
             occlusion.SetMat4("u_Projection", projection);
             occlusion.SetFloat("u_Radius", settings.Radius);
@@ -91,14 +91,14 @@ namespace Quasar
             m_Pass->Draw(*m_Occlusion.Pipeline, m_Raw.get());
         }
         {
-            const GpuSection section(m_Profiler, "Blur");
+            const ProfilerSection section(m_Profiler, "Blur");
             const int radius = settings.HalfResolution ? 1 : 2;
             Blur(*m_Raw, false, radius, m_Blurred.get());
             Blur(*m_Blurred, true, radius, settings.HalfResolution ? m_Smoothed.get() : m_Result.get());
         }
         if (settings.HalfResolution)
         {
-            const GpuSection section(m_Profiler, "Upsample");
+            const ProfilerSection section(m_Profiler, "Upsample");
             m_Upsample.Shader->SetMat4("u_Projection", projection);
             m_Smoothed->BindColorTexture(0, 0);
             m_Raw->BindColorTexture(1, 1);
