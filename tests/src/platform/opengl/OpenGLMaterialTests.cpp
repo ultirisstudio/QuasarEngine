@@ -377,14 +377,14 @@ TEST_CASE("The unlit shader of the engine draws the texture of its material mult
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 }
 
-TEST_CASE("Each texture of a material is bound to its slot, and a texture that is not set is white")
+TEST_CASE("Each texture of a material is bound to its slot, and a texture that is not set is its default")
 {
     const TestHelpers::ScopedLog log;
     const Scene scene(Quasar::FramebufferFormat::RedInteger);
     const Quasar::Scope<Quasar::Shader> shader = scene.CreateShader(Quasar::ShaderSpecification::Parse("Textures", TexturesShader));
     const Quasar::Scope<Quasar::Pipeline> pipeline = scene.CreatePipeline(*shader);
-    const Quasar::Scope<Quasar::Material> material =
-        scene.CreateMaterial({.Pipeline = pipeline.get(), .Textures = {{.Name = "Second", .Slot = 2}, {.Name = "First", .Slot = 1}}});
+    const Quasar::Scope<Quasar::Material> material = scene.CreateMaterial(
+        {.Pipeline = pipeline.get(), .Textures = {{.Name = "Second", .Slot = 2, .Default = Quasar::DefaultTexture::FlatNormal}, {.Name = "First", .Slot = 1}}});
     constexpr std::array<std::uint8_t, 4> pixel{3, 0, 0, 255};
     const Quasar::Scope<Quasar::Texture2D> texture =
         scene.GetContext().CreateTexture2D({.Format = Quasar::TextureFormat::Rgba8, .Mipmaps = false}, std::as_bytes(std::span(pixel)));
@@ -392,12 +392,12 @@ TEST_CASE("Each texture of a material is bound to its slot, and a texture that i
 
     material->Bind();
     scene.DrawTriangle();
-    CHECK(scene.ReadValue() == 255255);
+    CHECK(scene.ReadValue() == 128255);
 
     material->SetTexture("First", texture.get());
     material->Bind();
     scene.DrawTriangle();
-    CHECK(scene.ReadValue() == 255003);
+    CHECK(scene.ReadValue() == 128003);
 
     material->SetTexture("First", nullptr);
     material->SetTexture("Second", texture.get());

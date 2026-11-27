@@ -12,8 +12,8 @@
 /// @brief Functions that build the mesh data of simple shapes.
 ///
 /// The shapes are centered on the origin, with +Y up. Their triangles face outward, and the images of their textures
-/// are upright when seen from outside: the faces whose normal is horizontal have v = 0 at their top. A size that is not
-/// a finite number above 0 gives empty data and logs an engine error.
+/// are upright when seen from outside: the faces whose normal is horizontal have v = 0 at their top. Their vertices have
+/// tangents, for the normal maps. A size that is not a finite number above 0 gives empty data and logs an engine error.
 namespace Quasar::Primitives
 {
     /// @brief Builds a cube with 4 vertices per face, so that each face has its own normal and the whole image.

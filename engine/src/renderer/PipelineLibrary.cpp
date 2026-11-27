@@ -3,6 +3,7 @@
 #include <quasar/io/EngineResources.h>
 #include <quasar/log/Log.h>
 
+#include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
 #include <algorithm>
@@ -33,6 +34,33 @@ namespace Quasar
                         material.SetVec4("Color", glm::vec4(1.0f));
                         material.SetFloat("Specular", 0.5f);
                         material.SetFloat("Shininess", 32.0f);
+                    }};
+        }
+
+        PipelineDefinition GetPbrDefinition(ShaderSpecification shader)
+        {
+            return {.Shader = std::move(shader),
+                    .Uniforms = {{"Color", UniformType::Vec4},
+                                 {"Emissive", UniformType::Vec3},
+                                 {"EmissiveIntensity", UniformType::Float},
+                                 {"Metallic", UniformType::Float},
+                                 {"Roughness", UniformType::Float},
+                                 {"NormalScale", UniformType::Float},
+                                 {"OcclusionStrength", UniformType::Float}},
+                    .Textures = {{.Name = "Texture", .Slot = 0},
+                                 {.Name = "NormalMap", .Slot = 1, .Default = DefaultTexture::FlatNormal},
+                                 {.Name = "MetallicRoughnessMap", .Slot = 2},
+                                 {.Name = "OcclusionMap", .Slot = 3},
+                                 {.Name = "EmissiveMap", .Slot = 4}},
+                    .SetDefaults = [](Material& material)
+                    {
+                        material.SetVec4("Color", glm::vec4(1.0f));
+                        material.SetVec3("Emissive", glm::vec3(0.0f));
+                        material.SetFloat("EmissiveIntensity", 1.0f);
+                        material.SetFloat("Metallic", 0.0f);
+                        material.SetFloat("Roughness", 0.5f);
+                        material.SetFloat("NormalScale", 1.0f);
+                        material.SetFloat("OcclusionStrength", 1.0f);
                     }};
         }
     }
@@ -72,7 +100,8 @@ namespace Quasar
     bool PipelineLibrary::AddDefaults()
     {
         using GetDefinition = PipelineDefinition (*)(ShaderSpecification);
-        const std::array<std::pair<std::string_view, GetDefinition>, 2> defaults{{{Unlit, &GetUnlitDefinition}, {BlinnPhong, &GetBlinnPhongDefinition}}};
+        const std::array<std::pair<std::string_view, GetDefinition>, 3> defaults{
+            {{Unlit, &GetUnlitDefinition}, {BlinnPhong, &GetBlinnPhongDefinition}, {Pbr, &GetPbrDefinition}}};
 
         bool added = true;
         for (const auto& [name, getDefinition] : defaults)

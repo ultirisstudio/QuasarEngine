@@ -45,6 +45,22 @@ float Attenuate(vec3 toLight, float range)
     return fade * fade / distanceSquared;
 }
 
+bool IsInRange(vec3 toLight, float range)
+{
+    return dot(toLight, toLight) < range * range;
+}
+
+vec3 GetPointLightRadiance(PointLight light, vec3 toLight)
+{
+    return light.Color.rgb * Attenuate(toLight, light.PositionRange.w);
+}
+
+vec3 GetSpotLightRadiance(SpotLight light, vec3 toLight, vec3 direction)
+{
+    float cone = clamp((dot(-direction, light.DirectionOuter.xyz) - light.DirectionOuter.w) / (light.ColorInner.w - light.DirectionOuter.w), 0.0, 1.0);
+    return light.ColorInner.rgb * (Attenuate(toLight, light.PositionRange.w) * cone * cone);
+}
+
 float ReadShadow(vec3 position, vec3 normal)
 {
     if (u_Shadow.x == 0.0)

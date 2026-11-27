@@ -50,8 +50,8 @@ namespace Quasar
         }
     }
 
-    Material::Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, Texture2D* white)
-        : m_Specification(specification), m_UniformBuffer(std::move(uniforms)), m_Values(specification.Uniforms.GetSize()), m_White(white),
+    Material::Material(const MaterialSpecification& specification, Scope<UniformBuffer> uniforms, std::vector<Texture2D*> defaults)
+        : m_Specification(specification), m_UniformBuffer(std::move(uniforms)), m_Values(specification.Uniforms.GetSize()), m_Defaults(std::move(defaults)),
           m_Textures(specification.Textures.size(), nullptr)
     {
     }
@@ -90,16 +90,18 @@ namespace Quasar
             }
         }
 
-        Texture2D* white = nullptr;
-        if (!specification.Textures.empty())
+        std::vector<Texture2D*> defaults;
+        defaults.reserve(specification.Textures.size());
+        for (const MaterialTexture& texture : specification.Textures)
         {
-            white = context.GetWhiteTexture();
-            if (white == nullptr)
+            Texture2D* fallback = context.GetDefaultTexture(texture.Default);
+            if (fallback == nullptr)
             {
                 return nullptr;
             }
+            defaults.push_back(fallback);
         }
-        return Scope<Material>(new Material(specification, std::move(uniforms), white));
+        return Scope<Material>(new Material(specification, std::move(uniforms), std::move(defaults)));
     }
 
     void Material::SetFloat(std::string_view name, float value)
@@ -164,7 +166,7 @@ namespace Quasar
         }
         for (std::size_t index = 0; index < m_Textures.size(); ++index)
         {
-            Texture2D& texture = m_Textures[index] != nullptr ? *m_Textures[index] : *m_White;
+            Texture2D& texture = m_Textures[index] != nullptr ? *m_Textures[index] : *m_Defaults[index];
             texture.Bind(m_Specification.Textures[index].Slot);
         }
         m_Changed = false;

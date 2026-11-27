@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -65,26 +66,33 @@ TEST_CASE("A window gets a current OpenGL 4.5 core context")
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }
 
-TEST_CASE("A context makes its white texture once, with one white pixel")
+TEST_CASE("A context makes each default texture once: a white pixel, and a flat normal read as it is stored")
 {
     const TestHelpers::ScopedLog log;
     const Quasar::Scope<Quasar::Window> window = TestHelpers::CreateWindowWithContext();
     REQUIRE(window != nullptr);
     Quasar::GraphicsContext& context = *window->GetGraphicsContext();
 
-    Quasar::Texture2D* white = context.GetWhiteTexture();
+    for (const auto& [kind, format, expected] :
+         {std::tuple{Quasar::DefaultTexture::White, Quasar::TextureFormat::Srgba8, std::array<std::uint8_t, 4>{255, 255, 255, 255}},
+          std::tuple{Quasar::DefaultTexture::FlatNormal, Quasar::TextureFormat::Rgba8, std::array<std::uint8_t, 4>{128, 128, 255, 255}}})
+    {
+        Quasar::Texture2D* made = context.GetDefaultTexture(kind);
 
-    REQUIRE(white != nullptr);
-    CHECK(context.GetWhiteTexture() == white);
-    CHECK(white->GetSpecification().Width == 1);
-    CHECK(white->GetSpecification().Height == 1);
-    white->Bind(3);
-    glActiveTexture(GL_TEXTURE3);
-    GLint texture = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
-    std::array<std::uint8_t, 4> pixel{};
-    glGetTextureImage(static_cast<GLuint>(texture), 0, GL_RGBA, GL_UNSIGNED_BYTE, static_cast<GLsizei>(pixel.size()), pixel.data());
-    CHECK(pixel == std::array<std::uint8_t, 4>{255, 255, 255, 255});
+        REQUIRE(made != nullptr);
+        CHECK(context.GetDefaultTexture(kind) == made);
+        CHECK(made->GetSpecification().Width == 1);
+        CHECK(made->GetSpecification().Height == 1);
+        CHECK(made->GetSpecification().Format == format);
+        made->Bind(3);
+        glActiveTexture(GL_TEXTURE3);
+        GLint texture = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
+        std::array<std::uint8_t, 4> pixel{};
+        glGetTextureImage(static_cast<GLuint>(texture), 0, GL_RGBA, GL_UNSIGNED_BYTE, static_cast<GLsizei>(pixel.size()), pixel.data());
+        CHECK(pixel == expected);
+    }
+    CHECK(context.GetDefaultTexture(Quasar::DefaultTexture::White) != context.GetDefaultTexture(Quasar::DefaultTexture::FlatNormal));
     CHECK(glGetError() == GL_NO_ERROR);
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Error));
 }

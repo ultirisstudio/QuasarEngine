@@ -16,6 +16,7 @@
 #include <quasar/renderer/Primitives.h>
 #include <quasar/renderer/Renderer.h>
 #include <quasar/renderer/Shader.h>
+#include <quasar/renderer/Texture.h>
 
 #include <doctest/doctest.h>
 
@@ -28,9 +29,11 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <numbers>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -43,6 +46,8 @@ using TestHelpers::IsNear;
 
 namespace
 {
+    constexpr float Sin60 = std::numbers::sqrt3_v<float> / 2.0f;
+
     class Fixture
     {
     public:
@@ -114,6 +119,23 @@ namespace
         return material;
     }
 
+    Quasar::Scope<Quasar::Material> CreatePbr(const PipelineLibrary& library, float roughness = 1.0f, float metallic = 0.0f)
+    {
+        Quasar::Scope<Quasar::Material> material = library.CreateMaterial(PipelineLibrary::Pbr);
+        REQUIRE(material != nullptr);
+        material->SetFloat("Roughness", roughness);
+        material->SetFloat("Metallic", metallic);
+        return material;
+    }
+
+    Quasar::Scope<Quasar::Texture2D> CreatePixel(Quasar::GraphicsContext& context, std::array<std::uint8_t, 4> pixel)
+    {
+        Quasar::Scope<Quasar::Texture2D> texture =
+            context.CreateTexture2D({.Format = Quasar::TextureFormat::Rgba8, .Mipmaps = false}, std::as_bytes(std::span(pixel)));
+        REQUIRE(texture != nullptr);
+        return texture;
+    }
+
     Quasar::SceneLights Sun(const Quasar::DirectionalLight& light)
     {
         return {.Directional = light};
@@ -125,7 +147,7 @@ namespace
     }
 }
 
-TEST_CASE("The default pipelines of a library are Unlit and BlinnPhong, and are added once")
+TEST_CASE("The default pipelines of a library are Unlit, BlinnPhong and PBR, and are added once")
 {
     const TestHelpers::ScopedLog log;
     const Fixture fixture;
@@ -134,7 +156,7 @@ TEST_CASE("The default pipelines of a library are Unlit and BlinnPhong, and are 
 
     CHECK(library.AddDefaults());
 
-    for (const std::string_view name : {PipelineLibrary::Unlit, PipelineLibrary::BlinnPhong})
+    for (const std::string_view name : {PipelineLibrary::Unlit, PipelineLibrary::BlinnPhong, PipelineLibrary::Pbr})
     {
         const Quasar::Pipeline* pipeline = library.Get(name);
         REQUIRE(pipeline != nullptr);
@@ -142,11 +164,12 @@ TEST_CASE("The default pipelines of a library are Unlit and BlinnPhong, and are 
         CHECK(pipeline->GetSpecification().Culling == Quasar::CullMode::Back);
     }
     CHECK(library.Get(PipelineLibrary::Unlit) != library.Get(PipelineLibrary::BlinnPhong));
+    CHECK(library.Get(PipelineLibrary::BlinnPhong) != library.Get(PipelineLibrary::Pbr));
     CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
 
     const Quasar::Pipeline* unlit = library.Get(PipelineLibrary::Unlit);
     CHECK_FALSE(library.AddDefaults());
-    CHECK(CountErrors("already has one") == 2);
+    CHECK(CountErrors("already has one") == 3);
     CHECK(library.Get(PipelineLibrary::Unlit) == unlit);
 }
 
@@ -238,10 +261,10 @@ TEST_CASE("The BlinnPhong pipeline lights a surface by the angle of the light, p
 
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, -1.0f})), Gray(255)));
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, -4.0f})), Gray(255)));
-    CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, -std::sqrt(3.0f) / 2.0f, -0.5f})), Gray(128)));
+    CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, -Sin60, -0.5f})), Gray(128)));
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, 1.0f})), Gray(0)));
     CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, 0.0f, 1.0f}, 0.25f)), Gray(64)));
-    CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, -std::sqrt(3.0f) / 2.0f, -0.5f}, 0.25f)), Gray(191)));
+    CHECK(IsNear(fixture.Draw(*lit, Light({0.0f, -Sin60, -0.5f}, 0.25f)), Gray(191)));
 
     lit->SetVec4("Color", {0.0f, 0.0f, 0.0f, 1.0f});
     lit->SetFloat("Specular", 1.0f);
@@ -367,4 +390,135 @@ TEST_CASE("A scene uses only its first lights up to the maximums, and warns once
     spots.Spots.push_back({.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 100.0f});
     CHECK(IsNear(fixture.Draw(*lit, spots), Gray(78)));
     CHECK(countWarnings() == 2);
+}
+
+TEST_CASE("The PBR materials start white, not metallic, half rough, without emission and with flat normals")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> material = fixture.GetLibrary().CreateMaterial(PipelineLibrary::Pbr);
+    REQUIRE(material != nullptr);
+
+    CHECK(material->GetSpecification().Pipeline == fixture.GetLibrary().Get(PipelineLibrary::Pbr));
+    CHECK(IsNear(fixture.Draw(*material, Light({0.0f, 0.0f, 1.0f}, 0.5f)), Gray(128)));
+    CHECK(IsNear(fixture.Draw(*material, Quasar::SceneLights{.Directional = std::nullopt}), Gray(0)));
+    CHECK(IsNear(fixture.Draw(*material, Light({0.0f, -Sin60, -0.5f})), Gray(129)));
+    CHECK_FALSE(TestHelpers::HasLogAtLeast(Quasar::LogLevel::Warning));
+}
+
+TEST_CASE("A matte PBR surface is lit like a BlinnPhong one without highlight, by every kind of light")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> pbr = CreatePbr(fixture.GetLibrary());
+    const Quasar::Scope<Quasar::Material> blinnPhong = CreateLit(fixture.GetLibrary());
+    const std::array<Quasar::SceneLights, 4> scenes{
+        Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Intensity = 0.5f, .Ambient = 0.0f}),
+        Sun({.Direction = {0.0f, -Sin60, -0.5f}, .Ambient = 0.0f}),
+        Quasar::SceneLights{.Directional = std::nullopt, .Points = {{.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 0.5f}}},
+        Quasar::SceneLights{.Directional = std::nullopt, .Spots = {{.Position = {0.0f, 0.0f, 1.0f}, .Intensity = 0.5f}}},
+    };
+
+    for (std::size_t index = 0; index < scenes.size(); ++index)
+    {
+        CAPTURE(index);
+        const Color lit = fixture.Draw(*pbr, scenes.at(index));
+        const Color reference = fixture.Draw(*blinnPhong, scenes.at(index));
+        CHECK(reference[0] > 100);
+        CHECK(lit[0] >= reference[0]);
+        CHECK(lit[0] <= reference[0] + 3);
+    }
+}
+
+TEST_CASE("A PBR metal reflects the light in its own color and has no diffuse color")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::SceneLights light = Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Intensity = 0.5f, .Ambient = 0.0f});
+
+    const Quasar::Scope<Quasar::Material> metal = CreatePbr(fixture.GetLibrary(), 1.0f, 1.0f);
+    metal->SetVec4("Color", {1.0f, 0.0f, 0.0f, 1.0f});
+    CHECK(IsNear(fixture.Draw(*metal, light), {32, 0, 0, 255}));
+
+    const Quasar::Scope<Quasar::Material> plastic = CreatePbr(fixture.GetLibrary(), 1.0f, 0.0f);
+    plastic->SetVec4("Color", {1.0f, 0.0f, 0.0f, 1.0f});
+    CHECK(IsNear(fixture.Draw(*plastic, light), {129, 1, 1, 255}));
+
+    const Quasar::Scope<Quasar::Texture2D> notMetallic = CreatePixel(fixture.GetContext(), {0, 255, 0, 255});
+    metal->SetTexture("MetallicRoughnessMap", notMetallic.get());
+    CHECK(IsNear(fixture.Draw(*metal, light), {129, 1, 1, 255}));
+}
+
+TEST_CASE("A smooth PBR surface reflects the light only around the mirror direction, and a rough one spreads it")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::SceneLights mirror = Sun({.Direction = {0.0f, 0.0f, -1.0f}, .Ambient = 0.0f});
+    const Quasar::SceneLights aside = Sun({.Direction = {0.0f, -Sin60, -0.5f}, .Ambient = 0.0f});
+
+    const Quasar::Scope<Quasar::Material> rough = CreatePbr(fixture.GetLibrary(), 1.0f, 1.0f);
+    CHECK(IsNear(fixture.Draw(*rough, mirror), Gray(64)));
+    CHECK(IsNear(fixture.Draw(*rough, aside), Gray(43)));
+
+    const Quasar::Scope<Quasar::Material> smooth = CreatePbr(fixture.GetLibrary(), 0.2f, 1.0f);
+    CHECK(IsNear(fixture.Draw(*smooth, mirror), Gray(255)));
+    CHECK(IsNear(fixture.Draw(*smooth, aside), Gray(2)));
+
+    const Quasar::Scope<Quasar::Texture2D> halfRough = CreatePixel(fixture.GetContext(), {0, 51, 255, 255});
+    rough->SetTexture("MetallicRoughnessMap", halfRough.get());
+    CHECK(IsNear(fixture.Draw(*rough, aside), Gray(2)));
+}
+
+TEST_CASE("A PBR normal map tilts the surface toward the top of its image, by its scale, and turns with the mesh")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> material = CreatePbr(fixture.GetLibrary());
+    const Quasar::SceneLights fromAbove = Sun({.Direction = {0.0f, -Sin60, -0.5f}, .Intensity = 0.5f, .Ambient = 0.0f});
+    const Quasar::Scope<Quasar::Texture2D> towardTop = CreatePixel(fixture.GetContext(), {128, 191, 238, 255});
+    const Quasar::Scope<Quasar::Texture2D> towardBottom = CreatePixel(fixture.GetContext(), {128, 64, 238, 255});
+    const Color flat = fixture.Draw(*material, fromAbove);
+    CHECK(IsNear(flat, Gray(65)));
+
+    material->SetTexture("NormalMap", towardTop.get());
+    CHECK(IsNear(fixture.Draw(*material, fromAbove), Gray(111), 2));
+    material->SetTexture("NormalMap", towardBottom.get());
+    CHECK(IsNear(fixture.Draw(*material, fromAbove), Gray(1), 2));
+    material->SetFloat("NormalScale", 0.0f);
+    CHECK(IsNear(fixture.Draw(*material, fromAbove), flat, 2));
+
+    material->SetFloat("NormalScale", 1.0f);
+    material->SetTexture("NormalMap", towardTop.get());
+    const glm::mat4 turned = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    const Quasar::SceneLights fromLeft = Sun({.Direction = {Sin60, 0.0f, -0.5f}, .Intensity = 0.5f, .Ambient = 0.0f});
+    CHECK(IsNear(fixture.Draw(*material, fromLeft, turned), Gray(111), 2));
+    CHECK(IsNear(fixture.Draw(*material, fromAbove, turned), Gray(56), 2));
+}
+
+TEST_CASE("The PBR ambient light reaches the surface by its occlusion map, and the emission adds to the light")
+{
+    const TestHelpers::ScopedLog log;
+    const Fixture fixture;
+    REQUIRE(fixture.GetLibrary().AddDefaults());
+    const Quasar::Scope<Quasar::Material> material = CreatePbr(fixture.GetLibrary());
+    const Quasar::SceneLights ambient = Light({0.0f, 0.0f, 1.0f}, 0.5f);
+    CHECK(IsNear(fixture.Draw(*material, ambient), Gray(128)));
+
+    const Quasar::Scope<Quasar::Texture2D> hidden = CreatePixel(fixture.GetContext(), {0, 0, 0, 255});
+    material->SetTexture("OcclusionMap", hidden.get());
+    CHECK(IsNear(fixture.Draw(*material, ambient), Gray(0)));
+    material->SetFloat("OcclusionStrength", 0.5f);
+    CHECK(IsNear(fixture.Draw(*material, ambient), Gray(64)));
+
+    material->SetVec3("Emissive", {1.0f, 0.0f, 0.0f});
+    material->SetFloat("EmissiveIntensity", 0.5f);
+    CHECK(IsNear(fixture.Draw(*material, Quasar::SceneLights{.Directional = std::nullopt}), {128, 0, 0, 255}));
+    CHECK(IsNear(fixture.Draw(*material, ambient), {192, 64, 64, 255}));
+    material->SetTexture("EmissiveMap", hidden.get());
+    CHECK(IsNear(fixture.Draw(*material, Quasar::SceneLights{.Directional = std::nullopt}), Gray(0)));
 }
